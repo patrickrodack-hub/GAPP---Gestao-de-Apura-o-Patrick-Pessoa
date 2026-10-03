@@ -25,6 +25,7 @@ import { MobileStockPortal } from './components/portal/MobileStockPortal';
 import { useTheme } from './context/ThemeContext';
 import { ExcelExportService } from './services/excelExportService';
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
+import { requestPortalFullscreen } from './utils/fullscreen';
 import { Minus, Square, X, Beef, FileSpreadsheet } from 'lucide-react';
 
 export default function App() {
@@ -283,8 +284,14 @@ export default function App() {
     setIsDesktopView(false);
   };
 
+  const handleOpenMobilePortal = () => {
+    setIsPortalMode(true);
+    requestPortalFullscreen();
+  };
+
   // Global Keyboard Shortcuts hook listener (Alt+1 to Alt+8, Alt+X, Alt+C, Alt+P, etc.)
   useGlobalShortcuts({
+    enabled: !isPortalMode,
     onNavigateTab: (tab) => {
       handleTabSelect(tab);
       const tabNames: Record<NavigationTab, string> = {
@@ -379,7 +386,7 @@ export default function App() {
           onOpenShortcuts={() => setIsShortcutsOpen(true)}
           onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
           onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
-          onOpenMobilePortal={() => setIsPortalMode(true)}
+          onOpenMobilePortal={handleOpenMobilePortal}
           onOpenPortalControl={() => setIsPortalControlOpen(true)}
           onSaveSheet={() => handleSaveSheetSnapshot()}
         />
@@ -624,7 +631,7 @@ export default function App() {
         onOpenShortcuts={() => setIsShortcutsOpen(true)}
         onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
         onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
-        onOpenMobilePortal={() => setIsPortalMode(true)}
+        onOpenMobilePortal={handleOpenMobilePortal}
         onOpenPortalControl={() => setIsPortalControlOpen(true)}
         onSaveSheet={() => handleSaveSheetSnapshot()}
       />

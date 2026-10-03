@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { NavigationTab } from '../components/Navigation';
 
 interface UseGlobalShortcutsOptions {
+  enabled?: boolean;
   onNavigateTab: (tab: NavigationTab) => void;
   onExportXLSX: () => void;
   onOpenQuickCalc: () => void;
@@ -15,6 +16,7 @@ interface UseGlobalShortcutsOptions {
 }
 
 export function useGlobalShortcuts({
+  enabled = true,
   onNavigateTab,
   onExportXLSX,
   onOpenQuickCalc,
@@ -27,6 +29,8 @@ export function useGlobalShortcuts({
   onCloseModals,
 }: UseGlobalShortcutsOptions) {
   useEffect(() => {
+    if (!enabled) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // Check if user is typing inside an input/textarea
       const target = e.target as HTMLElement;
@@ -145,6 +149,7 @@ export function useGlobalShortcuts({
     onOpenShortcutsHelp,
     onOpenPurchaseOrder,
     onOpenSupplierManager,
-    onCloseModals
+    onCloseModals,
+    enabled
   ]);
 }

@@ -32,7 +32,9 @@ import {
   LogOut,
   AlertTriangle,
   HelpCircle,
-  X
+  X,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { PortalLaunchHistory } from './PortalLaunchHistory';
 import { PortalTheme } from './MobileStockPortal';
@@ -44,9 +46,10 @@ interface PortalFormProps {
   initialRow: SheetRowData;
   onSave: (updatedRow: SheetRowData) => void;
   onLogout: () => void;
-  onSwitchToAdmin: () => void;
   theme: PortalTheme;
   onToggleTheme: () => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 export const PortalForm: React.FC<PortalFormProps> = ({
@@ -56,9 +59,10 @@ export const PortalForm: React.FC<PortalFormProps> = ({
   initialRow,
   onSave,
   onLogout,
-  onSwitchToAdmin,
   theme,
-  onToggleTheme
+  onToggleTheme,
+  isFullscreen,
+  onToggleFullscreen
 }) => {
   const [activeSection, setActiveSection] = useState<'bovina_camara' | 'bovina_desossa' | 'suina_desossa'>('bovina_camara');
   const [subSection, setSubSection] = useState<'nobres' | 'dianteiro' | 'traseiro'>('nobres');
@@ -372,6 +376,22 @@ export const PortalForm: React.FC<PortalFormProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5">
+          {/* Botão de Tela Cheia (Fullscreen) */}
+          {onToggleFullscreen && (
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition cursor-pointer"
+              title={isFullscreen ? 'Sair da Tela Cheia' : 'Abrir em Tela Cheia (Fullscreen)'}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="w-4 h-4 text-amber-500" />
+              ) : (
+                <Maximize2 className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+              )}
+            </button>
+          )}
+
           {/* Theme Switcher Toggle (Claro / Escuro) */}
           <button
             type="button"

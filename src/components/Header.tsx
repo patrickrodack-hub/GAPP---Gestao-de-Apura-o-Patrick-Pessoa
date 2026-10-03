@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { formatCurrencyBRL } from '../services/calculationService';
 import { ThemeSwitcher } from './common/ThemeSwitcher';
+import { PWAInstallButton } from './pwa/PWAInstallButton';
 
 interface HeaderProps {
   totalPurchaseR$: number;
@@ -122,6 +123,8 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
             {/* Theme Switcher Button */}
             <ThemeSwitcher variant="full" />
+
+            <PWAInstallButton />
 
             {onOpenMobilePortal && (
               <button

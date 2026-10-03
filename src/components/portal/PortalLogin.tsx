@@ -16,26 +16,35 @@ import {
   Lock,
   Clock,
   AlertTriangle,
-  ShieldAlert
+  ShieldAlert,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { PortalTheme } from './MobileStockPortal';
+import { requestPortalFullscreen } from '../../utils/fullscreen';
 
 interface PortalLoginProps {
   stores: Store[];
   onLogin: (storeId: string, operatorName: string) => void;
-  onSwitchToAdmin: () => void;
   theme: PortalTheme;
   onToggleTheme: () => void;
   portalLockConfig?: PortalLockConfig;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+  isStandalone?: boolean;
+  onOpenInstallModal?: () => void;
 }
 
 export const PortalLogin: React.FC<PortalLoginProps> = ({
   stores,
   onLogin,
-  onSwitchToAdmin,
   theme,
   onToggleTheme,
-  portalLockConfig
+  portalLockConfig,
+  isFullscreen,
+  onToggleFullscreen,
+  isStandalone,
+  onOpenInstallModal
 }) => {
   // Primordial: A seleção de lojas inicia SEM nenhuma loja selecionada ('')
   const [selectedStoreId, setSelectedStoreId] = useState<string>('');
@@ -66,6 +75,7 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
     }
 
     setError(null);
+    requestPortalFullscreen();
     onLogin(selectedStoreId, operatorName.trim());
   };
 
@@ -90,6 +100,35 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Botão de Instalar App no Celular (apenas quando não estiver instalado ou standalone) */}
+          {!isStandalone && onOpenInstallModal && (
+            <button
+              type="button"
+              onClick={onOpenInstallModal}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black shadow-sm active:scale-95 transition-all cursor-pointer"
+              title="Instalar ícone do aplicativo no celular"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Instalar App</span>
+            </button>
+          )}
+
+          {/* Botão de Tela Cheia (Fullscreen) */}
+          {onToggleFullscreen && (
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              className="p-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-xs flex items-center justify-center transition active:scale-95 cursor-pointer"
+              title={isFullscreen ? 'Sair da Tela Cheia' : 'Expandir para Tela Cheia (Fullscreen)'}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="w-3.5 h-3.5 text-amber-500" />
+              ) : (
+                <Maximize2 className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
+              )}
+            </button>
+          )}
+
           {/* Theme Switcher Toggle (Claro / Escuro) */}
           <button
             type="button"
@@ -108,15 +147,6 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
                 <span className="text-[11px] font-bold">Escuro</span>
               </>
             )}
-          </button>
-
-          {/* Switch to Admin ERP */}
-          <button
-            type="button"
-            onClick={onSwitchToAdmin}
-            className="text-[11px] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 transition font-medium shadow-xs"
-          >
-            Modo Gestor
           </button>
         </div>
       </div>
@@ -143,17 +173,14 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
             <p className="text-xs text-rose-800 dark:text-rose-300/90 leading-relaxed font-medium bg-white/70 dark:bg-black/30 p-2.5 rounded-xl border border-rose-200 dark:border-rose-900/50">
               {portalAccess.message}
             </p>
-            <div className="pt-1 flex items-center justify-between">
-              <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold uppercase tracking-wider">
-                Liberação controlada pela Direção
+            <div className="pt-1 flex items-center justify-between text-[11px] text-rose-700 dark:text-rose-300 font-semibold">
+              <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                <Lock className="w-3 h-3" />
+                <span>Liberação exclusiva pela Direção / Gestão</span>
               </span>
-              <button
-                type="button"
-                onClick={onSwitchToAdmin}
-                className="text-xs font-bold text-rose-700 dark:text-rose-300 underline hover:text-rose-900 cursor-pointer"
-              >
-                Desbloquear no Modo Gestor &rarr;
-              </button>
+              <span className="text-[10px] text-rose-500 dark:text-rose-400 font-mono">
+                Aguarde liberação
+              </span>
             </div>
           </div>
         )}
@@ -315,6 +342,20 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
               ))}
             </div>
           </div>
+
+          {/* Link para Instalação no Celular */}
+          {!isStandalone && onOpenInstallModal && (
+            <div className="pt-2 text-center border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={onOpenInstallModal}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>Instalar aplicativo na tela inicial do celular</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

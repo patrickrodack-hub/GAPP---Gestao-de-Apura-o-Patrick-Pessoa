@@ -3,6 +3,7 @@ import { NavigationTab } from '../Navigation';
 import { ThemeSwitcher } from '../common/ThemeSwitcher';
 import { getERPMenuCategories, ERPMenuItem } from './menuData';
 import { ERPMenuDialogs } from './ERPMenuDialogs';
+import { PWAInstallButton } from '../pwa/PWAInstallButton';
 import { 
   FileSpreadsheet, 
   RotateCcw, 
@@ -671,6 +672,9 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
             >
               <Printer className="w-4 h-4 text-slate-700" />
             </button>
+
+            {/* Instalação do Aplicativo Mobile / Desktop */}
+            <PWAInstallButton />
 
             {/* Portal Mobile */}
             {onOpenMobilePortal && (
