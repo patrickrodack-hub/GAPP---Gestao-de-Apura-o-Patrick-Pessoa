@@ -114,32 +114,32 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({
       <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden my-auto">
         
         {/* Top Header Banner */}
-        <div className="relative bg-gradient-to-r from-amber-600 via-amber-500 to-amber-700 px-6 py-5 text-white">
+        <div className="relative bg-gradient-to-r from-[#131e14] via-[#1e2f20] to-[#0c140d] px-6 py-5 text-white border-b border-emerald-900/40">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-slate-950/20 backdrop-blur-md p-1 border border-white/20 shadow-inner flex items-center justify-center">
+              <div className="w-13 h-13 rounded-2xl bg-black/40 backdrop-blur-md p-1 border border-emerald-500/40 shadow-inner flex items-center justify-center shrink-0">
                 <img 
                   src="/pwa-192x192.png" 
-                  alt="Ícone ERP Apuração Boi" 
-                  className="w-10 h-10 rounded-xl object-cover shadow"
+                  alt="Ícone Oficial Patrick Pessoa" 
+                  className="w-11 h-11 rounded-xl object-contain shadow"
                 />
               </div>
               <div>
-                <span className="inline-block text-[10px] font-extrabold uppercase tracking-wider bg-white/20 text-white px-2 py-0.5 rounded-full mb-1">
+                <span className="inline-block text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full mb-1">
                   {isIOS ? 'Versão iOS Apple' : isAndroid ? 'Versão Android' : 'Instalação Mobile PWA'}
                 </span>
                 <h2 className="text-lg font-black tracking-tight leading-tight">
                   Instalar Aplicativo no Celular
                 </h2>
-                <p className="text-xs text-amber-100 font-medium">
-                  ERP Apuração do Boi • Grupo GAPP Sistemas
+                <p className="text-xs text-emerald-200 font-medium">
+                  Patrick Pessoa • Gestão Integral de Compra Personalizado
                 </p>
               </div>
             </div>
             
             <button
               onClick={handleDismiss}
-              className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
               title="Continuar no Navegador"
             >
               <X className="w-4 h-4" />

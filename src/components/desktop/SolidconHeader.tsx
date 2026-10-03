@@ -292,9 +292,9 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
         >
           {/* Left: Window Icon + Title */}
           <div className="flex items-center gap-2 overflow-hidden">
-            {/* Stylized rounded silver/blue badge with 'G' */}
-            <div className="w-5 h-5 rounded-sm bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-800 border border-white/40 flex items-center justify-center text-white font-black text-[11px] shrink-0 shadow-inner">
-              G
+            {/* Official Patrick Pessoa Bull Emblem */}
+            <div className="w-5 h-5 rounded-sm bg-[#0c140d] border border-white/40 flex items-center justify-center shrink-0 shadow-inner overflow-hidden p-0.5">
+              <img src="/icon.svg" alt="Patrick Pessoa" className="w-full h-full object-contain" />
             </div>
 
             <span className="font-bold tracking-tight truncate text-[11px] sm:text-xs drop-shadow-sm">

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="appBgGrad" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#1e2f20" />
+      <stop offset="70%" stop-color="#131e14" />
+      <stop offset="100%" stop-color="#0a100b" />
+    </radialGradient>
+    <radialGradient id="haloGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="80%" stop-color="#0a100b" stop-opacity="0" />
+      <stop offset="100%" stop-color="#131e14" stop-opacity="0.6" />
+    </radialGradient>
+    <filter id="glow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.45" />
+    </filter>
+  </defs>
+
+  <!-- Square App Icon Canvas Background -->
+  <rect width="512" height="512" rx="115" fill="#0c140d" />
+  <rect width="506" height="506" x="3" y="3" rx="112" fill="none" stroke="#263d28" stroke-width="3" opacity="0.6" />
+
+  <!-- Center Circle from Patrick Pessoa Brand -->
+  <circle cx="256" cy="256" r="205" fill="url(#appBgGrad)" filter="url(#glow)" />
+  <circle cx="256" cy="256" r="205" fill="none" stroke="#2e4931" stroke-width="2" opacity="0.4" />
+
+  <!-- Bull Silhouette Scaled to Center of App Icon -->
+  <g transform="translate(256, 256) scale(1.15) translate(-256, -226)">
+    <path fill="#ffffff" d="
+      M 256,128
+      C 246,128 234,129 216,133
+      C 188,140 162,150 132,163
+      C 112,172 98,172 94,152
+      C 92,140 92,106 94,76
+      C 94,72 96,72 97,76
+      C 102,112 114,136 136,150
+      C 158,162 186,168 214,166
+      C 218,166 220,167 218,172
+      C 214,180 200,188 178,193
+      C 164,196 160,199 166,201
+      C 176,205 198,203 214,194
+      C 219,191 222,193 223,198
+      C 226,212 232,234 238,256
+      C 241,268 243,286 242,294
+      C 242,298 245,302 249,302
+      C 252,302 254,298 255,294
+      C 256,293 257,293 258,294
+      C 259,298 261,302 264,302
+      C 268,302 271,298 271,294
+      C 270,286 272,268 275,256
+      C 281,234 287,212 290,198
+      C 291,193 294,191 299,194
+      C 315,203 337,205 347,201
+      C 353,199 349,196 335,193
+      C 313,188 299,180 295,172
+      C 293,167 295,166 299,166
+      C 327,168 355,162 377,150
+      C 399,136 411,112 416,76
+      C 417,72 419,72 419,76
+      C 421,106 421,140 419,152
+      C 415,172 401,172 381,163
+      C 351,150 325,140 297,133
+      C 279,129 267,128 256,128
+      Z
+    " />
+  </g>
+</svg>

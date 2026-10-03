@@ -86,12 +86,12 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
       {/* Top Header Bar */}
       <div className="flex items-center justify-between py-2 max-w-lg mx-auto w-full">
         <div className="flex items-center gap-2.5">
-          <div className="p-2.5 rounded-2xl bg-gradient-to-br from-amber-500 to-red-600 text-white shadow-md shadow-amber-500/20">
-            <Beef className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-2xl bg-[#0c140d] p-0.5 border border-emerald-500/30 shadow-md flex items-center justify-center shrink-0 overflow-hidden">
+            <img src="/icon.svg" alt="Patrick Pessoa" className="w-full h-full object-contain" />
           </div>
           <div>
-            <span className="text-[10px] uppercase font-extrabold tracking-wider text-amber-600 dark:text-amber-400 block">
-              GRUPO GAPP • APURAÇÃO DO BOI
+            <span className="text-[10px] uppercase font-extrabold tracking-wider text-emerald-600 dark:text-emerald-400 block">
+              PATRICK PESSOA • GESTÃO INTEGRAL
             </span>
             <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
               Portal de Estoque Mobile
@@ -187,14 +187,21 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-2xl dark:shadow-black/50 space-y-6 backdrop-blur-md transition-colors">
           <div className="text-center space-y-2">
-            <div className="inline-flex p-3 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 mb-1">
-              <Smartphone className="w-7 h-7" />
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-[#0c140d] p-1 border border-emerald-500/40 shadow-xl shadow-emerald-950/20 mb-2 overflow-hidden flex items-center justify-center">
+              <img 
+                src="/icon.svg" 
+                alt="Patrick Pessoa - Gestão Integral de Compra" 
+                className="w-full h-full object-contain"
+              />
             </div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 block mb-0.5">
+              PATRICK PESSOA
+            </span>
             <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Lançamento de Estoque
+              Gestão Integral de Compra
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-              Selecione a sua filial e informe o seu nome para iniciar a contagem semanal de câmara e balcão
+              Lançamento Oficial de Estoque Bovino e Rendimento por Filial
             </p>
           </div>
 

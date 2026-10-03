@@ -60,8 +60,12 @@ export const Header: React.FC<HeaderProps> = ({
           
           {/* Brand & Title */}
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-red-600 flex items-center justify-center shadow-lg shadow-amber-900/20 ring-1 ring-white/20 shrink-0">
-              <Beef className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 rounded-xl bg-[#0c140d] p-1 flex items-center justify-center shadow-lg shadow-emerald-950/30 ring-1 ring-emerald-500/40 shrink-0 overflow-hidden">
+              <img 
+                src="/icon.svg" 
+                alt="Patrick Pessoa - Gestão Integral de Compra" 
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">

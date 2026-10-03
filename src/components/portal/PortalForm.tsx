@@ -361,6 +361,10 @@ export const PortalForm: React.FC<PortalFormProps> = ({
             <span>Sair</span>
           </button>
           
+          <div className="w-8 h-8 rounded-xl bg-[#0c140d] p-0.5 border border-emerald-500/30 shadow-xs flex items-center justify-center shrink-0 overflow-hidden">
+            <img src="/icon.svg" alt="Patrick Pessoa" className="w-full h-full object-contain" />
+          </div>
+
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300">

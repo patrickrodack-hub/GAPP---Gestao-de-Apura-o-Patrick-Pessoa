@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Subtle gradient for rich contrast on dark and light screens -->
+    <radialGradient id="bgGrad" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#1e2f20" />
+      <stop offset="70%" stop-color="#131e14" />
+      <stop offset="100%" stop-color="#0c130d" />
+    </radialGradient>
+    <filter id="subtleShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Clean dark circular emblem matching Patrick Pessoa logo -->
+  <circle cx="256" cy="226" r="160" fill="url(#bgGrad)" filter="url(#subtleShadow)" />
+
+  <!-- Precise White Bull Silhouette -->
+  <!--
+    Path trace matching the user image:
+    Top center between horns -> Left horn top curve -> Tip -> Lower left horn curve
+    -> Left ear -> Left jawline -> Snout & nostrils -> Right jawline -> Right ear
+    -> Lower right horn curve -> Tip -> Top right horn curve -> Top of head
+  -->
+  <path fill="#ffffff" d="
+    M 256,128
+    C 246,128 234,129 216,133
+    C 188,140 162,150 132,163
+    C 112,172 98,172 94,152
+    C 92,140 92,106 94,76
+    C 94,72 96,72 97,76
+    C 102,112 114,136 136,150
+    C 158,162 186,168 214,166
+    C 218,166 220,167 218,172
+    C 214,180 200,188 178,193
+    C 164,196 160,199 166,201
+    C 176,205 198,203 214,194
+    C 219,191 222,193 223,198
+    C 226,212 232,234 238,256
+    C 241,268 243,286 242,294
+    C 242,298 245,302 249,302
+    C 252,302 254,298 255,294
+    C 256,293 257,293 258,294
+    C 259,298 261,302 264,302
+    C 268,302 271,298 271,294
+    C 270,286 272,268 275,256
+    C 281,234 287,212 290,198
+    C 291,193 294,191 299,194
+    C 315,203 337,205 347,201
+    C 353,199 349,196 335,193
+    C 313,188 299,180 295,172
+    C 293,167 295,166 299,166
+    C 327,168 355,162 377,150
+    C 399,136 411,112 416,76
+    C 417,72 419,72 419,76
+    C 421,106 421,140 419,152
+    C 415,172 401,172 381,163
+    C 351,150 325,140 297,133
+    C 279,129 267,128 256,128
+    Z
+  " />
+
+  <!-- Subtitle matching Patrick Pessoa brand: Gestão Integral de Compra Personalizado -->
+  <text x="256" y="432" text-anchor="middle" fill="#131e14" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-weight="700" font-size="19" letter-spacing="0.3">Gestão Integral de Compra Personalizado</text>
+
+  <!-- Horizontal separator line -->
+  <line x1="40" y1="450" x2="472" y2="450" stroke="#809282" stroke-width="1.5" opacity="0.6" />
+
+  <!-- PATRICK PESSOA -->
+  <text x="256" y="482" text-anchor="middle" fill="#131e14" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-weight="800" font-size="22" letter-spacing="6.5">PATRICK PESSOA</text>
+</svg>
