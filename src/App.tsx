@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StorageService } from './services/storageService';
 import { FirebaseService } from './services/firebase';
-import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, SheetSnapshotRecord } from './types/erp';
+import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, SheetSnapshotRecord, PortalLockConfig } from './types/erp';
 import { Header } from './components/Header';
 import { Navigation, NavigationTab } from './components/Navigation';
 import { DashboardTab } from './components/tabs/DashboardTab';
@@ -16,6 +16,7 @@ import { QuickCalculatorModal } from './components/modals/QuickCalculatorModal';
 import { PrintReportModal } from './components/modals/PrintReportModal';
 import { PurchaseOrderModal } from './components/modals/PurchaseOrderModal';
 import { SupplierManagementModal } from './components/modals/SupplierManagementModal';
+import { PortalControlModal } from './components/modals/PortalControlModal';
 import { SolidconHeader } from './components/desktop/SolidconHeader';
 import { SolidconStatusBar } from './components/desktop/SolidconStatusBar';
 import { SolidconDesktopWallpaper } from './components/desktop/SolidconDesktopWallpaper';
@@ -44,6 +45,8 @@ export default function App() {
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isPurchaseOrderOpen, setIsPurchaseOrderOpen] = useState(false);
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+  const [isPortalControlOpen, setIsPortalControlOpen] = useState(false);
+  const [portalLockConfig, setPortalLockConfig] = useState<PortalLockConfig>(() => StorageService.getPortalLockConfig());
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
 
   // Auto detect mobile device or portal mode from URL
@@ -104,11 +107,32 @@ export default function App() {
       console.warn('Ouvinte de Firestore não iniciado:', e);
     }
 
+    // 3. Ouvinte das regras e horários do portal configurados pelo Gestor
+    let unsubscribeLock: (() => void) | undefined;
+    try {
+      unsubscribeLock = FirebaseService.subscribeToPortalLockConfig((cfg) => {
+        if (!isMounted) return;
+        if (cfg) {
+          setPortalLockConfig(cfg);
+          localStorage.setItem('apuracao_boi_portal_lock_v1', JSON.stringify(cfg));
+        }
+      });
+    } catch (e) {
+      console.warn('Ouvinte de portal_lock não iniciado:', e);
+    }
+
     return () => {
       isMounted = false;
       if (unsubscribeRows) unsubscribeRows();
+      if (unsubscribeLock) unsubscribeLock();
     };
   }, []);
+
+  const handleSavePortalLockConfig = (config: PortalLockConfig) => {
+    StorageService.savePortalLockConfig(config);
+    setPortalLockConfig(config);
+    showToast('Regras de acesso e horários do Portal salvas com sucesso!');
+  };
 
   // Sync to local storage
   useEffect(() => {
@@ -356,6 +380,7 @@ export default function App() {
           onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
           onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
           onOpenMobilePortal={() => setIsPortalMode(true)}
+          onOpenPortalControl={() => setIsPortalControlOpen(true)}
           onSaveSheet={() => handleSaveSheetSnapshot()}
         />
 
@@ -562,6 +587,13 @@ export default function App() {
           onClose={() => setIsShortcutsOpen(false)}
           onNavigateTab={handleTabSelect}
         />
+
+        <PortalControlModal
+          isOpen={isPortalControlOpen}
+          onClose={() => setIsPortalControlOpen(false)}
+          currentConfig={portalLockConfig}
+          onSaveConfig={handleSavePortalLockConfig}
+        />
       </div>
     );
   }
@@ -593,6 +625,7 @@ export default function App() {
         onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
         onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
         onOpenMobilePortal={() => setIsPortalMode(true)}
+        onOpenPortalControl={() => setIsPortalControlOpen(true)}
         onSaveSheet={() => handleSaveSheetSnapshot()}
       />
 
@@ -739,6 +772,13 @@ export default function App() {
         isOpen={isShortcutsOpen}
         onClose={() => setIsShortcutsOpen(false)}
         onNavigateTab={handleTabSelect}
+      />
+
+      <PortalControlModal
+        isOpen={isPortalControlOpen}
+        onClose={() => setIsPortalControlOpen(false)}
+        currentConfig={portalLockConfig}
+        onSaveConfig={handleSavePortalLockConfig}
       />
     </div>
   );

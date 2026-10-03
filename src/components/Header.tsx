@@ -9,7 +9,8 @@ import {
   Building2,
   Smartphone,
   Save,
-  History
+  History,
+  Clock
 } from 'lucide-react';
 import { formatCurrencyBRL } from '../services/calculationService';
 import { ThemeSwitcher } from './common/ThemeSwitcher';
@@ -28,6 +29,7 @@ interface HeaderProps {
   onOpenPurchaseOrder?: () => void;
   onOpenSupplierManager?: () => void;
   onOpenMobilePortal?: () => void;
+  onOpenPortalControl?: () => void;
   onSaveSheet?: () => void;
   onOpenSheetHistory?: () => void;
 }
@@ -46,6 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenPurchaseOrder,
   onOpenSupplierManager,
   onOpenMobilePortal,
+  onOpenPortalControl,
   onSaveSheet,
   onOpenSheetHistory,
 }) => {
@@ -128,6 +131,17 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <Smartphone className="w-4 h-4" />
                 <span>Portal Mobile</span>
+              </button>
+            )}
+
+            {onOpenPortalControl && (
+              <button
+                onClick={onOpenPortalControl}
+                className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm hover:shadow"
+                title="Horários & Bloqueio do Portal Mobile (Controle de Acesso do Gestor)"
+              >
+                <Clock className="w-4 h-4" />
+                <span>Horários Portal</span>
               </button>
             )}
 

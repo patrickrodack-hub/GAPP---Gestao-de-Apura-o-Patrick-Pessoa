@@ -27,7 +27,9 @@ import {
   Database,
   CheckCircle2,
   AlertCircle,
-  Building2
+  Building2,
+  Clock,
+  Smartphone
 } from 'lucide-react';
 
 export interface ERPMenuItem {
@@ -674,6 +676,28 @@ export const getERPMenuCategories = (
         icon: ShieldCheck,
         actionType: 'modal',
         actionId: 'diagnostics'
+      },
+      {
+        id: 'mnt-portal-horarios',
+        name: 'Horários & Bloqueio do Portal Mobile (Controle Gestor)',
+        division: 'Gestão de Acessos & Lojas',
+        code: 'MNT-05',
+        badge: 'Controle',
+        description: 'Bloqueio do portal e configuração de janelas de horários permitidos para lançamento de estoque',
+        icon: Clock,
+        actionType: 'action',
+        actionId: 'portalControl'
+      },
+      {
+        id: 'mnt-portal-mobile',
+        name: 'Abrir Portal Mobile de Lançamento por Filial',
+        division: 'Operação de Lojas',
+        code: 'MNT-06',
+        badge: 'Touch',
+        description: 'Interface touch mobile para os encarregados registrarem a contagem semanal de câmara e balcão',
+        icon: Smartphone,
+        actionType: 'action',
+        actionId: 'mobilePortal'
       }
     ]
   },

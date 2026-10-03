@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Store } from '../../types/erp';
+import { Store, PortalLockConfig } from '../../types/erp';
+import { StorageService } from '../../services/storageService';
 import { 
   Building2, 
   User, 
@@ -9,11 +10,13 @@ import {
   Calendar, 
   Sun, 
   Moon, 
-  ShieldCheck, 
-  Sparkles,
   CheckCircle2,
   Warehouse,
-  ChevronDown
+  ChevronDown,
+  Lock,
+  Clock,
+  AlertTriangle,
+  ShieldAlert
 } from 'lucide-react';
 import { PortalTheme } from './MobileStockPortal';
 
@@ -23,6 +26,7 @@ interface PortalLoginProps {
   onSwitchToAdmin: () => void;
   theme: PortalTheme;
   onToggleTheme: () => void;
+  portalLockConfig?: PortalLockConfig;
 }
 
 export const PortalLogin: React.FC<PortalLoginProps> = ({
@@ -30,23 +34,42 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
   onLogin,
   onSwitchToAdmin,
   theme,
-  onToggleTheme
+  onToggleTheme,
+  portalLockConfig
 }) => {
-  const [selectedStoreId, setSelectedStoreId] = useState<string>(stores[0]?.id || '1');
+  // Primordial: A seleção de lojas inicia SEM nenhuma loja selecionada ('')
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
   const [operatorName, setOperatorName] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
   const selectedStore = stores.find(s => s.id === selectedStoreId);
 
+  // Verifica permissão e horário do portal
+  const portalAccess = StorageService.checkPortalAccess(portalLockConfig);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!portalAccess.isOpen) {
+      setError(`O portal está bloqueado no momento: ${portalAccess.message}`);
+      return;
+    }
+
+    if (!selectedStoreId) {
+      setError('Por favor, selecione obrigatoriamente a sua Filial (Loja) no campo destacado em vermelho.');
+      return;
+    }
+
     if (!operatorName.trim()) {
       setError('Por favor, digite o seu nome para registrar a contagem.');
       return;
     }
+
     setError(null);
     onLogin(selectedStoreId, operatorName.trim());
   };
+
+  const isStoreNotSelected = !selectedStoreId;
 
   return (
     <div className="min-h-screen flex flex-col justify-between p-4 sm:p-6 transition-colors duration-200">
@@ -100,6 +123,41 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
 
       {/* Main Login Box */}
       <div className="max-w-md w-full mx-auto my-auto py-4">
+        {/* Aviso de Bloqueio de Horário caso o Portal esteja fechado pelo Gestor */}
+        {!portalAccess.isOpen && (
+          <div className="mb-4 p-4 rounded-3xl bg-rose-50 dark:bg-rose-950/50 border-2 border-rose-500 shadow-xl shadow-rose-500/10 space-y-2.5 text-rose-900 dark:text-rose-200 animate-pulse">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-rose-600 text-white">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <strong className="text-sm font-extrabold block text-rose-700 dark:text-rose-300">
+                  {portalAccess.title}
+                </strong>
+                <span className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  <span>{portalAccess.scheduleText}</span>
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-rose-800 dark:text-rose-300/90 leading-relaxed font-medium bg-white/70 dark:bg-black/30 p-2.5 rounded-xl border border-rose-200 dark:border-rose-900/50">
+              {portalAccess.message}
+            </p>
+            <div className="pt-1 flex items-center justify-between">
+              <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold uppercase tracking-wider">
+                Liberação controlada pela Direção
+              </span>
+              <button
+                type="button"
+                onClick={onSwitchToAdmin}
+                className="text-xs font-bold text-rose-700 dark:text-rose-300 underline hover:text-rose-900 cursor-pointer"
+              >
+                Desbloquear no Modo Gestor &rarr;
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-2xl dark:shadow-black/50 space-y-6 backdrop-blur-md transition-colors">
           <div className="text-center space-y-2">
             <div className="inline-flex p-3 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 mb-1">
@@ -115,39 +173,67 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-500/15 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
-                <span>⚠️ {error}</span>
+              <div className="p-3.5 rounded-xl bg-red-50 dark:bg-red-500/15 border border-red-300 dark:border-red-500/40 text-red-700 dark:text-red-300 text-xs flex items-center gap-2 font-medium">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
+                <span>{error}</span>
               </div>
             )}
 
-            {/* 1. Seleção da Loja */}
+            {/* 1. Seleção da Loja - Fundo vermelho chamativo quando não selecionada */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-                <span>1. Selecione a Loja / Filial</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Building2 className={`w-3.5 h-3.5 ${isStoreNotSelected ? 'text-red-500 animate-bounce' : 'text-amber-500'}`} />
+                  <span>1. Selecione a Loja / Filial:</span>
+                </label>
+                {isStoreNotSelected && (
+                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-red-600 text-white animate-pulse">
+                    Obrigatório Escolher
+                  </span>
+                )}
+              </div>
               
               <div className="relative">
                 <select
                   value={selectedStoreId}
-                  onChange={(e) => setSelectedStoreId(e.target.value)}
-                  className="w-full appearance-none bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 focus:border-amber-500 dark:focus:border-amber-500 rounded-xl p-3 pr-9 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition cursor-pointer"
+                  onChange={(e) => {
+                    setSelectedStoreId(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  className={`w-full appearance-none rounded-xl p-3.5 pr-10 text-sm font-bold transition-all cursor-pointer focus:outline-none ${
+                    isStoreNotSelected
+                      ? 'bg-red-600 text-white border-2 border-red-500 ring-4 ring-red-400/50 shadow-lg shadow-red-500/30 animate-pulse placeholder-white'
+                      : 'bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20'
+                  }`}
                 >
+                  <option value="" disabled className="bg-red-700 text-white font-black py-2">
+                    ⚠️ TOQUE AQUI E ESCOLHA SUA LOJA / FILIAL ⚠️
+                  </option>
                   {stores.map((store, idx) => (
-                    <option key={store.id} value={store.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold">
+                    <option 
+                      key={store.id} 
+                      value={store.id} 
+                      className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold py-1.5"
+                    >
                       {idx + 1}. {store.name} ({store.city})
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <ChevronDown className={`w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none ${isStoreNotSelected ? 'text-white' : 'text-slate-400'}`} />
               </div>
 
-              {selectedStore && (
-                <div className="p-2.5 rounded-xl bg-amber-50/70 dark:bg-slate-950/70 border border-amber-200/80 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 flex items-center justify-between">
-                  <span>Encarregado: <strong className="text-slate-900 dark:text-slate-200">{selectedStore.manager}</strong></span>
-                  <span className="flex items-center gap-1">
+              {/* Mensagem de alerta vermelha enquanto não escolher a filial */}
+              {isStoreNotSelected ? (
+                <div className="p-2.5 rounded-xl bg-red-100 dark:bg-red-950/60 border border-red-300 dark:border-red-900 text-red-800 dark:text-red-300 text-[11px] font-bold flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 shrink-0 text-red-600" />
+                  <span>Selecione a sua filial de origem acima para liberar o lançamento.</span>
+                </div>
+              ) : selectedStore && (
+                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-slate-950/70 border border-emerald-300 dark:border-slate-800 text-[11px] text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                  <span>Filial Selecionada: <strong className="text-emerald-800 dark:text-emerald-400 font-extrabold">{selectedStore.name}</strong></span>
+                  <span className="flex items-center gap-1 font-semibold text-slate-600 dark:text-slate-400">
                     <Warehouse className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                    <span>Câmara: <strong className="text-amber-700 dark:text-amber-400">{selectedStore.chamberCapacityPieces} pç</strong></span>
+                    <span>Câm: {selectedStore.chamberCapacityPieces} pç</span>
                   </span>
                 </div>
               )}
@@ -166,29 +252,40 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
                   setOperatorName(e.target.value);
                   if (error) setError(null);
                 }}
-                placeholder="Ex: Carlos Encarregado / João Silva"
+                placeholder="Ex: Carlos Encarregado / João Açougueiro"
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 focus:border-amber-500 dark:focus:border-amber-500 rounded-xl p-3 text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition"
               />
             </div>
 
-            {/* Status e Data */}
+            {/* Status e Horário do Portal */}
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-slate-400" />
                 <span>Data: <strong className="text-slate-900 dark:text-white">{new Date().toLocaleDateString('pt-BR')}</strong></span>
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" />
-                <span>Planilha Matriz Ativa</span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                portalAccess.isOpen 
+                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30' 
+                  : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30'
+              }`}>
+                {portalAccess.isOpen ? <CheckCircle2 className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                <span>{portalAccess.isOpen ? 'Portal Liberado' : 'Portal Bloqueado'}</span>
               </span>
             </div>
 
             {/* Botão Entrar */}
             <button
               type="submit"
-              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-sm shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 active:scale-[0.98] transition cursor-pointer"
+              disabled={!portalAccess.isOpen}
+              className={`w-full py-3.5 px-4 rounded-xl font-extrabold text-sm shadow-md flex items-center justify-center gap-2 active:scale-[0.98] transition cursor-pointer ${
+                portalAccess.isOpen
+                  ? isStoreNotSelected
+                    ? 'bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-500 hover:to-red-600 shadow-red-500/20 animate-pulse'
+                    : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-amber-500/20'
+                  : 'bg-slate-300 dark:bg-slate-800 text-slate-500 dark:text-slate-500 cursor-not-allowed shadow-none'
+              }`}
             >
-              <span>Acessar e Lançar Estoque</span>
+              <span>{portalAccess.isOpen ? (isStoreNotSelected ? 'Selecione a Filial para Acessar' : 'Acessar e Lançar Estoque') : 'Lançamento Bloqueado no Momento'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
@@ -196,17 +293,20 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
           {/* Quick Store Selector Chips */}
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
             <span className="text-[10px] uppercase font-bold text-slate-400 block mb-2">
-              Toque rápido para trocar de filial:
+              Ou toque rápido para selecionar sua filial:
             </span>
             <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto no-scrollbar py-0.5">
               {stores.slice(0, 10).map((s) => (
                 <button
                   key={s.id}
                   type="button"
-                  onClick={() => setSelectedStoreId(s.id)}
+                  onClick={() => {
+                    setSelectedStoreId(s.id);
+                    if (error) setError(null);
+                  }}
                   className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition cursor-pointer ${
                     selectedStoreId === s.id
-                      ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                      ? 'bg-amber-500 text-slate-950 font-bold shadow-xs ring-2 ring-amber-400'
                       : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
                   }`}
                 >

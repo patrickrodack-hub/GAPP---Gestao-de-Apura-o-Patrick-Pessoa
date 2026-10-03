@@ -16,7 +16,7 @@ import {
   limit
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { SheetRowData, SheetSnapshotRecord, StockLaunchRecord, Store, Supplier, Product } from '../types/erp';
+import { SheetRowData, SheetSnapshotRecord, StockLaunchRecord, Store, Supplier, Product, PortalLockConfig } from '../types/erp';
 
 // Initialize Firebase App
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
@@ -293,6 +293,48 @@ export const FirebaseService = {
       await batch.commit();
     } catch (e) {
       console.warn('Erro ao salvar suppliers no Firestore:', e);
+    }
+  },
+
+  // 5. PORTAL LOCK CONFIG (Controle de Horários & Bloqueio do Portal Mobile)
+  async getPortalLockConfig(): Promise<PortalLockConfig | null> {
+    const path = 'app_settings/portal_lock';
+    try {
+      const snap = await getDoc(doc(db, 'app_settings', 'portal_lock'));
+      if (snap.exists()) {
+        return snap.data() as PortalLockConfig;
+      }
+      return null;
+    } catch (e) {
+      console.warn('Erro ao carregar portal_lock do Firestore:', e);
+      return null;
+    }
+  },
+
+  async savePortalLockConfig(config: PortalLockConfig): Promise<void> {
+    const path = 'app_settings/portal_lock';
+    try {
+      await setDoc(doc(db, 'app_settings', 'portal_lock'), {
+        ...config,
+        updatedAt: Date.now()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  },
+
+  subscribeToPortalLockConfig(callback: (config: PortalLockConfig) => void): () => void {
+    const path = 'app_settings/portal_lock';
+    try {
+      return onSnapshot(doc(db, 'app_settings', 'portal_lock'), (snap) => {
+        if (snap.exists()) {
+          callback(snap.data() as PortalLockConfig);
+        }
+      }, (error) => {
+        console.warn('Erro ao escutar portal_lock do Firestore:', error);
+      });
+    } catch {
+      return () => {};
     }
   }
 };

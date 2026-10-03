@@ -63,6 +63,7 @@ export interface SheetRowData {
   sugestaoPedido: number;      // Fórmula: venda - boi
   pedidoFinal?: number;        // Coluna "Pedido" adicionada para quantidade pedida pelo usuário
   pTransito: number;           // Peça Trânsito
+  recebeuBoiHoje?: boolean;    // Confirmação se a filial recebeu boi hoje (SIM / NÃO)
   
   // PEÇA INTEIRA CÂMARA
   camaraDianteiro: number;
@@ -247,6 +248,7 @@ export interface StockLaunchRecord {
   boisEquivalente: number;      // Bois calculados
   sugestaoPedido: number;       // Sugestão resultante
   rowData: SheetRowData;        // Snapshot dos cortes e dados salvos na planilha
+  recebeuBoiHoje?: boolean;     // Se a loja informou que recebeu boi hoje
   notes?: string;
 }
 
@@ -264,4 +266,13 @@ export interface SheetSnapshotRecord {
   totalBois: number;            // Total de bois equivalentes calculados
   totalPurchaseR$: number;      // Custo financeiro estimado da compra
   rows: SheetRowData[];         // Snapshot completo das 16 linhas com todos os cortes e câmaras
+}
+
+export interface PortalLockConfig {
+  mode: 'LIBERADO' | 'HORARIO_PROGRAMADO' | 'BLOQUEADO';
+  startTime: string;            // Ex: "07:00"
+  endTime: string;              // Ex: "12:00"
+  customMessage?: string;       // Mensagem personalizada exibida aos encarregados
+  updatedBy?: string;           // Quem configurou (ex: "Patrick Pessoa - Gestor")
+  updatedAt?: number;           // Timestamp da última alteração
 }

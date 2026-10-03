@@ -20,15 +20,19 @@ import {
   Plus, 
   Minus, 
   RotateCcw, 
-  Sparkles,
-  ChevronRight,
-  Warehouse,
-  Flame,
-  Check,
-  History,
-  FileText,
-  Sun,
-  Moon
+  Sparkles, 
+  ChevronRight, 
+  Warehouse, 
+  Flame, 
+  Check, 
+  History, 
+  FileText, 
+  Sun, 
+  Moon,
+  LogOut,
+  AlertTriangle,
+  HelpCircle,
+  X
 } from 'lucide-react';
 import { PortalLaunchHistory } from './PortalLaunchHistory';
 import { PortalTheme } from './MobileStockPortal';
@@ -60,7 +64,22 @@ export const PortalForm: React.FC<PortalFormProps> = ({
   const [subSection, setSubSection] = useState<'nobres' | 'dianteiro' | 'traseiro'>('nobres');
   const [launchNotes, setLaunchNotes] = useState('');
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [historyRecords, setHistoryRecords] = useState<StockLaunchRecord[]>(() => StorageService.getStockLaunchRecords());
+
+  // Pergunta obrigatória: Recebeu BOI hoje?
+  const [recebeuBoiHoje, setRecebeuBoiHoje] = useState<boolean | null>(initialRow.recebeuBoiHoje ?? null);
+
+  // Rastreamento obrigatório de navegação pelas abas antes de liberar o salvamento
+  const [visitedMainSections, setVisitedMainSections] = useState<Set<'bovina_camara' | 'bovina_desossa' | 'suina_desossa'>>(
+    new Set(['bovina_camara'])
+  );
+  const [visitedSubSections, setVisitedSubSections] = useState<Set<'nobres' | 'dianteiro' | 'traseiro'>>(
+    new Set([])
+  );
+
+  // Modal de aviso quando o usuário tenta salvar sem ter navegado por todas as abas
+  const [missingTabsWarning, setMissingTabsWarning] = useState<string[] | null>(null);
 
   const yieldParams = StorageService.getYieldParams();
   const currentWeights: CutYieldWeights = yieldParams.basis === 'piece' 
@@ -72,6 +91,21 @@ export const PortalForm: React.FC<PortalFormProps> = ({
   });
   const [isSavedToast, setIsSavedToast] = useState(false);
   const [savedSummaryMsg, setSavedSummaryMsg] = useState<string>('');
+
+  // Funções de navegação com marcação de visita
+  const handleSelectMainSection = (section: 'bovina_camara' | 'bovina_desossa' | 'suina_desossa') => {
+    setActiveSection(section);
+    setVisitedMainSections(prev => new Set(prev).add(section));
+    if (section === 'bovina_desossa') {
+      setVisitedSubSections(prev => new Set(prev).add(subSection));
+    }
+  };
+
+  const handleSelectSubSection = (sub: 'nobres' | 'dianteiro' | 'traseiro') => {
+    setSubSection(sub);
+    setVisitedSubSections(prev => new Set(prev).add(sub));
+    setVisitedMainSections(prev => new Set(prev).add('bovina_desossa'));
+  };
 
   const handleFieldChange = (field: keyof SheetRowData, val: number) => {
     const num = Math.max(0, isNaN(val) ? 0 : val);
@@ -134,16 +168,54 @@ export const PortalForm: React.FC<PortalFormProps> = ({
     }, currentWeights);
   };
 
+  // Validação estrita de navegação antes de salvar
   const handleSaveData = () => {
-    const finalRow = recalculateRowOrderFormulas(draft, currentWeights);
+    const missing: string[] = [];
+
+    // 1. Verifica resposta se recebeu BOI hoje
+    if (recebeuBoiHoje === null) {
+      missing.push('Resposta obrigatória: Você deve responder se "Recebeu BOI hoje" (SIM ou NÃO)');
+    }
+
+    // 2. Verifica abas principais
+    if (!visitedMainSections.has('bovina_camara')) {
+      missing.push('Aba "1. Bovina Câm." (Estoque das câmaras frigoríficas)');
+    }
+    if (!visitedMainSections.has('bovina_desossa')) {
+      missing.push('Aba "2. Desossa Balcão"');
+    }
+    if (!visitedMainSections.has('suina_desossa')) {
+      missing.push('Aba "3. Suína / Banda" (Estoque suíno e balcão)');
+    }
+
+    // 3. Verifica sub-abas obrigatórias de Desossa Balcão
+    if (!visitedSubSections.has('nobres')) {
+      missing.push('Sub-aba "Nobres" (Alcatra, Contra Filé, Picanha, Mignon, Costela Cong.)');
+    }
+    if (!visitedSubSections.has('dianteiro')) {
+      missing.push('Sub-aba "Dianteiro" (Paleta, Acém, Peito, Músculo)');
+    }
+    if (!visitedSubSections.has('traseiro')) {
+      missing.push('Sub-aba "Traseiro" (Chã, Patinho, Lagarto Redondo e Plano)');
+    }
+
+    // Se faltar alguma aba obrigatória, bloqueia e avisa o usuário!
+    if (missing.length > 0) {
+      setMissingTabsWarning(missing);
+      return;
+    }
+
+    // Todas as abas foram navegadas e conferidas! Prossegue com o salvamento
+    const finalRow = recalculateRowOrderFormulas({
+      ...draft,
+      recebeuBoiHoje: recebeuBoiHoje ?? false
+    }, currentWeights);
     
     // 1. Alimenta e atualiza a linha na Planilha de Compras Oficial
     onSave(finalRow);
 
     // Salva imediatamente no banco de dados local para garantir persistência garantida da Planilha
-    const currentSheetRows = StorageService.getSheetRows();
-    const updatedSheetRows = currentSheetRows.map(r => r.storeId === finalRow.storeId ? finalRow : r);
-    StorageService.saveSheetRows(updatedSheetRows);
+    StorageService.saveSingleSheetRow(finalRow);
 
     // 2. Calcula métricas do envio para histórico
     const totalPecas = finalRow.camaraDianteiro + finalRow.somaDoTraseiro + finalRow.camaraCostelaGaucha +
@@ -174,37 +246,75 @@ export const PortalForm: React.FC<PortalFormProps> = ({
       boisEquivalente: finalRow.boi || 0,
       sugestaoPedido: finalRow.sugestaoPedido || 0,
       rowData: finalRow,
-      notes: launchNotes.trim() || undefined
+      recebeuBoiHoje: recebeuBoiHoje ?? false,
+      notes: `${launchNotes.trim() ? `${launchNotes.trim()} • ` : ''}Recebeu boi hoje: ${recebeuBoiHoje ? 'SIM' : 'NÃO'}`
     };
 
     const updatedHistory = StorageService.addStockLaunchRecord(launchRecord);
     setHistoryRecords(updatedHistory);
 
-    // 4. Salva também no histórico de versões da Planilha de Compras com data gravada para localização
+    // 4. Salva também no histórico de versões da Planilha de Compras
+    const currentSheetRows = StorageService.getSheetRows();
     const sheetSnapshot = StorageService.createSnapshotFromRows(
-      updatedSheetRows,
+      currentSheetRows,
       `Lançamento Portal - ${store.name}`,
       operatorName,
       'PORTAL_MOBILE',
-      `Contagem de estoque enviada via celular pelo operador ${operatorName} para a filial ${store.name}.${launchNotes.trim() ? ` Obs: ${launchNotes.trim()}` : ''}`
+      `Contagem de estoque enviada via celular pelo operador ${operatorName} para a filial ${store.name} (Recebeu Boi: ${recebeuBoiHoje ? 'SIM' : 'NÃO'}).${launchNotes.trim() ? ` Obs: ${launchNotes.trim()}` : ''}`
     );
     StorageService.addSheetSnapshot(sheetSnapshot);
 
-    setSavedSummaryMsg(`${totalPecas} peças salvas na Planilha (${finalRow.boi} bois). Registro gravado no histórico em ${formattedDate}!`);
+    setSavedSummaryMsg(`${totalPecas} peças salvas na Planilha (${finalRow.boi} bois). Boi hoje: ${recebeuBoiHoje ? 'SIM' : 'NÃO'}. Gravado em ${formattedDate}!`);
     setIsSavedToast(true);
     setTimeout(() => setIsSavedToast(false), 4500);
 
-    // 4. Limpa os campos do formulário para o próximo lançamento conforme solicitado
+    // Limpa os campos do formulário para o próximo lançamento
     const cleanRow = getZeroedRow();
     setDraft(cleanRow);
     setLaunchNotes('');
+    // Reseta verificação de abas para o próximo ciclo
+    setVisitedMainSections(new Set(['bovina_camara']));
+    setVisitedSubSections(new Set([]));
+    setRecebeuBoiHoje(null);
+  };
+
+  const handleNavigateToMissingTab = (tabName: string) => {
+    setMissingTabsWarning(null);
+    if (tabName.includes('Bovina Câm')) {
+      setActiveSection('bovina_camara');
+      setVisitedMainSections(prev => new Set(prev).add('bovina_camara'));
+    } else if (tabName.includes('Suína')) {
+      setActiveSection('suina_desossa');
+      setVisitedMainSections(prev => new Set(prev).add('suina_desossa'));
+    } else if (tabName.includes('Nobres')) {
+      setActiveSection('bovina_desossa');
+      setSubSection('nobres');
+      setVisitedMainSections(prev => new Set(prev).add('bovina_desossa'));
+      setVisitedSubSections(prev => new Set(prev).add('nobres'));
+    } else if (tabName.includes('Dianteiro')) {
+      setActiveSection('bovina_desossa');
+      setSubSection('dianteiro');
+      setVisitedMainSections(prev => new Set(prev).add('bovina_desossa'));
+      setVisitedSubSections(prev => new Set(prev).add('dianteiro'));
+    } else if (tabName.includes('Traseiro')) {
+      setActiveSection('bovina_desossa');
+      setSubSection('traseiro');
+      setVisitedMainSections(prev => new Set(prev).add('bovina_desossa'));
+      setVisitedSubSections(prev => new Set(prev).add('traseiro'));
+    } else {
+      setActiveSection('bovina_camara');
+    }
   };
 
   const handleRestoreFromHistory = (record: StockLaunchRecord) => {
     if (record.rowData) {
       const restored = recalculateRowOrderFormulas({ ...record.rowData }, currentWeights);
       setDraft(restored);
+      if (record.recebeuBoiHoje !== undefined) setRecebeuBoiHoje(record.recebeuBoiHoje);
       if (record.notes) setLaunchNotes(record.notes);
+      // Marca todas as abas como visitadas ao restaurar
+      setVisitedMainSections(new Set(['bovina_camara', 'bovina_desossa', 'suina_desossa']));
+      setVisitedSubSections(new Set(['nobres', 'dianteiro', 'traseiro']));
       setSavedSummaryMsg(`Dados do lançamento de ${record.date} carregados no formulário!`);
       setIsSavedToast(true);
       setTimeout(() => setIsSavedToast(false), 3000);
@@ -213,7 +323,11 @@ export const PortalForm: React.FC<PortalFormProps> = ({
 
   // Totais rápidos da contagem atual
   const totalCamaraPecas = draft.camaraDianteiro + draft.somaDoTraseiro + draft.camaraCostelaGaucha;
-  const totalCortesDesossa = draft.totalAlcatrao + draft.totalDianteiro + draft.totalCoxao;
+
+  // Status de visitas
+  const isCamaraVisited = visitedMainSections.has('bovina_camara');
+  const isDesossaVisited = visitedMainSections.has('bovina_desossa') && visitedSubSections.size === 3;
+  const isSuinaVisited = visitedMainSections.has('suina_desossa');
 
   return (
     <div className="min-h-screen flex flex-col font-sans pb-28 select-none transition-colors duration-200">
@@ -232,21 +346,22 @@ export const PortalForm: React.FC<PortalFormProps> = ({
       )}
 
       {/* Top Mobile App Bar */}
-      <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md px-4 py-3 flex items-center justify-between shadow-xs transition-colors">
+      <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md px-4 py-2.5 flex items-center justify-between shadow-xs transition-colors">
         <div className="flex items-center gap-2.5">
           <button
-            onClick={onLogout}
-            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition cursor-pointer"
-            title="Trocar de Loja / Sair"
+            onClick={() => setShowExitConfirm(true)}
+            className="px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/60 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs active:scale-95"
+            title="Sair do Lançamento da Loja"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sair</span>
           </button>
+          
           <div>
             <div className="flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[140px] sm:max-w-xs">
+              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300">
                 {store.name}
-              </h2>
+              </span>
             </div>
             <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
               <span>Resp: <strong className="text-slate-700 dark:text-slate-200">{operatorName}</strong></span>
@@ -256,7 +371,7 @@ export const PortalForm: React.FC<PortalFormProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {/* Theme Switcher Toggle (Claro / Escuro) */}
           <button
             type="button"
@@ -282,7 +397,7 @@ export const PortalForm: React.FC<PortalFormProps> = ({
           <button
             type="button"
             onClick={handleSaveData}
-            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition cursor-pointer"
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition cursor-pointer"
           >
             <Save className="w-3.5 h-3.5" />
             <span>Salvar</span>
@@ -290,87 +405,118 @@ export const PortalForm: React.FC<PortalFormProps> = ({
         </div>
       </header>
 
-      {/* Main Section Navigation Pills */}
-      <div className="px-4 pt-3 pb-2 bg-slate-100/70 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800/80 sticky top-[57px] z-20 backdrop-blur-md transition-colors">
+      {/* Main Section Navigation Pills com Indicadores de Visita Obrigatória */}
+      <div className="px-4 pt-3 pb-2 bg-slate-100/70 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800/80 sticky top-[53px] z-20 backdrop-blur-md transition-colors">
         <div className="grid grid-cols-3 gap-1.5 text-[11px] font-bold">
-          {/* 1. CARNE BOVINA */}
+          {/* 1. CARNE BOVINA CÂMARA */}
           <button
             type="button"
-            onClick={() => setActiveSection('bovina_camara')}
-            className={`py-2 px-2 rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
+            onClick={() => handleSelectMainSection('bovina_camara')}
+            className={`py-2 px-1.5 rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer relative ${
               activeSection === 'bovina_camara'
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-md font-extrabold ring-2 ring-amber-400/40'
                 : 'bg-white dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-transparent shadow-2xs'
             }`}
           >
-            <Beef className="w-4 h-4" />
-            <span className="leading-tight text-center truncate w-full">1. Bovina Câm.</span>
+            <div className="flex items-center gap-1">
+              <Beef className="w-3.5 h-3.5" />
+              {isCamaraVisited ? (
+                <span className="text-[10px] font-extrabold px-1 rounded-full bg-emerald-500 text-white leading-none">✓</span>
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              )}
+            </div>
+            <span className="leading-tight text-center truncate w-full text-[10px] sm:text-[11px]">1. Bovina Câm.</span>
           </button>
 
           {/* 2. BOVINA DESOSSA */}
           <button
             type="button"
-            onClick={() => setActiveSection('bovina_desossa')}
-            className={`py-2 px-2 rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
+            onClick={() => handleSelectMainSection('bovina_desossa')}
+            className={`py-2 px-1.5 rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer relative ${
               activeSection === 'bovina_desossa'
                 ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-md font-extrabold ring-2 ring-emerald-400/40'
                 : 'bg-white dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-transparent shadow-2xs'
             }`}
           >
-            <Scissors className="w-4 h-4" />
-            <span className="leading-tight text-center truncate w-full">2. Desossa Balcão</span>
+            <div className="flex items-center gap-1">
+              <Scissors className="w-3.5 h-3.5" />
+              {isDesossaVisited ? (
+                <span className="text-[10px] font-extrabold px-1 rounded-full bg-emerald-400 text-slate-950 leading-none">✓</span>
+              ) : (
+                <span className="text-[9px] font-mono px-1 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                  {visitedSubSections.size}/3
+                </span>
+              )}
+            </div>
+            <span className="leading-tight text-center truncate w-full text-[10px] sm:text-[11px]">2. Desossa Balcão</span>
           </button>
 
           {/* 3. SUÍNA DESOSSA */}
           <button
             type="button"
-            onClick={() => setActiveSection('suina_desossa')}
-            className={`py-2 px-2 rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
+            onClick={() => handleSelectMainSection('suina_desossa')}
+            className={`py-2 px-1.5 rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer relative ${
               activeSection === 'suina_desossa'
                 ? 'bg-gradient-to-r from-teal-600 to-teal-700 text-white shadow-md font-extrabold ring-2 ring-teal-400/40'
                 : 'bg-white dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-transparent shadow-2xs'
             }`}
           >
-            <Layers className="w-4 h-4" />
-            <span className="leading-tight text-center truncate w-full">3. Suína / Banda</span>
+            <div className="flex items-center gap-1">
+              <Layers className="w-3.5 h-3.5" />
+              {isSuinaVisited ? (
+                <span className="text-[10px] font-extrabold px-1 rounded-full bg-emerald-500 text-white leading-none">✓</span>
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              )}
+            </div>
+            <span className="leading-tight text-center truncate w-full text-[10px] sm:text-[11px]">3. Suína / Banda</span>
           </button>
         </div>
 
-        {/* Sub-nav for Bovina Desossa */}
+        {/* Sub-nav for Bovina Desossa com Rastreamento Obrigatório de Nobres, Dianteiro e Traseiro */}
         {activeSection === 'bovina_desossa' && (
           <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+            {/* Nobres */}
             <button
               type="button"
-              onClick={() => setSubSection('nobres')}
-              className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+              onClick={() => handleSelectSubSection('nobres')}
+              className={`flex-1 py-1.5 px-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
                 subSection === 'nobres'
                   ? 'bg-emerald-600 text-white shadow-xs'
                   : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-transparent'
               }`}
             >
-              Nobres (Alcatrão)
+              <span>Nobres (Alcatrão)</span>
+              {visitedSubSections.has('nobres') && <span className="text-[9px]">✓</span>}
             </button>
+
+            {/* Dianteiro */}
             <button
               type="button"
-              onClick={() => setSubSection('dianteiro')}
-              className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+              onClick={() => handleSelectSubSection('dianteiro')}
+              className={`flex-1 py-1.5 px-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
                 subSection === 'dianteiro'
                   ? 'bg-purple-600 text-white shadow-xs'
                   : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-transparent'
               }`}
             >
-              Dianteiro
+              <span>Dianteiro</span>
+              {visitedSubSections.has('dianteiro') && <span className="text-[9px]">✓</span>}
             </button>
+
+            {/* Traseiro */}
             <button
               type="button"
-              onClick={() => setSubSection('traseiro')}
-              className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+              onClick={() => handleSelectSubSection('traseiro')}
+              className={`flex-1 py-1.5 px-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
                 subSection === 'traseiro'
                   ? 'bg-rose-600 text-white shadow-xs'
                   : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-transparent'
               }`}
             >
-              Traseiro (Coxão)
+              <span>Traseiro (Coxão)</span>
+              {visitedSubSections.has('traseiro') && <span className="text-[9px]">✓</span>}
             </button>
           </div>
         )}
@@ -378,6 +524,76 @@ export const PortalForm: React.FC<PortalFormProps> = ({
 
       {/* Body Content */}
       <main className="p-4 space-y-4 max-w-lg mx-auto w-full flex-1">
+        
+        {/* ========================================================================= */}
+        {/* BARRA DE SELEÇÃO: RECEBEU BOI HOJE (SIM / NÃO) */}
+        {/* ========================================================================= */}
+        <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-2.5 transition-colors">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <Beef className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+                  Recebeu BOI hoje na filial?
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Confirmação obrigatória de recebimento no dia
+                </p>
+              </div>
+            </div>
+
+            {recebeuBoiHoje === null ? (
+              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 border border-red-300 animate-pulse">
+                Pendente
+              </span>
+            ) : (
+              <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                recebeuBoiHoje 
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' 
+                  : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+              }`}>
+                {recebeuBoiHoje ? '✓ Confirmado SIM' : '✓ Confirmado NÃO'}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setRecebeuBoiHoje(true);
+                handleFieldChange('recebeuBoiHoje' as any, true as any);
+              }}
+              className={`py-3 px-3 rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 transition cursor-pointer active:scale-95 ${
+                recebeuBoiHoje === true
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30 ring-2 ring-emerald-400'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              <Check className="w-4 h-4" />
+              <span>SIM (Recebeu Boi)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setRecebeuBoiHoje(false);
+                handleFieldChange('recebeuBoiHoje' as any, false as any);
+              }}
+              className={`py-3 px-3 rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 transition cursor-pointer active:scale-95 ${
+                recebeuBoiHoje === false
+                  ? 'bg-rose-600 text-white shadow-md shadow-rose-500/30 ring-2 ring-rose-400'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              <X className="w-4 h-4" />
+              <span>NÃO (Não Recebeu)</span>
+            </button>
+          </div>
+        </div>
+
         {/* ========================================================================= */}
         {/* SEÇÃO 1: CARNE BOVINA (PEÇA INTEIRA CÂMARA) */}
         {/* ========================================================================= */}
@@ -451,37 +667,36 @@ export const PortalForm: React.FC<PortalFormProps> = ({
                 value={draft.pTransito}
                 onChange={(val) => handleFieldChange('pTransito', val)}
                 onAdjust={(delta) => handleAdjustValue('pTransito', delta)}
-                isSpecial
               />
             </div>
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* SEÇÃO 2: CARNE BOVINA DESOSSA BALCÃO */}
+        {/* SEÇÃO 2: BOVINA DESOSSA / BALCÃO */}
         {/* ========================================================================= */}
         {activeSection === 'bovina_desossa' && (
           <div className="space-y-4">
-            {/* 2.1 NOBRES */}
+            {/* SUB-SEÇÃO 2.1: NOBRES (ALCATRÃO) */}
             {subSection === 'nobres' && (
               <div className="space-y-3">
-                <div className="p-3.5 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-between shadow-2xs">
+                <div className="p-3 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-between">
                   <div>
-                    <h3 className="text-xs font-extrabold uppercase text-emerald-800 dark:text-emerald-400 tracking-wider">
-                      Cortes Nobres & Alcatrão (Balcão)
+                    <h3 className="text-xs font-extrabold uppercase text-emerald-800 dark:text-emerald-300">
+                      Cortes Nobres (Alcatrão)
                     </h3>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Tot. Alcatrão Calculado = Σ Kg / 22
+                      Peças e kg nobres no balcão e câmara
                     </p>
                   </div>
-                  <span className="text-xs font-mono font-bold px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30">
-                    Tot: {draft.totalAlcatrao} pç
+                  <span className="text-xs font-mono font-bold px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-800 dark:text-emerald-300">
+                    Total: {draft.totalAlcatrao} pç
                   </span>
                 </div>
 
                 <MobileCutCard
                   title="Alcatra"
-                  subtitle={`Peso calculado: ${draft.alcatraKg} kg (${currentWeights.alcatra}kg/pç)`}
+                  subtitle={`Peso calculado: ${draft.alcatraKg} kg (11kg/pç)`}
                   unit="pç"
                   value={draft.alcatra}
                   onChange={(val) => handleFieldChange('alcatra', val)}
@@ -490,7 +705,7 @@ export const PortalForm: React.FC<PortalFormProps> = ({
 
                 <MobileCutCard
                   title="Contra Filé"
-                  subtitle={`Peso calculado: ${draft.contraFileKg} kg (${currentWeights.contraFile}kg/pç)`}
+                  subtitle={`Peso calculado: ${draft.contraFileKg} kg (16kg/pç)`}
                   unit="pç"
                   value={draft.contraFile}
                   onChange={(val) => handleFieldChange('contraFile', val)}
@@ -499,25 +714,27 @@ export const PortalForm: React.FC<PortalFormProps> = ({
 
                 <MobileCutCard
                   title="Picanha"
-                  subtitle={`Peso calculado: ${draft.picanhaKg} kg (${currentWeights.picanha}kg/pç)`}
+                  subtitle={`Peso calculado: ${draft.picanhaKg} kg (1.6kg/pç)`}
                   unit="pç"
                   value={draft.picanha}
                   onChange={(val) => handleFieldChange('picanha', val)}
                   onAdjust={(delta) => handleAdjustValue('picanha', delta)}
+                  isSpecial
                 />
 
                 <MobileCutCard
                   title="Filé Mignon"
-                  subtitle={`Peso calculado: ${draft.fileMignonKg} kg (${currentWeights.fileMignon}kg/pç)`}
+                  subtitle={`Peso calculado: ${draft.fileMignonKg} kg (2.3kg/pç)`}
                   unit="pç"
                   value={draft.fileMignon}
                   onChange={(val) => handleFieldChange('fileMignon', val)}
                   onAdjust={(delta) => handleAdjustValue('fileMignon', delta)}
+                  isSpecial
                 />
 
                 <MobileCutCard
                   title="Costela Congelada"
-                  subtitle="Estoque em balcão congelado"
+                  subtitle="Costela congelada de giro"
                   unit="pç"
                   value={draft.costelaCong}
                   onChange={(val) => handleFieldChange('costelaCong', val)}
@@ -526,26 +743,26 @@ export const PortalForm: React.FC<PortalFormProps> = ({
               </div>
             )}
 
-            {/* 2.2 DIANTEIRO */}
+            {/* SUB-SEÇÃO 2.2: DIANTEIRO DESOSSA */}
             {subSection === 'dianteiro' && (
               <div className="space-y-3">
-                <div className="p-3.5 rounded-2xl bg-purple-500/10 dark:bg-purple-500/15 border border-purple-500/20 flex items-center justify-between shadow-2xs">
+                <div className="p-3 rounded-xl bg-purple-500/10 dark:bg-purple-500/15 border border-purple-500/20 flex items-center justify-between">
                   <div>
-                    <h3 className="text-xs font-extrabold uppercase text-purple-800 dark:text-purple-400 tracking-wider">
-                      Dianteiro Balcão de Desossa
+                    <h3 className="text-xs font-extrabold uppercase text-purple-800 dark:text-purple-300">
+                      Cortes de Dianteiro Desossados
                     </h3>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Tot. Dianteiro Calculado = Σ Kg / 35
+                      Cortes derivados do quarto dianteiro
                     </p>
                   </div>
-                  <span className="text-xs font-mono font-bold px-2 py-1 rounded-lg bg-purple-500/20 text-purple-800 dark:text-purple-300 border border-purple-500/30">
-                    Tot: {draft.totalDianteiro} pç
+                  <span className="text-xs font-mono font-bold px-2 py-1 rounded-lg bg-purple-500/20 text-purple-800 dark:text-purple-300">
+                    Total: {draft.totalDianteiro} pç
                   </span>
                 </div>
 
                 <MobileCutCard
                   title="Paleta"
-                  subtitle={`Peso calculado: ${draft.paletaKg} kg (${currentWeights.paleta}kg/pç)`}
+                  subtitle={`Peso calculado: ${draft.paletaKg} kg (18.5kg/pç)`}
                   unit="pç"
                   value={draft.paletaPecas}
                   onChange={(val) => handleFieldChange('paletaPecas', val)}
@@ -554,7 +771,7 @@ export const PortalForm: React.FC<PortalFormProps> = ({
 
                 <MobileCutCard
                   title="Acém"
-                  subtitle={`Peso calculado: ${draft.acemKg} kg (${currentWeights.acem}kg/pç)`}
+                  subtitle={`Peso calculado: ${draft.acemKg} kg (20kg/pç)`}
                   unit="pç"
                   value={draft.acemPecas}
                   onChange={(val) => handleFieldChange('acemPecas', val)}
@@ -563,7 +780,7 @@ export const PortalForm: React.FC<PortalFormProps> = ({
 
                 <MobileCutCard
                   title="Peito"
-                  subtitle={`Peso calculado: ${draft.peitoKg} kg (${currentWeights.peito}kg/pç)`}
+                  subtitle={`Peso calculado: ${draft.peitoKg} kg (11kg/pç)`}
                   unit="pç"
                   value={draft.peitoPecas}
                   onChange={(val) => handleFieldChange('peitoPecas', val)}
@@ -572,7 +789,7 @@ export const PortalForm: React.FC<PortalFormProps> = ({
 
                 <MobileCutCard
                   title="Músculo"
-                  subtitle={`Peso calculado: ${draft.musculoKg} kg (${currentWeights.musculo}kg/pç)`}
+                  subtitle={`Peso calculado: ${draft.musculoKg} kg (8.5kg/pç)`}
                   unit="pç"
                   value={draft.musculoPecas}
                   onChange={(val) => handleFieldChange('musculoPecas', val)}
@@ -581,26 +798,26 @@ export const PortalForm: React.FC<PortalFormProps> = ({
               </div>
             )}
 
-            {/* 2.3 TRASEIRO */}
+            {/* SUB-SEÇÃO 2.3: TRASEIRO DESOSSA (COXÃO) */}
             {subSection === 'traseiro' && (
               <div className="space-y-3">
-                <div className="p-3.5 rounded-2xl bg-rose-500/10 dark:bg-rose-500/15 border border-rose-500/20 flex items-center justify-between shadow-2xs">
+                <div className="p-3 rounded-xl bg-rose-500/10 dark:bg-rose-500/15 border border-rose-500/20 flex items-center justify-between">
                   <div>
-                    <h3 className="text-xs font-extrabold uppercase text-rose-800 dark:text-rose-400 tracking-wider">
-                      Traseiro & Coxão Balcão de Desossa
+                    <h3 className="text-xs font-extrabold uppercase text-rose-800 dark:text-rose-300">
+                      Cortes de Traseiro (Coxão)
                     </h3>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Tot. Coxão Calculado = Σ Kg / 35
+                      Cortes desossados do coxão
                     </p>
                   </div>
-                  <span className="text-xs font-mono font-bold px-2 py-1 rounded-lg bg-rose-500/20 text-rose-800 dark:text-rose-300 border border-rose-500/30">
-                    Tot: {draft.totalCoxao} pç
+                  <span className="text-xs font-mono font-bold px-2 py-1 rounded-lg bg-rose-500/20 text-rose-800 dark:text-rose-300">
+                    Total: {draft.totalCoxao} pç
                   </span>
                 </div>
 
                 <MobileCutCard
                   title="Chã (Coxão Mole)"
-                  subtitle={`Peso calculado: ${draft.chaKg} kg (${currentWeights.cha}kg/pç)`}
+                  subtitle={`Peso calculado: ${draft.chaKg} kg (19.5kg/pç)`}
                   unit="pç"
                   value={draft.chaPecas}
                   onChange={(val) => handleFieldChange('chaPecas', val)}
@@ -609,7 +826,7 @@ export const PortalForm: React.FC<PortalFormProps> = ({
 
                 <MobileCutCard
                   title="Patinho"
-                  subtitle={`Peso calculado: ${draft.patinhoKg} kg (${currentWeights.patinho}kg/pç)`}
+                  subtitle={`Peso calculado: ${draft.patinhoKg} kg (12kg/pç)`}
                   unit="pç"
                   value={draft.patinhoPecas}
                   onChange={(val) => handleFieldChange('patinhoPecas', val)}
@@ -617,8 +834,8 @@ export const PortalForm: React.FC<PortalFormProps> = ({
                 />
 
                 <MobileCutCard
-                  title="Lagarto Redondo (Paulista)"
-                  subtitle={`Peso calculado: ${draft.lagartoRedondoKg} kg (${currentWeights.lagartoRedondo}kg/pç)`}
+                  title="Lagarto Redondo"
+                  subtitle={`Peso calculado: ${draft.lagartoRedondoKg} kg (4.8kg/pç)`}
                   unit="pç"
                   value={draft.lagartoRedondoPecas}
                   onChange={(val) => handleFieldChange('lagartoRedondoPecas', val)}
@@ -626,8 +843,8 @@ export const PortalForm: React.FC<PortalFormProps> = ({
                 />
 
                 <MobileCutCard
-                  title="Lagarto Plano (Tatu)"
-                  subtitle={`Peso calculado: ${draft.lagartoPlanoKg} kg (${currentWeights.lagartoPlano}kg/pç)`}
+                  title="Lagarto Plano (Coxão Duro)"
+                  subtitle={`Peso calculado: ${draft.lagartoPlanoKg} kg (14.5kg/pç)`}
                   unit="pç"
                   value={draft.lagartoPlanoPecas}
                   onChange={(val) => handleFieldChange('lagartoPlanoPecas', val)}
@@ -639,14 +856,14 @@ export const PortalForm: React.FC<PortalFormProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* SEÇÃO 3: CARNE SUÍNA DESOSSA BALCÃO */}
+        {/* SEÇÃO 3: SUÍNA / BANDA (SEM O CARD VENDA ESTIMADA, CONFORME IMAGEM) */}
         {/* ========================================================================= */}
         {activeSection === 'suina_desossa' && (
           <div className="space-y-4">
             <div className="p-3.5 rounded-2xl bg-teal-500/10 dark:bg-teal-500/15 border border-teal-500/20 flex items-center justify-between shadow-2xs">
               <div>
-                <h3 className="text-xs font-extrabold uppercase text-teal-800 dark:text-teal-400 tracking-wider">
-                  Carne Suína Desossa Balcão
+                <h3 className="text-xs font-extrabold uppercase text-teal-800 dark:text-teal-300 tracking-wider">
+                  Carne Suína & Banda
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   Câmara / Balcão e Desossa de Suíno
@@ -667,14 +884,7 @@ export const PortalForm: React.FC<PortalFormProps> = ({
                 onAdjust={(delta) => handleAdjustValue('bandaPecas', delta)}
               />
 
-              <MobileCutCard
-                title="Venda Estimada (Banda)"
-                subtitle="Giro semanal projetado da loja"
-                unit="pç"
-                value={draft.bandaVenda || 0}
-                onChange={(val) => handleFieldChange('bandaVenda', val)}
-                onAdjust={(delta) => handleAdjustValue('bandaVenda', delta)}
-              />
+              {/* Venda Estimada removida conforme solicitado na imagem */}
 
               <MobileCutCard
                 title="Costela Suína"
@@ -713,24 +923,139 @@ export const PortalForm: React.FC<PortalFormProps> = ({
         </div>
       </main>
 
-      {/* Bottom Sticky Action Bar */}
+      {/* Bottom Sticky Action Bar com Botão Sair e Salvar */}
       <div className="fixed bottom-0 inset-x-0 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 p-3 z-40 backdrop-blur-md shadow-lg transition-colors">
-        <div className="max-w-lg mx-auto flex items-center justify-between gap-3">
-          <div className="text-xs font-mono">
-            <span className="text-slate-500 dark:text-slate-400 block text-[10px] uppercase font-sans">Boi Equivalente</span>
+        <div className="max-w-lg mx-auto flex items-center justify-between gap-2.5">
+          {/* Botão Sair */}
+          <button
+            type="button"
+            onClick={() => setShowExitConfirm(true)}
+            className="py-3 px-3.5 rounded-xl bg-slate-100 hover:bg-red-50 hover:text-red-700 dark:bg-slate-800 dark:hover:bg-red-950/40 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-extrabold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 shrink-0"
+          >
+            <LogOut className="w-4 h-4 text-red-500" />
+            <span>Sair</span>
+          </button>
+
+          <div className="text-xs font-mono text-center">
+            <span className="text-slate-500 dark:text-slate-400 block text-[9px] uppercase font-sans">Boi Eq.</span>
             <strong className="text-amber-600 dark:text-amber-400 text-sm font-bold">{draft.boi} bois</strong>
           </div>
 
+          {/* Botão Salvar com Validação de Abas */}
           <button
             type="button"
             onClick={handleSaveData}
             className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-extrabold text-sm shadow-md flex items-center justify-center gap-2 active:scale-95 transition cursor-pointer"
           >
             <Check className="w-4 h-4" />
-            <span>Salvar & Limpar para Próximo</span>
+            <span>Salvar Lançamento</span>
           </button>
         </div>
       </div>
+
+      {/* Modal de Aviso: Abas Obrigatórias Não Navegadas */}
+      {missingTabsWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border-2 border-amber-500 rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-amber-500 text-slate-950">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                  Está Faltando Lançar Valores!
+                </h3>
+                <span className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold">
+                  Navegação obrigatória por todas as abas antes de salvar
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              O salvamento só é liberado após você ter navegado e conferido todas as áreas de lançamento (<strong>"Nobres"</strong>, <strong>"Dianteiro"</strong>, <strong>"Traseiro"</strong>, <strong>"1. Bovina Câm."</strong>, <strong>"2. Desossa Balcão"</strong> e <strong>"3. Suína / Banda"</strong>). Isso garante que você não esqueça de passar por nenhuma dessas abas.
+            </p>
+
+            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 space-y-1.5">
+              <span className="text-[10px] font-bold uppercase text-amber-800 dark:text-amber-400 block mb-1">
+                Faltam visitar as seguintes áreas:
+              </span>
+              <ul className="space-y-1 text-xs text-amber-900 dark:text-amber-200 font-semibold">
+                {missingTabsWarning.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-1.5">
+                    <span className="text-amber-600 font-bold">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="pt-2 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => handleNavigateToMissingTab(missingTabsWarning[0] || '')}
+                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-md flex items-center justify-center gap-2 transition cursor-pointer active:scale-95"
+              >
+                <span>Ir para a próxima aba pendente</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMissingTabsWarning(null)}
+                className="w-full py-2 rounded-xl text-slate-600 dark:text-slate-400 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Entendi, vou conferir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Saída (Botão Sair) */}
+      {showExitConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400">
+                <LogOut className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                  Deseja sair do lançamento?
+                </h3>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Filial: {store.name}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Você voltará para a tela inicial de seleção de filial. Se houver valores recém-digitados que não foram salvos, eles serão descartados.
+            </p>
+
+            <div className="pt-2 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowExitConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Continuar Lançando
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExitConfirm(false);
+                  onLogout();
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-extrabold shadow-md flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sim, Sair</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Histórico */}
       {showHistoryModal && (
@@ -765,58 +1090,69 @@ const MobileCutCard: React.FC<MobileCutCardProps> = ({
   value,
   onChange,
   onAdjust,
-  isSpecial = false
+  isSpecial
 }) => {
   return (
-    <div className={`p-3.5 rounded-2xl border shadow-xs space-y-2.5 transition ${
-      isSpecial 
-        ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/40' 
-        : 'bg-white dark:bg-slate-900/90 border-slate-200/90 dark:border-slate-800'
-    }`}>
+    <div className={`p-3.5 rounded-2xl border transition-all ${
+      value > 0
+        ? 'bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/30 ring-1 ring-amber-500/20'
+        : 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800'
+    } shadow-2xs space-y-2.5`}>
       <div className="flex items-center justify-between">
-        <div>
-          <h4 className="text-xs font-bold text-slate-900 dark:text-white tracking-tight">{title}</h4>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400">{subtitle}</p>
+        <div className="flex items-center gap-2">
+          {isSpecial && <Flame className="w-3.5 h-3.5 text-amber-500" />}
+          <div>
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+              {title}
+            </h4>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
+              {subtitle}
+            </span>
+          </div>
         </div>
-        <span className="text-xs font-bold font-mono text-slate-600 dark:text-slate-300">{unit}</span>
+        <span className="text-[11px] font-mono font-bold text-slate-400 dark:text-slate-500">
+          {unit}
+        </span>
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Minus 1 */}
+        {/* Botão Menos */}
         <button
           type="button"
           onClick={() => onAdjust(-1)}
+          className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold text-base transition active:scale-95 cursor-pointer disabled:opacity-40"
           disabled={value <= 0}
-          className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-30 text-slate-800 dark:text-white border border-slate-200/80 dark:border-transparent flex items-center justify-center font-bold active:scale-90 transition shrink-0 cursor-pointer shadow-2xs"
         >
           <Minus className="w-4 h-4" />
         </button>
 
-        {/* Value Input */}
-        <input
-          type="number"
-          min="0"
-          inputMode="numeric"
-          value={value === 0 ? '' : value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          placeholder="0"
-          className="flex-1 h-10 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 focus:border-amber-500 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-slate-900 rounded-xl text-center text-base font-bold font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 shadow-2xs"
-        />
+        {/* Input Numérico com Digitação Direta */}
+        <div className="flex-1 relative">
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={value === 0 ? '' : value}
+            onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+            placeholder="0"
+            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl py-2 px-3 text-center text-base font-extrabold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-amber-500/20 transition"
+          />
+        </div>
 
-        {/* Plus 1 */}
+        {/* Botão Mais 1 */}
         <button
           type="button"
-          onClick={() => onAdjust(+1)}
-          className="w-10 h-10 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-amber-900 dark:text-amber-400 border border-amber-200/80 dark:border-transparent flex items-center justify-center font-bold active:scale-90 transition shrink-0 cursor-pointer shadow-2xs"
+          onClick={() => onAdjust(1)}
+          className="w-10 h-10 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold text-base transition active:scale-95 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
         </button>
 
-        {/* Quick +5 */}
+        {/* Botão Rápido +5 */}
         <button
           type="button"
-          onClick={() => onAdjust(+5)}
-          className="h-10 px-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 dark:bg-slate-800/80 dark:hover:bg-slate-700 text-amber-800 dark:text-amber-300 border border-amber-500/30 font-bold text-xs flex items-center justify-center active:scale-90 transition shrink-0 cursor-pointer shadow-2xs"
+          onClick={() => onAdjust(5)}
+          className="px-2.5 h-10 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-800 dark:text-amber-300 font-extrabold text-xs flex items-center justify-center transition active:scale-95 cursor-pointer"
         >
           +5
         </button>

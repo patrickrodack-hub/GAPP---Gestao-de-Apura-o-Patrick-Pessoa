@@ -34,7 +34,8 @@ import {
   Building2,
   Keyboard,
   ShoppingCart,
-  Smartphone
+  Smartphone,
+  Clock
 } from 'lucide-react';
 
 interface SolidconHeaderProps {
@@ -52,6 +53,7 @@ interface SolidconHeaderProps {
   onOpenPurchaseOrder?: () => void;
   onOpenSupplierManager?: () => void;
   onOpenMobilePortal?: () => void;
+  onOpenPortalControl?: () => void;
   onSaveSheet?: () => void;
 }
 
@@ -70,6 +72,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
   onOpenPurchaseOrder,
   onOpenSupplierManager,
   onOpenMobilePortal,
+  onOpenPortalControl,
   onSaveSheet,
 }) => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -202,6 +205,12 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
           break;
         case 'purchaseOrder':
           if (onOpenPurchaseOrder) onOpenPurchaseOrder();
+          break;
+        case 'portalControl':
+          if (onOpenPortalControl) onOpenPortalControl();
+          break;
+        case 'mobilePortal':
+          if (onOpenMobilePortal) onOpenMobilePortal();
           break;
         default:
           break;
@@ -672,6 +681,18 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
               >
                 <Smartphone className="w-3.5 h-3.5 text-amber-700" />
                 <span className="hidden sm:inline">Portal Mobile</span>
+              </button>
+            )}
+
+            {/* Bloqueio / Horários do Portal Mobile (Controle Gestor) */}
+            {onOpenPortalControl && (
+              <button
+                onClick={onOpenPortalControl}
+                className="h-7 sm:h-8 px-2 flex items-center gap-1 rounded bg-gradient-to-b from-purple-50 to-[#f3e8ff] hover:from-[#ffffff] hover:to-[#e9d5ff] border border-purple-600 active:border-purple-700 shadow-xs transition text-purple-950 font-bold text-[11px]"
+                title="Horários & Bloqueio do Portal Mobile (Controle de Acesso do Gestor)"
+              >
+                <Clock className="w-3.5 h-3.5 text-purple-700" />
+                <span className="hidden sm:inline">Horários Portal</span>
               </button>
             )}
 

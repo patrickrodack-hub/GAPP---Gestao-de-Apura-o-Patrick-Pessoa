@@ -1,4 +1,4 @@
-import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, StockLaunchRecord, SheetSnapshotRecord } from '../types/erp';
+import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, StockLaunchRecord, SheetSnapshotRecord, PortalLockConfig } from '../types/erp';
 import { INITIAL_PRODUCTS, INITIAL_STORES, INITIAL_SHEET_ROWS, INITIAL_BATCHES, INITIAL_WASTE_RECORDS, INITIAL_SUPPLIERS } from '../data/initialData';
 import { recalculateRowOrderFormulas, calculateSheetTotals } from './calculationService';
 import { FirebaseService } from './firebase';
@@ -13,6 +13,16 @@ const STORAGE_KEYS = {
   YIELD_PARAMS: 'apuracao_boi_yield_params_v1',
   STOCK_LAUNCHES: 'apuracao_boi_stock_launches_v1',
   SHEET_SNAPSHOTS: 'apuracao_boi_sheet_snapshots_v1',
+  PORTAL_LOCK: 'apuracao_boi_portal_lock_v1',
+};
+
+export const DEFAULT_PORTAL_LOCK: PortalLockConfig = {
+  mode: 'LIBERADO',
+  startTime: '06:00',
+  endTime: '12:00',
+  customMessage: 'Lançamento de estoque liberado pelo Gestor para as filiais.',
+  updatedBy: 'Patrick Pessoa (Gestor)',
+  updatedAt: Date.now()
 };
 
 export const StorageService = {
@@ -125,6 +135,95 @@ export const StorageService = {
 
   saveYieldParams(params: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; basis: 'carcass' | 'piece' }) {
     localStorage.setItem(STORAGE_KEYS.YIELD_PARAMS, JSON.stringify(params));
+  },
+
+  // ==========================================
+  // CONTROLE & HORÁRIOS DO PORTAL MOBILE (GESTOR)
+  // ==========================================
+  getPortalLockConfig(): PortalLockConfig {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.PORTAL_LOCK);
+      if (data) {
+        return JSON.parse(data);
+      }
+      return DEFAULT_PORTAL_LOCK;
+    } catch {
+      return DEFAULT_PORTAL_LOCK;
+    }
+  },
+
+  savePortalLockConfig(config: PortalLockConfig) {
+    const updated = {
+      ...config,
+      updatedAt: Date.now()
+    };
+    try {
+      localStorage.setItem(STORAGE_KEYS.PORTAL_LOCK, JSON.stringify(updated));
+    } catch {}
+    FirebaseService.savePortalLockConfig(updated).catch(err => {
+      console.warn('Erro ao salvar portal_lock no Firestore:', err);
+    });
+    return updated;
+  },
+
+  checkPortalAccess(config?: PortalLockConfig): {
+    isOpen: boolean;
+    status: 'LIBERADO' | 'HORARIO_PROGRAMADO' | 'BLOQUEADO';
+    title: string;
+    message: string;
+    scheduleText: string;
+  } {
+    const cfg = config || this.getPortalLockConfig();
+    
+    if (cfg.mode === 'LIBERADO') {
+      return {
+        isOpen: true,
+        status: 'LIBERADO',
+        title: 'Portal Liberado para Lançamentos',
+        message: cfg.customMessage || 'Lançamento de estoque liberado pelo Gestor para todas as filiais.',
+        scheduleText: 'Acesso Livre (Sempre Liberado)'
+      };
+    }
+
+    if (cfg.mode === 'BLOQUEADO') {
+      return {
+        isOpen: false,
+        status: 'BLOQUEADO',
+        title: 'Portal Temporariamente Bloqueado',
+        message: cfg.customMessage || 'O portal de lançamento de estoque foi bloqueado temporariamente pela Gestão. Por favor, aguarde a liberação ou entre em contato com Patrick Pessoa.',
+        scheduleText: 'Bloqueado Manualmente pelo Gestor'
+      };
+    }
+
+    // Modo: HORARIO_PROGRAMADO
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const [startH, startM] = (cfg.startTime || '06:00').split(':').map(Number);
+    const [endH, endM] = (cfg.endTime || '12:00').split(':').map(Number);
+
+    const startMinutes = (startH || 0) * 60 + (startM || 0);
+    const endMinutes = (endH || 0) * 60 + (endM || 0);
+
+    const isWithinSchedule = currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+
+    if (isWithinSchedule) {
+      return {
+        isOpen: true,
+        status: 'HORARIO_PROGRAMADO',
+        title: 'Lançamento Liberado no Horário',
+        message: cfg.customMessage || `Lançamento de estoque liberado no período das ${cfg.startTime} às ${cfg.endTime}.`,
+        scheduleText: `Janela permitida: ${cfg.startTime} às ${cfg.endTime}`
+      };
+    } else {
+      return {
+        isOpen: false,
+        status: 'HORARIO_PROGRAMADO',
+        title: 'Portal Fechado para Lançamento',
+        message: cfg.customMessage || `O portal de estoque ainda não está liberado para lançamento ou o horário de hoje foi encerrado. O período de lançamento autorizado pela Gestão é das ${cfg.startTime} às ${cfg.endTime}.`,
+        scheduleText: `Horário liberado: das ${cfg.startTime} às ${cfg.endTime}`
+      };
+    }
   },
 
   getStockLaunchRecords(): StockLaunchRecord[] {
