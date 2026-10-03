@@ -1,0 +1,134 @@
+{
+  "entities": {
+    "SheetRow": {
+      "title": "SheetRow",
+      "description": "Linha da planilha oficial de compra e apuração do boi por filial",
+      "type": "object",
+      "properties": {
+        "storeId": { "type": "string", "maxLength": 64, "description": "ID da loja filial" },
+        "storeName": { "type": "string", "maxLength": 128, "description": "Nome da filial" },
+        "pedidoDianteiro": { "type": "number", "description": "Pedido de quartos dianteiros em peças" },
+        "pedidoTraseiro": { "type": "number", "description": "Pedido de quartos traseiros em peças" },
+        "pedidoCoxao": { "type": "number", "description": "Pedido de coxão em peças" },
+        "pedidoAlcatrao": { "type": "number", "description": "Pedido de alcatrão em peças" },
+        "pedidoCostelaGaucha": { "type": "number", "description": "Pedido de costela gaúcha em peças" },
+        "camaraDianteiro": { "type": "number", "description": "Estoque câmara fria dianteiro" },
+        "camaraTraseiro": { "type": "number", "description": "Estoque câmara fria traseiro" },
+        "camaraCostelaGaucha": { "type": "number", "description": "Estoque câmara fria costela" },
+        "balcaoDianteiro": { "type": "number", "description": "Estoque balcão dianteiro" },
+        "balcaoTraseiro": { "type": "number", "description": "Estoque balcão traseiro" },
+        "boiAVenda": { "type": "number", "description": "Projeção de vendas em bois equivalentes" }
+      },
+      "required": ["storeId", "storeName"]
+    },
+    "SheetSnapshot": {
+      "title": "SheetSnapshot",
+      "description": "Gravação histórica e versão salva da planilha com data, hora e autor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "description": "ID único do snapshot" },
+        "name": { "type": "string", "maxLength": 200, "description": "Título identificador da gravação" },
+        "date": { "type": "string", "maxLength": 64, "description": "Data e hora legível" },
+        "timestamp": { "type": "number", "description": "Timestamp epoch em milissegundos" },
+        "author": { "type": "string", "maxLength": 128, "description": "Nome do autor ou operador" },
+        "source": { "type": "string", "maxLength": 64, "description": "Origem da gravação" },
+        "notes": { "type": "string", "maxLength": 500, "description": "Observações ou justificativa" },
+        "totalStores": { "type": "number", "description": "Quantidade de lojas gravadas" },
+        "totalPieces": { "type": "number", "description": "Total de peças" },
+        "totalKg": { "type": "number", "description": "Total em quilogramas" },
+        "totalBois": { "type": "number", "description": "Total de bois equivalentes" },
+        "totalPurchaseR$": { "type": "number", "description": "Valor financeiro total estimado" }
+      },
+      "required": ["id", "name", "date", "timestamp", "author", "source"]
+    },
+    "StockLaunch": {
+      "title": "StockLaunch",
+      "description": "Lançamento de contagem de estoque vindo do portal ou da aba estoque",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "description": "ID do lançamento" },
+        "date": { "type": "string", "maxLength": 64, "description": "Data legível da contagem" },
+        "timestamp": { "type": "number", "description": "Timestamp epoch em ms" },
+        "storeId": { "type": "string", "maxLength": 64, "description": "ID da loja filial" },
+        "storeName": { "type": "string", "maxLength": 128, "description": "Nome da loja filial" },
+        "operatorName": { "type": "string", "maxLength": 128, "description": "Operador ou encarregado responsável" },
+        "totalPieces": { "type": "number", "description": "Total de peças apuradas" },
+        "totalKg": { "type": "number", "description": "Total de kg apurados" },
+        "boisEquivalente": { "type": "number", "description": "Bois equivalentes" },
+        "notes": { "type": "string", "maxLength": 500, "description": "Observações do lançamento" }
+      },
+      "required": ["id", "date", "timestamp", "storeId", "storeName", "operatorName"]
+    },
+    "StoreEntity": {
+      "title": "StoreEntity",
+      "description": "Cadastro de loja e câmara fria",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "description": "ID da loja" },
+        "code": { "type": "string", "maxLength": 32, "description": "Código da filial" },
+        "name": { "type": "string", "maxLength": 128, "description": "Nome da loja" },
+        "city": { "type": "string", "maxLength": 64, "description": "Cidade" },
+        "manager": { "type": "string", "maxLength": 128, "description": "Gerente" },
+        "chamberCapacityPieces": { "type": "number", "description": "Capacidade em peças" },
+        "active": { "type": "boolean", "description": "Status ativo" }
+      },
+      "required": ["id", "code", "name"]
+    },
+    "SupplierEntity": {
+      "title": "SupplierEntity",
+      "description": "Cadastro de frigorífico ou fornecedor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "description": "ID do fornecedor" },
+        "code": { "type": "string", "maxLength": 32, "description": "Código do fornecedor" },
+        "name": { "type": "string", "maxLength": 128, "description": "Razão social" },
+        "cnpj": { "type": "string", "maxLength": 32, "description": "CNPJ" },
+        "contactName": { "type": "string", "maxLength": 128, "description": "Contato" },
+        "phone": { "type": "string", "maxLength": 32, "description": "Telefone" },
+        "email": { "type": "string", "maxLength": 128, "description": "E-mail" },
+        "active": { "type": "boolean", "description": "Status" }
+      },
+      "required": ["id", "code", "name", "cnpj"]
+    },
+    "ProductEntity": {
+      "title": "ProductEntity",
+      "description": "Produto carcaça ou corte",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "description": "ID do produto" },
+        "code": { "type": "string", "maxLength": 32, "description": "Código do produto" },
+        "name": { "type": "string", "maxLength": 128, "description": "Nome do corte" },
+        "category": { "type": "string", "maxLength": 64, "description": "Categoria da carne" },
+        "defaultPriceKg": { "type": "number", "description": "Preço de custo base" },
+        "sellingPriceKg": { "type": "number", "description": "Preço de venda" }
+      },
+      "required": ["id", "code", "name", "category"]
+    }
+  },
+  "firestore": {
+    "/sheet_rows/{storeId}": {
+      "schema": "SheetRow",
+      "description": "Coleção com os dados de compra e estoque de cada loja na planilha"
+    },
+    "/sheet_snapshots/{snapshotId}": {
+      "schema": "SheetSnapshot",
+      "description": "Coleção contendo as gravações de versões históricas com data e hora"
+    },
+    "/stock_launches/{launchId}": {
+      "schema": "StockLaunch",
+      "description": "Coleção com auditoria dos lançamentos de estoque"
+    },
+    "/stores/{storeId}": {
+      "schema": "StoreEntity",
+      "description": "Coleção com o cadastro de lojas"
+    },
+    "/suppliers/{supplierId}": {
+      "schema": "SupplierEntity",
+      "description": "Coleção com frigoríficos e fornecedores"
+    },
+    "/products/{productId}": {
+      "schema": "ProductEntity",
+      "description": "Coleção de cortes e produtos"
+    }
+  }
+}

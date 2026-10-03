@@ -1,0 +1,116 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidSheetRow(data) {
+      return data.storeId is string && data.storeId.size() <= 64
+        && data.storeName is string && data.storeName.size() <= 128;
+    }
+
+    function isValidSnapshot(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 200
+        && data.author is string && data.author.size() <= 128
+        && data.timestamp is number
+        && data.source is string;
+    }
+
+    function isValidStockLaunch(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.storeId is string && data.storeId.size() <= 64
+        && data.storeName is string && data.storeName.size() <= 128
+        && data.operatorName is string && data.operatorName.size() <= 128
+        && data.timestamp is number;
+    }
+
+    function isValidStore(data) {
+      return data.id is string && data.id.size() <= 64
+        && data.code is string && data.code.size() <= 32
+        && data.name is string && data.name.size() <= 128;
+    }
+
+    function isValidSupplier(data) {
+      return data.id is string && data.id.size() <= 64
+        && data.code is string && data.code.size() <= 32
+        && data.name is string && data.name.size() <= 128
+        && data.cnpj is string && data.cnpj.size() <= 32;
+    }
+
+    function isValidProduct(data) {
+      return data.id is string && data.id.size() <= 64
+        && data.code is string && data.code.size() <= 32
+        && data.name is string && data.name.size() <= 128
+        && data.category is string && data.category.size() <= 64;
+    }
+
+    // Sheet Rows (Planilha de Compra por Filial)
+    match /sheet_rows/{storeId} {
+      allow get: if isValidId(storeId);
+      allow list: if true;
+      allow create, update: if isValidId(storeId) && isValidSheetRow(incoming());
+      allow delete: if isValidId(storeId);
+    }
+
+    // Historical Sheet Snapshots (Versões gravadas com data e hora)
+    match /sheet_snapshots/{snapshotId} {
+      allow get: if isValidId(snapshotId);
+      allow list: if true;
+      allow create, update: if isValidId(snapshotId) && isValidSnapshot(incoming());
+      allow delete: if isValidId(snapshotId);
+    }
+
+    // Stock Launches (Auditoria de Lançamentos de Estoque)
+    match /stock_launches/{launchId} {
+      allow get: if isValidId(launchId);
+      allow list: if true;
+      allow create, update: if isValidId(launchId) && isValidStockLaunch(incoming());
+      allow delete: if isValidId(launchId);
+    }
+
+    // Stores (Filiais)
+    match /stores/{storeId} {
+      allow get: if isValidId(storeId);
+      allow list: if true;
+      allow create, update: if isValidId(storeId) && isValidStore(incoming());
+      allow delete: if isValidId(storeId);
+    }
+
+    // Suppliers (Frigoríficos)
+    match /suppliers/{supplierId} {
+      allow get: if isValidId(supplierId);
+      allow list: if true;
+      allow create, update: if isValidId(supplierId) && isValidSupplier(incoming());
+      allow delete: if isValidId(supplierId);
+    }
+
+    // Products (Cortes)
+    match /products/{productId} {
+      allow get: if isValidId(productId);
+      allow list: if true;
+      allow create, update: if isValidId(productId) && isValidProduct(incoming());
+      allow delete: if isValidId(productId);
+    }
+
+    // App Settings (Configurações e Rendimentos)
+    match /app_settings/{settingId} {
+      allow get: if isValidId(settingId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(settingId);
+    }
+  }
+}

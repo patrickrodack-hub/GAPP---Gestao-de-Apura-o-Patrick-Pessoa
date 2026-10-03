@@ -1,0 +1,6 @@
+{
+  "name": "ERP Apuração do Boi",
+  "description": "Sistema ERP de gestão de ciclo de compra, rendimento de desossa, controle de estoque e apuração de resultados da carne bovina.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
