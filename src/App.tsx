@@ -26,10 +26,49 @@ import { useTheme } from './context/ThemeContext';
 import { ExcelExportService } from './services/excelExportService';
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
 import { requestPortalFullscreen } from './utils/fullscreen';
-import { Minus, Square, X, Beef, FileSpreadsheet } from 'lucide-react';
+import { Minus, Square, X, Beef, FileSpreadsheet, RefreshCw } from 'lucide-react';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export default function App() {
   const { theme, isSolidcon, toggleTheme } = useTheme();
+
+  // Service Worker Update Detection & Instant Reload logic
+  const [isUpdatingSW, setIsUpdatingSW] = useState(false);
+  const {
+    needRefresh: [needRefresh, setNeedRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegisteredSW(swUrl, r) {
+      if (r) {
+        // Checa por novas versões a cada 30 minutos ou quando a aba volta a ter foco
+        const intervalId = setInterval(() => {
+          r.update().catch(() => {});
+        }, 30 * 60 * 1000);
+
+        const handleTabFocus = () => {
+          r.update().catch(() => {});
+        };
+
+        window.addEventListener('focus', handleTabFocus);
+        return () => {
+          clearInterval(intervalId);
+          window.removeEventListener('focus', handleTabFocus);
+        };
+      }
+    },
+    onRegisterError(error) {
+      console.warn('Erro ao verificar Service Worker:', error);
+    },
+  });
+
+  const handleApplySWUpdate = async () => {
+    setIsUpdatingSW(true);
+    try {
+      await updateServiceWorker(true);
+    } catch {
+      window.location.reload();
+    }
+  };
 
   const [products, setProducts] = useState<Product[]>(() => StorageService.getProducts());
   const [stores, setStores] = useState<Store[]>(() => StorageService.getStores());
@@ -39,7 +78,8 @@ export default function App() {
   const [suppliers, setSuppliers] = useState<Supplier[]>(() => StorageService.getSuppliers());
   const [sheetSnapshots, setSheetSnapshots] = useState<SheetSnapshotRecord[]>(() => StorageService.getSheetSnapshots());
 
-  const [activeTab, setActiveTab] = useState<NavigationTab>('sheet');
+  // Iniciar sempre no "Painel Geral" (dashboard) conforme solicitado pelo usuário
+  const [activeTab, setActiveTab] = useState<NavigationTab>('dashboard');
   const [isDesktopView, setIsDesktopView] = useState(false);
   const [isQuickCalcOpen, setIsQuickCalcOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
@@ -345,16 +385,84 @@ export default function App() {
   };
 
   // ==========================================
+  // SERVICE WORKER UPDATE BANNER
+  // ==========================================
+  const renderSWUpdateBanner = () => {
+    if (!needRefresh) return null;
+    return (
+      <aside
+        aria-label="Atualização do sistema disponível"
+        className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] w-[94%] max-w-lg shadow-2xl animate-bounce-short"
+      >
+        <div className="bg-slate-900/98 text-white border-2 border-emerald-500 rounded-2xl p-4 shadow-2xl shadow-emerald-950/60 backdrop-blur-md">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center shrink-0 mt-0.5 text-emerald-400">
+              <RefreshCw className={`w-5 h-5 ${isUpdatingSW ? 'animate-spin' : ''}`} />
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950">
+                  Nova Versão Disponível
+                </span>
+                <span className="text-[10px] text-emerald-400 font-mono">v10.1</span>
+              </div>
+              <h3 className="text-sm font-bold text-white tracking-tight leading-snug">
+                Atualização do Sistema Pronta
+              </h3>
+              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                Uma nova versão do ERP Apuração do Boi foi carregada em segundo plano. Recarregue a página para aplicar todas as melhorias e correções imediatamente.
+              </p>
+
+              <div className="flex items-center gap-2 mt-3 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={handleApplySWUpdate}
+                  disabled={isUpdatingSW}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition cursor-pointer disabled:opacity-75"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isUpdatingSW ? 'animate-spin' : ''}`} />
+                  <span>{isUpdatingSW ? 'Recarregando...' : 'Recarregar e Atualizar Agora'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setNeedRefresh(false)}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+                >
+                  Lembrar mais tarde
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setNeedRefresh(false)}
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer shrink-0"
+              title="Fechar aviso de atualização"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </aside>
+    );
+  };
+
+  // ==========================================
   // RENDER MOBILE STOCK PORTAL (MOBILE VIEW)
   // ==========================================
   if (isPortalMode) {
     return (
-      <MobileStockPortal
-        stores={stores}
-        rows={sheetRows}
-        onUpdateRow={handleUpdateRow}
-        onSwitchToAdmin={() => setIsPortalMode(false)}
-      />
+      <>
+        {renderSWUpdateBanner()}
+        <MobileStockPortal
+          stores={stores}
+          rows={sheetRows}
+          onUpdateRow={handleUpdateRow}
+          onSwitchToAdmin={() => setIsPortalMode(false)}
+        />
+      </>
     );
   }
 
@@ -364,6 +472,7 @@ export default function App() {
   if (isSolidcon) {
     return (
       <div className="min-h-screen bg-[#3a4149] text-slate-900 flex flex-col font-sans select-none antialiased">
+        {renderSWUpdateBanner()}
         {/* Toast Notification */}
         {feedbackToast && (
           <div className="fixed bottom-10 right-5 z-50 bg-[#0078d7] text-white px-4 py-2 rounded shadow-2xl font-bold text-xs flex items-center gap-2 border border-blue-300 animate-bounce">
@@ -610,6 +719,7 @@ export default function App() {
   // ==========================================
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200">
+      {renderSWUpdateBanner()}
       {/* Toast Notification */}
       {feedbackToast && (
         <div className="fixed bottom-5 right-5 z-50 bg-amber-500 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs shadow-2xl flex items-center gap-2 border border-amber-400">

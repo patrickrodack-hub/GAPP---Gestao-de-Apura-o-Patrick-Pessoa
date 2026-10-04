@@ -34,6 +34,7 @@ import {
   AreaChart 
 } from 'recharts';
 import { NavigationTab } from '../Navigation';
+import { D3TrendsChart } from '../dashboard/D3TrendsChart';
 
 interface DashboardTabProps {
   rows: SheetRowData[];
@@ -369,6 +370,11 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ---------------------------------------------------- */}
+      {/* GRÁFICO D3.JS: TENDÊNCIA DE CUSTO X RENDIMENTO (30 DIAS) */}
+      {/* ---------------------------------------------------- */}
+      <D3TrendsChart batches={batches} stores={stores} />
 
       {/* ---------------------------------------------------- */}
       {/* GRÁFICO DE LINHAS: EVOLUÇÃO DO VOLUME DE COMPRA (KG) */}
