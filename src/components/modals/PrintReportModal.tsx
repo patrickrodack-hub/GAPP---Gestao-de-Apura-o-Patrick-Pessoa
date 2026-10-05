@@ -83,7 +83,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white text-slate-900 rounded-2xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 border border-slate-200">
         
         {/* Actions bar (hidden in print) */}

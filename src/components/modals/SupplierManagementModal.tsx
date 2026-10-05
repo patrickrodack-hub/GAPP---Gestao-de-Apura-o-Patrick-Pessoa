@@ -175,7 +175,7 @@ export const SupplierManagementModal: React.FC<SupplierManagementModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-2xl max-w-5xl w-full shadow-2xl flex flex-col my-auto max-h-[95vh] overflow-hidden border border-slate-200 dark:border-slate-800">
         
         {/* Header Modal */}
@@ -446,7 +446,7 @@ export const SupplierManagementModal: React.FC<SupplierManagementModalProps> = (
 
         {/* MODAL ADICIONAR / EDITAR FORNECEDOR */}
         {isFormOpen && (
-          <div className="fixed inset-0 z-60 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[10100] bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
               
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
@@ -700,7 +700,7 @@ export const SupplierManagementModal: React.FC<SupplierManagementModalProps> = (
 
         {/* DIALOG CONFIRMAÇÃO DE EXCLUSÃO */}
         {deletingSupplier && (
-          <div className="fixed inset-0 z-60 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[10100] bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
               <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
                 <div className="p-2.5 rounded-full bg-rose-100 dark:bg-rose-950">

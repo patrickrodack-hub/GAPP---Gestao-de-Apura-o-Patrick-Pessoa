@@ -297,7 +297,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
 
   const getActiveTabTitle = () => {
     switch (activeTab) {
-      case 'sheet': return 'Planilha de Compra da Direção da Empresa v10.1 - Matriz 16 Filiais';
+      case 'sheet': return 'Planilha de Compra da Direção da Empresa v10.3 - Matriz 16 Filiais';
       case 'dashboard': return 'Painel Executivo Geral - Apuração do Boi';
       case 'yield': return 'Análise Técnica de Rendimento, Desossa e Cortes';
       case 'results': return 'DRE Gerencial, Margens de Compra e Venda (Markup)';
@@ -312,7 +312,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
 
   return (
     <>
-      <header className="w-full max-w-full select-none font-sans z-50 relative shadow-md overflow-hidden">
+      <header className="w-full select-none font-sans z-[100] relative shadow-md">
         
         {/* Toast de Salvar */}
         {saveToast && (
@@ -324,10 +324,10 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
         {/* 1. CLASSIC DESKTOP MENU BAR - FULLY FUNCTIONAL WITH ALL DIVISIONS AND MODULES */}
         <div 
           ref={menuBarRef}
-          className="h-7 sm:h-8 px-2 flex items-center justify-between text-xs text-slate-800 bg-[#eceff1] border-b border-[#cfd8dc] relative z-40 w-full max-w-full overflow-hidden"
+          className="h-7 sm:h-8 px-2 flex items-center justify-between text-xs text-slate-800 bg-[#eceff1] border-b border-[#cfd8dc] relative z-[120]"
         >
           {/* Menu items */}
-          <div className="flex items-center space-x-0.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 flex-1">
+          <div className="flex items-center space-x-0.5">
             {menuCategories.map((category) => {
               const isOpen = activeMenu === category.id;
               return (
@@ -408,7 +408,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
 
                       {/* Footer hint */}
                       <div className="px-3 pt-1.5 pb-0.5 border-t border-slate-100 flex items-center justify-between text-[9px] text-slate-400">
-                        <span>Grupo GAPP Sistemas v10.1</span>
+                        <span>Grupo GAPP Sistemas v10.3</span>
                         <span>[ESC] para fechar</span>
                       </div>
                     </div>
@@ -512,13 +512,13 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
 
         {/* 3. DESKTOP SHORTCUT TOOLBAR (Interactive Standardized Menu & Tool Boxes) */}
         <div 
-          className="h-10 sm:h-11 px-2 flex items-center justify-between border-b border-[#b0bec5] relative z-10 w-full max-w-full overflow-hidden"
+          className="h-10 sm:h-11 px-2 flex items-center justify-between border-b border-[#b0bec5] relative z-[100]"
           style={{
             background: 'linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%)'
           }}
         >
-          {/* Segmented Standardized Button Boxes (Scrollable inside available space) */}
-          <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 flex-1 scroll-smooth">
+          {/* Segmented Standardized Button Boxes */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             
             {/* Box 1: Matriz & Gravação */}
             <div className="bg-[#d5dce4] p-0.5 rounded-md border border-[#b8c4d0] shadow-inner flex items-center gap-0.5 shrink-0">
@@ -536,7 +536,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
                 <span className="hidden xl:inline">Novo Lote</span>
               </button>
 
-              {/* Planilha Matriz v10.1 */}
+              {/* Planilha Matriz v10.3 */}
               <button
                 onClick={() => onTabChange('sheet')}
                 className={`h-7.5 px-2.5 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 ${
@@ -544,10 +544,10 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
                     ? 'bg-[#0078d7] text-white border-[#005a9e] shadow-sm'
                     : 'bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800'
                 }`}
-                title="Planilha Matriz da Direção v10.1 (F2)"
+                title="Planilha Matriz da Direção v10.3 (F2)"
               >
                 <FileSpreadsheet className={`w-3.5 h-3.5 ${activeTab === 'sheet' && !isDesktopView ? 'text-white' : 'text-blue-700'}`} />
-                <span>Matriz v10.1</span>
+                <span>Matriz v10.3</span>
               </button>
 
               {/* Salvar / Gravar */}
@@ -739,11 +739,11 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
                 </button>
               )}
 
-              {/* Restaurar v10.1 */}
+              {/* Restaurar v10.3 */}
               <button
                 onClick={onReset}
                 className="h-7.5 w-7.5 flex items-center justify-center rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800"
-                title="Restaurar Planilha Oficial da Direção v10.1 (F5)"
+                title="Restaurar Planilha Oficial da Direção v10.3 (F5)"
               >
                 <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
               </button>
@@ -768,15 +768,15 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
 
           </div>
 
-          {/* Quick status on the right + User Menu (Always pinned within window) */}
-          <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] font-mono text-slate-700 shrink-0 ml-1.5 sm:ml-2">
+          {/* Quick status on the right + User Menu */}
+          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-700 shrink-0 ml-2">
             <span className="hidden lg:inline-flex px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold">
               ● {storeCount} Lojas
             </span>
 
             {/* Usuário Conectado */}
             {currentUser && (
-              <div className="relative font-sans" ref={userMenuRef}>
+              <div className="relative font-sans z-[200]" ref={userMenuRef}>
                 <button
                   type="button"
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}

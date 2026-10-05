@@ -499,7 +499,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/75 backdrop-blur-sm animate-fade-in print:p-0 print:bg-white print:static">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4 bg-slate-950/75 backdrop-blur-sm animate-fade-in print:p-0 print:bg-white print:static">
       <div 
         className={`w-full max-w-6xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh] ${
           isPrintPreviewOpen 

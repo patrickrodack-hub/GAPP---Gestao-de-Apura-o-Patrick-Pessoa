@@ -53,7 +53,7 @@ export const PortalLaunchHistory: React.FC<PortalLaunchHistoryProps> = ({
   });
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
+    <div className="fixed inset-0 z-[10000] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3.5 flex items-center justify-between shrink-0 shadow-xs">
         <div className="flex items-center gap-3">

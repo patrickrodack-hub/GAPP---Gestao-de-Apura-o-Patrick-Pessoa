@@ -368,7 +368,7 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
 
       {/* Footer Info */}
       <div className="text-center text-[11px] text-slate-500 dark:text-slate-500 py-2">
-        <span>Sistema de Apuração do Boi • Matriz Oficial v10.1 (Patrick Pessoa)</span>
+        <span>Sistema de Apuração do Boi • Matriz Oficial v10.3 (Patrick Pessoa)</span>
       </div>
     </div>
   );

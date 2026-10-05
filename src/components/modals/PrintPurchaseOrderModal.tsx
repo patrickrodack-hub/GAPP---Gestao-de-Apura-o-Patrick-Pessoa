@@ -102,7 +102,7 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       <div className="bg-white text-slate-900 rounded-2xl max-w-5xl w-full shadow-2xl flex flex-col my-auto max-h-[96vh] overflow-hidden border border-slate-300">
         
         {/* Actions bar (hidden in print) */}

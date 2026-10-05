@@ -146,7 +146,7 @@ export const SystemClosedScreen: React.FC<SystemClosedScreenProps> = ({ onReopen
 
         {/* Rodapé */}
         <div className="mt-4 text-center text-xs opacity-60">
-          Grupo GAPP • Patrick Pessoa • Apuração do Boi v10.1
+          Grupo GAPP • Patrick Pessoa • Apuração do Boi v10.3
         </div>
       </div>
     </div>

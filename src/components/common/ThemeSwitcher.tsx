@@ -68,10 +68,10 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ variant = 'full' }
         </button>
 
         {isOpen && (
-          <div className="absolute right-0 mt-1 w-64 bg-white border border-[#9ca3af] shadow-2xl rounded-md z-50 p-1.5 text-xs animate-scale-in font-sans">
+          <div className="absolute right-0 mt-1 w-64 bg-white border border-[#9ca3af] shadow-2xl rounded-md z-[9999] p-1.5 text-xs animate-scale-in font-sans">
             <div className="px-2 py-1 border-b border-slate-200 font-bold text-slate-700 text-[11px] uppercase tracking-wide flex items-center justify-between">
               <span>Selecione o Tema</span>
-              <span className="text-[10px] text-slate-500 font-normal">v10.1</span>
+              <span className="text-[10px] text-slate-500 font-normal">v10.3</span>
             </div>
             <div className="mt-1 space-y-1">
               {themes.map(t => {
@@ -121,7 +121,7 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ variant = 'full' }
         </button>
 
         {isOpen && (
-          <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl z-50 p-2 text-xs animate-scale-in text-slate-900 dark:text-white">
+          <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl z-[9999] p-2 text-xs animate-scale-in text-slate-900 dark:text-white">
             <div className="px-2.5 py-1.5 border-b border-slate-200 dark:border-slate-800 font-bold text-slate-600 dark:text-slate-300 text-[11px] uppercase tracking-wider flex items-center justify-between">
               <span>Alternar Tema Visual</span>
               <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">ERP Boi</span>
@@ -186,7 +186,7 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ variant = 'full' }
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl z-50 p-2 text-xs animate-scale-in text-slate-900 dark:text-white">
+        <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl z-[9999] p-2 text-xs animate-scale-in text-slate-900 dark:text-white">
           <div className="px-2.5 py-1.5 border-b border-slate-200 dark:border-slate-800 font-bold text-slate-600 dark:text-slate-300 text-[11px] uppercase tracking-wider flex items-center justify-between">
             <span>Alternar Tema Visual</span>
             <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">ERP Boi</span>

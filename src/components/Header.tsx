@@ -91,40 +91,38 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   return (
-    <header className="bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm backdrop-blur transition-colors w-full max-w-full overflow-hidden">
-      <div className="max-w-[1920px] mx-auto px-2 sm:px-4 py-2 w-full">
-        <div className="flex flex-col 2xl:flex-row 2xl:items-center 2xl:justify-between gap-2.5 w-full">
+    <header className="bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-[100] relative shadow-sm backdrop-blur transition-colors">
+      <div className="max-w-[1920px] mx-auto px-3 sm:px-5 py-2">
+        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-2.5">
           
           {/* 1. Left: Brand & System Title */}
-          <div className="flex items-center justify-between sm:justify-start gap-2.5 shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#0c140d] p-1 flex items-center justify-center shadow-md shadow-emerald-950/20 ring-1 ring-emerald-500/40 shrink-0 overflow-hidden">
-                <img 
-                  src="/icon.svg" 
-                  alt="Patrick Pessoa - Gestão Integral de Compra" 
-                  className="w-full h-full object-contain"
-                />
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#0c140d] p-1 flex items-center justify-center shadow-md shadow-emerald-950/20 ring-1 ring-emerald-500/40 shrink-0 overflow-hidden">
+              <img 
+                src="/icon.svg" 
+                alt="Patrick Pessoa - Gestão Integral de Compra" 
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
+                  Grupo GAPP Sistemas
+                </h1>
+                <span className="text-[10px] px-1.5 py-0.2 rounded font-black bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/40 uppercase">
+                  v10.3
+                </span>
               </div>
-              <div>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
-                    Grupo GAPP Sistemas
-                  </h1>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded font-black bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/40 uppercase">
-                    v10.1
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                  Apuração do Boi • {storeCount} Filiais Conectadas
-                </p>
-              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                Apuração do Boi • {storeCount} Filiais Conectadas
+              </p>
             </div>
           </div>
 
           {/* 2. Center: Compact Consolidated Metrics Pill */}
-          <div className="flex items-center gap-2 sm:gap-3 bg-slate-100/90 dark:bg-slate-950/80 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shrink-0 self-start 2xl:self-center overflow-x-auto no-scrollbar max-w-full">
+          <div className="flex items-center gap-2 sm:gap-3 bg-slate-100/90 dark:bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shrink-0 self-start xl:self-center">
             {/* Volume */}
-            <div className="pr-2 sm:pr-2.5 border-r border-slate-300 dark:border-slate-800 shrink-0">
+            <div className="pr-2.5 border-r border-slate-300 dark:border-slate-800">
               <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-slate-500 block leading-tight">
                 Volume Total
               </span>
@@ -136,7 +134,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Total Compra */}
-            <div className="pr-2 sm:pr-2.5 border-r border-slate-300 dark:border-slate-800 shrink-0">
+            <div className="pr-2.5 border-r border-slate-300 dark:border-slate-800">
               <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-slate-500 block leading-tight">
                 Total Compra
               </span>
@@ -146,7 +144,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Preço Médio */}
-            <div className="shrink-0">
+            <div>
               <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-slate-500 block leading-tight">
                 Média Quarto (@ R$ 390)
               </span>
@@ -156,8 +154,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* 3. Right: Compact Standardized Operational Command Hub (Always wraps to fit window without overflowing) */}
-          <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-start 2xl:justify-end max-w-full">
+          {/* 3. Right: Compact Standardized Operational Command Hub */}
+          <div className="flex items-center gap-1.5 flex-wrap xl:flex-nowrap justify-end">
 
             {/* Segment A: Ações Principais de Compra & Desossa */}
             <div className="bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700/80 flex items-center gap-1 shrink-0 shadow-xs">
@@ -233,7 +231,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
 
                 {isMobileMenuOpen && (
-                  <div className="absolute right-0 mt-1.5 w-60 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl p-1.5 z-50 text-xs animate-in fade-in zoom-in-95">
+                  <div className="absolute right-0 mt-1.5 w-60 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-1.5 z-[9999] text-xs animate-in fade-in zoom-in-95">
                     <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase border-b border-slate-100 dark:border-slate-800 mb-1">
                       Módulos Mobile das Filiais
                     </div>
@@ -319,7 +317,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={onReset}
                 className="h-7.5 w-7.5 flex items-center justify-center rounded-lg hover:bg-red-100 dark:hover:bg-red-950/40 text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 transition cursor-pointer"
-                title="Restaurar Planilha Oficial da Direção v10.1 (F5)"
+                title="Restaurar Planilha Oficial da Direção v10.3 (F5)"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
@@ -332,7 +330,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Segment E: Usuário & Sessão */}
             {currentUser && (
-              <div className="relative shrink-0" ref={userMenuRef}>
+              <div className="relative shrink-0 z-[100]" ref={userMenuRef}>
                 <button
                   type="button"
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -367,7 +365,7 @@ export const Header: React.FC<HeaderProps> = ({
 
                 {/* Dropdown Menu do Usuário */}
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-2 z-50 text-xs animate-in fade-in slide-in-from-top-2">
+                  <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-2 z-[9999] text-xs animate-in fade-in slide-in-from-top-2">
                     <div className="p-3 border-b border-slate-100 dark:border-slate-800 mb-1">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-purple-600 text-white font-black flex items-center justify-center text-xs">

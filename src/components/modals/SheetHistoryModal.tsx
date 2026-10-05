@@ -109,7 +109,7 @@ export const SheetHistoryModal: React.FC<SheetHistoryModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/65 backdrop-blur-xs animate-fade-in font-sans">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-5 bg-black/65 backdrop-blur-xs animate-fade-in font-sans">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-5xl h-[90vh] shadow-2xl flex flex-col overflow-hidden transition-colors">
         
         {/* Top Header */}

@@ -450,7 +450,7 @@ export const PurchasesTab: React.FC<PurchasesTabProps> = ({
 
       {/* Modal de Confirmação de Exclusão */}
       {deletingBatch && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl text-slate-900 dark:text-white">
             <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400 mb-4">
               <div className="p-2.5 rounded-full bg-rose-100 dark:bg-rose-950/60">
@@ -491,7 +491,7 @@ export const PurchasesTab: React.FC<PurchasesTabProps> = ({
 
       {/* Modal Novo Lote */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 max-w-lg w-full shadow-2xl space-y-4 text-slate-900 dark:text-white transition-colors">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
               <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">

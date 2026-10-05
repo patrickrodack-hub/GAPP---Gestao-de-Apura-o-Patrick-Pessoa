@@ -979,7 +979,7 @@ export const PortalForm: React.FC<PortalFormProps> = ({
 
       {/* Modal de Aviso: Abas Obrigatórias Não Navegadas */}
       {missingTabsWarning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-900 border-2 border-amber-500 rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-4">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-2xl bg-amber-500 text-slate-950">
@@ -1037,7 +1037,7 @@ export const PortalForm: React.FC<PortalFormProps> = ({
 
       {/* Modal de Confirmação de Saída (Botão Sair) */}
       {showExitConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-4">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400">

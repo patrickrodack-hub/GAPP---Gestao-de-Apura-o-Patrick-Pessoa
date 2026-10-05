@@ -398,7 +398,7 @@ export default function App() {
 
   // Reset to original data
   const handleReset = () => {
-    if (window.confirm('Deseja restaurar todos os dados originais da Planilha de Compra da Direção v10.1? Quaisquer edições manuais serão redefinidas.')) {
+    if (window.confirm('Deseja restaurar todos os dados originais da Planilha de Compra da Direção v10.3? Quaisquer edições manuais serão redefinidas.')) {
       const defaults = StorageService.resetAllToDefaults();
       setProducts(defaults.products);
       setStores(defaults.stores);
@@ -406,7 +406,7 @@ export default function App() {
       setBatches(defaults.batches);
       setWasteRecords(defaults.waste);
       setSuppliers(defaults.suppliers);
-      showToast('Dados oficiais da Planilha v10.1 restaurados!');
+      showToast('Dados oficiais da Planilha v10.3 restaurados!');
     }
   };
 
@@ -454,7 +454,7 @@ export default function App() {
       handleTabSelect(tab);
       const tabNames: Record<NavigationTab, string> = {
         dashboard: 'Painel Geral (Alt+1)',
-        sheet: 'Planilha Direção v10.1 (Alt+2)',
+        sheet: 'Planilha Direção v10.3 (Alt+2)',
         yield: 'Desossa & Rendimento (Alt+3)',
         results: 'DRE & Margens (Alt+4)',
         inventory: 'Estoque & Câmaras (Alt+5)',
@@ -494,7 +494,7 @@ export default function App() {
 
   const getActiveTabTitle = () => {
     switch (activeTab) {
-      case 'sheet': return 'Planilha de Compra da Direção v10.1 (Matriz 16 Filiais)';
+      case 'sheet': return 'Planilha de Compra da Direção v10.3 (Matriz 16 Filiais)';
       case 'dashboard': return 'Painel Executivo Geral';
       case 'yield': return 'Rendimento e Desossa do Boi';
       case 'results': return 'Apuração de Resultados DRE e Margens';
@@ -528,7 +528,7 @@ export default function App() {
                 <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950">
                   Nova Versão Disponível
                 </span>
-                <span className="text-[10px] text-emerald-400 font-mono">v10.1</span>
+                <span className="text-[10px] text-emerald-400 font-mono">v10.3</span>
               </div>
               <h3 className="text-sm font-bold text-white tracking-tight leading-snug">
                 Atualização do Sistema Pronta
@@ -625,13 +625,13 @@ export default function App() {
         {renderSWUpdateBanner()}
         {/* Toast Notification */}
         {feedbackToast && (
-          <div className="fixed bottom-10 right-5 z-50 bg-[#0078d7] text-white px-4 py-2 rounded shadow-2xl font-bold text-xs flex items-center gap-2 border border-blue-300 animate-bounce">
+          <div className="fixed bottom-10 right-5 z-[12000] bg-[#0078d7] text-white px-4 py-2 rounded shadow-2xl font-bold text-xs flex items-center gap-2 border border-blue-300 animate-bounce">
             <span>✓ {feedbackToast}</span>
           </div>
         )}
 
-        {/* 1. Desktop Blue Header + Menu Bar + Shortcut Toolbar (FIXED AT TOP) */}
-        <div className="shrink-0 z-40 w-full">
+        {/* 1. Desktop Blue Header + Menu Bar + Shortcut Toolbar (FIXED AT TOP WITH HIGHEST Z-INDEX) */}
+        <div className="shrink-0 relative z-[100] w-full">
           <SolidconHeader
             activeTab={activeTab}
             onTabChange={handleTabSelect}
@@ -708,7 +708,7 @@ export default function App() {
                 <div className="shrink-0 bg-[#f1f5f9] border-b border-slate-300 px-3 py-1 flex items-center justify-between text-xs select-none">
                   <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar py-0.5">
                     {[
-                      { id: 'sheet', label: 'Planilha v10.1' },
+                      { id: 'sheet', label: 'Planilha v10.3' },
                       { id: 'dashboard', label: 'Dashboard' },
                       { id: 'yield', label: 'Rendimento & Desossa' },
                       { id: 'results', label: 'DRE & Margens' },
@@ -916,7 +916,7 @@ export default function App() {
 
         {/* Modal da Central de Backup Online no Tema GAPP Classic */}
         {isBackupModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
             <div className="w-full max-w-6xl my-auto">
               <BackupManagerView
                 onClose={() => setIsBackupModalOpen(false)}
@@ -947,13 +947,13 @@ export default function App() {
       {renderSWUpdateBanner()}
       {/* Toast Notification */}
       {feedbackToast && (
-        <div className="fixed bottom-14 right-5 z-50 bg-amber-500 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs shadow-2xl flex items-center gap-2 border border-amber-400">
+        <div className="fixed bottom-14 right-5 z-[12000] bg-amber-500 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs shadow-2xl flex items-center gap-2 border border-amber-400">
           <span>✓ {feedbackToast}</span>
         </div>
       )}
 
-      {/* Main App Header (FIXED AT TOP) */}
-      <div className="shrink-0 z-40 w-full shadow-sm">
+      {/* Main App Header (FIXED AT TOP WITH HIGHEST Z-INDEX SO DROPDOWNS OVERLAY EVERYTHING) */}
+      <div className="shrink-0 relative z-[100] w-full shadow-sm">
         <Header
           totalPurchaseR$={totalPurchaseR$}
           totalPieces={totalPieces}
@@ -979,7 +979,7 @@ export default function App() {
       </div>
 
       {/* Navigation Tabs (FIXED DIRECTLY BELOW HEADER) */}
-      <div className="shrink-0 z-30 w-full shadow-2xs">
+      <div className="shrink-0 relative z-[90] w-full shadow-2xs">
         <Navigation 
           activeTab={activeTab} 
           onTabChange={handleTabSelect} 
@@ -1099,7 +1099,7 @@ export default function App() {
             </span>
           </div>
           <div className="text-[11px] text-slate-500 dark:text-slate-400">
-            Planilha Matriz Oficial da Direção v10.1 • 16 Filiais Integradas
+            Planilha Matriz Oficial da Direção v10.3 • 16 Filiais Integradas
           </div>
         </div>
       </footer>
@@ -1173,7 +1173,7 @@ export default function App() {
 
       {/* Modal da Central de Backup Online */}
       {isBackupModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+        <div className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
           <div className="w-full max-w-6xl my-auto">
             <BackupManagerView
               onClose={() => setIsBackupModalOpen(false)}

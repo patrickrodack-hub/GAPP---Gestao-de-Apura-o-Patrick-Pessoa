@@ -804,7 +804,7 @@ export const BackupManagerView: React.FC<BackupManagerViewProps> = ({
 
       {/* MODAL DE CONFIRMAÇÃO DE RESTAURAÇÃO */}
       {selectedBackupForRestore && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[10100] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-amber-500/40 space-y-4 animate-scaleUp">
             
             <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 mx-auto">
@@ -868,7 +868,7 @@ export const BackupManagerView: React.FC<BackupManagerViewProps> = ({
 
       {/* MODAL DE INSPEÇÃO DO BACKUP */}
       {inspectBackup && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[10100] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
             
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
