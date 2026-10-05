@@ -30,7 +30,6 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -86,12 +85,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
         lastLoginAt: Date.now()
       };
       StorageService.updateUser(updatedUser);
-
-      if (rememberMe) {
-        StorageService.setSessionUser(updatedUser);
-      } else {
-        sessionStorage.setItem('apuracao_boi_temp_user', JSON.stringify(updatedUser));
-      }
+      StorageService.setSessionUser(updatedUser);
 
       setIsLoading(false);
       onLoginSuccess(updatedUser);
@@ -657,31 +651,6 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
-                  </div>
-
-                  {/* Opção de Lembrar Acesso */}
-                  <div className="flex items-center text-xs px-2 pt-1">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        className={`w-3.5 h-3.5 rounded border focus:ring-2 ${
-                          isSolidcon
-                            ? 'text-[#0078d7] bg-white border-slate-400 focus:ring-[#0078d7]'
-                            : isLight
-                            ? 'text-emerald-600 bg-slate-100 border-slate-300 focus:ring-emerald-500'
-                            : 'text-emerald-600 bg-zinc-800 border-zinc-600 focus:ring-emerald-500'
-                        }`}
-                      />
-                      <span 
-                        className={`font-medium text-[11px] ${
-                          isSolidcon || isLight ? 'text-slate-700' : 'text-zinc-300'
-                        }`}
-                      >
-                        Lembrar acesso neste dispositivo
-                      </span>
-                    </label>
                   </div>
 
                   {/* Botão de Login */}
