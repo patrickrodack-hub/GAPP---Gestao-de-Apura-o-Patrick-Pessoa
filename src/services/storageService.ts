@@ -27,9 +27,6 @@ export const DEFAULT_PORTAL_LOCK: PortalLockConfig = {
   updatedAt: Date.now()
 };
 
-// Sessão estritamente em memória: não persiste no localStorage para evitar login automático
-let inMemorySessionUser: SystemUser | null = null;
-
 export const StorageService = {
   getProducts(): Product[] {
     try {
@@ -661,21 +658,18 @@ export const StorageService = {
   },
 
   getSessionUser(): SystemUser | null {
-    // Retorna apenas a sessão da memória ativa da aba atual (nunca loga automático ao recarregar/abrir)
-    return inMemorySessionUser;
+    // Retorna null por padrão para desativar login automático
+    return null;
   },
 
-  setSessionUser(user: SystemUser | null) {
-    inMemorySessionUser = user;
-    // Remove qualquer rastro persistido no localStorage/sessionStorage
+  setSessionUser(_user: SystemUser | null) {
+    // Não persiste sessão no localStorage para evitar auto-login indesejado
     try {
       localStorage.removeItem(STORAGE_KEYS.SESSION_USER);
-      sessionStorage.removeItem('apuracao_boi_temp_user');
     } catch {}
   },
 
   clearSessionUser() {
-    inMemorySessionUser = null;
     try {
       localStorage.removeItem(STORAGE_KEYS.SESSION_USER);
       sessionStorage.removeItem('apuracao_boi_temp_user');

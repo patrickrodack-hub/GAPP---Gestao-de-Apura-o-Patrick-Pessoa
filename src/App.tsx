@@ -106,23 +106,18 @@ export default function App() {
   });
 
   // User Authentication & Management State (Módulo de Gestão)
-  // O sistema NÃO salva o login do usuário para login automático. A tela de login é sempre exibida ao abrir ou recarregar.
+  // Inicializado estritamente como null para exigir autenticação sempre que o sistema for aberto ou recarregado (sem auto-login)
   const [currentUser, setCurrentUser] = useState<SystemUser | null>(null);
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [isSystemClosed, setIsSystemClosed] = useState(false);
 
+  // Limpeza de qualquer credencial residual para impedir login automático no recarregamento da janela
   useEffect(() => {
-    // Garante que o sistema NUNCA faça login automático ao abrir ou recarregar
     StorageService.clearSessionUser();
     try {
-      localStorage.removeItem('apuracao_boi_session_user_v1');
-      localStorage.removeItem('apuracao_boi_temp_user');
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('user');
-      sessionStorage.clear();
+      sessionStorage.removeItem('apuracao_boi_temp_user');
     } catch {}
-    setCurrentUser(null);
   }, []);
 
   const handleOpenUserManagement = () => {
@@ -689,8 +684,8 @@ export default function App() {
                 </div>
 
                 {/* Window Sub-navigation bar inside ERP (FIXED) */}
-                <div className="shrink-0 bg-[#f1f5f9] border-b border-slate-300 px-2 sm:px-3 py-1 flex items-center justify-between text-xs select-none gap-2 w-full max-w-full overflow-hidden">
-                  <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar py-0.5 min-w-0 flex-1 scroll-smooth">
+                <div className="shrink-0 bg-[#f1f5f9] border-b border-slate-300 px-3 py-1 flex items-center justify-between text-xs select-none">
+                  <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar py-0.5">
                     {[
                       { id: 'sheet', label: 'Planilha v10.1' },
                       { id: 'dashboard', label: 'Dashboard' },
@@ -705,7 +700,7 @@ export default function App() {
                       <button
                         key={tab.id}
                         onClick={() => handleTabSelect(tab.id as NavigationTab)}
-                        className={`px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer whitespace-nowrap shrink-0 ${
+                        className={`px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer ${
                           activeTab === tab.id
                             ? 'bg-[#0078d7] text-white shadow-xs'
                             : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-300'
@@ -716,7 +711,7 @@ export default function App() {
                     ))}
                   </div>
 
-                  <div className="hidden lg:flex items-center gap-2 text-[10px] text-slate-500 font-mono shrink-0">
+                  <div className="hidden md:flex items-center gap-2 text-[10px] text-slate-500 font-mono">
                     <span>16 Filiais</span>
                     <span>•</span>
                     <span>Compra: R$ 376.311,95</span>
@@ -882,7 +877,12 @@ export default function App() {
           isOpen={isUserManagementOpen}
           onClose={() => setIsUserManagementOpen(false)}
           currentUser={currentUser}
-          onUsersUpdated={() => setCurrentUser(StorageService.getSessionUser())}
+          onUsersUpdated={() => {
+            if (currentUser) {
+              const freshUser = StorageService.getUsers().find(u => u.id === currentUser.id);
+              if (freshUser) setCurrentUser(freshUser);
+            }
+          }}
         />
 
         <ExitSystemModal
@@ -1137,7 +1137,12 @@ export default function App() {
         isOpen={isUserManagementOpen}
         onClose={() => setIsUserManagementOpen(false)}
         currentUser={currentUser}
-        onUsersUpdated={() => setCurrentUser(StorageService.getSessionUser())}
+        onUsersUpdated={() => {
+          if (currentUser) {
+            const freshUser = StorageService.getUsers().find(u => u.id === currentUser.id);
+            if (freshUser) setCurrentUser(freshUser);
+          }
+        }}
       />
 
       <ExitSystemModal
