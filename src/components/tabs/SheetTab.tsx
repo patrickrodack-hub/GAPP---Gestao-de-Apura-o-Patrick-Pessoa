@@ -35,16 +35,19 @@ import {
   AlertTriangle,
   Save,
   History,
-  Calendar
+  Calendar,
+  Printer
 } from 'lucide-react';
 import { ClearDataModal } from '../modals/ClearDataModal';
 import { FormulaAuditModal } from '../modals/FormulaAuditModal';
 import { SaveSheetModal } from '../modals/SaveSheetModal';
 import { SheetHistoryModal } from '../modals/SheetHistoryModal';
-import { SheetSnapshotRecord } from '../../types/erp';
+import { PrintSpreadsheetModal } from '../modals/PrintSpreadsheetModal';
+import { SheetSnapshotRecord, Store } from '../../types/erp';
 
 interface SheetTabProps {
   rows: SheetRowData[];
+  stores?: Store[];
   onUpdateRow: (updatedRow: SheetRowData) => void;
   onUpdateMultiple: (rows: SheetRowData[]) => void;
   onExportXLSX?: () => void;
@@ -72,38 +75,25 @@ export const EDITABLE_COLUMNS: { field: keyof SheetRowData; label: string; group
   { field: 'camaraTraseiro', label: 'Câm. Traseiro', group: 'Câmara' },
   { field: 'camaraCoxao', label: 'Câm. Coxão', group: 'Câmara' },
   { field: 'camaraAlcatrao', label: 'Câm. Alcatrão', group: 'Câmara' },
-  { field: 'somaDoTraseiro', label: 'Soma Traseiro', group: 'Câmara' },
   { field: 'camaraCostelaGaucha', label: 'Câm. Costela Gaúcha', group: 'Câmara' },
 
   // 3. BALCÃO / CÂMARA / DESOSSA (NOBRES)
-  { field: 'alcatraKg', label: 'Alcatra Kg', group: 'Balcão/Nobres' },
   { field: 'alcatra', label: 'Alcatra Pç', group: 'Balcão/Nobres' },
-  { field: 'contraFileKg', label: 'Contra Filé Kg', group: 'Balcão/Nobres' },
   { field: 'contraFile', label: 'Contra Filé Pç', group: 'Balcão/Nobres' },
-  { field: 'picanhaKg', label: 'Picanha Kg', group: 'Balcão/Nobres' },
   { field: 'picanha', label: 'Picanha Pç', group: 'Balcão/Nobres' },
-  { field: 'fileMignonKg', label: 'Filé Mignon Kg', group: 'Balcão/Nobres' },
   { field: 'fileMignon', label: 'Filé Mignon Pç', group: 'Balcão/Nobres' },
   { field: 'costelaCong', label: 'Cost. Cong.', group: 'Balcão/Nobres' },
 
   // 4. BALCÃO DE DESOSSA (DIANTEIRO)
-  { field: 'paletaKg', label: 'Paleta Kg', group: 'Dianteiro' },
   { field: 'paletaPecas', label: 'Paleta Pç', group: 'Dianteiro' },
-  { field: 'acemKg', label: 'Acém Kg', group: 'Dianteiro' },
   { field: 'acemPecas', label: 'Acém Pç', group: 'Dianteiro' },
-  { field: 'peitoKg', label: 'Peito Kg', group: 'Dianteiro' },
   { field: 'peitoPecas', label: 'Peito Pç', group: 'Dianteiro' },
-  { field: 'musculoKg', label: 'Músculo Kg', group: 'Dianteiro' },
   { field: 'musculoPecas', label: 'Músculo Pç', group: 'Dianteiro' },
 
   // 5. BALCÃO DE DESOSSA (TRASEIRO / COXÃO)
-  { field: 'chaKg', label: 'Chã Kg', group: 'Coxão' },
   { field: 'chaPecas', label: 'Chã Pç', group: 'Coxão' },
-  { field: 'patinhoKg', label: 'Patinho Kg', group: 'Coxão' },
   { field: 'patinhoPecas', label: 'Patinho Pç', group: 'Coxão' },
-  { field: 'lagartoRedondoKg', label: 'Lag. Red. Kg', group: 'Coxão' },
   { field: 'lagartoRedondoPecas', label: 'Lag. Red. Pç', group: 'Coxão' },
-  { field: 'lagartoPlanoKg', label: 'Lag. Plano Kg', group: 'Coxão' },
   { field: 'lagartoPlanoPecas', label: 'Lag. Plano Pç', group: 'Coxão' },
 
   // 6. CÂMARA / BALCÃO E DESOSSA (SUÍNO / BANDA)
@@ -116,6 +106,7 @@ export const EDITABLE_COLUMNS: { field: keyof SheetRowData; label: string; group
 
 export const SheetTab: React.FC<SheetTabProps> = ({ 
   rows, 
+  stores,
   onUpdateRow, 
   onUpdateMultiple,
   onExportXLSX,
@@ -129,6 +120,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [isFormulaProtected, setIsFormulaProtected] = useState(true);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   
   // Snapshots & History States
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
@@ -621,13 +613,23 @@ export const SheetTab: React.FC<SheetTabProps> = ({
           {onExportXLSX && (
             <button
               onClick={onExportXLSX}
-              className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition"
+              className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition active:scale-95"
               title="Exportar Planilha Oficial Completa com fórmulas e formatação profissional (.xlsx) - Atalho: Alt+X"
             >
               <Download className="w-3.5 h-3.5" />
               <span>.XLSX</span>
             </button>
           )}
+
+          {/* Gerar / Imprimir Planilha em PDF */}
+          <button
+            onClick={() => setIsPdfModalOpen(true)}
+            className="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer"
+            title="Visualizar, Salvar em PDF e Imprimir a Planilha Oficial Completa de Compras (A4 Paisagem)"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>PDF / Imprimir</span>
+          </button>
 
           <button
             onClick={handleRecalculateSuggestions}
@@ -799,7 +801,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 </th>
                 
                 {/* DADOS PARA A GERAÇÃO DE PEDIDO */}
-                <th colSpan={11} className="px-3 py-2 text-center bg-blue-100 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border-r border-slate-200 dark:border-slate-800 border-b border-blue-200 dark:border-blue-900/50">
+                <th colSpan={10} className="px-3 py-2 text-center bg-blue-100 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border-r border-slate-200 dark:border-slate-800 border-b border-blue-200 dark:border-blue-900/50">
                   <div className="flex items-center justify-center gap-1.5">
                     <span>DADOS PARA A GERAÇÃO DE PEDIDO</span>
                     <span className="text-[9px] font-normal text-blue-700 dark:text-blue-400 bg-blue-200/60 dark:bg-blue-900/60 px-1.5 py-0.2 rounded" title="Dianteiro = Câm. Diant + Tot. Diant • Coxão = Câm. Coxão + Tot. Coxão • Alcatrão = Câm. Alcatrão + Tot. Alcatrão • Boi = Σ/2 • Sugestão = Venda - Boi">
@@ -809,36 +811,36 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 </th>
 
                 {/* PEÇA INTEIRA CÂMARA */}
-                <th colSpan={6} className="px-3 py-2 text-center bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border-r border-slate-200 dark:border-slate-800 border-b border-amber-200 dark:border-amber-900/50">
+                <th colSpan={5} className="px-3 py-2 text-center bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border-r border-slate-200 dark:border-slate-800 border-b border-amber-200 dark:border-amber-900/50">
                   PEÇA INTEIRA CÂMARA
                 </th>
 
                 {/* BALCÃO / CÂMARA / DESOSSA */}
-                <th colSpan={10} className="px-3 py-2 text-center bg-emerald-100 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-300 border-r border-slate-200 dark:border-slate-800 border-b border-emerald-200 dark:border-emerald-900/50">
+                <th colSpan={5} className="px-3 py-2 text-center bg-emerald-100 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-300 border-r border-slate-200 dark:border-slate-800 border-b border-emerald-200 dark:border-emerald-900/50">
                   <div className="flex items-center justify-center gap-1.5">
                     <span>BALCÃO / CÂMARA / DESOSSA</span>
-                    <span className="text-[9px] font-normal text-emerald-700 dark:text-emerald-400 bg-emerald-200/60 dark:bg-emerald-900/60 px-1.5 py-0.2 rounded" title="Kg = Pç multiplicado pela quantidade da planilha de Detalhamento dos Cortes • Tot. Alcatrão = (Filé Mignon Kg + Alcatra Kg + Picanha Kg + Contra Filé Kg) / 22">
-                      Kg = Pç × Qtd Desossa • Tot = Σ/22
+                    <span className="text-[9px] font-normal text-emerald-700 dark:text-emerald-400 bg-emerald-200/60 dark:bg-emerald-900/60 px-1.5 py-0.2 rounded" title="Cortes Nobres do Traseiro">
+                      Nobres (Pç)
                     </span>
                   </div>
                 </th>
 
                 {/* BALCÃO DE DESOSSA (DIANTEIRO) */}
-                <th colSpan={9} className="px-3 py-2 text-center bg-purple-100 dark:purple-950/60 text-purple-900 dark:text-purple-300 border-r border-slate-200 dark:border-slate-800 border-b border-purple-200 dark:border-purple-900/50">
+                <th colSpan={4} className="px-3 py-2 text-center bg-purple-100 dark:purple-950/60 text-purple-900 dark:text-purple-300 border-r border-slate-200 dark:border-slate-800 border-b border-purple-200 dark:border-purple-900/50">
                   <div className="flex items-center justify-center gap-1.5">
                     <span>BALCÃO DE DESOSSA (DIANTEIRO)</span>
-                    <span className="text-[9px] font-normal text-purple-700 dark:text-purple-400 bg-purple-200/60 dark:bg-purple-900/60 px-1.5 py-0.2 rounded" title="Kg = Pç multiplicado pela quantidade da planilha de Detalhamento dos Cortes • Tot. Dianteiro = (Paleta + Acém + Peito + Músculo) / 35">
-                      Kg = Pç × Qtd Desossa • Tot = Σ/35
+                    <span className="text-[9px] font-normal text-purple-700 dark:text-purple-400 bg-purple-200/60 dark:bg-purple-900/60 px-1.5 py-0.2 rounded" title="Cortes do Dianteiro">
+                      Dianteiro (Pç)
                     </span>
                   </div>
                 </th>
 
                 {/* BALCÃO DE DESOSSA (TRASEIRO) */}
-                <th colSpan={9} className="px-3 py-2 text-center bg-rose-100 dark:bg-rose-950/60 text-rose-900 dark:text-rose-300 border-r border-slate-200 dark:border-slate-800 border-b border-rose-200 dark:border-rose-900/50">
+                <th colSpan={4} className="px-3 py-2 text-center bg-rose-100 dark:bg-rose-950/60 text-rose-900 dark:text-rose-300 border-r border-slate-200 dark:border-slate-800 border-b border-rose-200 dark:border-rose-900/50">
                   <div className="flex items-center justify-center gap-1.5">
                     <span>BALCÃO DE DESOSSA (TRASEIRO)</span>
-                    <span className="text-[9px] font-normal text-rose-700 dark:text-rose-400 bg-rose-200/60 dark:bg-rose-900/60 px-1.5 py-0.2 rounded" title="Kg = Pç multiplicado pela quantidade da planilha de Detalhamento dos Cortes • Tot. Coxão = (Chã + Patinho + Lag. Plano + Lag. Redondo) / 35">
-                      Kg = Pç × Qtd Desossa • Tot = Σ/35
+                    <span className="text-[9px] font-normal text-rose-700 dark:text-rose-400 bg-rose-200/60 dark:bg-rose-900/60 px-1.5 py-0.2 rounded" title="Cortes do Coxão / Traseiro">
+                      Traseiro (Pç)
                     </span>
                   </div>
                 </th>
@@ -878,16 +880,6 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                   <span className="block">Pedido</span>
                   <span className="text-[9px] font-normal text-indigo-600 dark:text-indigo-400 block tracking-tight leading-none">(Qtd Real)</span>
                 </th>
-                
-                {/* Informação do Portal de Membros se a filial recebeu boi hoje */}
-                <th 
-                  className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 font-bold min-w-[75px]" 
-                  title="Informação do Portal de Membros: Loja recebeu boi hoje? (OK = Sim / X = Não)"
-                >
-                  <span className="block text-[10px] uppercase font-bold">Recebeu Boi?</span>
-                  <span className="text-[8px] font-semibold text-slate-500 dark:text-slate-400 block tracking-tight leading-none">(Portal)</span>
-                </th>
-
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800">P. Trânsito</th>
 
                 {/* CÂMARA */}
@@ -895,33 +887,17 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800">Traseiro</th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800">Coxão</th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800">Alcatrão</th>
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-amber-800 dark:text-amber-200">Soma Tras.</th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800">Costela G.</th>
 
                 {/* BALCAO / CÂMARA / DESOSSA */}
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/40" title="Total Alcatrão = (Filé Mignon Kg + Alcatra Kg + Picanha Kg + Contra Filé Kg) / 22">
-                  Tot. Alcatrão
-                </th>
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-emerald-900 dark:text-emerald-200" title={`Alcatra Kg = Alcatra Pç × ${currentCutWeights.alcatra} kg (Detalhamento dos Cortes)`}>
-                  Alcatra Kg
-                </th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-emerald-700 dark:text-emerald-300">
                   Alcatra Pç
-                </th>
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-emerald-900 dark:text-emerald-200" title={`Contra Filé Kg = Contra Filé Pç × ${currentCutWeights.contraFile} kg (Detalhamento dos Cortes)`}>
-                  Contra Filé Kg
                 </th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-emerald-700 dark:text-emerald-300">
                   Contra Filé Pç
                 </th>
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-emerald-900 dark:text-emerald-200" title={`Picanha Kg = Picanha Pç × ${currentCutWeights.picanha} kg (Detalhamento dos Cortes)`}>
-                  Picanha Kg
-                </th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-emerald-700 dark:text-emerald-300">
                   Picanha Pç
-                </th>
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-emerald-900 dark:text-emerald-200" title={`Filé Mignon Kg = Filé Mignon Pç × ${currentCutWeights.fileMignon} kg (Detalhamento dos Cortes)`}>
-                  Filé Mignon Kg
                 </th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-emerald-700 dark:text-emerald-300">
                   Filé Mignon Pç
@@ -931,45 +907,15 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 </th>
 
                 {/* DIANTEIRO */}
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-purple-800 dark:text-purple-200 bg-purple-50 dark:bg-purple-950/40" title="Total Dianteiro = (Paleta Kg + Acém Kg + Peito Kg + Músculo Kg) / 35">
-                  Tot. Diant.
-                </th>
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-purple-900 dark:text-purple-200" title={`Paleta Kg = Paleta Pç × ${currentCutWeights.paleta} kg (Detalhamento dos Cortes)`}>
-                  Paleta Kg
-                </th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-purple-700 dark:text-purple-300">Paleta Pç</th>
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-purple-900 dark:text-purple-200" title={`Acém Kg = Acém Pç × ${currentCutWeights.acem} kg (Detalhamento dos Cortes)`}>
-                  Acém Kg
-                </th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-purple-700 dark:text-purple-300">Acém Pç</th>
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-purple-900 dark:text-purple-200" title={`Peito Kg = Peito Pç × ${currentCutWeights.peito} kg (Detalhamento dos Cortes)`}>
-                  Peito Kg
-                </th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-purple-700 dark:text-purple-300">Peito Pç</th>
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-purple-900 dark:text-purple-200" title={`Músculo Kg = Músculo Pç × ${currentCutWeights.musculo} kg (Detalhamento dos Cortes)`}>
-                  Músculo Kg
-                </th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-purple-700 dark:text-purple-300">Músculo Pç</th>
 
                 {/* COXAO / TRASEIRO */}
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-rose-800 dark:text-rose-200 bg-rose-50 dark:bg-rose-950/40" title="Total Coxão = (Chã Kg + Patinho Kg + Lagarto Plano Kg + Lagarto Redondo Kg) / 35">
-                  Tot. Coxão
-                </th>
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-rose-900 dark:text-rose-200" title={`Chã Kg = Chã Pç × ${currentCutWeights.cha} kg (Detalhamento dos Cortes)`}>
-                  Chã Kg
-                </th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-rose-700 dark:text-rose-300">Chã Pç</th>
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-rose-900 dark:text-rose-200" title={`Patinho Kg = Patinho Pç × ${currentCutWeights.patinho} kg (Detalhamento dos Cortes)`}>
-                  Patinho Kg
-                </th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-rose-700 dark:text-rose-300">Patinho Pç</th>
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-rose-900 dark:text-rose-200" title={`Lagarto Redondo Kg = Lagarto Red. Pç × ${currentCutWeights.lagartoRedondo} kg (Detalhamento dos Cortes)`}>
-                  Lag. Red. Kg
-                </th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-rose-700 dark:text-rose-300">Lag. Red. Pç</th>
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-rose-900 dark:text-rose-200" title={`Lagarto Plano Kg = Lagarto Plano Pç × ${currentCutWeights.lagartoPlano} kg (Detalhamento dos Cortes)`}>
-                  Lag. Plano Kg
-                </th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-rose-700 dark:text-rose-300">Lag. Plano Pç</th>
 
                 {/* CÂMARA / BALCÃO E DESOSSA (SUÍNO / BANDA) */}
@@ -999,45 +945,28 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 font-bold text-indigo-700 dark:text-indigo-300">26,00</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
 
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">26,00</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">26,00</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">26,00</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">29,00</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">26,00</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">25,50</td>
 
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">39,90</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">39,90</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">39,90</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">39,90</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">25,00</td>
 
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">26,00</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">26,00</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">26,00</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">25,00</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">26,00</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
 
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">31,50</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">31,50</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">31,50</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">31,50</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">31,50</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
 
                 {/* SUÍNO / BANDA PREÇO BASE */}
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
@@ -1143,24 +1072,6 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                     {/* Pedido (Qtd. Pedida) */}
                     {renderCell(row, idx, 'pedidoFinal', 'font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/30')}
 
-                    {/* Informação do Portal de Membros (Recebeu Boi Hoje?) */}
-                    <td 
-                      className="px-2 py-1.5 text-center border-r border-slate-200 dark:border-slate-800 font-sans"
-                      title={row.recebeuBoiHoje ? 'Portal de Membros: Confirmado que a filial recebeu boi hoje (SIM)' : 'Portal de Membros: Filial NÃO recebeu boi hoje'}
-                    >
-                      {row.recebeuBoiHoje ? (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 shadow-2xs">
-                          <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400 stroke-[3]" />
-                          <span>OK</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300 dark:border-rose-700 shadow-2xs">
-                          <X className="w-3 h-3 text-rose-600 dark:text-rose-400 stroke-[3]" />
-                          <span>X</span>
-                        </span>
-                      )}
-                    </td>
-
                     {/* P. Trânsito */}
                     {renderCell(row, idx, 'pTransito')}
 
@@ -1169,56 +1080,25 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                     {renderCell(row, idx, 'camaraTraseiro')}
                     {renderCell(row, idx, 'camaraCoxao')}
                     {renderCell(row, idx, 'camaraAlcatrao')}
-                    {renderCell(row, idx, 'somaDoTraseiro', 'font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/20')}
                     {renderCell(row, idx, 'camaraCostelaGaucha')}
 
                     {/* BALCÃO / CÂMARA / DESOSSA (NOBRES) */}
-                    <td 
-                      className="px-2 py-1.5 text-center border-r border-slate-200 dark:border-slate-800 font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/30"
-                      title={`Tot. Alcatrão = (${row.fileMignonKg || 0} + ${row.alcatraKg || 0} + ${row.picanhaKg || 0} + ${row.contraFileKg || 0}) / 22 = ${row.totalAlcatrao || 0}`}
-                    >
-                      {Math.round(row.totalAlcatrao || 0)}
-                    </td>
-                    {renderCell(row, idx, 'alcatraKg', 'text-emerald-800 dark:text-emerald-200 bg-emerald-50/30 font-semibold', `Alcatra Kg = ${row.alcatra || row.alcatraPecas || 0} pç × ${currentCutWeights.alcatra} kg = ${row.alcatraKg || 0} kg`)}
                     {renderCell(row, idx, 'alcatra', 'font-bold text-emerald-700 dark:text-emerald-300')}
-                    {renderCell(row, idx, 'contraFileKg', 'text-emerald-800 dark:text-emerald-200 bg-emerald-50/30 font-semibold', `Contra Filé Kg = ${row.contraFile || row.contraFilePecas || 0} pç × ${currentCutWeights.contraFile} kg = ${row.contraFileKg || 0} kg`)}
                     {renderCell(row, idx, 'contraFile', 'font-bold text-emerald-700 dark:text-emerald-300')}
-                    {renderCell(row, idx, 'picanhaKg', 'text-emerald-800 dark:text-emerald-200 bg-emerald-50/30 font-semibold', `Picanha Kg = ${row.picanha || row.picanhaPecas || 0} pç × ${currentCutWeights.picanha} kg = ${row.picanhaKg || 0} kg`)}
                     {renderCell(row, idx, 'picanha', 'font-bold text-emerald-700 dark:text-emerald-300')}
-                    {renderCell(row, idx, 'fileMignonKg', 'text-emerald-800 dark:text-emerald-200 bg-emerald-50/30 font-semibold', `Filé Mignon Kg = ${row.fileMignon || row.fileMignonPecas || 0} pç × ${currentCutWeights.fileMignon} kg = ${row.fileMignonKg || 0} kg`)}
                     {renderCell(row, idx, 'fileMignon', 'font-bold text-emerald-700 dark:text-emerald-300')}
                     {renderCell(row, idx, 'costelaCong')}
 
                     {/* DIANTEIRO */}
-                    <td 
-                      className="px-2 py-1.5 text-center border-r border-slate-200 dark:border-slate-800 font-mono font-bold text-purple-700 dark:text-purple-300 bg-purple-50/70 dark:bg-purple-950/30"
-                      title={`Tot. Dianteiro = (${row.paletaKg || 0} + ${row.acemKg || 0} + ${row.peitoKg || 0} + ${row.musculoKg || 0}) / 35 = ${row.totalDianteiro || 0}`}
-                    >
-                      {Math.round(row.totalDianteiro || 0)}
-                    </td>
-                    {renderCell(row, idx, 'paletaKg', 'text-purple-800 dark:text-purple-200 bg-purple-50/30 font-semibold', `Paleta Kg = ${row.paletaPecas || 0} pç × ${currentCutWeights.paleta} kg = ${row.paletaKg || 0} kg`)}
                     {renderCell(row, idx, 'paletaPecas', 'font-bold text-purple-700 dark:text-purple-300')}
-                    {renderCell(row, idx, 'acemKg', 'text-purple-800 dark:text-purple-200 bg-purple-50/30 font-semibold', `Acém Kg = ${row.acemPecas || 0} pç × ${currentCutWeights.acem} kg = ${row.acemKg || 0} kg`)}
                     {renderCell(row, idx, 'acemPecas', 'font-bold text-purple-700 dark:text-purple-300')}
-                    {renderCell(row, idx, 'peitoKg', 'text-purple-800 dark:text-purple-200 bg-purple-50/30 font-semibold', `Peito Kg = ${row.peitoPecas || 0} pç × ${currentCutWeights.peito} kg = ${row.peitoKg || 0} kg`)}
                     {renderCell(row, idx, 'peitoPecas', 'font-bold text-purple-700 dark:text-purple-300')}
-                    {renderCell(row, idx, 'musculoKg', 'text-purple-800 dark:text-purple-200 bg-purple-50/30 font-semibold', `Músculo Kg = ${row.musculoPecas || 0} pç × ${currentCutWeights.musculo} kg = ${row.musculoKg || 0} kg`)}
                     {renderCell(row, idx, 'musculoPecas', 'font-bold text-purple-700 dark:text-purple-300')}
 
                     {/* COXÃO / TRASEIRO */}
-                    <td 
-                      className="px-2 py-1.5 text-center border-r border-slate-200 dark:border-slate-800 font-mono font-bold text-rose-700 dark:text-rose-300 bg-rose-50/70 dark:bg-rose-950/30"
-                      title={`Tot. Coxão = (${row.chaKg || 0} + ${row.patinhoKg || 0} + ${row.lagartoPlanoKg || 0} + ${row.lagartoRedondoKg || 0}) / 35 = ${row.totalCoxao || 0}`}
-                    >
-                      {Math.round(row.totalCoxao || 0)}
-                    </td>
-                    {renderCell(row, idx, 'chaKg', 'text-rose-800 dark:text-rose-200 bg-rose-50/30 font-semibold', `Chã Kg = ${row.chaPecas || 0} pç × ${currentCutWeights.cha} kg = ${row.chaKg || 0} kg`)}
                     {renderCell(row, idx, 'chaPecas', 'font-bold text-rose-700 dark:text-rose-300')}
-                    {renderCell(row, idx, 'patinhoKg', 'text-rose-800 dark:text-rose-200 bg-rose-50/30 font-semibold', `Patinho Kg = ${row.patinhoPecas || 0} pç × ${currentCutWeights.patinho} kg = ${row.patinhoKg || 0} kg`)}
                     {renderCell(row, idx, 'patinhoPecas', 'font-bold text-rose-700 dark:text-rose-300')}
-                    {renderCell(row, idx, 'lagartoRedondoKg', 'text-rose-800 dark:text-rose-200 bg-rose-50/30 font-semibold', `Lagarto Redondo Kg = ${row.lagartoRedondoPecas || 0} pç × ${currentCutWeights.lagartoRedondo} kg = ${row.lagartoRedondoKg || 0} kg`)}
                     {renderCell(row, idx, 'lagartoRedondoPecas', 'font-bold text-rose-700 dark:text-rose-300')}
-                    {renderCell(row, idx, 'lagartoPlanoKg', 'text-rose-800 dark:text-rose-200 bg-rose-50/30 font-semibold', `Lagarto Plano Kg = ${row.lagartoPlanoPecas || 0} pç × ${currentCutWeights.lagartoPlano} kg = ${row.lagartoPlanoKg || 0} kg`)}
                     {renderCell(row, idx, 'lagartoPlanoPecas', 'font-bold text-rose-700 dark:text-rose-300')}
 
                     {/* CÂMARA / BALCÃO E DESOSSA (SUÍNO / BANDA) */}
@@ -1262,47 +1142,28 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 text-indigo-700 dark:text-indigo-300 font-bold bg-indigo-100/50 dark:bg-indigo-950/50 font-mono">
                   {totals.pedidoFinal}
                 </td>
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 font-bold text-[10px] text-slate-600 dark:text-slate-300 font-mono" title="Total de lojas que receberam boi hoje">
-                  {rows.filter(r => r.recebeuBoiHoje).length}/{rows.length} OK
-                </td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.pTransito}</td>
 
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.camaraDianteiro}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.camaraTraseiro}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.camaraCoxao}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.camaraAlcatrao}</td>
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 text-amber-700 dark:text-amber-400">{totals.somaDoTraseiro}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.camaraCostelaGaucha}</td>
 
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 text-emerald-700 dark:text-emerald-300 font-bold font-mono">{Math.round(totals.totalAlcatrao)}</td>
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 font-semibold font-mono">{Math.round(totals.alcatraKg)}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.alcatra}</td>
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 font-semibold font-mono">{Math.round(totals.contraFileKg)}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.contraFile}</td>
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 font-semibold font-mono">{Math.round(totals.picanhaKg)}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.picanha}</td>
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 font-semibold font-mono">{Math.round(totals.fileMignonKg)}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.fileMignon}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.costelaCong}</td>
 
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 text-purple-700 dark:text-purple-300 font-bold font-mono">{Math.round(totals.totalDianteiro)}</td>
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 font-semibold font-mono">{Math.round(totals.paletaKg)}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.paletaPecas}</td>
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 font-semibold font-mono">{Math.round(totals.acemKg)}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.acemPecas}</td>
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 font-semibold font-mono">{Math.round(totals.peitoKg)}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.peitoPecas}</td>
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 font-semibold font-mono">{Math.round(totals.musculoKg)}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.musculoPecas}</td>
 
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 text-rose-700 dark:text-rose-300 font-bold font-mono">{Math.round(totals.totalCoxao)}</td>
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 font-semibold font-mono">{Math.round(totals.chaKg)}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.chaPecas}</td>
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 font-semibold font-mono">{Math.round(totals.patinhoKg)}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.patinhoPecas}</td>
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 font-semibold font-mono">{Math.round(totals.lagartoRedondoKg)}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.lagartoRedondoPecas}</td>
-                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 font-semibold font-mono">{Math.round(totals.lagartoPlanoKg)}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.lagartoPlanoPecas}</td>
 
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 font-bold font-mono text-teal-700 dark:text-teal-300">{totals.bandaPecas}</td>
@@ -1327,46 +1188,29 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-400 font-mono">{(totals.venda * 260).toFixed(0)}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-500 font-mono">{(totals.sugestaoPedido * 260).toFixed(0)}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 font-mono font-bold">{(totals.pedidoFinal * 260).toFixed(0)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">4.675</td>
 
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">182</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">1.035</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">7.535</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">1.848</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">952</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">400</td>
 
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 font-bold text-emerald-600 dark:text-emerald-400">{Math.round(totals.alcatraKg + totals.contraFileKg + totals.picanhaKg + totals.fileMignonKg)}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.alcatraKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.contraFileKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.picanhaKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.fileMignonKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">112</td>
 
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 font-bold text-purple-600 dark:text-purple-400">{Math.round(totals.paletaKg + totals.acemKg + totals.peitoKg + totals.musculoKg)}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.paletaKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.acemKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.peitoKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.musculoKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
 
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 font-bold text-rose-600 dark:text-rose-400">{Math.round(totals.chaKg + totals.patinhoKg + totals.lagartoPlanoKg + totals.lagartoRedondoKg)}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.chaKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.patinhoKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.lagartoRedondoKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.lagartoPlanoKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
 
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
@@ -1382,7 +1226,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                   <span>TOTAL GERAL</span>
                   <span className="text-xs font-mono text-emerald-900 dark:text-emerald-300">R$ 376.311,95</span>
                 </td>
-                <td colSpan={45} className="px-4 py-2 text-right text-emerald-900 dark:text-emerald-300 font-sans text-xs">
+                <td colSpan={34} className="px-4 py-2 text-right text-emerald-900 dark:text-emerald-300 font-sans text-xs">
                   Validação Contábil Conforme Planilha da Direção: <strong className="font-mono text-slate-900 dark:text-white text-sm">R$ 376.311,95</strong> (Lote de Compra Consolidado das 16 Lojas)
                 </td>
               </tr>
@@ -1446,6 +1290,25 @@ export const SheetTab: React.FC<SheetTabProps> = ({
         onRestoreSnapshot={handleRestore}
         onDeleteSnapshot={handleDelete}
       />
+
+      {/* Modal de Impressão e Download em PDF da Planilha Completa */}
+      {isPdfModalOpen && (
+        <PrintSpreadsheetModal
+          isOpen={isPdfModalOpen}
+          onClose={() => setIsPdfModalOpen(false)}
+          rows={rows}
+          stores={stores || rows.map(r => ({ 
+            id: r.storeId, 
+            name: r.storeName, 
+            code: r.storeName.replace(/[^0-9]/g, '') || '0', 
+            city: 'RJ', 
+            state: 'RJ',
+            manager: 'Encarregado',
+            chamberCapacityPieces: 100,
+            active: true
+          }))}
+        />
+      )}
     </div>
   );
 

@@ -754,6 +754,7 @@ export default function App() {
                   {activeTab === 'sheet' && (
                     <SheetTab
                       rows={sheetRows}
+                      stores={stores}
                       onUpdateRow={handleUpdateRow}
                       onUpdateMultiple={handleUpdateMultipleRows}
                       onExportXLSX={handleExportXLSX}
@@ -1003,6 +1004,7 @@ export default function App() {
           {activeTab === 'sheet' && (
             <SheetTab
               rows={sheetRows}
+              stores={stores}
               onUpdateRow={handleUpdateRow}
               onUpdateMultiple={handleUpdateMultipleRows}
               onExportXLSX={handleExportXLSX}

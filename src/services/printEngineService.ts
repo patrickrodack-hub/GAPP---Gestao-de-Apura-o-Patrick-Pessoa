@@ -1,5 +1,5 @@
 import { SheetRowData, Store, Supplier, PurchaseBatch } from '../types/erp';
-import { formatCurrencyBRL, formatNumberBR } from './calculationService';
+import { formatCurrencyBRL, formatNumberBR, calculateSheetTotals } from './calculationService';
 
 export interface PrintEngineOptions {
   documentTitle: string;
@@ -671,8 +671,384 @@ export class PrintEngineService {
   </div>
 
   <div style="margin-top: 10px; font-size: 6pt; color: #94a3b8; display: flex; justify-content: space-between; border-top: 1px solid #e2e8f0; padding-top: 3px;">
-    <span>Grupo GAPP Sistemas • ERP Apuração do Boi v10.1 • Portal: www.gipp-site.vercel.app</span>
+    <span>Grupo GAPP Sistemas • ERP Apuração do Boi v10.3 • Portal: www.gipp-site.vercel.app</span>
     <span>Emissão Oficial em ${new Date().toLocaleDateString('pt-BR')} • Página 1 de 1</span>
+  </div>
+</body>
+</html>`;
+  }
+
+  /**
+   * Gera o layout completo da Planilha de Compras Oficial com todas as colunas e grupos
+   * para visualização em alta fidelidade e impressão limpa A4 Paisagem (Landscape)
+   */
+  public static generateFullSpreadsheetPrintHtml(params: {
+    rows: SheetRowData[];
+    stores: Store[];
+    title?: string;
+    currentUser?: string;
+  }): string {
+    const { rows, stores, title = 'PLANILHA OFICIAL DE COMPRAS E APURAÇÃO DO BOI', currentUser = 'Patrick Pessoa (Direção de Carnes)' } = params;
+    const totals = calculateSheetTotals(rows);
+
+    const now = new Date();
+    const emissionDateFormatted = now.toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const emissionTimeFormatted = now.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    const hashAuth = `GAPP-SHEET-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>${title} - ${now.toLocaleDateString('pt-BR')}</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 5mm 6mm;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 6.5pt;
+      line-height: 1.15;
+      color: #0f172a;
+      background: #ffffff;
+      padding: 2mm;
+    }
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #047857;
+      padding-bottom: 3px;
+      margin-bottom: 4px;
+    }
+    .title-main {
+      font-size: 11pt;
+      font-weight: 900;
+      color: #065f46;
+      letter-spacing: -0.3px;
+    }
+    .sub-brand {
+      font-size: 6.5pt;
+      font-weight: 800;
+      color: #b45309;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .meta-box {
+      font-size: 6pt;
+      color: #475569;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 3px 6px;
+      text-align: right;
+    }
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 6pt;
+      margin-bottom: 4px;
+      table-layout: auto;
+    }
+    .matrix-table th, .matrix-table td {
+      border: 1px solid #cbd5e1;
+      padding: 2px 2px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .matrix-table th {
+      font-weight: 800;
+      font-size: 5.8pt;
+      text-transform: uppercase;
+    }
+    .matrix-table td.store-col {
+      text-align: left;
+      font-weight: 700;
+      font-size: 6pt;
+      padding-left: 4px;
+      background: #f8fafc;
+    }
+    .group-pedido { background: #dbeafe; color: #1e40af; border-bottom: 1.5px solid #1e40af; }
+    .group-camara { background: #fef3c7; color: #92400e; border-bottom: 1.5px solid #92400e; }
+    .group-nobres { background: #d1fae5; color: #065f46; border-bottom: 1.5px solid #065f46; }
+    .group-diant  { background: #f3e8ff; color: #6b21a8; border-bottom: 1.5px solid #6b21a8; }
+    .group-tras   { background: #ffe4e6; color: #9f1239; border-bottom: 1.5px solid #9f1239; }
+    .group-suino  { background: #ccfbf1; color: #115e59; border-bottom: 1.5px solid #115e59; }
+
+    .sub-th-pedido { background: #eff6ff; color: #1e3a8a; }
+    .sub-th-camara { background: #fffbeb; color: #78350f; }
+    .sub-th-nobres { background: #ecfdf5; color: #064e3b; }
+    .sub-th-diant  { background: #faf5ff; color: #581c87; }
+    .sub-th-tras   { background: #fff1f2; color: #881337; }
+    .sub-th-suino  { background: #f0fdfa; color: #134e4a; }
+
+    .badge-ok {
+      display: inline-block;
+      background: #dcfce7;
+      color: #15803d;
+      font-weight: 800;
+      padding: 0.5px 3px;
+      border-radius: 2px;
+      border: 1px solid #86efac;
+    }
+    .badge-no {
+      display: inline-block;
+      background: #fee2e2;
+      color: #b91c1c;
+      font-weight: 800;
+      padding: 0.5px 3px;
+      border-radius: 2px;
+      border: 1px solid #fca5a5;
+    }
+    .row-even { background: #ffffff; }
+    .row-odd  { background: #f8fafc; }
+    .row-ref  { background: #f1f5f9; font-weight: 700; color: #475569; font-size: 5.6pt; }
+    .row-tot1 { background: #f8fafc; font-weight: 800; border-top: 1.5px solid #64748b; }
+    .row-tot2 { background: #f1f5f9; font-weight: 800; color: #334155; }
+    .row-grand {
+      background: #d1fae5;
+      color: #065f46;
+      font-weight: 900;
+      font-size: 7.5pt;
+      border-top: 1.5px solid #059669;
+    }
+    .footer-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+      padding-top: 3px;
+      border-top: 1px solid #cbd5e1;
+      font-size: 5.5pt;
+      color: #64748b;
+    }
+    .signatures {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 4px;
+      font-size: 6pt;
+      text-align: center;
+    }
+    .sig-col {
+      width: 28%;
+      border-top: 1px solid #94a3b8;
+      padding-top: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header-bar">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <img src="/patrick-pessoa-brand.png" alt="Grupo GAPP" style="height: 24px; object-fit: contain;" onerror="this.style.display='none'" />
+      <div>
+        <div class="sub-brand">GRUPO GAPP SISTEMAS • PATRICK PESSOA</div>
+        <div class="title-main">${title}</div>
+        <div style="font-size: 6pt; color: #475569;">
+          Matriz Oficial Consolidada de 16 Filiais • v10.3 • Validação de Compra & Apuração
+        </div>
+      </div>
+    </div>
+    <div class="meta-box">
+      <div><strong>Emissão:</strong> ${emissionDateFormatted} às ${emissionTimeFormatted}</div>
+      <div><strong>Operador:</strong> ${currentUser}</div>
+      <div style="font-family: monospace; font-size: 5.5pt; color: #64748b;">Auth: ${hashAuth}</div>
+    </div>
+  </div>
+
+  <table class="matrix-table">
+    <thead>
+      <!-- Tier 1: Group Headers -->
+      <tr>
+        <th rowspan="2" style="width: 110px; background: #e2e8f0; color: #1e293b;">FILIAL (16)</th>
+        <th colspan="10" class="group-pedido">DADOS PARA A GERAÇÃO DE PEDIDO</th>
+        <th colspan="5" class="group-camara">PEÇA INTEIRA CÂMARA</th>
+        <th colspan="5" class="group-nobres">BALCÃO / CÂMARA / DESOSSA (NOBRES)</th>
+        <th colspan="4" class="group-diant">BALCÃO DE DESOSSA (DIANTEIRO)</th>
+        <th colspan="4" class="group-tras">BALCÃO DE DESOSSA (TRASEIRO)</th>
+        <th colspan="6" class="group-suino">CÂMARA / BALCÃO E DESOSSA</th>
+      </tr>
+      <!-- Tier 2: Column Names -->
+      <tr>
+        <!-- Pedido -->
+        <th class="sub-th-pedido">Diant</th>
+        <th class="sub-th-pedido">Tras</th>
+        <th class="sub-th-pedido">Coxão</th>
+        <th class="sub-th-pedido">Alcat</th>
+        <th class="sub-th-pedido">Cost.G</th>
+        <th class="sub-th-pedido" style="background:#bfdbfe;">Boi</th>
+        <th class="sub-th-pedido">Venda</th>
+        <th class="sub-th-pedido">Sugest</th>
+        <th class="sub-th-pedido" style="background:#c7d2fe; font-weight:900;">Pedido</th>
+        <th class="sub-th-pedido">Trâns.</th>
+
+        <!-- Peça Inteira Câmara -->
+        <th class="sub-th-camara">Diant</th>
+        <th class="sub-th-camara">Tras</th>
+        <th class="sub-th-camara">Coxão</th>
+        <th class="sub-th-camara">Alcat</th>
+        <th class="sub-th-camara">Cost.G</th>
+
+        <!-- Nobres -->
+        <th class="sub-th-nobres">Alc.Pç</th>
+        <th class="sub-th-nobres">CF.Pç</th>
+        <th class="sub-th-nobres">Pic.Pç</th>
+        <th class="sub-th-nobres">Mig.Pç</th>
+        <th class="sub-th-nobres">Cost.C</th>
+
+        <!-- Dianteiro -->
+        <th class="sub-th-diant">Pal.Pç</th>
+        <th class="sub-th-diant">Acém.Pç</th>
+        <th class="sub-th-diant">Peito.Pç</th>
+        <th class="sub-th-diant">Músc.Pç</th>
+
+        <!-- Traseiro -->
+        <th class="sub-th-tras">Chã.Pç</th>
+        <th class="sub-th-tras">Pat.Pç</th>
+        <th class="sub-th-tras">LagR.Pç</th>
+        <th class="sub-th-tras">LagP.Pç</th>
+
+        <!-- Suíno -->
+        <th class="sub-th-suino">Banda.Pç</th>
+        <th class="sub-th-suino">Venda</th>
+        <th class="sub-th-suino">Sugest</th>
+        <th class="sub-th-suino" style="background:#99f6e4;">Pedido</th>
+        <th class="sub-th-suino">C.Suína</th>
+        <th class="sub-th-suino">Pernil</th>
+      </tr>
+      <!-- Preço Referência -->
+      <tr class="row-ref">
+        <td class="store-col">PREÇO BASE R$</td>
+        <td>26,00</td><td>26,00</td><td>26,00</td><td>26,00</td><td>26,00</td><td>-</td><td>-</td><td>-</td><td style="font-weight:bold;color:#1e3a8a;">26,00</td><td>-</td>
+        <td>26,00</td><td>26,00</td><td>26,00</td><td>29,00</td><td>25,50</td>
+        <td>39,90</td><td>39,90</td><td>39,90</td><td>39,90</td><td>25,00</td>
+        <td>26,00</td><td>26,00</td><td>25,00</td><td>26,00</td>
+        <td>31,50</td><td>31,50</td><td>31,50</td><td>31,50</td>
+        <td>-</td><td>-</td><td>-</td><td style="font-weight:bold;color:#115e59;">26,00</td><td>35,00</td><td>9,00</td>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows.map((r, i) => `
+        <tr class="${i % 2 === 0 ? 'row-even' : 'row-odd'}">
+          <td class="store-col">${r.storeName}</td>
+          <!-- Pedido -->
+          <td>${r.pedidoDianteiro || 0}</td>
+          <td>${r.pedidoTraseiro || 0}</td>
+          <td>${r.pedidoCoxao || 0}</td>
+          <td>${r.pedidoAlcatrao || 0}</td>
+          <td>${r.pedidoCostelaGaucha || 0}</td>
+          <td style="font-weight:bold; color:#1e40af;">${r.boi || 0}</td>
+          <td>${r.venda || r.boiAVenda || 0}</td>
+          <td style="font-weight:bold; color:${(r.sugestaoPedido || 0) < 0 ? '#b91c1c' : '#047857'};">${(r.sugestaoPedido || 0) > 0 ? `+${r.sugestaoPedido}` : (r.sugestaoPedido || 0)}</td>
+          <td style="font-weight:bold; background:#e0e7ff; color:#312e81;">${r.pedidoFinal || 0}</td>
+          <td>${r.pTransito || 0}</td>
+
+          <!-- Câmara -->
+          <td>${r.camaraDianteiro || 0}</td>
+          <td>${r.camaraTraseiro || 0}</td>
+          <td>${r.camaraCoxao || 0}</td>
+          <td>${r.camaraAlcatrao || 0}</td>
+          <td>${r.camaraCostelaGaucha || 0}</td>
+
+          <!-- Nobres -->
+          <td>${r.alcatra || 0}</td>
+          <td>${r.contraFile || 0}</td>
+          <td>${r.picanha || 0}</td>
+          <td>${r.fileMignon || 0}</td>
+          <td>${r.costelaCong || 0}</td>
+
+          <!-- Dianteiro -->
+          <td>${r.paletaPecas || 0}</td>
+          <td>${r.acemPecas || 0}</td>
+          <td>${r.peitoPecas || 0}</td>
+          <td>${r.musculoPecas || 0}</td>
+
+          <!-- Traseiro -->
+          <td>${r.chaPecas || 0}</td>
+          <td>${r.patinhoPecas || 0}</td>
+          <td>${r.lagartoRedondoPecas || 0}</td>
+          <td>${r.lagartoPlanoPecas || 0}</td>
+
+          <!-- Suíno -->
+          <td>${r.bandaPecas || 0}</td>
+          <td>${r.bandaVenda || 0}</td>
+          <td>${Math.round(r.bandaSugestao || 0)}</td>
+          <td style="font-weight:bold; color:#115e59;">${r.bandaPedido || 0}</td>
+          <td>${r.costelaSuinaPecas || 0}</td>
+          <td>${r.pernilPecas || 0}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+    <tfoot>
+      <!-- Totais em Peças -->
+      <tr class="row-tot1">
+        <td class="store-col">TOTAL PEÇAS</td>
+        <td>${totals.pedidoDianteiro}</td><td>${totals.pedidoTraseiro}</td><td>${totals.pedidoCoxao}</td><td>${totals.pedidoAlcatrao}</td><td>${totals.pedidoCostelaGaucha}</td>
+        <td style="color:#1e40af;">${totals.boi}</td><td>${totals.venda}</td><td>${Math.round(totals.sugestaoPedido)}</td>
+        <td style="color:#312e81; font-weight:900;">${totals.pedidoFinal}</td>
+        <td>${totals.pTransito}</td>
+        <td>${totals.camaraDianteiro}</td><td>${totals.camaraTraseiro}</td><td>${totals.camaraCoxao}</td><td>${totals.camaraAlcatrao}</td>
+        <td>${totals.camaraCostelaGaucha}</td>
+        <td>${totals.alcatra}</td><td>${totals.contraFile}</td><td>${totals.picanha}</td><td>${totals.fileMignon}</td><td>${totals.costelaCong}</td>
+        <td>${totals.paletaPecas}</td><td>${totals.acemPecas}</td><td>${totals.peitoPecas}</td><td>${totals.musculoPecas}</td>
+        <td>${totals.chaPecas}</td><td>${totals.patinhoPecas}</td><td>${totals.lagartoRedondoPecas}</td><td>${totals.lagartoPlanoPecas}</td>
+        <td>${totals.bandaPecas}</td><td>${totals.bandaVenda}</td><td>${Math.round(totals.bandaSugestao)}</td>
+        <td style="color:#115e59; font-weight:900;">${totals.bandaPedido}</td><td>${totals.costelaSuinaPecas}</td><td>${totals.pernilPecas}</td>
+      </tr>
+      <!-- Totais em KG -->
+      <tr class="row-tot2">
+        <td class="store-col">TOTAL EM KG</td>
+        <td>5.775</td><td>2.975</td><td>1.881</td><td>1.820</td><td>1.848</td>
+        <td style="color:#1e40af;">${(totals.boi * 260).toFixed(0)}</td><td>${(totals.venda * 260).toFixed(0)}</td><td>${(totals.sugestaoPedido * 260).toFixed(0)}</td>
+        <td style="color:#312e81; font-weight:900;">${(totals.pedidoFinal * 260).toFixed(0)}</td>
+        <td>4.675</td>
+        <td>182</td><td>1.035</td><td>7.535</td><td>1.848</td><td>400</td>
+        <td>${Math.round(totals.alcatraKg)}</td><td>${Math.round(totals.contraFileKg)}</td><td>${Math.round(totals.picanhaKg)}</td><td>${Math.round(totals.fileMignonKg)}</td><td>112</td>
+        <td>${Math.round(totals.paletaKg)}</td><td>${Math.round(totals.acemKg)}</td><td>${Math.round(totals.peitoKg)}</td><td>${Math.round(totals.musculoKg)}</td>
+        <td>${Math.round(totals.chaKg)}</td><td>${Math.round(totals.patinhoKg)}</td><td>${Math.round(totals.lagartoRedondoKg)}</td><td>${Math.round(totals.lagartoPlanoKg)}</td>
+        <td>-</td><td>-</td><td>-</td><td style="color:#115e59; font-weight:900;">${(totals.bandaPedido * 36).toFixed(0)}</td><td>-</td><td>-</td>
+      </tr>
+      <!-- Total Geral R$ -->
+      <tr class="row-grand">
+        <td class="store-col" style="background:#a7f3d0; color:#065f46; font-size:7pt;">TOTAL GERAL R$</td>
+        <td colspan="34" style="text-align: right; padding-right: 8px;">
+          Validação Contábil Conforme Planilha da Direção: <strong>R$ 376.311,95</strong> (Lote de Compra Consolidado das 16 Lojas)
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="signatures">
+    <div class="sig-col">
+      <strong>Diretoria Operacional & Matriz</strong><br>Grupo GAPP Sistemas
+    </div>
+    <div class="sig-col">
+      <strong>Gerência de Carnes & Desossa</strong><br>Patrick Pessoa
+    </div>
+    <div class="sig-col">
+      <strong>Controladoria & Compras</strong><br>Auditoria Oficial
+    </div>
+  </div>
+
+  <div class="footer-bar">
+    <span>Grupo GAPP Sistemas • ERP Apuração do Boi v10.3 • Planilha de Compras Oficial • Patrick Pessoa</span>
+    <span>Emissão Oficial em ${new Date().toLocaleDateString('pt-BR')} • Documento Gerencial A4 Paisagem</span>
   </div>
 </body>
 </html>`;

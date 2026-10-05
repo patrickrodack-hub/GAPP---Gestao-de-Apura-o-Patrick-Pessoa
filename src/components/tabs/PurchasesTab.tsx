@@ -17,11 +17,13 @@ import {
   Trash2,
   Printer,
   Search,
-  AlertTriangle
+  AlertTriangle,
+  FileSpreadsheet
 } from 'lucide-react';
 import { ViewPurchaseBatchModal } from '../modals/ViewPurchaseBatchModal';
 import { EditPurchaseBatchModal } from '../modals/EditPurchaseBatchModal';
 import { PrintPurchaseOrderModal } from '../modals/PrintPurchaseOrderModal';
+import { PrintSpreadsheetModal } from '../modals/PrintSpreadsheetModal';
 
 interface PurchasesTabProps {
   batches: PurchaseBatch[];
@@ -59,6 +61,7 @@ export const PurchasesTab: React.FC<PurchasesTabProps> = ({
   const [editingBatch, setEditingBatch] = useState<PurchaseBatch | null>(null);
   const [printingBatch, setPrintingBatch] = useState<PurchaseBatch | null>(null);
   const [deletingBatch, setDeletingBatch] = useState<PurchaseBatch | null>(null);
+  const [isSpreadsheetPdfOpen, setIsSpreadsheetPdfOpen] = useState(false);
 
   const costPerKg = arrobaPrice / 15;
   const totalCost = totalGrossWeightKg * costPerKg;
@@ -190,7 +193,16 @@ export const PurchasesTab: React.FC<PurchasesTabProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setIsSpreadsheetPdfOpen(true)}
+            className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+            title="Gerar e Visualizar a Planilha Oficial de Compras em PDF com opção de salvar ou imprimir"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Planilha de Compras em PDF</span>
+          </button>
+
           {onOpenSupplierManager && (
             <button
               onClick={onOpenSupplierManager}
@@ -445,6 +457,16 @@ export const PurchasesTab: React.FC<PurchasesTabProps> = ({
           carcassWeightPerBoiKg={Math.round(printingBatch.totalGrossWeightKg / (printingBatch.headsCount || 1))}
           notes={printingBatch.notes || ''}
           orderItems={getPrintItems(printingBatch)}
+        />
+      )}
+
+      {/* Modal Planilha Oficial de Compras em PDF */}
+      {isSpreadsheetPdfOpen && (
+        <PrintSpreadsheetModal
+          isOpen={isSpreadsheetPdfOpen}
+          onClose={() => setIsSpreadsheetPdfOpen(false)}
+          rows={sheetRows}
+          stores={stores}
         />
       )}
 
