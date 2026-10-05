@@ -8,15 +8,11 @@ import {
   Eye, 
   EyeOff, 
   ShieldCheck, 
-  ArrowRight, 
   Sun, 
   Moon, 
   Monitor, 
   AlertCircle,
-  Terminal,
-  Power,
-  Sparkles,
-  CheckCircle2
+  Power
 } from 'lucide-react';
 
 interface ManagementLoginProps {
@@ -98,37 +94,31 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
     }, 400);
   };
 
-  // Preenchimento rápido para o desenvolvedor
-  const handleFillDeveloper = () => {
-    setUsername('desenvolvedor');
-    setPassword('190996');
-    setErrorMessage(null);
-  };
-
   return (
     <div className="min-h-screen w-full bg-[#07080c] text-white flex flex-col justify-between relative overflow-hidden select-none font-sans">
       
       {/* ============================================================ */}
-      {/* BACKGROUND GRAPHICS: Neon Wavy Ribbons matching the reference */}
+      {/* BACKGROUND GRAPHICS: Neon Wavy Ribbons & Vivid Light Orbs    */}
       {/* ============================================================ */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {/* Glow ambient background orbs */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[450px] bg-gradient-to-tr from-purple-700/20 via-fuchsia-600/15 to-transparent rounded-full blur-[120px]" />
-        <div className="absolute -top-24 -right-24 w-[500px] h-[500px] bg-purple-600/15 rounded-full blur-[140px]" />
-        <div className="absolute -bottom-24 -left-24 w-[500px] h-[500px] bg-blue-600/15 rounded-full blur-[140px]" />
+        {/* Glow ambient background orbs com mais cor e intensidade */}
+        <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-gradient-to-tr from-emerald-600/25 via-teal-500/20 to-purple-600/20 rounded-full blur-[130px]" />
+        <div className="absolute -top-20 -right-20 w-[550px] h-[550px] bg-gradient-to-br from-purple-600/25 via-pink-600/20 to-transparent rounded-full blur-[140px]" />
+        <div className="absolute -bottom-24 -left-24 w-[550px] h-[550px] bg-gradient-to-tr from-emerald-600/25 via-blue-600/20 to-transparent rounded-full blur-[140px]" />
 
         {/* Top-Right Neon Wave Mesh */}
         <svg 
-          className="absolute -top-10 -right-20 w-[600px] h-[600px] opacity-75"
+          className="absolute -top-10 -right-20 w-[600px] h-[600px] opacity-80"
           viewBox="0 0 500 500" 
           fill="none" 
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
             <linearGradient id="waveGradRight" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.8" />
-              <stop offset="50%" stopColor="#a855f7" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="#ec4899" stopOpacity="0.8" />
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.85" />
+              <stop offset="40%" stopColor="#3b82f6" stopOpacity="0.85" />
+              <stop offset="80%" stopColor="#a855f7" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="#ec4899" stopOpacity="0.85" />
             </linearGradient>
           </defs>
           {Array.from({ length: 32 }).map((_, i) => {
@@ -139,7 +129,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                 d={`M ${180 + offset},0 C ${230 + offset * 0.9},140 ${320 - offset * 0.5},220 ${280 + offset},350 C ${250 + offset},440 ${370 + offset * 0.6},470 ${420 + offset},500`}
                 stroke="url(#waveGradRight)"
                 strokeWidth="1.2"
-                strokeOpacity={0.15 + (i % 6) * 0.12}
+                strokeOpacity={0.18 + (i % 6) * 0.12}
               />
             );
           })}
@@ -147,16 +137,17 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
 
         {/* Bottom-Left Neon Wave Mesh */}
         <svg 
-          className="absolute -bottom-20 -left-20 w-[600px] h-[600px] opacity-70"
+          className="absolute -bottom-20 -left-20 w-[600px] h-[600px] opacity-75"
           viewBox="0 0 500 500" 
           fill="none" 
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
             <linearGradient id="waveGradLeft" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#2563eb" stopOpacity="0.85" />
-              <stop offset="50%" stopColor="#7c3aed" stopOpacity="0.85" />
-              <stop offset="100%" stopColor="#d946ef" stopOpacity="0.85" />
+              <stop offset="0%" stopColor="#059669" stopOpacity="0.9" />
+              <stop offset="40%" stopColor="#2563eb" stopOpacity="0.9" />
+              <stop offset="80%" stopColor="#7c3aed" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#d946ef" stopOpacity="0.9" />
             </linearGradient>
           </defs>
           {Array.from({ length: 30 }).map((_, i) => {
@@ -167,7 +158,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                 d={`M 0,${340 + offset * 0.5} C 120,${290 + offset * 0.7} 180,${180 - offset * 0.4} 280,${220 + offset * 0.6} C 350,${260 + offset * 0.3} 380,${390} 500,${420 + offset * 0.2}`}
                 stroke="url(#waveGradLeft)"
                 strokeWidth="1.2"
-                strokeOpacity={0.15 + (i % 5) * 0.14}
+                strokeOpacity={0.18 + (i % 5) * 0.14}
               />
             );
           })}
@@ -180,11 +171,11 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
       <header className="relative z-20 w-full max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
         {/* Identificação Corporativa */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-zinc-900/80 border border-white/10 backdrop-blur-xl flex items-center justify-center shadow-lg">
+          <div className="w-11 h-11 rounded-2xl bg-zinc-900/90 border border-emerald-500/30 backdrop-blur-xl flex items-center justify-center shadow-lg shadow-emerald-950/40">
             <img 
               src="/brand-logo.svg" 
               alt="Patrick Pessoa" 
-              className="w-6 h-6 object-contain"
+              className="w-7 h-7 object-contain drop-shadow"
               onError={(e) => {
                 e.currentTarget.src = '/patrick-pessoa-brand.png';
               }}
@@ -269,70 +260,81 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
         <div className="w-full max-w-4xl lg:max-w-5xl">
           
           {/* Card Principal em Glassmorphism Horizontal */}
-          <div className="relative rounded-[32px] sm:rounded-[38px] bg-zinc-950/65 backdrop-blur-2xl border border-white/15 shadow-[0_25px_80px_rgba(0,0,0,0.85)] overflow-hidden">
+          <div className="relative rounded-[32px] sm:rounded-[38px] bg-zinc-950/75 backdrop-blur-2xl border border-white/15 shadow-[0_25px_80px_rgba(0,0,0,0.85)] overflow-hidden">
             
             {/* Brilho sutil de borda superior */}
-            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent pointer-events-none" />
 
-            <div className="grid grid-cols-1 md:grid-cols-[1.1fr_auto_1fr] items-stretch min-h-[460px] sm:min-h-[500px]">
+            <div className="grid grid-cols-1 md:grid-cols-[1.15fr_auto_1fr] items-stretch min-h-[460px] sm:min-h-[500px]">
               
               {/* ======================================================== */}
               {/* COLUNA ESQUERDA: LOGO + TITULO + DESCRICAO + WEBSITE     */}
               {/* ======================================================== */}
               <div className="p-8 sm:p-12 lg:p-14 flex flex-col justify-between space-y-6">
                 
-                {/* 1. Header com LOGO */}
+                {/* 1. Header com LOGO AUMENTADA E COLORIDA */}
                 <div>
-                  <div className="flex items-center gap-3 mb-6">
-                    <div 
-                      onClick={handleFillDeveloper}
-                      className="cursor-pointer group flex items-center gap-3"
-                      title="Clique para carregar credenciais do Desenvolvedor"
-                    >
-                      <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-white/20 p-2 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-200">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 mb-6">
+                    {/* Container de Logo Ampliado com Cores e Brilho Vibrante */}
+                    <div className="relative shrink-0">
+                      <div className="absolute -inset-1.5 bg-gradient-to-tr from-emerald-500 via-amber-400 to-purple-600 rounded-[28px] blur-md opacity-70 animate-pulse" />
+                      <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-[24px] bg-gradient-to-b from-[#1b2d1e] via-[#101912] to-[#0a100c] border-2 border-emerald-400/60 p-2.5 flex items-center justify-center shadow-2xl shadow-emerald-950/80">
                         <img 
                           src="/brand-logo.svg" 
-                          alt="Patrick Pessoa" 
-                          className="w-full h-full object-contain filter drop-shadow-md"
+                          alt="Patrick Pessoa - Apuração do BOI" 
+                          className="w-full h-full object-contain filter drop-shadow-[0_4px_10px_rgba(16,185,129,0.4)]"
                           onError={(e) => {
                             e.currentTarget.src = '/patrick-pessoa-brand.png';
                           }}
                         />
                       </div>
-                      <div>
-                        <span className="text-xl sm:text-2xl font-black tracking-widest text-white block">
-                          LOGO
-                        </span>
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 font-mono block">
+                    </div>
+
+                    {/* Título Oficial: Apuração do BOI v10.1 */}
+                    <div>
+                      <span className="text-2xl sm:text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-emerald-100 to-emerald-300 block drop-shadow-sm">
+                        Apuração do BOI v10.1
+                      </span>
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-300 font-mono bg-amber-500/15 border border-amber-400/40 px-2 py-0.5 rounded-lg shadow-sm">
                           PATRICK PESSOA
+                        </span>
+                        <span className="text-[11px] text-zinc-400 font-medium">
+                          Gestão de Desossa & Câmaras
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* 2. Título Impactante no estilo do layout ("Glass Morphism") */}
+                  {/* 2. Título Impactante no estilo do layout */}
                   <div className="space-y-1">
                     <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-[1.08]">
                       Módulo de
                     </h1>
-                    <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[1.08] text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-purple-300 to-indigo-300">
+                    <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[1.08] text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-indigo-300">
                       Gestão
                     </h1>
                   </div>
 
                   {/* 3. Parágrafo Descritivo com as informações reais do nosso sistema */}
-                  <p className="mt-5 text-xs sm:text-sm text-zinc-300/80 leading-relaxed max-w-sm font-normal">
+                  <p className="mt-5 text-xs sm:text-sm text-zinc-300/85 leading-relaxed max-w-sm font-normal">
                     Ambiente corporativo oficial para apuração de compras de gado, 
                     simulação zootécnica de rendimento de carcaças, auditoria de margens 
                     e consolidação de estoque nas câmaras das 16 lojas filiais.
                   </p>
                 </div>
 
-                {/* 4. Rodapé da Coluna Esquerda: Endereço / Assinatura do Sistema */}
+                {/* 4. Rodapé da Coluna Esquerda: Endereço Atualizado www.gipp-site.vercel.app */}
                 <div className="pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-zinc-400 font-mono">
-                  <span className="hover:text-purple-300 transition cursor-default">
-                    www.grupogapp.com.br
-                  </span>
+                  <a
+                    href="https://gipp-site.vercel.app"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-400 hover:text-emerald-300 transition underline underline-offset-4 decoration-emerald-500/40 font-semibold"
+                    title="Acessar portal institucional"
+                  >
+                    www.gipp-site.vercel.app
+                  </a>
                   <span className="text-zinc-500">
                     16 Filiais Integradas
                   </span>
@@ -394,7 +396,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                         placeholder="Username"
                         autoComplete="username"
                         autoFocus
-                        className="w-full pl-11 pr-4 py-3 bg-zinc-800/80 hover:bg-zinc-800/95 focus:bg-zinc-800 border border-white/10 focus:border-purple-400/70 rounded-full text-sm font-semibold text-white placeholder:text-zinc-400 focus:outline-none transition shadow-inner"
+                        className="w-full pl-11 pr-4 py-3 bg-zinc-800/80 hover:bg-zinc-800/95 focus:bg-zinc-800 border border-white/10 focus:border-emerald-400/70 rounded-full text-sm font-semibold text-white placeholder:text-zinc-400 focus:outline-none transition shadow-inner"
                       />
                     </div>
                   </div>
@@ -414,7 +416,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Password"
                         autoComplete="current-password"
-                        className="w-full pl-11 pr-12 py-3 bg-zinc-800/80 hover:bg-zinc-800/95 focus:bg-zinc-800 border border-white/10 focus:border-purple-400/70 rounded-full text-sm font-semibold text-white placeholder:text-zinc-400 focus:outline-none transition shadow-inner"
+                        className="w-full pl-11 pr-12 py-3 bg-zinc-800/80 hover:bg-zinc-800/95 focus:bg-zinc-800 border border-white/10 focus:border-emerald-400/70 rounded-full text-sm font-semibold text-white placeholder:text-zinc-400 focus:outline-none transition shadow-inner"
                       />
                       <button
                         type="button"
@@ -427,27 +429,19 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                     </div>
                   </div>
 
-                  {/* Opções de Lembrar Acesso & Acesso Rápido Desenvolvedor */}
-                  <div className="flex items-center justify-between text-xs px-2 pt-1">
+                  {/* Opção de Lembrar Acesso (sem botões de atalho ou preenchimento de teste) */}
+                  <div className="flex items-center text-xs px-2 pt-1">
                     <label className="flex items-center gap-2 cursor-pointer select-none">
                       <input
                         type="checkbox"
                         checked={rememberMe}
                         onChange={(e) => setRememberMe(e.target.checked)}
-                        className="w-3.5 h-3.5 rounded text-purple-600 bg-zinc-800 border-zinc-600 focus:ring-purple-500"
+                        className="w-3.5 h-3.5 rounded text-emerald-600 bg-zinc-800 border-zinc-600 focus:ring-emerald-500"
                       />
                       <span className="text-zinc-300 font-medium text-[11px]">
-                        Lembrar acesso
+                        Lembrar acesso neste dispositivo
                       </span>
                     </label>
-
-                    <button
-                      type="button"
-                      onClick={handleFillDeveloper}
-                      className="text-amber-400 hover:text-amber-300 text-[11px] font-bold hover:underline cursor-pointer"
-                    >
-                      Preencher Desenvolvedor
-                    </button>
                   </div>
 
                   {/* Botão de Login (Pill arredondado centralizado conforme imagem) */}
@@ -470,15 +464,11 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
 
                 </form>
 
-                {/* Dica Informativa do Desenvolvedor (Patrick Pessoa) */}
+                {/* Rodapé Seguro e Limpo */}
                 <div className="mt-6 pt-4 border-t border-white/10 text-center">
-                  <div 
-                    onClick={handleFillDeveloper}
-                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] text-zinc-300 transition cursor-pointer group"
-                    title="Acesso completo com usuário 'patrick pessoa' ou 'desenvolvedor'"
-                  >
-                    <Terminal className="w-3 h-3 text-purple-400" />
-                    <span>Acesso Desenvolvedor: <strong>patrick pessoa</strong> (100% de acesso)</span>
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] text-zinc-400">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Ambiente Corporativo Seguro • Criptografia Ativa</span>
                   </div>
                 </div>
 
@@ -501,3 +491,4 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
     </div>
   );
 };
+
