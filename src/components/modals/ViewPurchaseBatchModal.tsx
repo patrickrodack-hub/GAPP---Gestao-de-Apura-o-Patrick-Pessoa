@@ -225,10 +225,10 @@ export const ViewPurchaseBatchModal: React.FC<ViewPurchaseBatchModalProps> = ({
               <div className="grid grid-cols-2 gap-3 text-[11px]">
                 <div>
                   <span className="text-slate-500 dark:text-slate-400 block">Preço da Arroba (@):</span>
-                  <strong className="text-blue-700 dark:text-blue-400 font-mono text-xs">
+                  <strong className="text-red-600 dark:text-red-500 font-mono text-xs font-bold">
                     {formatCurrencyBRL(batch.arrobaPrice)}
                   </strong>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold block">
                     (= {formatCurrencyBRL(batch.costPerKg)}/kg)
                   </span>
                 </div>

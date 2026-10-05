@@ -670,7 +670,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
                     onChange={(e) => setArrobaPrice(Number(e.target.value) || 0)}
                     className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 text-xs text-slate-800 dark:text-slate-200 font-mono font-bold focus:outline-none focus:border-amber-500"
                   />
-                  <span className="text-[10px] text-slate-500 whitespace-nowrap">
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold whitespace-nowrap">
                     (= R$ {pricePerKg.toFixed(2)}/kg)
                   </span>
                 </div>

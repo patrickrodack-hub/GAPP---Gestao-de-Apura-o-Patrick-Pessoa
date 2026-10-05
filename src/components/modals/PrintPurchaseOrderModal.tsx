@@ -206,8 +206,8 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div>
                     <span className="text-slate-500 block">Preço da Arroba (@):</span>
-                    <strong className="text-blue-800 font-mono text-xs">R$ {arrobaPrice.toFixed(2)}</strong>
-                    <span className="text-[10px] text-slate-500 block">(= R$ {pricePerKg.toFixed(2)}/kg)</span>
+                    <strong className="text-red-600 font-mono text-xs font-bold">R$ {arrobaPrice.toFixed(2)}</strong>
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold block">(= R$ {pricePerKg.toFixed(2)}/kg)</span>
                   </div>
                   <div>
                     <span className="text-slate-500 block">Peso Médio Estimado:</span>

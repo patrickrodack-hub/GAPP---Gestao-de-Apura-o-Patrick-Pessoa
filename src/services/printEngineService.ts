@@ -333,7 +333,7 @@ export class PrintEngineService {
     </div>
     <div class="card-box">
       <span class="card-label">Preço da Arroba (@)</span>
-      <span class="card-value">${formatCurrencyBRL(arrobaPrice)}</span>
+      <span class="card-value highlight" style="color: #dc2626; font-weight: 900;">${formatCurrencyBRL(arrobaPrice)}</span>
     </div>
     <div class="card-box">
       <span class="card-label">Custo Base / Kg</span>
