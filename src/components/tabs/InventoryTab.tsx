@@ -12,7 +12,9 @@ import {
   Plus,
   Building2,
   FileSpreadsheet,
-  ClipboardList
+  ClipboardList,
+  Check,
+  X
 } from 'lucide-react';
 import { formatNumberBR } from '../../services/calculationService';
 import { StockLaunchByStore } from '../inventory/StockLaunchByStore';
@@ -238,6 +240,10 @@ export const InventoryTab: React.FC<InventoryTabProps> = ({
               <thead className="bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-800 font-semibold">
                 <tr>
                   <th className="px-4 py-3">Filial / Responsável</th>
+                  <th className="px-3 py-3 text-center" title="Informação sincronizada do Portal de Membros: Confirmação se a filial recebeu boi hoje">
+                    <span className="block">Recebeu Boi Hoje?</span>
+                    <span className="text-[9px] font-normal text-slate-500 dark:text-slate-400 block tracking-tight">Portal de Membros</span>
+                  </th>
                   <th className="px-3 py-3 text-center">Dianteiro Câmara</th>
                   <th className="px-3 py-3 text-center">Traseiro Câmara</th>
                   <th className="px-3 py-3 text-center">Coxão Câmara</th>
@@ -265,6 +271,26 @@ export const InventoryTab: React.FC<InventoryTabProps> = ({
                       <td className="px-4 py-2.5 font-sans">
                         <div className="font-semibold text-slate-800 dark:text-slate-200">{store.name}</div>
                         <div className="text-[10px] text-slate-500">{store.city} • Resp: {store.manager}</div>
+                      </td>
+
+                      <td className="px-3 py-2.5 text-center font-sans">
+                        {row.recebeuBoiHoje ? (
+                          <span 
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 shadow-2xs" 
+                            title="Portal de Membros: Confirmado que a loja recebeu boi hoje (SIM)"
+                          >
+                            <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 stroke-[3]" />
+                            <span>OK</span>
+                          </span>
+                        ) : (
+                          <span 
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300 dark:border-rose-700 shadow-2xs" 
+                            title="Portal de Membros: Loja NÃO recebeu boi hoje"
+                          >
+                            <X className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 stroke-[3]" />
+                            <span>X</span>
+                          </span>
+                        )}
                       </td>
 
                       <td className="px-3 py-2.5 text-center text-slate-700 dark:text-slate-300 font-bold">

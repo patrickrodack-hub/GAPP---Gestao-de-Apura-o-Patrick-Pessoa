@@ -799,7 +799,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 </th>
                 
                 {/* DADOS PARA A GERAÇÃO DE PEDIDO */}
-                <th colSpan={10} className="px-3 py-2 text-center bg-blue-100 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border-r border-slate-200 dark:border-slate-800 border-b border-blue-200 dark:border-blue-900/50">
+                <th colSpan={11} className="px-3 py-2 text-center bg-blue-100 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border-r border-slate-200 dark:border-slate-800 border-b border-blue-200 dark:border-blue-900/50">
                   <div className="flex items-center justify-center gap-1.5">
                     <span>DADOS PARA A GERAÇÃO DE PEDIDO</span>
                     <span className="text-[9px] font-normal text-blue-700 dark:text-blue-400 bg-blue-200/60 dark:bg-blue-900/60 px-1.5 py-0.2 rounded" title="Dianteiro = Câm. Diant + Tot. Diant • Coxão = Câm. Coxão + Tot. Coxão • Alcatrão = Câm. Alcatrão + Tot. Alcatrão • Boi = Σ/2 • Sugestão = Venda - Boi">
@@ -878,6 +878,16 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                   <span className="block">Pedido</span>
                   <span className="text-[9px] font-normal text-indigo-600 dark:text-indigo-400 block tracking-tight leading-none">(Qtd Real)</span>
                 </th>
+                
+                {/* Informação do Portal de Membros se a filial recebeu boi hoje */}
+                <th 
+                  className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 font-bold min-w-[75px]" 
+                  title="Informação do Portal de Membros: Loja recebeu boi hoje? (OK = Sim / X = Não)"
+                >
+                  <span className="block text-[10px] uppercase font-bold">Recebeu Boi?</span>
+                  <span className="text-[8px] font-semibold text-slate-500 dark:text-slate-400 block tracking-tight leading-none">(Portal)</span>
+                </th>
+
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800">P. Trânsito</th>
 
                 {/* CÂMARA */}
@@ -988,6 +998,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 font-bold text-indigo-700 dark:text-indigo-300">26,00</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
 
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">26,00</td>
@@ -1132,6 +1143,24 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                     {/* Pedido (Qtd. Pedida) */}
                     {renderCell(row, idx, 'pedidoFinal', 'font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/30')}
 
+                    {/* Informação do Portal de Membros (Recebeu Boi Hoje?) */}
+                    <td 
+                      className="px-2 py-1.5 text-center border-r border-slate-200 dark:border-slate-800 font-sans"
+                      title={row.recebeuBoiHoje ? 'Portal de Membros: Confirmado que a filial recebeu boi hoje (SIM)' : 'Portal de Membros: Filial NÃO recebeu boi hoje'}
+                    >
+                      {row.recebeuBoiHoje ? (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 shadow-2xs">
+                          <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400 stroke-[3]" />
+                          <span>OK</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300 dark:border-rose-700 shadow-2xs">
+                          <X className="w-3 h-3 text-rose-600 dark:text-rose-400 stroke-[3]" />
+                          <span>X</span>
+                        </span>
+                      )}
+                    </td>
+
                     {/* P. Trânsito */}
                     {renderCell(row, idx, 'pTransito')}
 
@@ -1233,6 +1262,9 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 text-indigo-700 dark:text-indigo-300 font-bold bg-indigo-100/50 dark:bg-indigo-950/50 font-mono">
                   {totals.pedidoFinal}
                 </td>
+                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 font-bold text-[10px] text-slate-600 dark:text-slate-300 font-mono" title="Total de lojas que receberam boi hoje">
+                  {rows.filter(r => r.recebeuBoiHoje).length}/{rows.length} OK
+                </td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.pTransito}</td>
 
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.camaraDianteiro}</td>
@@ -1295,6 +1327,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-400 font-mono">{(totals.venda * 260).toFixed(0)}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-500 font-mono">{(totals.sugestaoPedido * 260).toFixed(0)}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 font-mono font-bold">{(totals.pedidoFinal * 260).toFixed(0)}</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">4.675</td>
 
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">182</td>
@@ -1349,7 +1382,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                   <span>TOTAL GERAL</span>
                   <span className="text-xs font-mono text-emerald-900 dark:text-emerald-300">R$ 376.311,95</span>
                 </td>
-                <td colSpan={44} className="px-4 py-2 text-right text-emerald-900 dark:text-emerald-300 font-sans text-xs">
+                <td colSpan={45} className="px-4 py-2 text-right text-emerald-900 dark:text-emerald-300 font-sans text-xs">
                   Validação Contábil Conforme Planilha da Direção: <strong className="font-mono text-slate-900 dark:text-white text-sm">R$ 376.311,95</strong> (Lote de Compra Consolidado das 16 Lojas)
                 </td>
               </tr>

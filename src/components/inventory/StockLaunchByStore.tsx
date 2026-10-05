@@ -21,7 +21,9 @@ import {
   Sparkles,
   ExternalLink,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Check,
+  X
 } from 'lucide-react';
 
 interface StockLaunchByStoreProps {
@@ -42,6 +44,19 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
   const [selectedStoreId, setSelectedStoreId] = useState<string>(stores[0]?.id || '1');
   const [draftRow, setDraftRow] = useState<SheetRowData | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Armazena e persiste quais filiais já tiveram estoque lançado
+  const [launchedStoreIds, setLaunchedStoreIds] = useState<Set<string>>(() => {
+    try {
+      const records = StorageService.getStockLaunchRecords();
+      const idsFromRecords = records.map(r => r.storeId);
+      const saved = localStorage.getItem('gapp_stock_launched_stores');
+      const idsFromSaved = saved ? JSON.parse(saved) : [];
+      return new Set<string>([...idsFromRecords, ...idsFromSaved]);
+    } catch {
+      return new Set<string>();
+    }
+  });
 
   const yieldParams = StorageService.getYieldParams();
   const currentWeights: CutYieldWeights = yieldParams.basis === 'piece' 
@@ -82,7 +97,19 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
     // 1. Atualiza e mantém na Planilha de Compras Oficial
     onUpdateRow(finalRow);
 
-    // 2. Registra data, hora e métricas no histórico persistente
+    // 2. Marca a aba da filial como lançada (cor verde)
+    setLaunchedStoreIds(prev => {
+      const next = new Set(prev);
+      next.add(selectedStore.id);
+      try {
+        localStorage.setItem('gapp_stock_launched_stores', JSON.stringify(Array.from(next)));
+      } catch (e) {
+        console.warn(e);
+      }
+      return next;
+    });
+
+    // 3. Registra data, hora e métricas no histórico persistente
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     const formattedDate = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
@@ -110,6 +137,7 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
       boisEquivalente: finalRow.boi || 0,
       sugestaoPedido: finalRow.sugestaoPedido || 0,
       rowData: finalRow,
+      recebeuBoiHoje: finalRow.recebeuBoiHoje ?? false,
       notes: `Lançamento manual registrado na aba Estoque & Câmaras (${selectedStore.name})`
     };
 
@@ -131,8 +159,8 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
   };
 
   const handleResetStore = () => {
-    if (!draftRow) return;
-    if (window.confirm(`Deseja zerar os lançamentos de estoque da loja ${selectedStore?.name}?`)) {
+    if (!draftRow || !selectedStore) return;
+    if (window.confirm(`Deseja zerar os lançamentos de estoque da loja ${selectedStore.name}?`)) {
       const cleared = recalculateRowOrderFormulas({
         ...draftRow,
         camaraDianteiro: 0,
@@ -177,6 +205,16 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
       }, currentWeights);
       setDraftRow(cleared);
       onUpdateRow(cleared);
+      setLaunchedStoreIds(prev => {
+        const next = new Set(prev);
+        next.delete(selectedStore.id);
+        try {
+          localStorage.setItem('gapp_stock_launched_stores', JSON.stringify(Array.from(next)));
+        } catch (e) {
+          console.warn(e);
+        }
+        return next;
+      });
     }
   };
 
@@ -222,6 +260,49 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
 
           {/* Store Selection & Actions */}
           <div className="flex flex-wrap items-center gap-2">
+            {/* Informação do Portal de Membros: Recebeu Boi Hoje? */}
+            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
+              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 mr-0.5">
+                Recebeu Boi?
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!draftRow) return;
+                  const updated = { ...draftRow, recebeuBoiHoje: true };
+                  setDraftRow(updated);
+                  onUpdateRow(updated);
+                }}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition cursor-pointer ${
+                  draftRow.recebeuBoiHoje === true
+                    ? 'bg-emerald-600 text-white shadow-xs ring-1 ring-emerald-400'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700'
+                }`}
+                title="Marcar: Loja recebeu boi hoje (OK)"
+              >
+                <Check className="w-3 h-3 stroke-[3]" />
+                <span>OK (Sim)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!draftRow) return;
+                  const updated = { ...draftRow, recebeuBoiHoje: false };
+                  setDraftRow(updated);
+                  onUpdateRow(updated);
+                }}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition cursor-pointer ${
+                  draftRow.recebeuBoiHoje === false
+                    ? 'bg-rose-600 text-white shadow-xs ring-1 ring-rose-400'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700'
+                }`}
+                title="Marcar: Loja NÃO recebeu boi hoje (X)"
+              >
+                <X className="w-3 h-3 stroke-[3]" />
+                <span>X (Não)</span>
+              </button>
+            </div>
+
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
               <button
                 onClick={handlePrevStore}
@@ -302,6 +383,7 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-3 mt-3 border-t border-slate-100 dark:border-slate-800/80">
           {stores.map((s, idx) => {
             const isCurr = s.id === selectedStoreId;
+            const isLaunched = launchedStoreIds.has(s.id);
             return (
               <button
                 key={s.id}
@@ -309,13 +391,19 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
                   if (draftRow) onUpdateRow(draftRow);
                   setSelectedStoreId(s.id);
                 }}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition ${
-                  isCurr
-                    ? 'bg-amber-500 text-slate-950 shadow-xs'
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition flex items-center gap-1.5 ${
+                  isLaunched
+                    ? isCurr
+                      ? 'bg-emerald-600 text-white font-bold ring-2 ring-emerald-400 dark:ring-emerald-500 shadow-sm'
+                      : 'bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 font-bold hover:bg-emerald-200 dark:hover:bg-emerald-900/90 shadow-2xs'
+                    : isCurr
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400'
                 }`}
+                title={isLaunched ? `Lançamento realizado para ${s.name} (Dados da filial já lançados)` : `Pendente de lançamento: ${s.name}`}
               >
-                {idx + 1}. {s.name.replace('Loja ', 'L.')}
+                {isLaunched && <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-300 stroke-[3] shrink-0" />}
+                <span>{idx + 1}. {s.name.replace('Loja ', 'L.')}</span>
               </button>
             );
           })}
