@@ -13,6 +13,7 @@ import {
   Clock,
   User,
   Users,
+  Key,
   LogOut,
   Power,
   ChevronDown,
@@ -45,6 +46,7 @@ interface HeaderProps {
   onOpenSheetHistory?: () => void;
   currentUser?: SystemUser | null;
   onOpenUserManagement?: () => void;
+  onOpenChangePassword?: () => void;
   onLogout?: () => void;
   onExitSystem?: () => void;
 }
@@ -69,6 +71,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSheetHistory,
   currentUser,
   onOpenUserManagement,
+  onOpenChangePassword,
   onLogout,
   onExitSystem,
 }) => {
@@ -388,6 +391,21 @@ export const Header: React.FC<HeaderProps> = ({
                         </div>
                       )}
                     </div>
+
+                    {/* Botão Alterar Senha - Para qualquer usuário logado */}
+                    {onOpenChangePassword && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          onOpenChangePassword();
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-xl text-amber-800 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 flex items-center gap-2.5 transition font-semibold cursor-pointer border border-transparent hover:border-amber-200 dark:hover:border-amber-800/60"
+                      >
+                        <Key className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        <span>Alterar Minha Senha</span>
+                      </button>
+                    )}
 
                     {/* Botão Gerenciar Usuários - Somente Desenvolvedor e Diretor */}
                     {(currentUser.role === 'DESENVOLVEDOR' || currentUser.role === 'DIRETOR') && onOpenUserManagement && (

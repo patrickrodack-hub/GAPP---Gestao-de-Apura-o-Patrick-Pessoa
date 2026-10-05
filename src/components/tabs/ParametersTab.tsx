@@ -15,7 +15,8 @@ import {
   Trash2,
   Check,
   CheckCircle2,
-  Users
+  Users,
+  Key
 } from 'lucide-react';
 
 interface ParametersTabProps {
@@ -27,6 +28,7 @@ interface ParametersTabProps {
   onUpdateStores: (stores: Store[]) => void;
   onOpenSupplierManager?: () => void;
   onOpenUserManagement?: () => void;
+  onOpenChangePassword?: () => void;
   currentUser?: SystemUser | null;
 }
 
@@ -39,6 +41,7 @@ export const ParametersTab: React.FC<ParametersTabProps> = ({
   onUpdateStores,
   onOpenSupplierManager,
   onOpenUserManagement,
+  onOpenChangePassword,
   currentUser,
 }) => {
   const [activeStep, setActiveStep] = useState<number>(1);
@@ -116,6 +119,18 @@ export const ParametersTab: React.FC<ParametersTabProps> = ({
               >
                 <Building2 className="w-4 h-4" />
                 <span>Fornecedores ({suppliers.length})</span>
+              </button>
+            )}
+
+            {/* Alterar Minha Senha - Para qualquer usuário logado */}
+            {onOpenChangePassword && currentUser && (
+              <button
+                onClick={onOpenChangePassword}
+                className="px-3.5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+                title="Alterar a senha da sua conta no sistema"
+              >
+                <Key className="w-4 h-4" />
+                <span>Alterar Senha</span>
               </button>
             )}
 

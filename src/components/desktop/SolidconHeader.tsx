@@ -43,7 +43,8 @@ import {
   Power,
   ChevronDown,
   Terminal,
-  Cloud
+  Cloud,
+  Key
 } from 'lucide-react';
 import { SystemUser } from '../../types/erp';
 
@@ -67,6 +68,7 @@ interface SolidconHeaderProps {
   onSaveSheet?: () => void;
   currentUser?: SystemUser | null;
   onOpenUserManagement?: () => void;
+  onOpenChangePassword?: () => void;
   onLogout?: () => void;
   onExitSystem?: () => void;
 }
@@ -91,6 +93,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
   onSaveSheet,
   currentUser,
   onOpenUserManagement,
+  onOpenChangePassword,
   onLogout,
   onExitSystem,
 }) => {
@@ -810,6 +813,21 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
                         </div>
                       )}
                     </div>
+
+                    {/* Alterar Senha - Para qualquer usuário logado */}
+                    {onOpenChangePassword && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          onOpenChangePassword();
+                        }}
+                        className="w-full text-left px-2 py-1.5 rounded hover:bg-amber-50 flex items-center gap-2 text-amber-900 font-medium"
+                      >
+                        <Key className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Alterar Minha Senha</span>
+                      </button>
+                    )}
 
                     {/* Gerenciar Usuários & Acessos - Somente Desenvolvedor e Diretor */}
                     {(currentUser.role === 'DESENVOLVEDOR' || currentUser.role === 'DIRETOR') && onOpenUserManagement && (

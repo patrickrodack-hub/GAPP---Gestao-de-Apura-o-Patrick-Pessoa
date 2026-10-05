@@ -18,6 +18,7 @@ import { PurchaseOrderModal } from './components/modals/PurchaseOrderModal';
 import { SupplierManagementModal } from './components/modals/SupplierManagementModal';
 import { PortalControlModal } from './components/modals/PortalControlModal';
 import { UserManagementModal } from './components/modals/UserManagementModal';
+import { ChangePasswordModal } from './components/modals/ChangePasswordModal';
 import { ExitSystemModal } from './components/modals/ExitSystemModal';
 import { ManagementLogin } from './components/auth/ManagementLogin';
 import { SystemClosedScreen } from './components/auth/SystemClosedScreen';
@@ -109,6 +110,7 @@ export default function App() {
   // Inicializado estritamente como null para exigir autenticação sempre que o sistema for aberto ou recarregado (sem auto-login)
   const [currentUser, setCurrentUser] = useState<SystemUser | null>(null);
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [isSystemClosed, setIsSystemClosed] = useState(false);
 
@@ -652,6 +654,7 @@ export default function App() {
             onSaveSheet={() => handleSaveSheetSnapshot()}
             currentUser={currentUser}
             onOpenUserManagement={handleOpenUserManagement}
+            onOpenChangePassword={() => setIsChangePasswordOpen(true)}
             onLogout={handleLogout}
             onExitSystem={() => setIsExitModalOpen(true)}
           />
@@ -818,6 +821,7 @@ export default function App() {
                       onUpdateStores={setStores}
                       onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
                       onOpenUserManagement={handleOpenUserManagement}
+                      onOpenChangePassword={() => setIsChangePasswordOpen(true)}
                       currentUser={currentUser}
                     />
                   )}
@@ -974,6 +978,7 @@ export default function App() {
           onSaveSheet={() => handleSaveSheetSnapshot()}
           currentUser={currentUser}
           onOpenUserManagement={handleOpenUserManagement}
+          onOpenChangePassword={() => setIsChangePasswordOpen(true)}
           onLogout={handleLogout}
           onExitSystem={() => setIsExitModalOpen(true)}
         />
@@ -1068,6 +1073,7 @@ export default function App() {
               onUpdateStores={setStores}
               onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
               onOpenUserManagement={handleOpenUserManagement}
+              onOpenChangePassword={() => setIsChangePasswordOpen(true)}
               currentUser={currentUser}
             />
           )}
@@ -1162,6 +1168,16 @@ export default function App() {
             const freshUser = StorageService.getUsers().find(u => u.id === currentUser.id);
             if (freshUser) setCurrentUser(freshUser);
           }
+        }}
+      />
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+        currentUser={currentUser}
+        onPasswordChanged={(updatedUser) => {
+          setCurrentUser(updatedUser);
+          showToast('Sua senha foi alterada com sucesso!');
         }}
       />
 
