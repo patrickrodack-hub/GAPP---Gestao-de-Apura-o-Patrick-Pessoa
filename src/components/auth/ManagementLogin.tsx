@@ -571,8 +571,8 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                   </div>
                 )}
 
-                {/* Formulário de Login */}
-                <form onSubmit={handleLoginSubmit} className="space-y-4">
+                {/* Formulário de Login (Sem salvar credenciais, sem login automático) */}
+                <form onSubmit={handleLoginSubmit} className="space-y-4" autoComplete="off">
                   
                   {/* Campo: Username */}
                   <div className="space-y-1">
@@ -593,10 +593,16 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                       </div>
                       <input
                         type="text"
+                        name="auth_user_login"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         placeholder="Username"
-                        autoComplete="username"
+                        autoComplete="off"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck="false"
+                        data-lpignore="true"
+                        data-form-type="other"
                         autoFocus
                         className={`w-full pl-11 pr-4 py-3 text-sm font-semibold focus:outline-none transition shadow-inner ${
                           isSolidcon
@@ -628,10 +634,13 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                       </div>
                       <input
                         type={showPassword ? 'text' : 'password'}
+                        name="auth_user_pass"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Password"
-                        autoComplete="current-password"
+                        autoComplete="new-password"
+                        data-lpignore="true"
+                        data-form-type="other"
                         className={`w-full pl-11 pr-12 py-3 text-sm font-semibold focus:outline-none transition shadow-inner ${
                           isSolidcon
                             ? 'bg-white hover:border-slate-400 focus:border-[#0078d7] border-2 border-slate-300 rounded-md text-slate-900 placeholder:text-slate-400'

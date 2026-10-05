@@ -64,9 +64,9 @@ export const Navigation: React.FC<NavigationProps> = ({
   const canManageUsers = currentUser?.role === 'DESENVOLVEDOR' || currentUser?.role === 'DIRETOR';
 
   return (
-    <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors">
-      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 flex items-center justify-between">
-        <nav className="flex space-x-1 overflow-x-auto py-2.5 no-scrollbar" aria-label="Tabs">
+    <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors w-full max-w-full overflow-hidden">
+      <div className="max-w-[1920px] mx-auto px-2 sm:px-4 flex items-center justify-between gap-2 w-full min-w-0">
+        <nav className="flex space-x-1 overflow-x-auto py-2 sm:py-2.5 no-scrollbar min-w-0 flex-1 scroll-smooth" aria-label="Tabs">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

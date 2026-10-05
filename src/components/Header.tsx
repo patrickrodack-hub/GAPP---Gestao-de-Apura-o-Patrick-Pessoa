@@ -91,38 +91,40 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   return (
-    <header className="bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm backdrop-blur transition-colors">
-      <div className="max-w-[1920px] mx-auto px-3 sm:px-5 py-2">
-        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-2.5">
+    <header className="bg-white/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm backdrop-blur transition-colors w-full max-w-full overflow-hidden">
+      <div className="max-w-[1920px] mx-auto px-2 sm:px-4 py-2 w-full">
+        <div className="flex flex-col 2xl:flex-row 2xl:items-center 2xl:justify-between gap-2.5 w-full">
           
           {/* 1. Left: Brand & System Title */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <div className="w-10 h-10 rounded-xl bg-[#0c140d] p-1 flex items-center justify-center shadow-md shadow-emerald-950/20 ring-1 ring-emerald-500/40 shrink-0 overflow-hidden">
-              <img 
-                src="/icon.svg" 
-                alt="Patrick Pessoa - Gestão Integral de Compra" 
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
-                  Grupo GAPP Sistemas
-                </h1>
-                <span className="text-[10px] px-1.5 py-0.2 rounded font-black bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/40 uppercase">
-                  v10.1
-                </span>
+          <div className="flex items-center justify-between sm:justify-start gap-2.5 shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#0c140d] p-1 flex items-center justify-center shadow-md shadow-emerald-950/20 ring-1 ring-emerald-500/40 shrink-0 overflow-hidden">
+                <img 
+                  src="/icon.svg" 
+                  alt="Patrick Pessoa - Gestão Integral de Compra" 
+                  className="w-full h-full object-contain"
+                />
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                Apuração do Boi • {storeCount} Filiais Conectadas
-              </p>
+              <div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
+                    Grupo GAPP Sistemas
+                  </h1>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded font-black bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/40 uppercase">
+                    v10.1
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                  Apuração do Boi • {storeCount} Filiais Conectadas
+                </p>
+              </div>
             </div>
           </div>
 
           {/* 2. Center: Compact Consolidated Metrics Pill */}
-          <div className="flex items-center gap-2 sm:gap-3 bg-slate-100/90 dark:bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shrink-0 self-start xl:self-center">
+          <div className="flex items-center gap-2 sm:gap-3 bg-slate-100/90 dark:bg-slate-950/80 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shrink-0 self-start 2xl:self-center overflow-x-auto no-scrollbar max-w-full">
             {/* Volume */}
-            <div className="pr-2.5 border-r border-slate-300 dark:border-slate-800">
+            <div className="pr-2 sm:pr-2.5 border-r border-slate-300 dark:border-slate-800 shrink-0">
               <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-slate-500 block leading-tight">
                 Volume Total
               </span>
@@ -134,7 +136,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Total Compra */}
-            <div className="pr-2.5 border-r border-slate-300 dark:border-slate-800">
+            <div className="pr-2 sm:pr-2.5 border-r border-slate-300 dark:border-slate-800 shrink-0">
               <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-slate-500 block leading-tight">
                 Total Compra
               </span>
@@ -144,7 +146,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Preço Médio */}
-            <div>
+            <div className="shrink-0">
               <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-slate-500 block leading-tight">
                 Média Quarto (@ R$ 390)
               </span>
@@ -154,8 +156,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* 3. Right: Compact Standardized Operational Command Hub */}
-          <div className="flex items-center gap-1.5 flex-wrap xl:flex-nowrap justify-end">
+          {/* 3. Right: Compact Standardized Operational Command Hub (Always wraps to fit window without overflowing) */}
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-start 2xl:justify-end max-w-full">
 
             {/* Segment A: Ações Principais de Compra & Desossa */}
             <div className="bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700/80 flex items-center gap-1 shrink-0 shadow-xs">

@@ -312,7 +312,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
 
   return (
     <>
-      <header className="w-full select-none font-sans z-50 relative shadow-md">
+      <header className="w-full max-w-full select-none font-sans z-50 relative shadow-md overflow-hidden">
         
         {/* Toast de Salvar */}
         {saveToast && (
@@ -324,10 +324,10 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
         {/* 1. CLASSIC DESKTOP MENU BAR - FULLY FUNCTIONAL WITH ALL DIVISIONS AND MODULES */}
         <div 
           ref={menuBarRef}
-          className="h-7 sm:h-8 px-2 flex items-center justify-between text-xs text-slate-800 bg-[#eceff1] border-b border-[#cfd8dc] relative z-40"
+          className="h-7 sm:h-8 px-2 flex items-center justify-between text-xs text-slate-800 bg-[#eceff1] border-b border-[#cfd8dc] relative z-40 w-full max-w-full overflow-hidden"
         >
           {/* Menu items */}
-          <div className="flex items-center space-x-0.5">
+          <div className="flex items-center space-x-0.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 flex-1">
             {menuCategories.map((category) => {
               const isOpen = activeMenu === category.id;
               return (
@@ -512,13 +512,13 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
 
         {/* 3. DESKTOP SHORTCUT TOOLBAR (Interactive Standardized Menu & Tool Boxes) */}
         <div 
-          className="h-10 sm:h-11 px-2 flex items-center justify-between border-b border-[#b0bec5] relative z-10"
+          className="h-10 sm:h-11 px-2 flex items-center justify-between border-b border-[#b0bec5] relative z-10 w-full max-w-full overflow-hidden"
           style={{
             background: 'linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%)'
           }}
         >
-          {/* Segmented Standardized Button Boxes */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          {/* Segmented Standardized Button Boxes (Scrollable inside available space) */}
+          <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 flex-1 scroll-smooth">
             
             {/* Box 1: Matriz & Gravação */}
             <div className="bg-[#d5dce4] p-0.5 rounded-md border border-[#b8c4d0] shadow-inner flex items-center gap-0.5 shrink-0">
@@ -768,8 +768,8 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
 
           </div>
 
-          {/* Quick status on the right + User Menu */}
-          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-700 shrink-0 ml-2">
+          {/* Quick status on the right + User Menu (Always pinned within window) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] font-mono text-slate-700 shrink-0 ml-1.5 sm:ml-2">
             <span className="hidden lg:inline-flex px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold">
               ● {storeCount} Lojas
             </span>

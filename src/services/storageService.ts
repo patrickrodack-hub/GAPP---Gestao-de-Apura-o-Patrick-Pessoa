@@ -27,6 +27,9 @@ export const DEFAULT_PORTAL_LOCK: PortalLockConfig = {
   updatedAt: Date.now()
 };
 
+// Sessão estritamente em memória: não persiste no localStorage para evitar login automático
+let inMemorySessionUser: SystemUser | null = null;
+
 export const StorageService = {
   getProducts(): Product[] {
     try {
@@ -658,35 +661,24 @@ export const StorageService = {
   },
 
   getSessionUser(): SystemUser | null {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.SESSION_USER);
-      if (!data) return null;
-      const user = JSON.parse(data) as SystemUser;
-      
-      // Valida com o cadastro de usuários
-      const allUsers = this.getUsers();
-      const freshUser = allUsers.find(u => u.id === user.id && u.active);
-      return freshUser || null;
-    } catch {
-      return null;
-    }
+    // Retorna apenas a sessão da memória ativa da aba atual (nunca loga automático ao recarregar/abrir)
+    return inMemorySessionUser;
   },
 
   setSessionUser(user: SystemUser | null) {
+    inMemorySessionUser = user;
+    // Remove qualquer rastro persistido no localStorage/sessionStorage
     try {
-      if (user) {
-        localStorage.setItem(STORAGE_KEYS.SESSION_USER, JSON.stringify(user));
-      } else {
-        localStorage.removeItem(STORAGE_KEYS.SESSION_USER);
-      }
-    } catch (e) {
-      console.warn('Erro ao salvar sessão de usuário:', e);
-    }
+      localStorage.removeItem(STORAGE_KEYS.SESSION_USER);
+      sessionStorage.removeItem('apuracao_boi_temp_user');
+    } catch {}
   },
 
   clearSessionUser() {
+    inMemorySessionUser = null;
     try {
       localStorage.removeItem(STORAGE_KEYS.SESSION_USER);
+      sessionStorage.removeItem('apuracao_boi_temp_user');
     } catch {}
   }
 };
