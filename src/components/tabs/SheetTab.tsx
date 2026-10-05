@@ -652,137 +652,6 @@ export const SheetTab: React.FC<SheetTabProps> = ({
         </div>
       </div>
 
-      {/* Floating / Sticky Quick Navigation & Status Bar (Excel Mode) */}
-      {selectedCell && currentSelectedRow && currentSelectedCol && (
-        <div className="sticky top-2 z-30 bg-white/95 dark:bg-slate-900/95 border-2 border-blue-600 dark:border-blue-500 rounded-xl p-2.5 sm:px-4 sm:py-2.5 shadow-2xl backdrop-blur flex flex-wrap items-center justify-between gap-3 animate-fade-in text-xs">
-          
-          {/* Active cell indicator */}
-          <div className="flex items-center gap-2.5">
-            <span className={`w-3 h-3 rounded-full ${isEditing ? 'bg-emerald-500 animate-pulse' : 'bg-blue-600'}`} />
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">
-                  {isEditing ? '✏️ Modo Edição (Digite o valor)' : '📍 Célula Selecionada (Navegação Excel)'}
-                </span>
-                {isFormulaProtected && isFormulaField(currentSelectedCol.field) && (
-                  <span className="px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold text-[9px] flex items-center gap-0.5 border border-amber-300 dark:border-amber-800">
-                    <Lock className="w-2.5 h-2.5" /> FÓRMULA PROTEGIDA
-                  </span>
-                )}
-                {auditReport.discrepancyMap[`${selectedCell.rowIdx}_${currentSelectedCol.field}`] && (
-                  <span className="px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 font-bold text-[9px] flex items-center gap-0.5 border border-rose-300 dark:border-rose-800 animate-pulse">
-                    <AlertTriangle className="w-2.5 h-2.5" /> DIVERGÊNCIA
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white">
-                <span className="text-blue-700 dark:text-blue-400">{currentSelectedRow.storeName}</span>
-                <span>•</span>
-                <span className="px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-300 font-mono text-[11px] font-bold">
-                  {currentSelectedCol.label} ({currentSelectedCol.group})
-                </span>
-                <span className="text-slate-400">•</span>
-                <span className="text-slate-600 dark:text-slate-300 font-mono text-xs">
-                  Valor: <strong>{currentSelectedRow[currentSelectedCol.field] ?? 0}</strong>
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Navigation Action Buttons with mouse & keyboard triggers */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[11px] font-semibold text-slate-500 mr-1 hidden lg:inline">Navegar:</span>
-
-            {/* Up */}
-            <button
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => moveActiveCell(-1, 0, false, true)}
-              className="p-1.5 sm:px-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-semibold text-xs flex items-center gap-1 active:scale-95 transition"
-              title="Mover para cima (↑ ou Shift+Enter)"
-            >
-              <ArrowUp className="w-3.5 h-3.5 text-blue-600" />
-              <span className="hidden sm:inline">Cima (↑)</span>
-            </button>
-
-            {/* Down */}
-            <button
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => moveActiveCell(1, 0, false, true)}
-              className="p-1.5 sm:px-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-semibold text-xs flex items-center gap-1 active:scale-95 transition"
-              title="Mover para baixo (↓ ou Enter)"
-            >
-              <ArrowDown className="w-3.5 h-3.5 text-blue-600" />
-              <span className="hidden sm:inline">Baixo (↓)</span>
-            </button>
-
-            {/* Left */}
-            <button
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => moveActiveCell(0, -1, false, true)}
-              className="p-1.5 sm:px-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-semibold text-xs flex items-center gap-1 active:scale-95 transition"
-              title="Mover para esquerda (← ou Shift+Tab)"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 text-blue-600" />
-              <span className="hidden sm:inline">Esq. (←)</span>
-            </button>
-
-            {/* Right */}
-            <button
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => moveActiveCell(0, 1, false, true)}
-              className="p-1.5 sm:px-2 sm:py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-semibold text-xs flex items-center gap-1 active:scale-95 transition"
-              title="Mover para direita (→ ou Tab)"
-            >
-              <ArrowRight className="w-3.5 h-3.5 text-blue-600" />
-              <span className="hidden sm:inline">Dir. (→)</span>
-            </button>
-
-            <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1" />
-
-            {/* Edit / Commit Toggle */}
-            {!isEditing ? (
-              <button
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => setIsEditing(true)}
-                className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs flex items-center gap-1 shadow-sm active:scale-95 transition"
-                title="Editar célula (F2 ou Comece a digitar)"
-              >
-                <Edit2 className="w-3.5 h-3.5" />
-                <span>Editar (F2)</span>
-              </button>
-            ) : (
-              <button
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  if (selectedCell) {
-                    commitCurrentValue(selectedCell.rowIdx, selectedCell.colIdx, tempValue);
-                    setIsEditing(false);
-                    tableContainerRef.current?.focus();
-                  }
-                }}
-                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1 shadow-sm active:scale-95 transition"
-                title="Concluir edição (Enter)"
-              >
-                <Check className="w-3.5 h-3.5" />
-                <span>Salvar (Enter)</span>
-              </button>
-            )}
-
-            <button
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                setSelectedCell(null);
-                setIsEditing(false);
-              }}
-              className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 transition"
-              title="Desmarcar (Esc)"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Main Matrix Table with Excel Style Keyboard Focus */}
       <div 
         ref={tableContainerRef}
@@ -801,7 +670,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 </th>
                 
                 {/* DADOS PARA A GERAÇÃO DE PEDIDO */}
-                <th colSpan={10} className="px-3 py-2 text-center bg-blue-100 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border-r border-slate-200 dark:border-slate-800 border-b border-blue-200 dark:border-blue-900/50">
+                <th colSpan={11} className="px-3 py-2 text-center bg-blue-100 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border-r border-slate-200 dark:border-slate-800 border-b border-blue-200 dark:border-blue-900/50">
                   <div className="flex items-center justify-center gap-1.5">
                     <span>DADOS PARA A GERAÇÃO DE PEDIDO</span>
                     <span className="text-[9px] font-normal text-blue-700 dark:text-blue-400 bg-blue-200/60 dark:bg-blue-900/60 px-1.5 py-0.2 rounded" title="Dianteiro = Câm. Diant + Tot. Diant • Coxão = Câm. Coxão + Tot. Coxão • Alcatrão = Câm. Alcatrão + Tot. Alcatrão • Boi = Σ/2 • Sugestão = Venda - Boi">
@@ -881,6 +750,12 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                   <span className="text-[9px] font-normal text-indigo-600 dark:text-indigo-400 block tracking-tight leading-none">(Qtd Real)</span>
                 </th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800">P. Trânsito</th>
+                <th 
+                  className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-amber-800 dark:text-amber-300 bg-amber-50/50 dark:bg-amber-950/30 whitespace-nowrap" 
+                  title="Informação sincronizada do Portal de Membros: Confirmação se a filial recebeu boi hoje"
+                >
+                  <span className="block leading-tight">Recebeu boi hoje ?</span>
+                </th>
 
                 {/* CÂMARA */}
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800">Dianteiro</th>
@@ -1075,6 +950,38 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                     {/* P. Trânsito */}
                     {renderCell(row, idx, 'pTransito')}
 
+                    {/* Recebeu Boi Hoje? */}
+                    <td className="px-2 py-1.5 text-center border-r border-slate-200 dark:border-slate-800 font-sans">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = {
+                            ...row,
+                            recebeuBoiHoje: !row.recebeuBoiHoje
+                          };
+                          onUpdateRow(updated);
+                        }}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition cursor-pointer ${
+                          row.recebeuBoiHoje
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-200 shadow-2xs'
+                            : 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border-rose-300 dark:border-rose-700 hover:bg-rose-200 shadow-2xs'
+                        }`}
+                        title={`Clique para alternar status (Atual: ${row.recebeuBoiHoje ? 'SIM - Recebeu Boi' : 'NÃO - Não Recebeu Boi'})`}
+                      >
+                        {row.recebeuBoiHoje ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400 stroke-[3]" />
+                            <span>SIM</span>
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-3 h-3 text-rose-600 dark:text-rose-400 stroke-[3]" />
+                            <span>NÃO</span>
+                          </>
+                        )}
+                      </button>
+                    </td>
+
                     {/* CÂMARA */}
                     {renderCell(row, idx, 'camaraDianteiro')}
                     {renderCell(row, idx, 'camaraTraseiro')}
@@ -1143,6 +1050,9 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                   {totals.pedidoFinal}
                 </td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.pTransito}</td>
+                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 font-sans text-[10px] text-emerald-700 dark:text-emerald-400 font-bold">
+                  {rows.filter(r => r.recebeuBoiHoje).length} SIM
+                </td>
 
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.camaraDianteiro}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.camaraTraseiro}</td>
@@ -1189,6 +1099,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-500 font-mono">{(totals.sugestaoPedido * 260).toFixed(0)}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 font-mono font-bold">{(totals.pedidoFinal * 260).toFixed(0)}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">4.675</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
 
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">182</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">1.035</td>
@@ -1226,7 +1137,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                   <span>TOTAL GERAL</span>
                   <span className="text-xs font-mono text-emerald-900 dark:text-emerald-300">R$ 376.311,95</span>
                 </td>
-                <td colSpan={34} className="px-4 py-2 text-right text-emerald-900 dark:text-emerald-300 font-sans text-xs">
+                <td colSpan={35} className="px-4 py-2 text-right text-emerald-900 dark:text-emerald-300 font-sans text-xs">
                   Validação Contábil Conforme Planilha da Direção: <strong className="font-mono text-slate-900 dark:text-white text-sm">R$ 376.311,95</strong> (Lote de Compra Consolidado das 16 Lojas)
                 </td>
               </tr>
