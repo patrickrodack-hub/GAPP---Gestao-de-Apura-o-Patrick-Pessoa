@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Product, Store, SheetRowData, Supplier } from '../../types/erp';
+import { Product, Store, SheetRowData, Supplier, SystemUser } from '../../types/erp';
 import { formatCurrencyBRL, calculateSheetTotals } from '../../services/calculationService';
 import { 
   SlidersHorizontal, 
@@ -14,7 +14,8 @@ import {
   Edit2,
   Trash2,
   Check,
-  CheckCircle2
+  CheckCircle2,
+  Users
 } from 'lucide-react';
 
 interface ParametersTabProps {
@@ -25,6 +26,8 @@ interface ParametersTabProps {
   onUpdateProducts: (products: Product[]) => void;
   onUpdateStores: (stores: Store[]) => void;
   onOpenSupplierManager?: () => void;
+  onOpenUserManagement?: () => void;
+  currentUser?: SystemUser | null;
 }
 
 export const ParametersTab: React.FC<ParametersTabProps> = ({
@@ -35,6 +38,8 @@ export const ParametersTab: React.FC<ParametersTabProps> = ({
   onUpdateProducts,
   onUpdateStores,
   onOpenSupplierManager,
+  onOpenUserManagement,
+  currentUser,
 }) => {
   const [activeStep, setActiveStep] = useState<number>(1);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -102,16 +107,30 @@ export const ParametersTab: React.FC<ParametersTabProps> = ({
             </div>
           </div>
 
-          {onOpenSupplierManager && (
-            <button
-              onClick={onOpenSupplierManager}
-              className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm self-start sm:self-auto"
-              title="Cadastro e Gestão de Fornecedores e Frigoríficos (Adicionar, Editar, Excluir, Imprimir)"
-            >
-              <Building2 className="w-4 h-4" />
-              <span>Gerenciar Fornecedores ({suppliers.length})</span>
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            {onOpenSupplierManager && (
+              <button
+                onClick={onOpenSupplierManager}
+                className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+                title="Cadastro e Gestão de Fornecedores e Frigoríficos (Adicionar, Editar, Excluir, Imprimir)"
+              >
+                <Building2 className="w-4 h-4" />
+                <span>Fornecedores ({suppliers.length})</span>
+              </button>
+            )}
+
+            {/* Gestão de Usuários & Acessos - Somente Desenvolvedor e Diretor */}
+            {(currentUser?.role === 'DESENVOLVEDOR' || currentUser?.role === 'DIRETOR') && onOpenUserManagement && (
+              <button
+                onClick={onOpenUserManagement}
+                className="px-3.5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+                title="Cadastro de Usuários, Senhas e Permissões por Módulo"
+              >
+                <Users className="w-4 h-4" />
+                <span>Gestão de Usuários & Acessos</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 7 Steps Navigation Bar */}

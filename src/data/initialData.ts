@@ -967,3 +967,58 @@ export const INITIAL_SUPPLIERS: Supplier[] = [
   }
 ];
 
+// ==========================================
+// USUÁRIOS E MÓDULOS DO SISTEMA
+// ==========================================
+export const ALL_SYSTEM_MODULES = [
+  { id: 'dashboard', label: 'Painel Geral', description: 'Visão executiva, tendências D3.js e KPIs em tempo real' },
+  { id: 'sheet', label: 'Planilha Direção v10.1', description: 'Planilha matriz oficial de compras (16 filiais)' },
+  { id: 'yield', label: 'Desossa & Rendimento', description: 'Simulador zootécnico e apuração de carne limpa' },
+  { id: 'results', label: 'Apuração & Margens', description: 'Demonstrativo de Resultados (DRE), CMV e Markups' },
+  { id: 'inventory', label: 'Estoque & Câmaras', description: 'Lançamentos de balcão e câmaras frigoríficas' },
+  { id: 'purchases', label: 'Compras & Lotes', description: 'Histórico de lotes, notas fiscais e cotação da arroba' },
+  { id: 'waste', label: 'Descarte (Sebo & Osso)', description: 'Apuração de quebra e subprodutos vendidos para graxarias' },
+  { id: 'parameters', label: 'Módulo 1: Cadastros', description: 'Tabela de produtos, filiais e frigoríficos' },
+  { id: 'users', label: 'Gestão de Usuários', description: 'Controle de acessos, senhas e permissões do sistema' },
+];
+
+export const INITIAL_USERS: import('../types/erp').SystemUser[] = [
+  {
+    id: 'user_dev_patrick',
+    name: 'Patrick Pessoa',
+    username: 'desenvolvedor',
+    password: '190996',
+    role: 'DESENVOLVEDOR',
+    roleTitle: 'Desenvolvedor do Software',
+    email: 'patrickrodack@gmail.com',
+    active: true,
+    allowedModules: ['dashboard', 'sheet', 'yield', 'results', 'inventory', 'purchases', 'waste', 'parameters', 'users'],
+    createdAt: 1727740800000, // Outubro 2026
+  },
+  {
+    id: 'user_diretor',
+    name: 'Diretoria de Operações',
+    username: 'diretoria',
+    password: '123',
+    role: 'DIRETOR',
+    roleTitle: 'Diretor Geral de Carnes',
+    email: 'diretoria@grupogapp.com.br',
+    active: true,
+    allowedModules: ['dashboard', 'sheet', 'yield', 'results', 'inventory', 'purchases', 'waste', 'parameters'],
+    createdAt: 1727740800000,
+  },
+  {
+    id: 'user_comprador',
+    name: 'Mesa de Compras Matriz',
+    username: 'compras',
+    password: '123',
+    role: 'COMPRADOR',
+    roleTitle: 'Comprador de Carcaça e Arroba',
+    email: 'compras@grupogapp.com.br',
+    active: true,
+    allowedModules: ['dashboard', 'sheet', 'purchases', 'parameters'],
+    createdAt: 1727740800000,
+  }
+];
+
+

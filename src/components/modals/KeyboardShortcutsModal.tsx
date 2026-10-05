@@ -16,7 +16,8 @@ import {
   Calculator,
   Monitor,
   Table,
-  Building2
+  Building2,
+  Power
 } from 'lucide-react';
 
 interface KeyboardShortcutsModalProps {
@@ -51,6 +52,7 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
     { key: 'Alt + P', label: 'Imprimir Relatório Executivo Oficial', icon: Printer },
     { key: 'Alt + T', label: 'Alternar Tema (Solidcon / Claro / Escuro)', icon: Monitor },
     { key: 'Alt + D', label: 'Alternar Janela / Área de Trabalho Metálica', icon: Table },
+    { key: 'Alt + Q / Alt + F4', label: 'Sair do Sistema e Fechar Navegador', icon: Power },
     { key: 'F1 ou ?', label: 'Abrir este Guia de Atalhos', icon: Keyboard },
     { key: 'Esc', label: 'Fechar Modais / Cancelar Edição', icon: X },
   ];

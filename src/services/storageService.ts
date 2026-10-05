@@ -1,5 +1,5 @@
-import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, StockLaunchRecord, SheetSnapshotRecord, PortalLockConfig } from '../types/erp';
-import { INITIAL_PRODUCTS, INITIAL_STORES, INITIAL_SHEET_ROWS, INITIAL_BATCHES, INITIAL_WASTE_RECORDS, INITIAL_SUPPLIERS } from '../data/initialData';
+import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, StockLaunchRecord, SheetSnapshotRecord, PortalLockConfig, SystemUser } from '../types/erp';
+import { INITIAL_PRODUCTS, INITIAL_STORES, INITIAL_SHEET_ROWS, INITIAL_BATCHES, INITIAL_WASTE_RECORDS, INITIAL_SUPPLIERS, INITIAL_USERS } from '../data/initialData';
 import { recalculateRowOrderFormulas, calculateSheetTotals } from './calculationService';
 import { FirebaseService } from './firebase';
 
@@ -14,6 +14,8 @@ const STORAGE_KEYS = {
   STOCK_LAUNCHES: 'apuracao_boi_stock_launches_v1',
   SHEET_SNAPSHOTS: 'apuracao_boi_sheet_snapshots_v1',
   PORTAL_LOCK: 'apuracao_boi_portal_lock_v1',
+  USERS: 'apuracao_boi_users_v1',
+  SESSION_USER: 'apuracao_boi_session_user_v1',
 };
 
 export const DEFAULT_PORTAL_LOCK: PortalLockConfig = {
@@ -576,5 +578,115 @@ export const StorageService = {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  },
+
+  // ==========================================
+  // GESTÃO DE USUÁRIOS E SESSÃO DO MÓDULO DE GESTÃO
+  // ==========================================
+  getUsers(): SystemUser[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.USERS);
+      let users: SystemUser[] = data ? JSON.parse(data) : INITIAL_USERS;
+      
+      // Garante que o usuário desenvolvedor "patrick pessoa" sempre exista com senha "190996"
+      const hasDev = users.some(u => u.username.toLowerCase() === 'desenvolvedor' || u.role === 'DESENVOLVEDOR');
+      if (!hasDev) {
+        users = [INITIAL_USERS[0], ...users];
+        this.saveUsers(users);
+      } else {
+        // Assegura que o desenvolvedor tenha senha e acesso 100% íntegros
+        const devIdx = users.findIndex(u => u.username.toLowerCase() === 'desenvolvedor' || u.role === 'DESENVOLVEDOR');
+        if (devIdx >= 0) {
+          users[devIdx] = {
+            ...users[devIdx],
+            name: 'Patrick Pessoa',
+            username: 'desenvolvedor',
+            role: 'DESENVOLVEDOR',
+            active: true,
+            allowedModules: ['dashboard', 'sheet', 'yield', 'results', 'inventory', 'purchases', 'waste', 'parameters', 'users']
+          };
+        }
+      }
+      return users;
+    } catch {
+      return INITIAL_USERS;
+    }
+  },
+
+  saveUsers(users: SystemUser[]) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    } catch (e) {
+      console.warn('Erro ao salvar usuários no localStorage:', e);
+    }
+  },
+
+  addUser(newUser: SystemUser): SystemUser[] {
+    const current = this.getUsers();
+    // Evita duplicidade de username
+    const exists = current.some(u => u.username.toLowerCase() === newUser.username.toLowerCase());
+    if (exists) {
+      throw new Error(`O login "${newUser.username}" já está em uso por outro usuário.`);
+    }
+    const updated = [newUser, ...current];
+    this.saveUsers(updated);
+    return updated;
+  },
+
+  updateUser(updatedUser: SystemUser): SystemUser[] {
+    const current = this.getUsers();
+    const updated = current.map(u => u.id === updatedUser.id ? updatedUser : u);
+    this.saveUsers(updated);
+    
+    // Se o usuário atual logado for o editado, atualiza também a sessão
+    const session = this.getSessionUser();
+    if (session && session.id === updatedUser.id) {
+      this.setSessionUser(updatedUser);
+    }
+    return updated;
+  },
+
+  deleteUser(userId: string): SystemUser[] {
+    const current = this.getUsers();
+    const target = current.find(u => u.id === userId);
+    if (target?.role === 'DESENVOLVEDOR' || target?.username.toLowerCase() === 'desenvolvedor') {
+      throw new Error('O usuário Desenvolvedor principal não pode ser excluído do sistema.');
+    }
+    const updated = current.filter(u => u.id !== userId);
+    this.saveUsers(updated);
+    return updated;
+  },
+
+  getSessionUser(): SystemUser | null {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.SESSION_USER);
+      if (!data) return null;
+      const user = JSON.parse(data) as SystemUser;
+      
+      // Valida com o cadastro de usuários
+      const allUsers = this.getUsers();
+      const freshUser = allUsers.find(u => u.id === user.id && u.active);
+      return freshUser || null;
+    } catch {
+      return null;
+    }
+  },
+
+  setSessionUser(user: SystemUser | null) {
+    try {
+      if (user) {
+        localStorage.setItem(STORAGE_KEYS.SESSION_USER, JSON.stringify(user));
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.SESSION_USER);
+      }
+    } catch (e) {
+      console.warn('Erro ao salvar sessão de usuário:', e);
+    }
+  },
+
+  clearSessionUser() {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.SESSION_USER);
+    } catch {}
   }
 };

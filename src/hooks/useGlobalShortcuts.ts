@@ -13,6 +13,7 @@ interface UseGlobalShortcutsOptions {
   onOpenPurchaseOrder?: () => void;
   onOpenSupplierManager?: () => void;
   onCloseModals: () => void;
+  onExitSystem?: () => void;
 }
 
 export function useGlobalShortcuts({
@@ -27,6 +28,7 @@ export function useGlobalShortcuts({
   onOpenPurchaseOrder,
   onOpenSupplierManager,
   onCloseModals,
+  onExitSystem,
 }: UseGlobalShortcutsOptions) {
   useEffect(() => {
     if (!enabled) return;
@@ -35,6 +37,15 @@ export function useGlobalShortcuts({
       // Check if user is typing inside an input/textarea
       const target = e.target as HTMLElement;
       const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+      // Alt+Q or Alt+F4 opens exit system modal
+      if ((e.altKey && (e.code === 'KeyQ' || e.key === 'q' || e.key === 'Q')) || (e.altKey && e.key === 'F4')) {
+        if (onExitSystem) {
+          e.preventDefault();
+          onExitSystem();
+          return;
+        }
+      }
 
       // F1 opens shortcuts help
       if (e.key === 'F1') {

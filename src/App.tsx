@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StorageService } from './services/storageService';
 import { FirebaseService } from './services/firebase';
-import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, SheetSnapshotRecord, PortalLockConfig } from './types/erp';
+import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, SheetSnapshotRecord, PortalLockConfig, SystemUser } from './types/erp';
 import { Header } from './components/Header';
 import { Navigation, NavigationTab } from './components/Navigation';
 import { DashboardTab } from './components/tabs/DashboardTab';
@@ -17,6 +17,10 @@ import { PrintReportModal } from './components/modals/PrintReportModal';
 import { PurchaseOrderModal } from './components/modals/PurchaseOrderModal';
 import { SupplierManagementModal } from './components/modals/SupplierManagementModal';
 import { PortalControlModal } from './components/modals/PortalControlModal';
+import { UserManagementModal } from './components/modals/UserManagementModal';
+import { ExitSystemModal } from './components/modals/ExitSystemModal';
+import { ManagementLogin } from './components/auth/ManagementLogin';
+import { SystemClosedScreen } from './components/auth/SystemClosedScreen';
 import { SolidconHeader } from './components/desktop/SolidconHeader';
 import { SolidconStatusBar } from './components/desktop/SolidconStatusBar';
 import { SolidconDesktopWallpaper } from './components/desktop/SolidconDesktopWallpaper';
@@ -89,6 +93,83 @@ export default function App() {
   const [isPortalControlOpen, setIsPortalControlOpen] = useState(false);
   const [portalLockConfig, setPortalLockConfig] = useState<PortalLockConfig>(() => StorageService.getPortalLockConfig());
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
+
+  // User Authentication & Management State (Módulo de Gestão)
+  const [currentUser, setCurrentUser] = useState<SystemUser | null>(() => {
+    const saved = StorageService.getSessionUser();
+    if (saved) return saved;
+    try {
+      const temp = sessionStorage.getItem('apuracao_boi_temp_user');
+      if (temp) return JSON.parse(temp);
+    } catch {}
+    return null;
+  });
+  const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
+  const [isExitModalOpen, setIsExitModalOpen] = useState(false);
+  const [isSystemClosed, setIsSystemClosed] = useState(false);
+
+  const handleOpenUserManagement = () => {
+    if (currentUser?.role !== 'DESENVOLVEDOR' && currentUser?.role !== 'DIRETOR') {
+      showToast('Acesso restrito: Somente Desenvolvedor e Diretor podem gerenciar usuários.');
+      return;
+    }
+    setIsUserManagementOpen(true);
+  };
+
+  const handleLoginSuccess = (user: SystemUser) => {
+    setCurrentUser(user);
+    showToast(`Bem-vindo(a), ${user.name}!`);
+    // Se o usuário não tem permissão para a aba atual, redireciona para a primeira permitida
+    if (user.role !== 'DESENVOLVEDOR' && !user.allowedModules?.includes(activeTab)) {
+      const firstAllowed = (user.allowedModules?.[0] as NavigationTab) || 'dashboard';
+      setActiveTab(firstAllowed);
+    }
+  };
+
+  const handleLogout = () => {
+    StorageService.clearSessionUser();
+    try {
+      sessionStorage.removeItem('apuracao_boi_temp_user');
+    } catch {}
+    setCurrentUser(null);
+    showToast('Sessão encerrada com sucesso.');
+  };
+
+  const handleLogoutOnly = () => {
+    setIsExitModalOpen(false);
+    handleLogout();
+  };
+
+  const handleExitAndCloseBrowser = () => {
+    // 1. Limpa credenciais persistentes e de sessão
+    StorageService.clearSessionUser();
+    try {
+      sessionStorage.clear();
+    } catch {}
+    setCurrentUser(null);
+    setIsExitModalOpen(false);
+
+    // 2. Dispara tentativa de fechamento do navegador
+    try {
+      window.close();
+    } catch {}
+
+    try {
+      window.open('', '_self', '');
+      window.close();
+    } catch {}
+
+    try {
+      if (window.opener) {
+        window.opener = null;
+        window.close();
+      }
+    } catch {}
+
+    // 3. Caso o navegador bloqueie o fechamento direto por diretriz de segurança de abas,
+    // exibe a tela de encerramento seguro com atalho e botão de fechamento
+    setIsSystemClosed(true);
+  };
 
   // Auto detect mobile device or portal mode from URL
   const [isPortalMode, setIsPortalMode] = useState<boolean>(() => {
@@ -320,6 +401,10 @@ export default function App() {
   };
 
   const handleTabSelect = (tab: NavigationTab) => {
+    if (currentUser && currentUser.role !== 'DESENVOLVEDOR' && !currentUser.allowedModules?.includes(tab)) {
+      showToast('Acesso negado: seu perfil não tem permissão para este módulo.');
+      return;
+    }
     setActiveTab(tab);
     setIsDesktopView(false);
   };
@@ -360,7 +445,9 @@ export default function App() {
       setIsShortcutsOpen(false);
       setIsPurchaseOrderOpen(false);
       setIsSupplierModalOpen(false);
-    }
+      setIsExitModalOpen(false);
+    },
+    onExitSystem: () => setIsExitModalOpen(true),
   });
 
   // Global counts for header
@@ -467,6 +554,33 @@ export default function App() {
   }
 
   // ==========================================
+  // ESTADO DE SISTEMA ENCERRADO (SAÍDA CONCLUÍDA)
+  // ==========================================
+  if (isSystemClosed) {
+    return (
+      <>
+        {renderSWUpdateBanner()}
+        <SystemClosedScreen onReopenLogin={() => setIsSystemClosed(false)} />
+      </>
+    );
+  }
+
+  // ==========================================
+  // AUTENTICAÇÃO DO MÓDULO DE GESTÃO (LOGIN)
+  // ==========================================
+  if (!currentUser) {
+    return (
+      <>
+        {renderSWUpdateBanner()}
+        <ManagementLogin 
+          onLoginSuccess={handleLoginSuccess}
+          onExitSystem={handleExitAndCloseBrowser}
+        />
+      </>
+    );
+  }
+
+  // ==========================================
   // RENDER SOLIDCON THEME (DESKTOP ERP LAYOUT)
   // ==========================================
   if (isSolidcon) {
@@ -498,6 +612,10 @@ export default function App() {
           onOpenMobilePortal={handleOpenMobilePortal}
           onOpenPortalControl={() => setIsPortalControlOpen(true)}
           onSaveSheet={() => handleSaveSheetSnapshot()}
+          currentUser={currentUser}
+          onOpenUserManagement={handleOpenUserManagement}
+          onLogout={handleLogout}
+          onExitSystem={() => setIsExitModalOpen(true)}
         />
 
         {/* 2. Main Desktop Area */}
@@ -652,6 +770,8 @@ export default function App() {
                       onUpdateProducts={setProducts}
                       onUpdateStores={setStores}
                       onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+                      onOpenUserManagement={handleOpenUserManagement}
+                      currentUser={currentUser}
                     />
                   )}
                 </div>
@@ -710,6 +830,21 @@ export default function App() {
           currentConfig={portalLockConfig}
           onSaveConfig={handleSavePortalLockConfig}
         />
+
+        <UserManagementModal
+          isOpen={isUserManagementOpen}
+          onClose={() => setIsUserManagementOpen(false)}
+          currentUser={currentUser}
+          onUsersUpdated={() => setCurrentUser(StorageService.getSessionUser())}
+        />
+
+        <ExitSystemModal
+          isOpen={isExitModalOpen}
+          onClose={() => setIsExitModalOpen(false)}
+          onExitAndCloseBrowser={handleExitAndCloseBrowser}
+          onLogoutOnly={handleLogoutOnly}
+          userName={currentUser?.name}
+        />
       </div>
     );
   }
@@ -744,13 +879,20 @@ export default function App() {
         onOpenMobilePortal={handleOpenMobilePortal}
         onOpenPortalControl={() => setIsPortalControlOpen(true)}
         onSaveSheet={() => handleSaveSheetSnapshot()}
+        currentUser={currentUser}
+        onOpenUserManagement={handleOpenUserManagement}
+        onLogout={handleLogout}
+        onExitSystem={() => setIsExitModalOpen(true)}
       />
 
       {/* Navigation Tabs */}
       <Navigation 
         activeTab={activeTab} 
         onTabChange={handleTabSelect} 
+        currentUser={currentUser}
+        onOpenUserManagement={handleOpenUserManagement}
         onOpenShortcuts={() => setIsShortcutsOpen(true)} 
+        onExitSystem={() => setIsExitModalOpen(true)}
       />
 
       {/* Content Body */}
@@ -830,6 +972,8 @@ export default function App() {
             onUpdateProducts={setProducts}
             onUpdateStores={setStores}
             onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+            onOpenUserManagement={handleOpenUserManagement}
+            currentUser={currentUser}
           />
         )}
       </main>
@@ -896,6 +1040,21 @@ export default function App() {
         onClose={() => setIsPortalControlOpen(false)}
         currentConfig={portalLockConfig}
         onSaveConfig={handleSavePortalLockConfig}
+      />
+
+      <UserManagementModal
+        isOpen={isUserManagementOpen}
+        onClose={() => setIsUserManagementOpen(false)}
+        currentUser={currentUser}
+        onUsersUpdated={() => setCurrentUser(StorageService.getSessionUser())}
+      />
+
+      <ExitSystemModal
+        isOpen={isExitModalOpen}
+        onClose={() => setIsExitModalOpen(false)}
+        onExitAndCloseBrowser={handleExitAndCloseBrowser}
+        onLogoutOnly={handleLogoutOnly}
+        userName={currentUser?.name}
       />
     </div>
   );

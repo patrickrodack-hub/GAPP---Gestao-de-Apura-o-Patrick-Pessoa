@@ -915,7 +915,7 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
           </span>
         </div>
 
-        <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Banda Peças */}
           <div className="p-3 rounded-lg bg-teal-50/40 dark:bg-teal-950/20 border border-teal-200/60 dark:border-teal-900/40">
             <label className="block text-xs font-bold text-teal-900 dark:text-teal-200 mb-1">
@@ -936,44 +936,6 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
               <span>Peso (36kg/pç):</span>
               <strong>{draftRow.bandaKg} kg</strong>
             </div>
-          </div>
-
-          {/* Venda Suíno */}
-          <div className="p-3 rounded-lg bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40">
-            <label className="block text-xs font-bold text-amber-900 dark:text-amber-200 mb-1">
-              Venda Estimada (Banda)
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min="0"
-                value={draftRow.bandaVenda === 0 ? '' : draftRow.bandaVenda}
-                onChange={(e) => handleFieldChange('bandaVenda', Number(e.target.value))}
-                placeholder="0"
-                className="w-full bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg p-2 text-sm font-mono font-bold text-amber-900 dark:text-amber-200 focus:ring-2 focus:ring-amber-500 focus:outline-none"
-              />
-              <span className="text-xs text-amber-600 dark:text-amber-400 font-mono">pç</span>
-            </div>
-            <span className="text-[10px] text-amber-700 dark:text-amber-400 block mt-1">Giro semanal da loja</span>
-          </div>
-
-          {/* Pedido Suíno */}
-          <div className="p-3 rounded-lg bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-200/60 dark:border-indigo-900/40">
-            <label className="block text-xs font-bold text-indigo-900 dark:text-indigo-200 mb-1">
-              Pedido Banda Suína
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min="0"
-                value={draftRow.bandaPedido === 0 ? '' : draftRow.bandaPedido}
-                onChange={(e) => handleFieldChange('bandaPedido', Number(e.target.value))}
-                placeholder="0"
-                className="w-full bg-white dark:bg-slate-900 border border-indigo-300 dark:border-indigo-700 rounded-lg p-2 text-sm font-mono font-bold text-indigo-900 dark:text-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              />
-              <span className="text-xs text-indigo-600 dark:text-indigo-400 font-mono">pç</span>
-            </div>
-            <span className="text-[10px] text-indigo-700 dark:text-indigo-400 block mt-1">Quantidade pedida</span>
           </div>
 
           {/* Costela Suína */}

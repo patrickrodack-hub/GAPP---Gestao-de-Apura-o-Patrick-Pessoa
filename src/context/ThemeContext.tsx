@@ -18,9 +18,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const saved = localStorage.getItem('apuracao_boi_theme') as Theme | null;
       if (saved === 'solidcon' || saved === 'light' || saved === 'dark') return saved;
-      return 'solidcon'; // Default to the requested Solidcon theme!
+      return 'light'; // Padrão: "Moderno Claro" conforme solicitado
     } catch {
-      return 'solidcon';
+      return 'light';
     }
   });
 

@@ -276,3 +276,29 @@ export interface PortalLockConfig {
   updatedBy?: string;           // Quem configurou (ex: "Patrick Pessoa - Gestor")
   updatedAt?: number;           // Timestamp da última alteração
 }
+
+// ==========================================
+// USUÁRIOS E PERMISSÕES DO MÓDULO DE GESTÃO
+// ==========================================
+export type UserRole = 
+  | 'DESENVOLVEDOR' 
+  | 'DIRETOR' 
+  | 'COMPRADOR' 
+  | 'OPERACIONAL' 
+  | 'VISUALIZADOR';
+
+export interface SystemUser {
+  id: string;
+  name: string;             // Nome completo (ex: "Patrick Pessoa")
+  username: string;         // Login de acesso (ex: "desenvolvedor")
+  password: string;         // Senha de acesso (ex: "190996")
+  role: UserRole;           // Cargo/Perfil no sistema
+  roleTitle?: string;       // Título exibido (ex: "Desenvolvedor do Software")
+  email?: string;
+  avatar?: string;
+  active: boolean;          // Ativo / Inativo
+  allowedModules: string[]; // IDs dos módulos permitidos: 'dashboard', 'sheet', 'yield', 'results', 'inventory', 'purchases', 'waste', 'parameters', 'users'
+  createdAt: number;
+  lastLoginAt?: number;
+}
+

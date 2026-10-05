@@ -29,7 +29,8 @@ import {
   AlertCircle,
   Building2,
   Clock,
-  Smartphone
+  Smartphone,
+  Power
 } from 'lucide-react';
 
 export interface ERPMenuItem {
@@ -177,6 +178,18 @@ export const getERPMenuCategories = (
         icon: RotateCcw,
         actionType: 'action',
         actionId: 'reset'
+      },
+      {
+        id: 'arq-sair',
+        name: 'Sair do Sistema e Fechar Navegador',
+        division: 'Sistema & Segurança',
+        code: 'SYS-99',
+        shortcut: 'Alt+F4',
+        badge: 'Saída',
+        description: 'Encerra a sessão de trabalho e fecha a janela do navegador',
+        icon: Power,
+        actionType: 'action',
+        actionId: 'exit'
       }
     ]
   },
