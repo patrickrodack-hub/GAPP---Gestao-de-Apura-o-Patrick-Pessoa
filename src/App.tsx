@@ -599,7 +599,7 @@ export default function App() {
   // ==========================================
   if (isSolidcon) {
     return (
-      <div className="min-h-screen bg-[#3a4149] text-slate-900 flex flex-col font-sans select-none antialiased">
+      <div className="h-screen h-[100dvh] w-full overflow-hidden bg-[#3a4149] text-slate-900 flex flex-col font-sans select-none antialiased">
         {renderSWUpdateBanner()}
         {/* Toast Notification */}
         {feedbackToast && (
@@ -608,47 +608,51 @@ export default function App() {
           </div>
         )}
 
-        {/* 1. Desktop Blue Header + Menu Bar + Shortcut Toolbar */}
-        <SolidconHeader
-          activeTab={activeTab}
-          onTabChange={handleTabSelect}
-          onReset={handleReset}
-          onExportCSV={handleExportCSV}
-          onExportXLSX={handleExportXLSX}
-          onOpenQuickCalc={() => setIsQuickCalcOpen(true)}
-          onPrint={() => setIsPrintModalOpen(true)}
-          isDesktopView={isDesktopView}
-          onToggleDesktop={() => setIsDesktopView(!isDesktopView)}
-          storeCount={stores.length}
-          onOpenShortcuts={() => setIsShortcutsOpen(true)}
-          onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
-          onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
-          onOpenMobilePortal={handleOpenMobilePortal}
-          onOpenPortalControl={() => setIsPortalControlOpen(true)}
-          onOpenBackup={() => setIsBackupModalOpen(true)}
-          onSaveSheet={() => handleSaveSheetSnapshot()}
-          currentUser={currentUser}
-          onOpenUserManagement={handleOpenUserManagement}
-          onLogout={handleLogout}
-          onExitSystem={() => setIsExitModalOpen(true)}
-        />
+        {/* 1. Desktop Blue Header + Menu Bar + Shortcut Toolbar (FIXED AT TOP) */}
+        <div className="shrink-0 z-40 w-full">
+          <SolidconHeader
+            activeTab={activeTab}
+            onTabChange={handleTabSelect}
+            onReset={handleReset}
+            onExportCSV={handleExportCSV}
+            onExportXLSX={handleExportXLSX}
+            onOpenQuickCalc={() => setIsQuickCalcOpen(true)}
+            onPrint={() => setIsPrintModalOpen(true)}
+            isDesktopView={isDesktopView}
+            onToggleDesktop={() => setIsDesktopView(!isDesktopView)}
+            storeCount={stores.length}
+            onOpenShortcuts={() => setIsShortcutsOpen(true)}
+            onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
+            onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+            onOpenMobilePortal={handleOpenMobilePortal}
+            onOpenPortalControl={() => setIsPortalControlOpen(true)}
+            onOpenBackup={() => setIsBackupModalOpen(true)}
+            onSaveSheet={() => handleSaveSheetSnapshot()}
+            currentUser={currentUser}
+            onOpenUserManagement={handleOpenUserManagement}
+            onLogout={handleLogout}
+            onExitSystem={() => setIsExitModalOpen(true)}
+          />
+        </div>
 
-        {/* 2. Main Desktop Area */}
-        <div className="flex-1 relative flex flex-col overflow-x-hidden bg-[#e0e4e8]">
+        {/* 2. Main Desktop Area (FIXED CONTAINER, FITS EXACTLY IN AVAILABLE SPACE) */}
+        <div className="flex-1 min-h-0 relative flex flex-col overflow-hidden bg-[#e0e4e8]">
           {isDesktopView ? (
             /* Wallpaper view */
-            <SolidconDesktopWallpaper
-              onOpenTab={handleTabSelect}
-              onOpenQuickCalc={() => setIsQuickCalcOpen(true)}
-            />
+            <div className="flex-1 min-h-0 overflow-y-auto w-full h-full">
+              <SolidconDesktopWallpaper
+                onOpenTab={handleTabSelect}
+                onOpenQuickCalc={() => setIsQuickCalcOpen(true)}
+              />
+            </div>
           ) : (
             /* MDI Active Window Container */
-            <div className="flex-1 flex flex-col p-2 sm:p-3 bg-slate-200/90 min-h-0">
-              <div className="flex-1 flex flex-col bg-white border border-[#9ca3af] shadow-lg rounded-sm overflow-hidden">
+            <div className="flex-1 min-h-0 flex flex-col p-1 sm:p-2.5 bg-slate-200/90 overflow-hidden">
+              <div className="flex-1 min-h-0 flex flex-col bg-white border border-[#9ca3af] shadow-lg rounded-sm overflow-hidden">
                 
-                {/* Window Internal Title Bar */}
+                {/* Window Internal Title Bar (FIXED) */}
                 <div 
-                  className="h-7 px-3 flex items-center justify-between text-white text-xs font-semibold"
+                  className="shrink-0 h-7 px-3 flex items-center justify-between text-white text-xs font-semibold select-none"
                   style={{
                     background: 'linear-gradient(90deg, #004b87 0%, #0078d7 100%)'
                   }}
@@ -678,8 +682,8 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Window Sub-navigation bar inside ERP */}
-                <div className="bg-[#f1f5f9] border-b border-slate-300 px-3 py-1 flex items-center justify-between text-xs">
+                {/* Window Sub-navigation bar inside ERP (FIXED) */}
+                <div className="shrink-0 bg-[#f1f5f9] border-b border-slate-300 px-3 py-1 flex items-center justify-between text-xs select-none">
                   <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar py-0.5">
                     {[
                       { id: 'sheet', label: 'Planilha v10.1' },
@@ -695,7 +699,7 @@ export default function App() {
                       <button
                         key={tab.id}
                         onClick={() => handleTabSelect(tab.id as NavigationTab)}
-                        className={`px-2.5 py-1 rounded text-[11px] font-semibold transition ${
+                        className={`px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer ${
                           activeTab === tab.id
                             ? 'bg-[#0078d7] text-white shadow-xs'
                             : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-300'
@@ -713,8 +717,8 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Window Body (Scrollable Tab Content) */}
-                <div className="flex-1 overflow-y-auto p-4 bg-slate-50">
+                {/* Window Body (Scrollable Tab Content strictly inside the window) */}
+                <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 bg-slate-50">
                   {activeTab === 'dashboard' && (
                     <DashboardTab
                       rows={sheetRows}
@@ -816,8 +820,10 @@ export default function App() {
           )}
         </div>
 
-        {/* 3. Bottom Status Bar (GAPP Classic style: 01/10/2026 | Patrick Pessoa | 1.1.8719) */}
-        <SolidconStatusBar storeCount={stores.length} isCloudConnected={isCloudConnected} />
+        {/* 3. Bottom Status Bar (FIXED AT BOTTOM) */}
+        <div className="shrink-0 z-30 w-full">
+          <SolidconStatusBar storeCount={stores.length} isCloudConnected={isCloudConnected} />
+        </div>
 
         {/* Modals */}
         <QuickCalculatorModal
@@ -910,150 +916,156 @@ export default function App() {
   // RENDER MODERN THEMES (LIGHT & DARK)
   // ==========================================
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200">
+    <div className="h-screen h-[100dvh] w-full overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200 select-none">
       {renderSWUpdateBanner()}
       {/* Toast Notification */}
       {feedbackToast && (
-        <div className="fixed bottom-5 right-5 z-50 bg-amber-500 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs shadow-2xl flex items-center gap-2 border border-amber-400">
+        <div className="fixed bottom-14 right-5 z-50 bg-amber-500 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs shadow-2xl flex items-center gap-2 border border-amber-400">
           <span>✓ {feedbackToast}</span>
         </div>
       )}
 
-      {/* Main App Header */}
-      <Header
-        totalPurchaseR$={totalPurchaseR$}
-        totalPieces={totalPieces}
-        totalKg={totalKg}
-        storeCount={stores.length}
-        onReset={handleReset}
-        onExportCSV={handleExportCSV}
-        onExportXLSX={handleExportXLSX}
-        onOpenQuickCalc={() => setIsQuickCalcOpen(true)}
-        onPrint={() => setIsPrintModalOpen(true)}
-        onOpenShortcuts={() => setIsShortcutsOpen(true)}
-        onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
-        onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
-        onOpenMobilePortal={handleOpenMobilePortal}
-        onOpenPortalControl={() => setIsPortalControlOpen(true)}
-        onOpenBackup={() => setIsBackupModalOpen(true)}
-        onSaveSheet={() => handleSaveSheetSnapshot()}
-        currentUser={currentUser}
-        onOpenUserManagement={handleOpenUserManagement}
-        onLogout={handleLogout}
-        onExitSystem={() => setIsExitModalOpen(true)}
-      />
+      {/* Main App Header (FIXED AT TOP) */}
+      <div className="shrink-0 z-40 w-full shadow-sm">
+        <Header
+          totalPurchaseR$={totalPurchaseR$}
+          totalPieces={totalPieces}
+          totalKg={totalKg}
+          storeCount={stores.length}
+          onReset={handleReset}
+          onExportCSV={handleExportCSV}
+          onExportXLSX={handleExportXLSX}
+          onOpenQuickCalc={() => setIsQuickCalcOpen(true)}
+          onPrint={() => setIsPrintModalOpen(true)}
+          onOpenShortcuts={() => setIsShortcutsOpen(true)}
+          onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
+          onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+          onOpenMobilePortal={handleOpenMobilePortal}
+          onOpenPortalControl={() => setIsPortalControlOpen(true)}
+          onOpenBackup={() => setIsBackupModalOpen(true)}
+          onSaveSheet={() => handleSaveSheetSnapshot()}
+          currentUser={currentUser}
+          onOpenUserManagement={handleOpenUserManagement}
+          onLogout={handleLogout}
+          onExitSystem={() => setIsExitModalOpen(true)}
+        />
+      </div>
 
-      {/* Navigation Tabs */}
-      <Navigation 
-        activeTab={activeTab} 
-        onTabChange={handleTabSelect} 
-        currentUser={currentUser}
-        onOpenUserManagement={handleOpenUserManagement}
-        onOpenShortcuts={() => setIsShortcutsOpen(true)} 
-        onExitSystem={() => setIsExitModalOpen(true)}
-      />
+      {/* Navigation Tabs (FIXED DIRECTLY BELOW HEADER) */}
+      <div className="shrink-0 z-30 w-full shadow-2xs">
+        <Navigation 
+          activeTab={activeTab} 
+          onTabChange={handleTabSelect} 
+          currentUser={currentUser}
+          onOpenUserManagement={handleOpenUserManagement}
+          onOpenShortcuts={() => setIsShortcutsOpen(true)} 
+          onExitSystem={() => setIsExitModalOpen(true)}
+        />
+      </div>
 
-      {/* Content Body */}
-      <main className="flex-1 max-w-[1920px] w-full mx-auto px-4 sm:px-6 py-6">
-        {activeTab === 'dashboard' && (
-          <DashboardTab
-            rows={sheetRows}
-            stores={stores}
-            batches={batches}
-            onNavigate={handleTabSelect}
-            onOpenQuickCalc={() => setIsQuickCalcOpen(true)}
-          />
-        )}
+      {/* Content Body (ONLY THIS AREA SCROLLS, AUTO-ADJUSTS TO WINDOW RESIZE) */}
+      <main className="flex-1 min-h-0 overflow-y-auto w-full px-3 sm:px-6 py-4">
+        <div className="max-w-[1920px] mx-auto pb-4">
+          {activeTab === 'dashboard' && (
+            <DashboardTab
+              rows={sheetRows}
+              stores={stores}
+              batches={batches}
+              onNavigate={handleTabSelect}
+              onOpenQuickCalc={() => setIsQuickCalcOpen(true)}
+            />
+          )}
 
-        {activeTab === 'sheet' && (
-          <SheetTab
-            rows={sheetRows}
-            onUpdateRow={handleUpdateRow}
-            onUpdateMultiple={handleUpdateMultipleRows}
-            onExportXLSX={handleExportXLSX}
-            onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
-            sheetSnapshots={sheetSnapshots}
-            onSaveSheetSnapshot={handleSaveSheetSnapshot}
-            onRestoreSheetSnapshot={handleRestoreSheetSnapshot}
-            onDeleteSheetSnapshot={handleDeleteSheetSnapshot}
-          />
-        )}
+          {activeTab === 'sheet' && (
+            <SheetTab
+              rows={sheetRows}
+              onUpdateRow={handleUpdateRow}
+              onUpdateMultiple={handleUpdateMultipleRows}
+              onExportXLSX={handleExportXLSX}
+              onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
+              sheetSnapshots={sheetSnapshots}
+              onSaveSheetSnapshot={handleSaveSheetSnapshot}
+              onRestoreSheetSnapshot={handleRestoreSheetSnapshot}
+              onDeleteSheetSnapshot={handleDeleteSheetSnapshot}
+            />
+          )}
 
-        {activeTab === 'yield' && <YieldTab />}
+          {activeTab === 'yield' && <YieldTab />}
 
-        {activeTab === 'results' && (
-          <ResultsTab 
-            rows={sheetRows} 
-            stores={stores} 
-            batches={batches}
-            wasteRecords={wasteRecords}
-          />
-        )}
+          {activeTab === 'results' && (
+            <ResultsTab 
+              rows={sheetRows} 
+              stores={stores} 
+              batches={batches}
+              wasteRecords={wasteRecords}
+            />
+          )}
 
-        {activeTab === 'inventory' && (
-          <InventoryTab
-            rows={sheetRows}
-            stores={stores}
-            onUpdateRow={handleUpdateRow}
-            onUpdateMultiple={handleUpdateMultipleRows}
-            onNavigateToSheet={() => handleTabSelect('sheet')}
-          />
-        )}
+          {activeTab === 'inventory' && (
+            <InventoryTab
+              rows={sheetRows}
+              stores={stores}
+              onUpdateRow={handleUpdateRow}
+              onUpdateMultiple={handleUpdateMultipleRows}
+              onNavigateToSheet={() => handleTabSelect('sheet')}
+            />
+          )}
 
-        {activeTab === 'purchases' && (
-          <PurchasesTab
-            batches={batches}
-            suppliers={suppliers}
-            stores={stores}
-            sheetRows={sheetRows}
-            onAddBatch={handleAddBatch}
-            onUpdateBatch={handleUpdateBatch}
-            onDeleteBatch={handleDeleteBatch}
-            onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
-          />
-        )}
+          {activeTab === 'purchases' && (
+            <PurchasesTab
+              batches={batches}
+              suppliers={suppliers}
+              stores={stores}
+              sheetRows={sheetRows}
+              onAddBatch={handleAddBatch}
+              onUpdateBatch={handleUpdateBatch}
+              onDeleteBatch={handleDeleteBatch}
+              onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+            />
+          )}
 
-        {activeTab === 'waste' && (
-          <WasteTab
-            wasteRecords={wasteRecords}
-            stores={stores}
-            onAddWasteRecord={handleAddWasteRecord}
-          />
-        )}
+          {activeTab === 'waste' && (
+            <WasteTab
+              wasteRecords={wasteRecords}
+              stores={stores}
+              onAddWasteRecord={handleAddWasteRecord}
+            />
+          )}
 
-        {activeTab === 'parameters' && (
-          <ParametersTab
-            products={products}
-            stores={stores}
-            sheetRows={sheetRows}
-            suppliers={suppliers}
-            onUpdateProducts={setProducts}
-            onUpdateStores={setStores}
-            onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
-            onOpenUserManagement={handleOpenUserManagement}
-            currentUser={currentUser}
-          />
-        )}
+          {activeTab === 'parameters' && (
+            <ParametersTab
+              products={products}
+              stores={stores}
+              sheetRows={sheetRows}
+              suppliers={suppliers}
+              onUpdateProducts={setProducts}
+              onUpdateStores={setStores}
+              onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+              onOpenUserManagement={handleOpenUserManagement}
+              currentUser={currentUser}
+            />
+          )}
 
-        {activeTab === 'backup' && (
-          <BackupManagerView
-            showToast={showToast}
-            onRestoreCompleted={() => {
-              showToast('Backup restaurado com sucesso! Dados atualizados.');
-              setSheetRows(StorageService.getSheetRows());
-              setStores(StorageService.getStores());
-              setBatches(StorageService.getBatches());
-              setSuppliers(StorageService.getSuppliers());
-              setProducts(StorageService.getProducts());
-              setSheetSnapshots(StorageService.getSheetSnapshots());
-            }}
-          />
-        )}
+          {activeTab === 'backup' && (
+            <BackupManagerView
+              showToast={showToast}
+              onRestoreCompleted={() => {
+                showToast('Backup restaurado com sucesso! Dados atualizados.');
+                setSheetRows(StorageService.getSheetRows());
+                setStores(StorageService.getStores());
+                setBatches(StorageService.getBatches());
+                setSuppliers(StorageService.getSuppliers());
+                setProducts(StorageService.getProducts());
+                setSheetSnapshots(StorageService.getSheetSnapshots());
+              }}
+            />
+          )}
+        </div>
       </main>
 
-      {/* Footer */}
-      <footer className="mt-auto py-6 border-t border-slate-200 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/60 backdrop-blur transition-colors">
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+      {/* Footer (FIXED AT BOTTOM) */}
+      <footer className="shrink-0 z-30 w-full py-2 sm:py-2.5 border-t border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur transition-colors">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-1.5 text-xs text-slate-500 dark:text-slate-400">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-slate-800 dark:text-slate-200">
               Grupo GAPP Sistemas • Apuração do Boi por Patrick Pessoa
@@ -1062,7 +1074,7 @@ export default function App() {
               GRUPO GAPP
             </span>
           </div>
-          <div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400">
             Planilha Matriz Oficial da Direção v10.1 • 16 Filiais Integradas
           </div>
         </div>
