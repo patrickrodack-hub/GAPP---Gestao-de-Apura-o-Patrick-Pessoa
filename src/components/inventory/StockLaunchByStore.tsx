@@ -63,6 +63,27 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
     ? HALF_CARCASS_CUT_YIELD_WEIGHTS 
     : DEFAULT_CUT_YIELD_WEIGHTS;
 
+  // Verifica de forma robusta se a filial possui dados de estoque lançados na planilha
+  const isStoreLaunched = (storeId: string): boolean => {
+    if (launchedStoreIds.has(storeId)) return true;
+    
+    try {
+      const records = StorageService.getStockLaunchRecords();
+      if (records.some(r => r.storeId === storeId)) return true;
+    } catch {}
+
+    const row = rows.find(r => r.storeId === storeId);
+    if (row) {
+      const chamberPieces = (row.camaraDianteiro || 0) + (row.camaraTraseiro || 0) + (row.camaraCoxao || 0) + (row.camaraAlcatrao || 0) + (row.camaraCostelaGaucha || 0);
+      const counterPieces = (row.alcatra || 0) + (row.contraFile || 0) + (row.picanha || 0) + (row.fileMignon || 0) + (row.costelaCong || 0) +
+                            (row.paletaPecas || 0) + (row.acemPecas || 0) + (row.peitoPecas || 0) + (row.musculoPecas || 0) +
+                            (row.chaPecas || 0) + (row.patinhoPecas || 0) + (row.lagartoRedondoPecas || 0) + (row.lagartoPlanoPecas || 0) +
+                            (row.bandaPecas || 0) + (row.costelaSuinaPecas || 0) + (row.pernilPecas || 0);
+      if (chamberPieces + counterPieces > 0) return true;
+    }
+    return false;
+  };
+
   // Carrega a linha da loja selecionada
   useEffect(() => {
     const row = rows.find(r => r.storeId === selectedStoreId);
@@ -321,11 +342,14 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
                 }}
                 className="bg-transparent border-none text-xs font-bold text-slate-800 dark:text-slate-200 px-2 py-1 focus:outline-none cursor-pointer"
               >
-                {stores.map((s, idx) => (
-                  <option key={s.id} value={s.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                    {idx + 1}. {s.name} ({s.city})
-                  </option>
-                ))}
+                {stores.map((s, idx) => {
+                  const launched = isStoreLaunched(s.id);
+                  return (
+                    <option key={s.id} value={s.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                      {launched ? '✓ ' : ''}{idx + 1}. {s.name} ({s.city})
+                    </option>
+                  );
+                })}
               </select>
 
               <button
@@ -383,7 +407,7 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-3 mt-3 border-t border-slate-100 dark:border-slate-800/80">
           {stores.map((s, idx) => {
             const isCurr = s.id === selectedStoreId;
-            const isLaunched = launchedStoreIds.has(s.id);
+            const isLaunched = isStoreLaunched(s.id);
             return (
               <button
                 key={s.id}
@@ -391,18 +415,18 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
                   if (draftRow) onUpdateRow(draftRow);
                   setSelectedStoreId(s.id);
                 }}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition flex items-center gap-1.5 ${
-                  isLaunched
-                    ? isCurr
-                      ? 'bg-emerald-600 text-white font-bold ring-2 ring-emerald-400 dark:ring-emerald-500 shadow-sm'
-                      : 'bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 font-bold hover:bg-emerald-200 dark:hover:bg-emerald-900/90 shadow-2xs'
-                    : isCurr
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400'
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-150 flex items-center gap-1.5 ${
+                  isCurr
+                    ? `bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-md ring-2 ${isLaunched ? 'ring-emerald-500 dark:ring-emerald-400' : 'ring-white/90 dark:ring-amber-300'}`
+                    : isLaunched
+                    ? 'bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-500 text-emerald-800 dark:text-emerald-300 font-bold hover:bg-emerald-200 dark:hover:bg-emerald-900/60 shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-800/90 hover:bg-slate-200 dark:hover:bg-slate-700/90 border border-slate-200 dark:border-slate-700/80 text-slate-600 dark:text-slate-300 font-medium'
                 }`}
-                title={isLaunched ? `Lançamento realizado para ${s.name} (Dados da filial já lançados)` : `Pendente de lançamento: ${s.name}`}
+                title={isLaunched ? `✓ Lançamento de dados realizado: ${s.name} (Dados da filial já lançados na planilha)` : `Pendente de lançamento: ${s.name}`}
               >
-                {isLaunched && <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-300 stroke-[3] shrink-0" />}
+                {isLaunched && (
+                  <Check className={`w-3.5 h-3.5 stroke-[3] shrink-0 ${isCurr ? 'text-slate-950' : 'text-emerald-600 dark:text-emerald-300'}`} />
+                )}
                 <span>{idx + 1}. {s.name.replace('Loja ', 'L.')}</span>
               </button>
             );

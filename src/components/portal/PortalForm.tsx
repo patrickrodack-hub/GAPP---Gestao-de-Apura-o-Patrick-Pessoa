@@ -221,6 +221,17 @@ export const PortalForm: React.FC<PortalFormProps> = ({
     // Salva imediatamente no banco de dados local para garantir persistência garantida da Planilha
     StorageService.saveSingleSheetRow(finalRow);
 
+    try {
+      const saved = localStorage.getItem('gapp_stock_launched_stores');
+      const ids: string[] = saved ? JSON.parse(saved) : [];
+      if (!ids.includes(store.id)) {
+        ids.push(store.id);
+        localStorage.setItem('gapp_stock_launched_stores', JSON.stringify(ids));
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+
     // 2. Calcula métricas do envio para histórico
     const totalPecas = finalRow.camaraDianteiro + finalRow.somaDoTraseiro + finalRow.camaraCostelaGaucha +
                        finalRow.alcatra + finalRow.contraFile + finalRow.picanha + finalRow.fileMignon + finalRow.costelaCong +
