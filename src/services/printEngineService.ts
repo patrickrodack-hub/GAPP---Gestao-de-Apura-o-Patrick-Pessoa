@@ -349,85 +349,44 @@ export class PrintEngineService {
     </div>
   </div>
 
-  <!-- Tabela de Distribuição das 16 Lojas -->
-  <table class="data-table">
-    <thead>
-      <tr>
-        <th rowspan="2" style="width: 14%;">Filial / Loja</th>
-        <th colspan="7" class="bg-bovino">Câmara / Balcão e Desossa (Bovino)</th>
-        <th colspan="6" class="bg-suino">Câmara / Balcão e Desossa (Suíno / Banda)</th>
-        <th colspan="2" class="bg-financeiro">Fechamento Lote</th>
-      </tr>
-      <tr>
-        <!-- Bovino -->
-        <th class="bg-bovino">Diant.</th>
-        <th class="bg-bovino">Tras.</th>
-        <th class="bg-bovino">Coxão</th>
-        <th class="bg-bovino">Alcat.</th>
-        <th class="bg-bovino">Cost.</th>
-        <th class="bg-bovino">Giro</th>
-        <th class="bg-bovino" style="background: #bfdbfe; font-weight: 900; color: #1e3a8a;">Pedido</th>
-
-        <!-- Suíno -->
-        <th class="bg-suino">Banda Pç</th>
-        <th class="bg-suino">Venda</th>
-        <th class="bg-suino">Sugest.</th>
-        <th class="bg-suino" style="background: #99f6e4; font-weight: 900; color: #134e4a;">Ped. Banda</th>
-        <th class="bg-suino">Cost. Suína</th>
-        <th class="bg-suino">Pernil</th>
-
-        <!-- Financeiro -->
-        <th class="bg-financeiro">Peso Prev. (Kg)</th>
-        <th class="bg-financeiro">Total Prev. (R$)</th>
-      </tr>
-    </thead>
-    <tbody class="font-mono">
-      ${orderItems.map((item, idx) => `
-        <tr style="background: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
-          <td class="store-name">${item.storeName}</td>
-          <td>${item.dianteiro}</td>
-          <td>${item.traseiro}</td>
-          <td>${item.coxao}</td>
-          <td>${item.alcatrao}</td>
-          <td>${item.costela}</td>
-          <td style="color: #b45309; font-weight: bold;">${item.venda}</td>
-          <td style="background: #eff6ff; font-weight: 900; color: #1d4ed8;">${item.pedido}</td>
-
-          <td style="color: #0f766e; font-weight: bold;">${item.bandaPecas || 0}</td>
-          <td style="color: #b45309;">${item.bandaVenda || 0}</td>
-          <td style="color: ${(item.bandaSugestao || 0) < 0 ? '#b91c1c' : '#047857'}; font-weight: bold;">${item.bandaSugestao || 0}</td>
-          <td style="background: #f0fdfa; font-weight: 900; color: #0f766e;">${item.bandaPedido || 0}</td>
-          <td>${item.costelaSuina || 0}</td>
-          <td>${item.pernil || 0}</td>
-
-          <td style="font-weight: 700;">${formatNumberBR(item.estimatedWeightKg)} kg</td>
-          <td style="font-weight: 800; color: #15803d;">${formatCurrencyBRL(item.estimatedTotalR$)}</td>
+  <!-- Tabela Oficial de Distribuição das Lojas (5 Colunas Padrão) -->
+  <div style="margin-bottom: 6px; border: 1px solid #cbd5e1; border-radius: 4px; overflow: hidden;">
+    <div style="background: #f1f5f9; padding: 4px 8px; font-weight: 800; font-size: 7.5pt; text-transform: uppercase; color: #1e293b; display: flex; justify-content: space-between; border-bottom: 1px solid #cbd5e1;">
+      <span>AJUSTAR QUANTIDADES PEDIDAS POR FILIAL</span>
+      <span style="color: #64748b;">${orderItems.length} LOJAS</span>
+    </div>
+    <table class="data-table" style="margin-bottom: 0;">
+      <thead>
+        <tr>
+          <th style="width: 28%; text-align: left; padding: 4px 6px;">LOJA</th>
+          <th style="width: 18%; background: #e0e7ff; color: #312e81; font-weight: 800;">BOI (QTD PEDIDA)</th>
+          <th style="width: 18%; background: #ccfbf1; color: #115e59; font-weight: 800;">SUÍNO / BANDA (QTD)</th>
+          <th style="width: 18%; text-align: right; padding-right: 6px;">PESO ESTIMADO (KG)</th>
+          <th style="width: 18%; text-align: right; padding-right: 6px; background: #dcfce7; color: #14532d;">VALOR ESTIMADO (R$)</th>
         </tr>
-      `).join('')}
-    </tbody>
-    <tfoot>
-      <tr class="total-row font-mono">
-        <td style="text-align: left; font-family: sans-serif; font-size: 7.5pt;">TOTAIS GERAIS CONSOLIDADOS</td>
-        <td>${totalDianteiro}</td>
-        <td>${totalTraseiro}</td>
-        <td>${totalCoxao}</td>
-        <td>${totalAlcatrao}</td>
-        <td>${totalCostela}</td>
-        <td style="color: #b45309;">${totalVenda}</td>
-        <td style="background: #dbeafe; color: #1e3a8a; font-size: 8pt;">${totalBoisPedidos}</td>
-
-        <td style="color: #0f766e;">${totalBandaPecas}</td>
-        <td style="color: #b45309;">${totalBandaVenda}</td>
-        <td style="color: ${totalBandaSugestao < 0 ? '#b91c1c' : '#047857'};">${totalBandaSugestao}</td>
-        <td style="background: #ccfbf1; color: #115e59; font-size: 8pt;">${totalBandasPedidas}</td>
-        <td>${totalCostelaSuina}</td>
-        <td>${totalPernil}</td>
-
-        <td style="font-size: 8pt;">${formatNumberBR(totalWeightKg)} kg</td>
-        <td style="font-size: 8.5pt; color: #166534;">${formatCurrencyBRL(totalCostR$)}</td>
-      </tr>
-    </tfoot>
-  </table>
+      </thead>
+      <tbody class="font-mono">
+        ${orderItems.map((item, idx) => `
+          <tr style="background: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+            <td class="store-name" style="padding: 3.5px 6px; font-size: 7.8pt;">${item.storeName}</td>
+            <td style="background: #eef2ff; font-weight: 900; color: #1e40af; font-size: 8.5pt;">${item.pedido}</td>
+            <td style="background: #f0fdfa; font-weight: 900; color: #0f766e; font-size: 8.5pt;">${item.bandaPedido || 0}</td>
+            <td style="text-align: right; padding-right: 6px; font-weight: 700; color: #334155;">${formatNumberBR(item.estimatedWeightKg, 0)} kg</td>
+            <td style="text-align: right; padding-right: 6px; font-weight: 900; color: #15803d;">${formatCurrencyBRL(item.estimatedTotalR$)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+      <tfoot>
+        <tr class="total-row font-mono">
+          <td style="text-align: left; font-family: sans-serif; font-size: 8pt; font-weight: 900; padding: 4px 6px;">TOTAL GERAL (${orderItems.length} LOJAS)</td>
+          <td style="background: #c7d2fe; color: #1e1b4b; font-size: 9pt; font-weight: 900;">${totalBoisPedidos}</td>
+          <td style="background: #99f6e4; color: #042f2e; font-size: 9pt; font-weight: 900;">${totalBandasPedidas}</td>
+          <td style="text-align: right; padding-right: 6px; font-size: 8.5pt; font-weight: 900; color: #0f172a;">${formatNumberBR(totalWeightKg, 0)} kg</td>
+          <td style="text-align: right; padding-right: 6px; font-size: 9pt; font-weight: 900; color: #14532d; background: #bbf7d0;">${formatCurrencyBRL(totalCostR$)}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
 
   <!-- Informações de Entrega e Assinaturas -->
   <div class="footer-grid">

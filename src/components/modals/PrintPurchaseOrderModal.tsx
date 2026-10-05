@@ -243,133 +243,77 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
               </div>
             </div>
 
-            {/* 4. Quadro Analítico por Loja com a Quantidade Real Lançada */}
-            <div className="border border-slate-300 rounded-lg overflow-hidden">
-              <div className="bg-slate-100 px-3 py-1.5 border-b border-slate-300 text-[10px] font-bold uppercase tracking-wider text-slate-700 flex justify-between">
-                <span>Distribuição Oficial por Filial (16 Lojas) • Bovino & Câmara / Balcão e Desossa</span>
-                <span>Quantidade Real Lançada no Pedido</span>
+            {/* 4. Quadro Analítico por Loja com as Quantidades Pedidas */}
+            <div className="border border-slate-300 rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-slate-100 px-4 py-2 border-b border-slate-300 text-xs font-bold uppercase tracking-wider text-slate-800 flex justify-between items-center">
+                <span className="text-slate-800 font-extrabold">AJUSTAR QUANTIDADES PEDIDAS POR FILIAL</span>
+                <span className="text-[11px] font-bold text-slate-600 font-mono bg-white px-2 py-0.5 rounded border border-slate-300">
+                  {orderItems.length} LOJAS
+                </span>
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-[9.5px] text-left border-collapse">
-                  <thead className="bg-slate-50 border-b border-slate-300 font-bold uppercase text-slate-700">
-                    <tr className="border-b border-slate-200">
-                      <th rowSpan={2} className="px-2 py-1.5 border-r border-slate-200 bg-slate-100">Loja / Filial</th>
-                      <th colSpan={11} className="px-2 py-1 text-center bg-blue-50/80 text-blue-900 border-r border-slate-200 font-bold">
-                        DADOS PARA A GERAÇÃO DE PEDIDO (BOVINO)
-                      </th>
-                      <th colSpan={6} className="px-2 py-1 text-center bg-teal-50/80 text-teal-900 font-bold">
-                        CÂMARA / BALCÃO E DESOSSA (SUÍNO / BANDA)
-                      </th>
-                    </tr>
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead className="bg-slate-50 border-b border-slate-300 font-bold uppercase text-slate-700 text-[11px]">
                     <tr>
-                      {/* Bovino */}
-                      <th className="px-1 py-1 text-center border-r border-slate-200">Diant</th>
-                      <th className="px-1 py-1 text-center border-r border-slate-200">Tras</th>
-                      <th className="px-1 py-1 text-center border-r border-slate-200">Coxão</th>
-                      <th className="px-1 py-1 text-center border-r border-slate-200">Alcat</th>
-                      <th className="px-1 py-1 text-center border-r border-slate-200">Cost. G</th>
-                      <th className="px-1 py-1 text-center border-r border-slate-200 bg-blue-50 text-blue-900">Boi</th>
-                      <th className="px-1 py-1 text-center border-r border-slate-200">Venda</th>
-                      <th className="px-1 py-1 text-center border-r border-slate-200">Sug.</th>
-                      <th className="px-1.5 py-1 text-center border-r border-slate-200 bg-indigo-50 text-indigo-900 font-bold">
-                        Ped. Boi
+                      <th className="px-4 py-2.5 border-r border-slate-200 bg-slate-100 font-extrabold">
+                        LOJA
                       </th>
-                      <th className="px-1.5 py-1 text-right border-r border-slate-200">Peso (kg)</th>
-                      <th className="px-1.5 py-1 text-right border-r border-slate-200 font-bold text-emerald-800">Valor (R$)</th>
-
-                      {/* Suíno */}
-                      <th className="px-1 py-1 text-center border-r border-slate-200 font-bold text-teal-700">Banda Pç</th>
-                      <th className="px-1 py-1 text-center border-r border-slate-200">Venda</th>
-                      <th className="px-1 py-1 text-center border-r border-slate-200">Sug.</th>
-                      <th className="px-1.5 py-1 text-center border-r border-slate-200 bg-indigo-50 text-indigo-900 font-bold">
-                        Ped. Banda
+                      <th className="px-3 py-2.5 text-center border-r border-slate-200 bg-indigo-50/70 text-indigo-900 font-extrabold">
+                        BOI (QTD PEDIDA)
                       </th>
-                      <th className="px-1 py-1 text-center border-r border-slate-200">Costela</th>
-                      <th className="px-1 py-1 text-center">Pernil</th>
+                      <th className="px-3 py-2.5 text-center border-r border-slate-200 bg-teal-50/70 text-teal-900 font-extrabold">
+                        SUÍNO / BANDA (QTD)
+                      </th>
+                      <th className="px-4 py-2.5 text-right border-r border-slate-200 bg-slate-50 text-slate-800 font-extrabold">
+                        PESO ESTIMADO (KG)
+                      </th>
+                      <th className="px-4 py-2.5 text-right bg-emerald-50/70 text-emerald-900 font-extrabold">
+                        VALOR ESTIMADO (R$)
+                      </th>
                     </tr>
                   </thead>
 
-                  <tbody className="divide-y divide-slate-200 font-mono text-[9.5px]">
+                  <tbody className="divide-y divide-slate-200 font-mono text-xs">
                     {orderItems.map((item, idx) => (
-                      <tr key={item.storeId} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
-                        <td className="px-2 py-1 font-sans font-semibold text-slate-800 border-r border-slate-200 whitespace-nowrap">
+                      <tr key={item.storeId} className={idx % 2 === 0 ? 'bg-white hover:bg-slate-50/80' : 'bg-slate-50/40 hover:bg-slate-100/80'}>
+                        <td className="px-4 py-2 font-sans font-bold text-slate-800 border-r border-slate-200">
                           {item.storeName}
                         </td>
-                        {/* Bovino */}
-                        <td className="px-1 py-1 text-center border-r border-slate-200">{item.dianteiro}</td>
-                        <td className="px-1 py-1 text-center border-r border-slate-200">{item.traseiro}</td>
-                        <td className="px-1 py-1 text-center border-r border-slate-200">{item.coxao}</td>
-                        <td className="px-1 py-1 text-center border-r border-slate-200">{item.alcatrao}</td>
-                        <td className="px-1 py-1 text-center border-r border-slate-200">{item.costela}</td>
-                        <td className="px-1 py-1 text-center border-r border-slate-200 text-blue-800 font-semibold bg-blue-50/40">
-                          {item.boi % 1 !== 0 ? item.boi.toFixed(1) : item.boi}
-                        </td>
-                        <td className="px-1 py-1 text-center border-r border-slate-200">{item.venda}</td>
-                        <td className={`px-1 py-1 text-center border-r border-slate-200 font-semibold ${item.sugestao < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
-                          {item.sugestao > 0 ? `+${item.sugestao}` : item.sugestao}
-                        </td>
-                        <td className="px-1.5 py-1 text-center border-r border-slate-200 font-bold text-indigo-900 bg-indigo-50/60">
+                        <td className="px-3 py-2 text-center border-r border-slate-200 font-black text-indigo-900 bg-indigo-50/40 text-sm">
                           {item.pedido}
                         </td>
-                        <td className="px-1.5 py-1 text-right border-r border-slate-200">
-                          {formatNumberBR(item.estimatedWeightKg, 1)}
+                        <td className="px-3 py-2 text-center border-r border-slate-200 font-black text-teal-900 bg-teal-50/40 text-sm">
+                          {item.bandaPedido || 0}
                         </td>
-                        <td className="px-1.5 py-1 text-right border-r border-slate-200 font-bold text-emerald-800">
+                        <td className="px-4 py-2 text-right border-r border-slate-200 font-semibold text-slate-700">
+                          {formatNumberBR(item.estimatedWeightKg, 0)} kg
+                        </td>
+                        <td className="px-4 py-2 text-right font-black text-emerald-700">
                           {formatCurrencyBRL(item.estimatedTotalR$)}
                         </td>
-
-                        {/* Suíno */}
-                        <td className="px-1 py-1 text-center border-r border-slate-200 font-bold text-teal-700">{item.bandaPecas}</td>
-                        <td className="px-1 py-1 text-center border-r border-slate-200 font-semibold">{item.bandaVenda}</td>
-                        <td className={`px-1 py-1 text-center border-r border-slate-200 font-semibold ${item.bandaSugestao < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
-                          {item.bandaSugestao > 0 ? `+${item.bandaSugestao}` : item.bandaSugestao}
-                        </td>
-                        <td className="px-1.5 py-1 text-center border-r border-slate-200 font-bold text-indigo-900 bg-indigo-50/60">
-                          {item.bandaPedido}
-                        </td>
-                        <td className="px-1 py-1 text-center border-r border-slate-200">{item.costelaSuina}</td>
-                        <td className="px-1 py-1 text-center">{item.pernil}</td>
                       </tr>
                     ))}
                   </tbody>
 
                   {/* Linha de Totais Gerais Consolidados */}
-                  <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-400 text-[9.5px] font-mono text-slate-900">
+                  <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-400 text-xs font-mono text-slate-900">
                     <tr>
-                      <td className="px-2 py-1.5 font-sans font-bold border-r border-slate-300">
-                        TOTAL
+                      <td className="px-4 py-2.5 font-sans font-extrabold border-r border-slate-300">
+                        TOTAL GERAL ({orderItems.length} LOJAS)
                       </td>
-                      {/* Bovino */}
-                      <td className="px-1 py-1 text-center border-r border-slate-300">{totalDianteiro}</td>
-                      <td className="px-1 py-1 text-center border-r border-slate-300">{totalTraseiro}</td>
-                      <td className="px-1 py-1 text-center border-r border-slate-300">{totalCoxao}</td>
-                      <td className="px-1 py-1 text-center border-r border-slate-300">{totalAlcatrao}</td>
-                      <td className="px-1 py-1 text-center border-r border-slate-300">{totalCostela}</td>
-                      <td className="px-1 py-1 text-center border-r border-slate-300 bg-blue-100 text-blue-900 font-bold">
-                        {Math.round(totalBoiEquivalente)}
-                      </td>
-                      <td className="px-1 py-1 text-center border-r border-slate-300">{totalVenda}</td>
-                      <td className="px-1 py-1 text-center border-r border-slate-300">{Math.round(totalSugestao)}</td>
-                      <td className="px-1.5 py-1 text-center border-r border-slate-300 bg-indigo-100 text-indigo-950 font-black">
+                      <td className="px-3 py-2.5 text-center border-r border-slate-300 bg-indigo-100/80 text-indigo-950 font-black text-sm">
                         {totalBoisPedidos}
                       </td>
-                      <td className="px-1.5 py-1 text-right border-r border-slate-300 font-bold">
-                        {formatNumberBR(totalWeightKg, 0)}
-                      </td>
-                      <td className="px-1.5 py-1 text-right border-r border-slate-300 font-black text-emerald-900">
-                        {formatCurrencyBRL(totalCostR$)}
-                      </td>
-
-                      {/* Suíno */}
-                      <td className="px-1 py-1 text-center border-r border-slate-300 font-bold text-teal-700">{totalBandaPecas}</td>
-                      <td className="px-1 py-1 text-center border-r border-slate-300">{totalBandaVenda}</td>
-                      <td className="px-1 py-1 text-center border-r border-slate-300">{Math.round(totalBandaSugestao)}</td>
-                      <td className="px-1.5 py-1 text-center border-r border-slate-300 bg-indigo-100 text-indigo-950 font-black">
+                      <td className="px-3 py-2.5 text-center border-r border-slate-300 bg-teal-100/80 text-teal-950 font-black text-sm">
                         {totalBandasPedidas}
                       </td>
-                      <td className="px-1 py-1 text-center border-r border-slate-300">{totalCostelaSuina}</td>
-                      <td className="px-1 py-1 text-center">{totalPernil}</td>
+                      <td className="px-4 py-2.5 text-right border-r border-slate-300 font-black text-slate-900">
+                        {formatNumberBR(totalWeightKg, 0)} kg
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-black text-emerald-800 text-sm">
+                        {formatCurrencyBRL(totalCostR$)}
+                      </td>
                     </tr>
                   </tfoot>
                 </table>

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { PurchaseBatch, Supplier, Store, PurchaseBatchItem } from '../../types/erp';
 import { formatCurrencyBRL, formatNumberBR } from '../../services/calculationService';
-import { Edit, X, Save, Building2, Calendar, FileText, CheckCircle, Clock } from 'lucide-react';
+import { Edit, X, Save, Building2, Calendar, FileText, CheckCircle, Clock, Printer } from 'lucide-react';
+import { PrintPurchaseOrderModal } from './PrintPurchaseOrderModal';
 
 interface EditPurchaseBatchModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export const EditPurchaseBatchModal: React.FC<EditPurchaseBatchModalProps> = ({
   const [arrobaPrice, setArrobaPrice] = useState(batch.arrobaPrice);
   const [status, setStatus] = useState<'PENDENTE' | 'RECEBIDO' | 'DESOSSADO'>(batch.status);
   const [notes, setNotes] = useState(batch.notes || '');
+  const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
 
   // Per store quantities state
   const initialItems: PurchaseBatchItem[] = batch.items || stores.map(s => {
@@ -144,12 +146,24 @@ export const EditPurchaseBatchModal: React.FC<EditPurchaseBatchModalProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsPrintPreviewOpen(true)}
+              className="px-3.5 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg flex items-center gap-1.5 text-xs font-bold transition shadow-sm border border-white/25 active:scale-95"
+              title="Visualizar e Imprimir Pedido de Compra Oficial (PDF)"
+            >
+              <Printer className="w-4 h-4 text-amber-200" />
+              <span>Imprimir Pedido</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Form Body */}
@@ -353,24 +367,82 @@ export const EditPurchaseBatchModal: React.FC<EditPurchaseBatchModalProps> = ({
           )}
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold"
+              onClick={() => setIsPrintPreviewOpen(true)}
+              className="w-full sm:w-auto px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold flex items-center justify-center gap-2 shadow-md transition active:scale-95"
+              title="Gerar e imprimir relatório oficial em PDF com a configuração padrão deste pedido"
             >
-              Cancelar
+              <Printer className="w-4 h-4" />
+              <span>Imprimir Pedido (PDF)</span>
             </button>
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold flex items-center gap-1.5 shadow-md"
-            >
-              <Save className="w-4 h-4" />
-              <span>Salvar Alterações</span>
-            </button>
+
+            <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold flex items-center gap-1.5 shadow-md transition active:scale-95"
+              >
+                <Save className="w-4 h-4" />
+                <span>Salvar Alterações</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>
+
+      {/* Modal de Impressão Oficial do Pedido com Configuração Padrão do ERP */}
+      {isPrintPreviewOpen && (
+        <PrintPurchaseOrderModal
+          isOpen={isPrintPreviewOpen}
+          onClose={() => setIsPrintPreviewOpen(false)}
+          rows={[]}
+          stores={stores}
+          supplierName={supplier}
+          supplierDetails={suppliers.find(
+            s => s.name === supplier || 
+            (s.tradeName && `${s.name} (${s.tradeName})` === supplier) ||
+            s.tradeName === supplier ||
+            (s.code && s.code === supplier)
+          )}
+          orderNumber={invoiceNumber}
+          todayStr={date}
+          deliveryDateStr={deliveryDate || date}
+          arrobaPrice={Number(arrobaPrice) || 0}
+          pricePerKg={costPerKg}
+          carcassWeightPerBoiKg={headsCount > 0 ? Math.round(totalGrossWeightKg / headsCount) : 240}
+          notes={notes}
+          orderItems={items.map(it => ({
+            storeId: it.storeId,
+            storeName: it.storeName,
+            dianteiro: it.dianteiro || 0,
+            traseiro: it.traseiro || 0,
+            coxao: it.coxao || 0,
+            alcatrao: it.alcatrao || 0,
+            costela: it.costela || 0,
+            boi: it.boi || 0,
+            venda: it.venda || 0,
+            sugestao: it.sugestao || 0,
+            pedido: it.pedido || 0,
+            estimatedWeightKg: it.estimatedWeightKg || 0,
+            estimatedTotalR$: it.estimatedTotalR$ || 0,
+            bandaKg: it.bandaKg || 0,
+            bandaPecas: it.bandaPecas || 0,
+            bandaVenda: it.bandaVenda || 0,
+            bandaSugestao: it.bandaSugestao || 0,
+            bandaPedido: it.bandaPedido || 0,
+            costelaSuina: it.costelaSuina || 0,
+            pernil: it.pernil || 0,
+          }))}
+        />
+      )}
     </div>
   );
 };

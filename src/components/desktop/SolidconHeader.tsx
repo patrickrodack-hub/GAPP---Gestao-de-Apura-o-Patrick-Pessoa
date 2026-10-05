@@ -321,59 +321,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
           </div>
         )}
 
-        {/* 1. TOP WINDOW TITLE BAR (Windows Classic ERP Blue) */}
-        <div 
-          className="h-8 sm:h-9 px-2 flex items-center justify-between text-white text-xs font-semibold relative z-20"
-          style={{
-            background: 'linear-gradient(90deg, #005a9e 0%, #0078d7 60%, #1084d8 100%)',
-            borderBottom: '1px solid #004b87'
-          }}
-        >
-          {/* Left: Window Icon + Title */}
-          <div className="flex items-center gap-2 overflow-hidden">
-            {/* Official Patrick Pessoa Bull Emblem */}
-            <div className="w-5 h-5 rounded-sm bg-[#0c140d] border border-white/40 flex items-center justify-center shrink-0 shadow-inner overflow-hidden p-0.5">
-              <img src="/icon.svg" alt="Patrick Pessoa" className="w-full h-full object-contain" />
-            </div>
-
-            <span className="font-bold tracking-tight truncate text-[11px] sm:text-xs drop-shadow-sm">
-              Grupo GAPP Sistemas - Apuração do Boi por Patrick Pessoa - [{isDesktopView ? 'Área de Trabalho' : getActiveTabTitle()}]
-            </span>
-          </div>
-
-          {/* Right: Window Controls */}
-          <div className="flex items-center -mr-1 shrink-0">
-            <button
-              onClick={onToggleDesktop}
-              className="w-8 sm:w-9 h-8 sm:h-9 flex items-center justify-center hover:bg-white/20 active:bg-white/30 text-white transition text-xs cursor-pointer"
-              title={isDesktopView ? "Restaurar Janela do Sistema" : "Minimizar para Área de Trabalho"}
-            >
-              <Minus className="w-3.5 h-3.5" />
-            </button>
-            
-            <button
-              onClick={onToggleDesktop}
-              className="w-8 sm:w-9 h-8 sm:h-9 flex items-center justify-center hover:bg-white/20 active:bg-white/30 text-white transition text-xs cursor-pointer"
-              title={isDesktopView ? "Restaurar Módulo Ativo" : "Ver Área de Trabalho Metálica"}
-            >
-              {isDesktopView ? <Square className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-            </button>
-
-            <button
-              onClick={() => {
-                if (window.confirm('Deseja fechar o módulo atual e retornar à Área de Trabalho?')) {
-                  onToggleDesktop();
-                }
-              }}
-              className="w-8 sm:w-9 h-8 sm:h-9 flex items-center justify-center hover:bg-red-600 active:bg-red-700 text-white transition text-xs cursor-pointer"
-              title="Fechar Janela"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* 2. CLASSIC DESKTOP MENU BAR - FULLY FUNCTIONAL WITH ALL DIVISIONS AND MODULES */}
+        {/* 1. CLASSIC DESKTOP MENU BAR - FULLY FUNCTIONAL WITH ALL DIVISIONS AND MODULES */}
         <div 
           ref={menuBarRef}
           className="h-7 sm:h-8 px-2 flex items-center justify-between text-xs text-slate-800 bg-[#eceff1] border-b border-[#cfd8dc] relative z-40"
