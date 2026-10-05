@@ -1198,6 +1198,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
         isOpen={isHistoryModalOpen}
         onClose={() => setIsHistoryModalOpen(false)}
         snapshots={localSnapshots}
+        stores={stores || StorageService.getStores()}
         onRestoreSnapshot={handleRestore}
         onDeleteSnapshot={handleDelete}
       />

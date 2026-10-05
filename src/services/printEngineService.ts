@@ -793,11 +793,13 @@ export class PrintEngineService {
     .group-suino  { background: #ccfbf1; color: #115e59; border-bottom: 1.5px solid #115e59; }
 
     .sub-th-pedido { background: #eff6ff; color: #1e3a8a; }
-    .sub-th-camara { background: #fffbeb; color: #78350f; }
+    .sub-th-camara { background: #fef08a; color: #713f12; font-weight: 800; }
     .sub-th-nobres { background: #ecfdf5; color: #064e3b; }
     .sub-th-diant  { background: #faf5ff; color: #581c87; }
     .sub-th-tras   { background: #fff1f2; color: #881337; }
     .sub-th-suino  { background: #f0fdfa; color: #134e4a; }
+
+    .cell-camara   { background: #fefce8 !important; color: #713f12; font-weight: 600; }
 
     .badge-ok {
       display: inline-block;
@@ -959,12 +961,12 @@ export class PrintEngineService {
           <td style="font-weight:bold; background:#e0e7ff; color:#312e81;">${r.pedidoFinal || 0}</td>
           <td>${r.pTransito || 0}</td>
 
-          <!-- Câmara -->
-          <td>${r.camaraDianteiro || 0}</td>
-          <td>${r.camaraTraseiro || 0}</td>
-          <td>${r.camaraCoxao || 0}</td>
-          <td>${r.camaraAlcatrao || 0}</td>
-          <td>${r.camaraCostelaGaucha || 0}</td>
+          <!-- Câmara (Fundo Amarelo Claro Suave) -->
+          <td class="cell-camara">${r.camaraDianteiro || 0}</td>
+          <td class="cell-camara">${r.camaraTraseiro || 0}</td>
+          <td class="cell-camara">${r.camaraCoxao || 0}</td>
+          <td class="cell-camara">${r.camaraAlcatrao || 0}</td>
+          <td class="cell-camara">${r.camaraCostelaGaucha || 0}</td>
 
           <!-- Nobres -->
           <td>${r.alcatra || 0}</td>
@@ -1003,8 +1005,8 @@ export class PrintEngineService {
         <td style="color:#1e40af;">${totals.boi}</td><td>${totals.venda}</td><td>${Math.round(totals.sugestaoPedido)}</td>
         <td style="color:#312e81; font-weight:900;">${totals.pedidoFinal}</td>
         <td>${totals.pTransito}</td>
-        <td>${totals.camaraDianteiro}</td><td>${totals.camaraTraseiro}</td><td>${totals.camaraCoxao}</td><td>${totals.camaraAlcatrao}</td>
-        <td>${totals.camaraCostelaGaucha}</td>
+        <td class="cell-camara" style="font-weight:bold;">${totals.camaraDianteiro}</td><td class="cell-camara" style="font-weight:bold;">${totals.camaraTraseiro}</td><td class="cell-camara" style="font-weight:bold;">${totals.camaraCoxao}</td><td class="cell-camara" style="font-weight:bold;">${totals.camaraAlcatrao}</td>
+        <td class="cell-camara" style="font-weight:bold;">${totals.camaraCostelaGaucha}</td>
         <td>${totals.alcatra}</td><td>${totals.contraFile}</td><td>${totals.picanha}</td><td>${totals.fileMignon}</td><td>${totals.costelaCong}</td>
         <td>${totals.paletaPecas}</td><td>${totals.acemPecas}</td><td>${totals.peitoPecas}</td><td>${totals.musculoPecas}</td>
         <td>${totals.chaPecas}</td><td>${totals.patinhoPecas}</td><td>${totals.lagartoRedondoPecas}</td><td>${totals.lagartoPlanoPecas}</td>

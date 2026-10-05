@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SheetSnapshotRecord, SheetRowData } from '../../types/erp';
+import { SheetSnapshotRecord, SheetRowData, Store } from '../../types/erp';
 import { formatCurrencyBRL } from '../../services/calculationService';
 import { 
   History, 
@@ -22,14 +22,17 @@ import {
   ArrowLeft,
   Smartphone,
   Sparkles,
-  Info
+  Info,
+  Printer
 } from 'lucide-react';
 import { StorageService } from '../../services/storageService';
+import { PrintSpreadsheetModal } from './PrintSpreadsheetModal';
 
 interface SheetHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   snapshots: SheetSnapshotRecord[];
+  stores?: Store[];
   onRestoreSnapshot: (snapshot: SheetSnapshotRecord) => void;
   onDeleteSnapshot: (id: string) => void;
 }
@@ -38,6 +41,7 @@ export const SheetHistoryModal: React.FC<SheetHistoryModalProps> = ({
   isOpen,
   onClose,
   snapshots,
+  stores = [],
   onRestoreSnapshot,
   onDeleteSnapshot
 }) => {
@@ -45,6 +49,7 @@ export const SheetHistoryModal: React.FC<SheetHistoryModalProps> = ({
   const [selectedDateFilter, setSelectedDateFilter] = useState<'ALL' | 'TODAY' | '7DAYS' | '30DAYS'>('ALL');
   const [specificDateSearch, setSpecificDateSearch] = useState('');
   const [inspectingSnapshot, setInspectingSnapshot] = useState<SheetSnapshotRecord | null>(null);
+  const [snapshotToPrint, setSnapshotToPrint] = useState<SheetSnapshotRecord | null>(null);
 
   if (!isOpen) return null;
 
@@ -172,6 +177,14 @@ export const SheetHistoryModal: React.FC<SheetHistoryModalProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSnapshotToPrint(inspectingSnapshot)}
+                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer"
+                  title="Visualizar e Imprimir / Gerar PDF desta gravação da planilha"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Imprimir / PDF</span>
+                </button>
                 <button
                   onClick={() => handleExportSnapshotCSV(inspectingSnapshot)}
                   className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition"
@@ -375,12 +388,21 @@ export const SheetHistoryModal: React.FC<SheetHistoryModalProps> = ({
                     {/* Right Action Buttons */}
                     <div className="flex items-center gap-2 shrink-0 border-t md:border-t-0 pt-2 md:pt-0 border-slate-100 dark:border-slate-800">
                       <button
+                        onClick={() => setSnapshotToPrint(snap)}
+                        className="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                        title="Visualização e Opção de Impressão / PDF desta gravação da planilha"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                        <span>Imprimir / PDF</span>
+                      </button>
+
+                      <button
                         onClick={() => setInspectingSnapshot(snap)}
                         className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
                         title="Visualizar e conferir todos os dados gravados desta planilha"
                       >
-                        <Eye className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                        <span>Visualizar</span>
+                        <Eye className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                        <span>Ver Dados</span>
                       </button>
 
                       <button
@@ -427,6 +449,20 @@ export const SheetHistoryModal: React.FC<SheetHistoryModalProps> = ({
         )}
 
       </div>
+
+      {/* Modal de Visualização & Impressão da Versão Gravada */}
+      {snapshotToPrint && (
+        <PrintSpreadsheetModal
+          isOpen={!!snapshotToPrint}
+          onClose={() => setSnapshotToPrint(null)}
+          rows={snapshotToPrint.rows}
+          stores={stores.length > 0 ? stores : StorageService.getStores()}
+          title={`Planilha de Compras • ${snapshotToPrint.name}`}
+          author={snapshotToPrint.author}
+          emissionDate={new Date(snapshotToPrint.timestamp)}
+          subtitle={`Histórico de Gravações • Versão salva em ${snapshotToPrint.date} por ${snapshotToPrint.author}${snapshotToPrint.notes ? ` • ${snapshotToPrint.notes}` : ''}`}
+        />
+      )}
     </div>
   );
 };

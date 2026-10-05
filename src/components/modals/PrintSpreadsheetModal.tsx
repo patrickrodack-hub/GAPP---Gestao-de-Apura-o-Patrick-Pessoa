@@ -24,6 +24,10 @@ interface PrintSpreadsheetModalProps {
   onClose: () => void;
   rows: SheetRowData[];
   stores: Store[];
+  title?: string;
+  subtitle?: string;
+  author?: string;
+  emissionDate?: Date;
 }
 
 export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
@@ -31,6 +35,10 @@ export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
   onClose,
   rows,
   stores,
+  title,
+  subtitle,
+  author,
+  emissionDate,
 }) => {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfSuccess, setPdfSuccess] = useState(false);
@@ -41,29 +49,32 @@ export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
   const totals = calculateSheetTotals(rows);
   const sessionUser = StorageService.getSessionUser();
 
-  const now = new Date();
-  const emissionDateFormatted = now.toLocaleDateString('pt-BR', {
+  const activeDate = emissionDate || new Date();
+  const emissionDateFormatted = activeDate.toLocaleDateString('pt-BR', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
-  const emissionTimeFormatted = now.toLocaleTimeString('pt-BR', {
+  const emissionTimeFormatted = activeDate.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit'
   });
 
+  const displayTitle = title || 'Planilha Oficial de Compras e Apuração do Boi';
+  const displayAuthor = author || sessionUser?.name || 'Patrick Pessoa (Direção de Carnes)';
+
   const handlePrint = () => {
     const printHtml = PrintEngineService.generateFullSpreadsheetPrintHtml({
       rows,
       stores,
-      title: 'Planilha Oficial de Compras e Apuração do Boi',
-      currentUser: sessionUser?.name || 'Patrick Pessoa (Direção de Carnes)'
+      title: displayTitle,
+      currentUser: displayAuthor
     });
 
     PrintEngineService.printDocument(printHtml, {
-      documentTitle: 'Planilha_Compras_Oficial_GAPP',
+      documentTitle: `Planilha_Compras_${displayTitle.replace(/[^a-zA-Z0-9]/g, '_')}`,
       landscape: true,
     });
   };
@@ -75,9 +86,9 @@ export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
       await PdfReportService.generateAndDownloadFullSpreadsheetPdf({
         rows,
         stores,
-        title: 'PLANILHA OFICIAL DE COMPRAS E APURAÇÃO DO BOI',
-        emissionDate: new Date(),
-        currentUser: sessionUser?.name || 'Patrick Pessoa (Direção de Carnes)'
+        title: displayTitle.toUpperCase(),
+        emissionDate: activeDate,
+        currentUser: displayAuthor
       });
       setPdfSuccess(true);
       setTimeout(() => setPdfSuccess(false), 3500);
@@ -100,13 +111,13 @@ export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                <span>Planilha Oficial de Compras • Exportação PDF & Impressão</span>
+                <span>{displayTitle}</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
-                  16 Lojas • v10.3
+                  {rows.length} Lojas • PDF & Impressão
                 </span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                Visualização fiel da matriz em A4 Paisagem com todas as colunas, cortes, coluna Boi Hoje e totalizadores
+                {subtitle || `Visualização fiel da matriz em A4 Paisagem gravada em ${emissionDateFormatted} às ${emissionTimeFormatted} • Responsável: ${displayAuthor}`}
               </p>
             </div>
           </div>
@@ -377,11 +388,11 @@ export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
                       <td className="border border-slate-300 text-center">{r.pTransito || 0}</td>
 
                       {/* Câmara */}
-                      <td className="border border-slate-300 text-center">{r.camaraDianteiro || 0}</td>
-                      <td className="border border-slate-300 text-center">{r.camaraTraseiro || 0}</td>
-                      <td className="border border-slate-300 text-center">{r.camaraCoxao || 0}</td>
-                      <td className="border border-slate-300 text-center">{r.camaraAlcatrao || 0}</td>
-                      <td className="border border-slate-300 text-center">{r.camaraCostelaGaucha || 0}</td>
+                      <td className="border border-slate-300 text-center bg-amber-50/80 font-semibold text-amber-950">{r.camaraDianteiro || 0}</td>
+                      <td className="border border-slate-300 text-center bg-amber-50/80 font-semibold text-amber-950">{r.camaraTraseiro || 0}</td>
+                      <td className="border border-slate-300 text-center bg-amber-50/80 font-semibold text-amber-950">{r.camaraCoxao || 0}</td>
+                      <td className="border border-slate-300 text-center bg-amber-50/80 font-semibold text-amber-950">{r.camaraAlcatrao || 0}</td>
+                      <td className="border border-slate-300 text-center bg-amber-50/80 font-semibold text-amber-950">{r.camaraCostelaGaucha || 0}</td>
 
                       {/* Nobres */}
                       <td className="border border-slate-300 text-center">{r.alcatra || 0}</td>

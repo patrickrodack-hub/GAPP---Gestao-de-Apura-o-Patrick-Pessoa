@@ -434,11 +434,11 @@ export class PdfReportService {
         { content: 'Trâns.', styles: { fillColor: [239, 246, 255] } },
 
         // Câmara
-        { content: 'Diant', styles: { fillColor: [255, 251, 235] } },
-        { content: 'Tras', styles: { fillColor: [255, 251, 235] } },
-        { content: 'Cox', styles: { fillColor: [255, 251, 235] } },
-        { content: 'Alc', styles: { fillColor: [255, 251, 235] } },
-        { content: 'Cost.G', styles: { fillColor: [255, 251, 235] } },
+        { content: 'Diant', styles: { fillColor: [254, 240, 138], textColor: [113, 63, 18], fontStyle: 'bold' } },
+        { content: 'Tras', styles: { fillColor: [254, 240, 138], textColor: [113, 63, 18], fontStyle: 'bold' } },
+        { content: 'Cox', styles: { fillColor: [254, 240, 138], textColor: [113, 63, 18], fontStyle: 'bold' } },
+        { content: 'Alc', styles: { fillColor: [254, 240, 138], textColor: [113, 63, 18], fontStyle: 'bold' } },
+        { content: 'Cost.G', styles: { fillColor: [254, 240, 138], textColor: [113, 63, 18], fontStyle: 'bold' } },
 
         // Nobres
         { content: 'Alc.Pç', styles: { fillColor: [236, 253, 245] } },
@@ -583,7 +583,12 @@ export class PdfReportService {
       },
       columnStyles: {
         0: { cellWidth: 28, halign: 'left', fontStyle: 'bold' },
-        9: { fontStyle: 'bold', textColor: [49, 46, 129] } // Pedido
+        9: { fontStyle: 'bold', textColor: [49, 46, 129] }, // Pedido
+        11: { fillColor: [254, 252, 232], textColor: [113, 63, 18], fontStyle: 'bold' }, // Câmara Diant (Amarelo Claro Suave)
+        12: { fillColor: [254, 252, 232], textColor: [113, 63, 18], fontStyle: 'bold' }, // Câmara Tras (Amarelo Claro Suave)
+        13: { fillColor: [254, 252, 232], textColor: [113, 63, 18], fontStyle: 'bold' }, // Câmara Coxão (Amarelo Claro Suave)
+        14: { fillColor: [254, 252, 232], textColor: [113, 63, 18], fontStyle: 'bold' }, // Câmara Alcatrão (Amarelo Claro Suave)
+        15: { fillColor: [254, 252, 232], textColor: [113, 63, 18], fontStyle: 'bold' }  // Câmara Costela G. (Amarelo Claro Suave)
       },
       alternateRowStyles: {
         fillColor: [248, 250, 252]
