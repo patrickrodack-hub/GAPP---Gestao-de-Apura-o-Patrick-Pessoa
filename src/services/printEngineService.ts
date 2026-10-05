@@ -481,7 +481,23 @@ export class PrintEngineService {
     const totalSugestao = rows.reduce((a, b) => a + (b.sugestaoPedido || 0), 0);
     const totalCamara = rows.reduce((a, b) => a + (b.camaraDianteiro + b.somaDoTraseiro + b.camaraCostelaGaucha), 0);
 
-    const hashAuth = `GIPP-MATRIZ-${Date.now().toString(36).toUpperCase()}`;
+    const now = new Date();
+    const emissionDateFormatted = now.toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const emissionTimeFormatted = now.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    const hashAuth = `GAPP-MATRIZ-${Date.now().toString(36).toUpperCase()}`;
+
+    const totalPecas = totalPedDianteiro + totalPedTraseiro + totalPedCoxao + totalPedAlcatrao;
+    const estimatedWeight = totalBoi * 240;
+    const estimatedTotal = estimatedWeight * 26.0;
 
     return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -507,15 +523,53 @@ export class PrintEngineService {
       background: #ffffff;
       padding: 2mm;
     }
-    .header {
+    .header-box {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       border-bottom: 2px solid #004b87;
       padding-bottom: 6px;
       margin-bottom: 8px;
     }
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
+    }
     .title {
-      font-size: 14pt;
+      font-size: 13pt;
       font-weight: 900;
       color: #004b87;
+      letter-spacing: -0.3px;
+    }
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .kpi-card {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 4px 6px;
+    }
+    .kpi-label {
+      font-size: 6.5pt;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+    }
+    .kpi-val {
+      font-size: 9.5pt;
+      font-weight: 900;
+      font-family: monospace;
+      color: #0f172a;
     }
     .table-data {
       width: 100%;
@@ -525,40 +579,86 @@ export class PrintEngineService {
     }
     .table-data th, .table-data td {
       border: 1px solid #cbd5e1;
-      padding: 3px 5px;
+      padding: 3.5px 5px;
       text-align: center;
     }
     .table-data th {
-      background: #e2e8f0;
+      background: #004b87;
+      color: #ffffff;
       font-weight: 800;
       text-transform: uppercase;
-      font-size: 7pt;
+      font-size: 6.8pt;
     }
     .total-row {
-      background: #f1f5f9;
+      background: #e2e8f0;
       font-weight: 900;
+    }
+    .total-row td {
+      background: #e2e8f0;
+      color: #0f172a;
+      font-weight: 900;
+    }
+    .signatures {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid #cbd5e1;
+      text-align: center;
+      font-size: 6.8pt;
+      color: #475569;
+    }
+    .sig-line {
+      border-top: 1px dashed #64748b;
+      margin-top: 20px;
+      padding-top: 3px;
     }
   </style>
 </head>
 <body>
-  <div class="header">
-    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+  <div class="header-box">
+    <div class="brand-section">
+      <img src="/brand-logo.svg" alt="Grupo GAPP" class="brand-logo" onerror="this.src='/patrick-pessoa-brand.png'" />
       <div>
-        <div style="font-size: 7pt; font-weight: bold; color: #b45309; text-transform: uppercase;">Grupo GAPP Sistemas • Motor GIPP</div>
+        <div style="font-size: 7pt; font-weight: 800; color: #b45309; text-transform: uppercase; letter-spacing: 0.5px;">
+          Grupo GAPP Sistemas • Por Patrick Pessoa
+        </div>
         <div class="title">ERP APURAÇÃO DO BOI • RELATÓRIO DA PLANILHA MATRIZ</div>
-        <div style="font-size: 7.5pt; color: #475569;">Base de Desossa: <strong>${yieldBasis === 'carcass' ? 'Carcaça Inteira (240kg)' : 'Meia Carcaça (120kg)'}</strong></div>
+        <div style="font-size: 7.5pt; color: #475569;">
+          Base de Desossa: <strong>${yieldBasis === 'carcass' ? 'Carcaça Inteira (240kg)' : 'Meia Carcaça (120kg)'}</strong> • 16 Filiais Integradas
+        </div>
       </div>
-      <div style="text-align: right; font-size: 7.5pt; color: #64748b;">
-        <div>Data: <strong>${new Date().toLocaleDateString('pt-BR')}</strong></div>
-        <div style="font-family: monospace; font-size: 6.5pt;">${hashAuth}</div>
-      </div>
+    </div>
+    <div style="text-align: right; font-size: 7.2pt; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 8px; border-radius: 4px;">
+      <div><strong>Data de Emissão:</strong> ${emissionDateFormatted} às ${emissionTimeFormatted}</div>
+      <div style="font-family: monospace; font-size: 6.5pt; color: #64748b; margin-top: 1px;">Autenticação: ${hashAuth}</div>
+    </div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Valor Estimado do Lote</div>
+      <div class="kpi-val" style="color: #166534;">${formatCurrencyBRL(estimatedTotal)}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Volume Total (Kg)</div>
+      <div class="kpi-val" style="color: #1e40af;">${formatNumberBR(estimatedWeight)} kg</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Peças Bovinas Pedidas</div>
+      <div class="kpi-val" style="color: #b45309;">${formatNumberBR(totalPecas)} pç</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Estoque Câmaras</div>
+      <div class="kpi-val" style="color: #475569;">${formatNumberBR(totalCamara)} pç</div>
     </div>
   </div>
 
   <table class="table-data">
     <thead>
       <tr>
-        <th style="text-align: left;">Filial</th>
+        <th style="text-align: left; width: 22%;">Filial / Loja</th>
         <th>Ped. Diant.</th>
         <th>Ped. Tras.</th>
         <th>Ped. Coxão</th>
@@ -580,7 +680,7 @@ export class PrintEngineService {
           <td style="color: #b45309; font-weight: bold;">${r.venda || r.boiAVenda || 0}</td>
           <td style="font-weight: bold;">${r.boi || 0}</td>
           <td style="font-weight: bold; color: ${(r.sugestaoPedido || 0) < 0 ? '#b91c1c' : '#047857'};">${r.sugestaoPedido || 0}</td>
-          <td>${r.camaraDianteiro + r.somaDoTraseiro + r.camaraCostelaGaucha}</td>
+          <td style="font-weight: 700;">${r.camaraDianteiro + r.somaDoTraseiro + r.camaraCostelaGaucha}</td>
         </tr>
       `).join('')}
     </tbody>
@@ -598,6 +698,23 @@ export class PrintEngineService {
       </tr>
     </tfoot>
   </table>
+
+  <div class="signatures">
+    <div>
+      <div class="sig-line"><strong>Diretoria Operacional</strong><br>Grupo GAPP Sistemas</div>
+    </div>
+    <div>
+      <div class="sig-line"><strong>Gerência de Carnes & Desossa</strong><br>Patrick Pessoa</div>
+    </div>
+    <div>
+      <div class="sig-line"><strong>Controladoria & Matriz</strong><br>Auditoria Oficial</div>
+    </div>
+  </div>
+
+  <div style="margin-top: 10px; font-size: 6pt; color: #94a3b8; display: flex; justify-content: space-between; border-top: 1px solid #e2e8f0; padding-top: 3px;">
+    <span>Grupo GAPP Sistemas • ERP Apuração do Boi v10.1 • Portal: www.gipp-site.vercel.app</span>
+    <span>Emissão Oficial em ${new Date().toLocaleDateString('pt-BR')} • Página 1 de 1</span>
+  </div>
 </body>
 </html>`;
   }

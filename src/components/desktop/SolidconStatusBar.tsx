@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Database, Cloud, CloudOff, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 interface SolidconStatusBarProps {
   storeCount: number;
@@ -34,25 +35,71 @@ export const SolidconStatusBar: React.FC<SolidconStatusBarProps> = ({ storeCount
 
   return (
     <footer 
-      className="h-6 sm:h-7 px-2.5 flex items-center justify-between text-[11px] font-sans text-slate-800 bg-[#e0e0e0] border-t border-[#b0bec5] z-30 select-none shadow-inner"
+      className="h-7 px-2.5 flex items-center justify-between text-[11px] font-sans text-slate-800 bg-[#e0e0e0] border-t border-[#b0bec5] z-30 select-none shadow-inner"
       style={{
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)'
       }}
     >
-      {/* Left items: Connection & State */}
-      <div className="flex items-center space-x-2 sm:space-x-4 overflow-hidden">
-        <div className="flex items-center gap-1.5 text-emerald-800 font-semibold">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="hidden sm:inline">ONLINE •</span>
-          <span>MATRIZ ({storeCount} Filiais)</span>
+      {/* Left items: Realtime DB Connection State & Network Information */}
+      <div className="flex items-center space-x-2 sm:space-x-3 overflow-hidden">
+        
+        {/* Indicador Visual Detalhado do Banco de Dados em Tempo Real */}
+        <div 
+          className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border transition-colors shadow-2xs ${
+            isCloudConnected 
+              ? 'bg-emerald-100 text-emerald-950 border-emerald-300' 
+              : 'bg-amber-100 text-amber-950 border-amber-300'
+          }`}
+          title={
+            isCloudConnected 
+              ? 'Banco de dados Firestore conectado em tempo real. Gravação e sincronização automáticas entre todas as filiais.' 
+              : 'Operando em modo local offline. As alterações estão seguras no cache e serão sincronizadas com o Firestore ao reconectar.'
+          }
+        >
+          {/* Ponto Pulsante de Status em Tempo Real */}
+          <span className="relative flex h-2 w-2 shrink-0">
+            {isCloudConnected ? (
+              <>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600" />
+              </>
+            ) : (
+              <>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-60" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-600" />
+              </>
+            )}
+          </span>
+
+          {/* Ícone de Nuvem / Banco */}
+          {isCloudConnected ? (
+            <Database className="w-3 h-3 shrink-0 text-emerald-700" />
+          ) : (
+            <AlertTriangle className="w-3 h-3 shrink-0 text-amber-700" />
+          )}
+
+          {/* Rótulo Principal: 'Online - Sincronizado' ou 'Offline - Local' */}
+          <span className="tracking-wide">
+            {isCloudConnected ? 'Online - Sincronizado' : 'Offline - Local'}
+          </span>
+
+          {/* Badge Informativo Secundário */}
+          <span className={`text-[9px] px-1 py-0.5 rounded font-mono hidden sm:inline ${
+            isCloudConnected ? 'bg-emerald-200/90 text-emerald-900' : 'bg-amber-200/90 text-amber-900'
+          }`}>
+            {isCloudConnected ? 'FIRESTORE' : 'CACHE'}
+          </span>
         </div>
 
-        <div className="hidden md:flex items-center gap-2 text-slate-600 font-mono text-[10px] border-l border-slate-300 pl-3">
-          <span className={isCloudConnected ? "text-emerald-700 font-semibold flex items-center gap-1" : "text-amber-700"}>
-            <span className={`w-1.5 h-1.5 rounded-full ${isCloudConnected ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
-            {isCloudConnected ? 'BD NUVEM (FIRESTORE)' : 'BD LOCAL ATIVO'}
-          </span>
-          <span>•</span>
+        {/* Matriz e Lojas */}
+        <div className="flex items-center gap-1.5 text-slate-700 font-semibold text-[11px] border-l border-slate-300 pl-2.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+          <span className="hidden sm:inline">MATRIZ •</span>
+          <span>{storeCount} Filiais</span>
+        </div>
+
+        {/* Identificação Corporativa */}
+        <div className="hidden lg:flex items-center gap-1.5 text-slate-500 font-mono text-[10px] border-l border-slate-300 pl-2.5">
           <span>GRUPO GAPP SISTEMAS v10.1</span>
         </div>
       </div>
