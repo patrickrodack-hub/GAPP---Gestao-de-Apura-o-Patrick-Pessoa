@@ -112,5 +112,13 @@ service cloud.firestore {
       allow list: if true;
       allow create, update, delete: if isValidId(settingId);
     }
+
+    // Cloud Backups (Módulo de Backup Online e Agendado)
+    match /cloud_backups/{backupId} {
+      allow get: if isValidId(backupId);
+      allow list: if true;
+      allow create, update: if isValidId(backupId);
+      allow delete: if isValidId(backupId);
+    }
   }
 }

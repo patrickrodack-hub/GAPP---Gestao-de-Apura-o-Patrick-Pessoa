@@ -42,7 +42,8 @@ import {
   LogOut,
   Power,
   ChevronDown,
-  Terminal
+  Terminal,
+  Cloud
 } from 'lucide-react';
 import { SystemUser } from '../../types/erp';
 
@@ -62,6 +63,7 @@ interface SolidconHeaderProps {
   onOpenSupplierManager?: () => void;
   onOpenMobilePortal?: () => void;
   onOpenPortalControl?: () => void;
+  onOpenBackup?: () => void;
   onSaveSheet?: () => void;
   currentUser?: SystemUser | null;
   onOpenUserManagement?: () => void;
@@ -85,6 +87,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
   onOpenSupplierManager,
   onOpenMobilePortal,
   onOpenPortalControl,
+  onOpenBackup,
   onSaveSheet,
   currentUser,
   onOpenUserManagement,
@@ -240,6 +243,10 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
         case 'mobilePortal':
           if (onOpenMobilePortal) onOpenMobilePortal();
           break;
+        case 'backup':
+          if (onOpenBackup) onOpenBackup();
+          else onTabChange('backup');
+          break;
         case 'exit':
           if (onExitSystem) onExitSystem();
           else if (onLogout) onLogout();
@@ -298,13 +305,14 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
       case 'purchases': return 'Gestão de Compras de Gado e Lotes de Frigoríficos';
       case 'waste': return 'Controle de Subprodutos & Descarte (Sebo e Osso)';
       case 'parameters': return 'Módulo 1: Cadastro de Informações e Parâmetros (7 Etapas)';
+      case 'backup': return 'Central de Backup Online & Agendamento Automático (Nuvem Firestore)';
       default: return 'Apuração do Boi';
     }
   };
 
   return (
     <>
-      <header className="w-full select-none font-sans z-40 relative shadow-md">
+      <header className="w-full select-none font-sans z-50 relative shadow-md">
         
         {/* Toast de Salvar */}
         {saveToast && (
@@ -315,7 +323,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
 
         {/* 1. TOP WINDOW TITLE BAR (Windows Classic ERP Blue) */}
         <div 
-          className="h-8 sm:h-9 px-2 flex items-center justify-between text-white text-xs font-semibold"
+          className="h-8 sm:h-9 px-2 flex items-center justify-between text-white text-xs font-semibold relative z-20"
           style={{
             background: 'linear-gradient(90deg, #005a9e 0%, #0078d7 60%, #1084d8 100%)',
             borderBottom: '1px solid #004b87'
@@ -337,7 +345,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
           <div className="flex items-center -mr-1 shrink-0">
             <button
               onClick={onToggleDesktop}
-              className="w-8 sm:w-9 h-8 sm:h-9 flex items-center justify-center hover:bg-white/20 active:bg-white/30 text-white transition text-xs"
+              className="w-8 sm:w-9 h-8 sm:h-9 flex items-center justify-center hover:bg-white/20 active:bg-white/30 text-white transition text-xs cursor-pointer"
               title={isDesktopView ? "Restaurar Janela do Sistema" : "Minimizar para Área de Trabalho"}
             >
               <Minus className="w-3.5 h-3.5" />
@@ -345,7 +353,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
             
             <button
               onClick={onToggleDesktop}
-              className="w-8 sm:w-9 h-8 sm:h-9 flex items-center justify-center hover:bg-white/20 active:bg-white/30 text-white transition text-xs"
+              className="w-8 sm:w-9 h-8 sm:h-9 flex items-center justify-center hover:bg-white/20 active:bg-white/30 text-white transition text-xs cursor-pointer"
               title={isDesktopView ? "Restaurar Módulo Ativo" : "Ver Área de Trabalho Metálica"}
             >
               {isDesktopView ? <Square className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
@@ -357,7 +365,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
                   onToggleDesktop();
                 }
               }}
-              className="w-8 sm:w-9 h-8 sm:h-9 flex items-center justify-center hover:bg-red-600 active:bg-red-700 text-white transition text-xs"
+              className="w-8 sm:w-9 h-8 sm:h-9 flex items-center justify-center hover:bg-red-600 active:bg-red-700 text-white transition text-xs cursor-pointer"
               title="Fechar Janela"
             >
               <X className="w-3.5 h-3.5" />
@@ -368,10 +376,10 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
         {/* 2. CLASSIC DESKTOP MENU BAR - FULLY FUNCTIONAL WITH ALL DIVISIONS AND MODULES */}
         <div 
           ref={menuBarRef}
-          className="h-7 sm:h-8 px-2 flex items-center justify-between text-xs text-slate-800 bg-[#eceff1] border-b border-[#cfd8dc]"
+          className="h-7 sm:h-8 px-2 flex items-center justify-between text-xs text-slate-800 bg-[#eceff1] border-b border-[#cfd8dc] relative z-40"
         >
           {/* Menu items */}
-          <div className="flex items-center space-x-0.5 overflow-x-auto no-scrollbar">
+          <div className="flex items-center space-x-0.5">
             {menuCategories.map((category) => {
               const isOpen = activeMenu === category.id;
               return (
@@ -395,7 +403,8 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
                   {/* Dropdown Menu Window */}
                   {isOpen && (
                     <div 
-                      className="absolute left-0 top-full mt-0.5 w-72 sm:w-80 bg-white border border-[#005a9e] shadow-2xl py-1.5 rounded-xs z-50 text-xs font-sans animate-in fade-in zoom-in-95 duration-100"
+                      className="absolute left-0 top-full mt-0.5 w-72 sm:w-84 bg-white border border-[#005a9e] shadow-[0_15px_35px_rgba(0,0,0,0.35)] py-1.5 rounded-xs z-[9999] text-xs font-sans animate-in fade-in zoom-in-95 duration-75"
+                      style={{ minWidth: '18rem' }}
                     >
                       {/* Sub-header showing division area */}
                       <div className="px-3 py-1 bg-gradient-to-r from-slate-100 to-slate-200 border-b border-slate-200 flex items-center justify-between text-[10px] text-slate-600 font-bold mb-1">
@@ -415,7 +424,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
                             <button
                               key={item.id}
                               onClick={() => handleItemClick(item)}
-                              className="w-full text-left px-3 py-2 hover:bg-[#0078d7] hover:text-white group flex items-start gap-2.5 transition text-slate-800"
+                              className="w-full text-left px-3 py-2 hover:bg-[#0078d7] hover:text-white group flex items-start gap-2.5 transition text-slate-800 cursor-pointer"
                             >
                               <div className="p-1 rounded bg-slate-100 group-hover:bg-white/20 text-slate-700 group-hover:text-white shrink-0 mt-0.5">
                                 <Icon className="w-3.5 h-3.5" />
@@ -481,7 +490,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
                       setShowSearchBox(false);
                       setSearchQuery('');
                     }} 
-                    className="text-slate-400 hover:text-slate-700 ml-1 text-xs"
+                    className="text-slate-400 hover:text-slate-700 ml-1 text-xs cursor-pointer"
                     title="Fechar busca"
                   >
                     ✕
@@ -490,7 +499,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
 
                 {/* Instant Search Results Dropdown */}
                 {searchQuery.trim().length > 0 && (
-                  <div className="absolute right-0 top-full mt-1 w-80 sm:w-96 bg-white border border-[#005a9e] shadow-2xl rounded-xs py-1 z-50 text-xs max-h-80 overflow-y-auto">
+                  <div className="absolute right-0 top-full mt-1 w-80 sm:w-96 bg-white border border-[#005a9e] shadow-[0_15px_35px_rgba(0,0,0,0.35)] rounded-xs py-1 z-[9999] text-xs max-h-80 overflow-y-auto">
                     <div className="px-3 py-1 bg-slate-100 border-b border-slate-200 text-[10px] font-bold text-slate-600 flex justify-between">
                       <span>MÓDULOS ENCONTRADOS ({searchResults.length})</span>
                       <span className="text-slate-400">Clique para abrir</span>
@@ -507,7 +516,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
                           <button
                             key={mod.id}
                             onClick={() => handleItemClick(mod)}
-                            className="w-full text-left px-3 py-2 hover:bg-[#0078d7] hover:text-white flex items-start gap-2.5 transition border-b border-slate-100 last:border-b-0 group"
+                            className="w-full text-left px-3 py-2 hover:bg-[#0078d7] hover:text-white flex items-start gap-2.5 transition border-b border-slate-100 last:border-b-0 group cursor-pointer"
                           >
                             <div className="p-1 rounded bg-slate-100 group-hover:bg-white/20 text-slate-700 group-hover:text-white shrink-0 mt-0.5">
                               <Icon className="w-3.5 h-3.5" />
@@ -540,7 +549,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
             ) : (
               <button
                 onClick={() => setShowSearchBox(true)}
-                className="p-1 hover:bg-slate-200 rounded text-slate-700 transition flex items-center gap-1 text-[11px]"
+                className="p-1 hover:bg-slate-200 rounded text-slate-700 transition flex items-center gap-1 text-[11px] cursor-pointer"
                 title="Pesquisar módulo ou filial"
               >
                 <Search className="w-3.5 h-3.5" />
@@ -553,283 +562,277 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
           </div>
         </div>
 
-        {/* 3. DESKTOP SHORTCUT TOOLBAR (Exact layout from the image) */}
+        {/* 3. DESKTOP SHORTCUT TOOLBAR (Interactive Standardized Menu & Tool Boxes) */}
         <div 
-          className="h-10 sm:h-11 px-2 flex items-center justify-between overflow-x-auto no-scrollbar border-b border-[#b0bec5]"
+          className="h-10 sm:h-11 px-2 flex items-center justify-between border-b border-[#b0bec5] relative z-10"
           style={{
             background: 'linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%)'
           }}
         >
-          {/* Row of Toolbar Icon Buttons */}
-          <div className="flex items-center gap-1">
+          {/* Segmented Standardized Button Boxes */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             
-            {/* 1. Novo Lote */}
-            <button
-              onClick={() => onTabChange('purchases')}
-              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded bg-gradient-to-b from-white to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border border-[#9ca3af] active:border-blue-500 shadow-xs transition"
-              title="Novo Lote de Compra (Ctrl+N)"
-            >
-              <Plus className="w-4 h-4 text-emerald-600" />
-            </button>
-
-            {/* 2. Planilha Matriz v10.1 */}
-            <button
-              onClick={() => onTabChange('sheet')}
-              className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border shadow-xs transition ${
-                activeTab === 'sheet' && !isDesktopView
-                  ? 'bg-blue-100 border-blue-600 text-blue-700'
-                  : 'bg-gradient-to-b from-white to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border-[#9ca3af] text-slate-800'
-              }`}
-              title="Planilha Matriz da Direção v10.1 (F2)"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-blue-700" />
-            </button>
-
-            {/* 3. Salvar / Gravar */}
-            <button
-              onClick={handleSaveData}
-              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded bg-gradient-to-b from-white to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border border-[#9ca3af] active:border-blue-500 shadow-xs transition"
-              title="Gravar Alterações / Sincronizar"
-            >
-              <Save className="w-4 h-4 text-blue-600" />
-            </button>
-
-            <div className="h-5 w-px bg-slate-300 mx-0.5" />
-
-            {/* 4. Calculadora Rápida */}
-            <button
-              onClick={onOpenQuickCalc}
-              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded bg-gradient-to-b from-white to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border border-[#9ca3af] active:border-blue-500 shadow-xs transition"
-              title="Calculadora Rápida de Desossa e Preço da @ (F4)"
-            >
-              <Calculator className="w-4 h-4 text-amber-600" />
-            </button>
-
-            {/* 5. Preços / Cifrão */}
-            <button
-              onClick={() => onTabChange('yield')}
-              className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border shadow-xs transition ${
-                activeTab === 'yield' && !isDesktopView
-                  ? 'bg-amber-100 border-amber-600 text-amber-800'
-                  : 'bg-gradient-to-b from-white to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border-[#9ca3af] text-slate-800'
-              }`}
-              title="Formação de Preço e Custo Limpo por Corte"
-            >
-              <DollarSign className="w-4 h-4 text-emerald-700" />
-            </button>
-
-            {/* 6. Câmaras Frias / Estoque */}
-            <button
-              onClick={() => onTabChange('inventory')}
-              className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border shadow-xs transition ${
-                activeTab === 'inventory' && !isDesktopView
-                  ? 'bg-blue-100 border-blue-600 text-blue-800'
-                  : 'bg-gradient-to-b from-white to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border-[#9ca3af] text-slate-800'
-              }`}
-              title="Estoque em Câmara Fria das 16 Lojas"
-            >
-              <Warehouse className="w-4 h-4 text-amber-700" />
-            </button>
-
-            {/* 7. Cortes e Desossa */}
-            <button
-              onClick={() => onTabChange('yield')}
-              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded bg-gradient-to-b from-white to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border border-[#9ca3af] active:border-blue-500 shadow-xs transition"
-              title="Análise Zootécnica de Rendimento e Desossa"
-            >
-              <Scissors className="w-4 h-4 text-red-600" />
-            </button>
-
-            {/* 8. Balança / Pesagem */}
-            <button
-              onClick={() => onTabChange('yield')}
-              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded bg-gradient-to-b from-white to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border border-[#9ca3af] active:border-blue-500 shadow-xs transition"
-              title="Balança de Pesagem de Carcaça e Descarte"
-            >
-              <Scale className="w-4 h-4 text-purple-700" />
-            </button>
-
-            <div className="h-5 w-px bg-slate-300 mx-0.5" />
-
-            {/* 9. Caminhão / Cargas em Trânsito */}
-            <button
-              onClick={() => onTabChange('inventory')}
-              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded bg-gradient-to-b from-white to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border border-[#9ca3af] active:border-blue-500 shadow-xs transition"
-              title="Logística e Peças em Trânsito"
-            >
-              <Truck className="w-4 h-4 text-blue-600" />
-            </button>
-
-            {/* 10. Transferência entre Filiais */}
-            <button
-              onClick={() => onTabChange('inventory')}
-              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded bg-gradient-to-b from-white to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border border-[#9ca3af] active:border-blue-500 shadow-xs transition"
-              title="Transferência entre Filiais"
-            >
-              <ArrowRightLeft className="w-4 h-4 text-cyan-700" />
-            </button>
-
-            {/* 11. Descarte Sebo & Osso */}
-            <button
-              onClick={() => onTabChange('waste')}
-              className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border shadow-xs transition ${
-                activeTab === 'waste' && !isDesktopView
-                  ? 'bg-rose-100 border-rose-600 text-rose-800'
-                  : 'bg-gradient-to-b from-white to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border-[#9ca3af] text-slate-800'
-              }`}
-              title="Controle de Descarte (Sebo e Osso para Graxaria)"
-            >
-              <Bone className="w-4 h-4 text-rose-600" />
-            </button>
-
-            {/* 12. DRE / Resultados */}
-            <button
-              onClick={() => onTabChange('results')}
-              className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded border shadow-xs transition ${
-                activeTab === 'results' && !isDesktopView
-                  ? 'bg-indigo-100 border-indigo-600 text-indigo-800'
-                  : 'bg-gradient-to-b from-white to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border-[#9ca3af] text-slate-800'
-              }`}
-              title="Apuração de Resultados (DRE, Margem e Markup)"
-            >
-              <TrendingUp className="w-4 h-4 text-indigo-600" />
-            </button>
-
-            {/* 13. Impressão */}
-            <button
-              onClick={onPrint}
-              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded bg-gradient-to-b from-white to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border border-[#9ca3af] active:border-blue-500 shadow-xs transition"
-              title="Imprimir Relatório Executivo Oficial (Ctrl+P)"
-            >
-              <Printer className="w-4 h-4 text-slate-700" />
-            </button>
-
-            {/* Instalação do Aplicativo Mobile / Desktop */}
-            <PWAInstallButton />
-
-            {/* Portal Mobile */}
-            {onOpenMobilePortal && (
+            {/* Box 1: Matriz & Gravação */}
+            <div className="bg-[#d5dce4] p-0.5 rounded-md border border-[#b8c4d0] shadow-inner flex items-center gap-0.5 shrink-0">
+              {/* Novo Lote */}
               <button
-                onClick={onOpenMobilePortal}
-                className="h-7 sm:h-8 px-2 flex items-center gap-1 rounded bg-gradient-to-b from-amber-50 to-[#fef3c7] hover:from-[#ffffff] hover:to-[#fde68a] border border-amber-600 active:border-amber-700 shadow-xs transition text-amber-950 font-bold text-[11px]"
-                title="Abrir Portal Mobile de Lançamento de Estoque por Filial"
+                onClick={() => onTabChange('purchases')}
+                className={`h-7.5 px-2 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 ${
+                  activeTab === 'purchases' && !isDesktopView
+                    ? 'bg-[#0078d7] text-white border-[#005a9e] shadow-sm'
+                    : 'bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800'
+                }`}
+                title="Novo Lote de Compra (Ctrl+N)"
               >
-                <Smartphone className="w-3.5 h-3.5 text-amber-700" />
-                <span className="hidden sm:inline">Portal Mobile</span>
+                <Plus className={`w-3.5 h-3.5 ${activeTab === 'purchases' && !isDesktopView ? 'text-white' : 'text-emerald-600'}`} />
+                <span className="hidden xl:inline">Novo Lote</span>
               </button>
-            )}
 
-            {/* Bloqueio / Horários do Portal Mobile (Controle Gestor) */}
-            {onOpenPortalControl && (
+              {/* Planilha Matriz v10.1 */}
               <button
-                onClick={onOpenPortalControl}
-                className="h-7 sm:h-8 px-2 flex items-center gap-1 rounded bg-gradient-to-b from-purple-50 to-[#f3e8ff] hover:from-[#ffffff] hover:to-[#e9d5ff] border border-purple-600 active:border-purple-700 shadow-xs transition text-purple-950 font-bold text-[11px]"
-                title="Horários & Bloqueio do Portal Mobile (Controle de Acesso do Gestor)"
+                onClick={() => onTabChange('sheet')}
+                className={`h-7.5 px-2.5 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 ${
+                  activeTab === 'sheet' && !isDesktopView
+                    ? 'bg-[#0078d7] text-white border-[#005a9e] shadow-sm'
+                    : 'bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800'
+                }`}
+                title="Planilha Matriz da Direção v10.1 (F2)"
               >
-                <Clock className="w-3.5 h-3.5 text-purple-700" />
-                <span className="hidden sm:inline">Horários Portal</span>
+                <FileSpreadsheet className={`w-3.5 h-3.5 ${activeTab === 'sheet' && !isDesktopView ? 'text-white' : 'text-blue-700'}`} />
+                <span>Matriz v10.1</span>
               </button>
-            )}
 
-            {/* 13b. Gerar Pedido de Compra Padrão */}
-            {onOpenPurchaseOrder && (
+              {/* Salvar / Gravar */}
               <button
-                onClick={onOpenPurchaseOrder}
-                className="h-7 sm:h-8 px-2 flex items-center gap-1 rounded bg-gradient-to-b from-blue-50 to-[#dbeafe] hover:from-[#ffffff] hover:to-[#bfdbfe] border border-blue-600 active:border-blue-700 shadow-xs transition text-blue-900 font-bold text-[11px]"
-                title="Gerar Pedido de Compra Padrão por loja com valores e quantidades - Atalho: Alt+G"
+                onClick={handleSaveData}
+                className="h-7.5 px-2 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800"
+                title="Gravar Alterações / Sincronizar (Ctrl+S)"
               >
-                <ShoppingCart className="w-3.5 h-3.5 text-blue-700" />
-                <span className="hidden sm:inline">Gerar Pedido</span>
+                <Save className="w-3.5 h-3.5 text-blue-600" />
+                <span className="hidden lg:inline">Salvar</span>
               </button>
-            )}
+            </div>
 
-            {/* 13c. Cadastro de Fornecedores Frigoríficos */}
-            {onOpenSupplierManager && (
+            {/* Box 2: Apuração & Cálculos */}
+            <div className="bg-[#d5dce4] p-0.5 rounded-md border border-[#b8c4d0] shadow-inner flex items-center gap-0.5 shrink-0">
+              {/* Calculadora Rápida */}
               <button
-                onClick={onOpenSupplierManager}
-                className="h-7 sm:h-8 px-2 flex items-center gap-1 rounded bg-gradient-to-b from-indigo-50 to-[#e0e7ff] hover:from-[#ffffff] hover:to-[#c7d2fe] border border-indigo-600 active:border-indigo-700 shadow-xs transition text-indigo-950 font-bold text-[11px]"
-                title="Cadastro e Gestão de Fornecedores e Frigoríficos (Adicionar, Editar, Excluir, Imprimir) - Atalho: Alt+F"
+                onClick={onOpenQuickCalc}
+                className="h-7.5 px-2 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800"
+                title="Calculadora Rápida de Desossa e Preço da @ (F4)"
               >
-                <Building2 className="w-3.5 h-3.5 text-indigo-700" />
-                <span className="hidden sm:inline">Fornecedores</span>
+                <Calculator className="w-3.5 h-3.5 text-amber-600" />
+                <span className="hidden xl:inline">Calculadora @</span>
               </button>
-            )}
 
-            {/* 14. Exportar XLSX Formatado */}
-            {onExportXLSX && (
+              {/* Rendimento & Preço */}
               <button
-                onClick={onExportXLSX}
-                className="h-7 sm:h-8 px-2 flex items-center gap-1 rounded bg-gradient-to-b from-emerald-50 to-[#d1fae5] hover:from-[#ffffff] hover:to-[#a7f3d0] border border-emerald-600 active:border-emerald-700 shadow-xs transition text-emerald-900 font-bold text-[11px]"
-                title="Exportar Planilha Oficial para Excel (.xlsx com formatação profissional e abas DRE/Rendimento) - Atalho: Alt+X"
+                onClick={() => onTabChange('yield')}
+                className={`h-7.5 px-2 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 ${
+                  activeTab === 'yield' && !isDesktopView
+                    ? 'bg-[#0078d7] text-white border-[#005a9e] shadow-sm'
+                    : 'bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800'
+                }`}
+                title="Rendimento de Desossa e Formação de Preço Limpo"
               >
-                <Download className="w-3.5 h-3.5 text-emerald-700" />
-                <span className="hidden sm:inline">.XLSX</span>
+                <Scissors className={`w-3.5 h-3.5 ${activeTab === 'yield' && !isDesktopView ? 'text-white' : 'text-red-600'}`} />
+                <span className="hidden lg:inline">Desossa</span>
               </button>
-            )}
 
-            {/* 15. Exportar CSV */}
-            <button
-              onClick={onExportCSV}
-              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded bg-gradient-to-b from-white to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border border-[#9ca3af] active:border-blue-500 shadow-xs transition"
-              title="Exportar Matriz rápida para CSV (Ctrl+E)"
-            >
-              <Download className="w-4 h-4 text-emerald-700" />
-            </button>
-
-            {/* 16. Atalhos de Teclado */}
-            {onOpenShortcuts && (
+              {/* Câmaras Frias / Estoque */}
               <button
-                onClick={onOpenShortcuts}
-                className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded bg-gradient-to-b from-white to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border border-[#9ca3af] active:border-amber-500 shadow-xs transition"
-                title="Guia de Atalhos Globais de Teclado (F1 ou ?)"
+                onClick={() => onTabChange('inventory')}
+                className={`h-7.5 px-2 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 ${
+                  activeTab === 'inventory' && !isDesktopView
+                    ? 'bg-[#0078d7] text-white border-[#005a9e] shadow-sm'
+                    : 'bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800'
+                }`}
+                title="Estoque em Câmara Fria das 16 Lojas"
               >
-                <Keyboard className="w-4 h-4 text-amber-700" />
+                <Warehouse className={`w-3.5 h-3.5 ${activeTab === 'inventory' && !isDesktopView ? 'text-white' : 'text-cyan-700'}`} />
+                <span className="hidden lg:inline">Estoque</span>
               </button>
-            )}
 
-            {/* 17. Restaurar v10.1 */}
-            <button
-              onClick={onReset}
-              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded bg-gradient-to-b from-white to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border border-[#9ca3af] active:border-red-500 shadow-xs transition"
-              title="Restaurar Planilha Oficial da Direção v10.1 (F5)"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-red-600" />
-            </button>
+              {/* DRE / Resultados */}
+              <button
+                onClick={() => onTabChange('results')}
+                className={`h-7.5 px-2 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 ${
+                  activeTab === 'results' && !isDesktopView
+                    ? 'bg-[#0078d7] text-white border-[#005a9e] shadow-sm'
+                    : 'bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800'
+                }`}
+                title="Apuração de Resultados (DRE, Margem e Markup)"
+              >
+                <TrendingUp className={`w-3.5 h-3.5 ${activeTab === 'results' && !isDesktopView ? 'text-white' : 'text-indigo-600'}`} />
+                <span className="hidden lg:inline">DRE</span>
+              </button>
 
-            <div className="h-5 w-px bg-slate-300 mx-0.5" />
+              {/* Descarte Sebo & Osso */}
+              <button
+                onClick={() => onTabChange('waste')}
+                className={`h-7.5 px-2 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 ${
+                  activeTab === 'waste' && !isDesktopView
+                    ? 'bg-[#0078d7] text-white border-[#005a9e] shadow-sm'
+                    : 'bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800'
+                }`}
+                title="Controle de Descarte (Sebo e Osso para Graxaria)"
+              >
+                <Bone className={`w-3.5 h-3.5 ${activeTab === 'waste' && !isDesktopView ? 'text-white' : 'text-rose-600'}`} />
+                <span className="hidden xl:inline">Descarte</span>
+              </button>
+            </div>
 
-            {/* 16. Ver Área de Trabalho Metálica */}
-            <button
-              onClick={onToggleDesktop}
-              className={`px-2 py-1 rounded text-[11px] font-bold flex items-center gap-1.5 border shadow-xs transition ${
-                isDesktopView
-                  ? 'bg-amber-100 border-amber-600 text-amber-900'
-                  : 'bg-white hover:bg-slate-100 border-[#9ca3af] text-slate-700'
-              }`}
-              title="Minimizar janelas e visualizar Área de Trabalho metálica Grupo GAPP"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5 text-blue-600" />
-              <span className="hidden md:inline">{isDesktopView ? 'Voltar ao Módulo' : 'Área de Trabalho'}</span>
-            </button>
+            {/* Box 3: Ações Operacionais & Conexões */}
+            <div className="bg-[#d5dce4] p-0.5 rounded-md border border-[#b8c4d0] shadow-inner flex items-center gap-0.5 shrink-0">
+              {/* Gerar Pedido de Compra */}
+              {onOpenPurchaseOrder && (
+                <button
+                  onClick={onOpenPurchaseOrder}
+                  className="h-7.5 px-2 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800"
+                  title="Gerar Pedido de Compra Padrão por loja com valores e quantidades - Atalho: Alt+G"
+                >
+                  <ShoppingCart className="w-3.5 h-3.5 text-blue-700" />
+                  <span className="hidden sm:inline">Pedido</span>
+                </button>
+              )}
+
+              {/* Fornecedores */}
+              {onOpenSupplierManager && (
+                <button
+                  onClick={onOpenSupplierManager}
+                  className="h-7.5 px-2 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800"
+                  title="Cadastro e Gestão de Fornecedores e Frigoríficos - Atalho: Alt+F"
+                >
+                  <Building2 className="w-3.5 h-3.5 text-indigo-700" />
+                  <span className="hidden sm:inline">Fornecedores</span>
+                </button>
+              )}
+
+              {/* Central de Backup Online */}
+              <button
+                onClick={() => onOpenBackup ? onOpenBackup() : onTabChange('backup')}
+                className={`h-7.5 px-2 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 ${
+                  activeTab === 'backup' && !isDesktopView
+                    ? 'bg-[#0078d7] text-white border-[#005a9e] shadow-sm'
+                    : 'bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800'
+                }`}
+                title="Central de Backup Online Firestore & Agendamento (Alt+9)"
+              >
+                <Cloud className={`w-3.5 h-3.5 ${activeTab === 'backup' && !isDesktopView ? 'text-white' : 'text-sky-600'}`} />
+                <span className="hidden sm:inline">Backup Nuvem</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              </button>
+
+              {/* Portal Mobile */}
+              {onOpenMobilePortal && (
+                <button
+                  onClick={onOpenMobilePortal}
+                  className="h-7.5 px-2 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800"
+                  title="Abrir Portal Mobile de Lançamento de Estoque por Filial"
+                >
+                  <Smartphone className="w-3.5 h-3.5 text-amber-700" />
+                  <span className="hidden md:inline">Portal Mobile</span>
+                </button>
+              )}
+
+              {/* Horários Portal */}
+              {onOpenPortalControl && (
+                <button
+                  onClick={onOpenPortalControl}
+                  className="h-7.5 px-2 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800"
+                  title="Horários & Bloqueio do Portal Mobile (Controle de Acesso do Gestor)"
+                >
+                  <Clock className="w-3.5 h-3.5 text-purple-700" />
+                  <span className="hidden xl:inline">Horários</span>
+                </button>
+              )}
+            </div>
+
+            {/* Box 4: Exportação, Utilidades & Sistema */}
+            <div className="bg-[#d5dce4] p-0.5 rounded-md border border-[#b8c4d0] shadow-inner flex items-center gap-0.5 shrink-0">
+              {/* Exportar XLSX */}
+              {onExportXLSX && (
+                <button
+                  onClick={onExportXLSX}
+                  className="h-7.5 px-2 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800"
+                  title="Exportar Planilha Oficial para Excel (.xlsx com formatação profissional e abas DRE/Rendimento) - Atalho: Alt+X"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-700" />
+                  <span className="hidden sm:inline">.XLSX</span>
+                </button>
+              )}
+
+              {/* Exportar CSV */}
+              <button
+                onClick={onExportCSV}
+                className="h-7.5 w-7.5 flex items-center justify-center rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800"
+                title="Exportar Matriz rápida para CSV (Ctrl+E)"
+              >
+                <Download className="w-3.5 h-3.5 text-teal-700" />
+              </button>
+
+              {/* Imprimir */}
+              <button
+                onClick={onPrint}
+                className="h-7.5 w-7.5 flex items-center justify-center rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800"
+                title="Imprimir Relatório Executivo Oficial (Ctrl+P)"
+              >
+                <Printer className="w-3.5 h-3.5 text-slate-700" />
+              </button>
+
+              {/* Atalhos de Teclado */}
+              {onOpenShortcuts && (
+                <button
+                  onClick={onOpenShortcuts}
+                  className="h-7.5 w-7.5 flex items-center justify-center rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800"
+                  title="Guia de Atalhos Globais de Teclado (F1 ou ?)"
+                >
+                  <Keyboard className="w-3.5 h-3.5 text-amber-700" />
+                </button>
+              )}
+
+              {/* Restaurar v10.1 */}
+              <button
+                onClick={onReset}
+                className="h-7.5 w-7.5 flex items-center justify-center rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800"
+                title="Restaurar Planilha Oficial da Direção v10.1 (F5)"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+              </button>
+
+              {/* Instalação do Aplicativo Mobile / Desktop */}
+              <PWAInstallButton />
+
+              {/* Ver Área de Trabalho Metálica */}
+              <button
+                onClick={onToggleDesktop}
+                className={`h-7.5 px-2 rounded text-[11px] font-bold flex items-center gap-1.5 border shadow-xs transition cursor-pointer active:scale-95 ${
+                  isDesktopView
+                    ? 'bg-amber-100 border-amber-600 text-amber-900'
+                    : 'bg-white hover:bg-slate-100 border-[#9ca3af] text-slate-700'
+                }`}
+                title="Minimizar janelas e visualizar Área de Trabalho metálica Grupo GAPP"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5 text-blue-600" />
+                <span className="hidden md:inline">{isDesktopView ? 'Voltar' : 'Área de Trabalho'}</span>
+              </button>
+            </div>
 
           </div>
 
           {/* Quick status on the right + User Menu */}
-          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-700">
+          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-700 shrink-0 ml-2">
             <span className="hidden lg:inline-flex px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold">
-              ● {storeCount} Lojas Conectadas
-            </span>
-            <span className="hidden xl:inline text-slate-600 font-bold">
-              Matriz: R$ 376.311,95
+              ● {storeCount} Lojas
             </span>
 
             {/* Usuário Conectado */}
             {currentUser && (
-              <div className="relative ml-1 font-sans" ref={userMenuRef}>
+              <div className="relative font-sans" ref={userMenuRef}>
                 <button
                   type="button"
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className={`h-7 sm:h-8 px-2 rounded flex items-center gap-1.5 border shadow-xs transition cursor-pointer ${
+                  className={`h-7.5 px-2 rounded flex items-center gap-1.5 border shadow-xs transition cursor-pointer ${
                     currentUser.role === 'DESENVOLVEDOR'
                       ? 'bg-gradient-to-r from-purple-100 to-amber-100 border-purple-400 text-purple-950 font-bold'
                       : 'bg-white hover:bg-slate-100 border-[#9ca3af] text-slate-800 font-bold'
@@ -848,7 +851,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
                 </button>
 
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-1 w-60 rounded-lg bg-white border border-[#9ca3af] shadow-xl p-2 z-50 text-xs">
+                  <div className="absolute right-0 mt-1 w-60 rounded-lg bg-white border border-[#9ca3af] shadow-[0_15px_35px_rgba(0,0,0,0.35)] p-2 z-[9999] text-xs">
                     <div className="p-2 border-b border-slate-200 mb-1">
                       <div className="font-bold text-slate-900 truncate">{currentUser.name}</div>
                       <div className="text-[10px] text-slate-500 font-mono">@{currentUser.username} • {currentUser.role}</div>

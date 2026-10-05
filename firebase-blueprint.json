@@ -103,6 +103,25 @@
         "sellingPriceKg": { "type": "number", "description": "Preço de venda" }
       },
       "required": ["id", "code", "name", "category"]
+    },
+    "CloudBackup": {
+      "title": "CloudBackup",
+      "description": "Backup completo online dos dados operacionais e cadastros do ERP",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "description": "ID único do backup (ex: BKP-2026-10-04...)" },
+        "title": { "type": "string", "maxLength": 200, "description": "Título descritivo do backup" },
+        "timestamp": { "type": "number", "description": "Timestamp epoch do momento do backup" },
+        "dateFormatted": { "type": "string", "maxLength": 64, "description": "Data e hora legível" },
+        "triggerType": { "type": "string", "maxLength": 32, "description": "MANUAL ou AUTOMATICO_AGENDADO" },
+        "status": { "type": "string", "maxLength": 32, "description": "SUCCESS ou FAILED" },
+        "author": { "type": "string", "maxLength": 128, "description": "Usuário ou sistema que disparou o backup" },
+        "recordsCount": { "type": "number", "description": "Total de registros armazenados no pacote" },
+        "sizeBytes": { "type": "number", "description": "Tamanho estimado do backup em bytes" },
+        "checksum": { "type": "string", "maxLength": 64, "description": "Hash verificador de integridade" },
+        "payloadJson": { "type": "string", "description": "Payload JSON serializado do backup consolidado" }
+      },
+      "required": ["id", "title", "timestamp", "dateFormatted", "triggerType", "status"]
     }
   },
   "firestore": {
@@ -129,6 +148,10 @@
     "/products/{productId}": {
       "schema": "ProductEntity",
       "description": "Coleção de cortes e produtos"
+    },
+    "/cloud_backups/{backupId}": {
+      "schema": "CloudBackup",
+      "description": "Coleção de backups online programados e manuais com histórico e restauração"
     }
   }
 }

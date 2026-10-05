@@ -441,7 +441,7 @@ export const StorageService = {
       timestamp: now.getTime(),
       author: author.trim() || 'Direção de Carnes',
       source,
-      notes: notes?.trim() || undefined,
+      notes: notes?.trim() || '',
       totalStores: rows.length,
       totalPieces: totalPieces,
       totalKg: 14473.5,

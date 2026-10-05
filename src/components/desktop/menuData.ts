@@ -30,7 +30,8 @@ import {
   Building2,
   Clock,
   Smartphone,
-  Power
+  Power,
+  Cloud
 } from 'lucide-react';
 
 export interface ERPMenuItem {
@@ -166,6 +167,18 @@ export const getERPMenuCategories = (
         icon: Calculator,
         actionType: 'action',
         actionId: 'quickCalc'
+      },
+      {
+        id: 'arq-backup-online',
+        name: 'Central de Backup Online & Agendamento',
+        division: 'Segurança & Firestore',
+        code: 'BKP-01',
+        shortcut: 'Alt+9',
+        badge: 'Nuvem',
+        description: 'Geração e monitoramento de backups online no Firestore com horários definidos',
+        icon: Cloud,
+        actionType: 'tab',
+        targetTab: 'backup'
       },
       {
         id: 'arq-restaurar',
@@ -852,6 +865,17 @@ export const getERPMenuCategories = (
         icon: SlidersHorizontal,
         actionType: 'tab',
         targetTab: 'parameters'
+      },
+      {
+        id: 'win-backup',
+        name: 'Janela: Central de Backup Online',
+        division: 'Módulo MDI',
+        code: 'WIN-10',
+        shortcut: 'Alt+9',
+        description: 'Traz a janela de monitoramento e agendamento de backups na nuvem',
+        icon: Cloud,
+        actionType: 'tab',
+        targetTab: 'backup'
       }
     ]
   },

@@ -10,7 +10,8 @@ import {
   SlidersHorizontal,
   Users,
   Lock,
-  Power
+  Power,
+  Cloud
 } from 'lucide-react';
 import { SystemUser } from '../types/erp';
 
@@ -22,7 +23,8 @@ export type NavigationTab =
   | 'inventory'
   | 'purchases'
   | 'waste'
-  | 'parameters';
+  | 'parameters'
+  | 'backup';
 
 interface NavigationProps {
   activeTab: NavigationTab;
@@ -50,6 +52,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     { id: 'purchases', label: 'Compras & Lotes', icon: ShoppingCart, badge: null, shortcut: 'Alt+6' },
     { id: 'waste', label: 'Descarte (Sebo & Osso)', icon: Bone, badge: null, shortcut: 'Alt+7' },
     { id: 'parameters', label: 'Módulo 1: Cadastros', icon: SlidersHorizontal, badge: 'Setup', shortcut: 'Alt+8' },
+    { id: 'backup', label: 'Backup Online', icon: Cloud, badge: 'Nuvem', shortcut: 'Alt+9' },
   ];
 
   const hasPermission = (tabId: string) => {

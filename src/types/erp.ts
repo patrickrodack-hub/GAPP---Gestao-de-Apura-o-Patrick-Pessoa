@@ -302,3 +302,52 @@ export interface SystemUser {
   lastLoginAt?: number;
 }
 
+// ==========================================
+// MÓDULO DE BACKUP ONLINE & AGENDAMENTOS
+// ==========================================
+export type BackupTriggerType = 'MANUAL' | 'AUTOMATICO_AGENDADO';
+export type BackupStatus = 'SUCCESS' | 'FAILED' | 'IN_PROGRESS';
+export type BackupPeriodicity = 'DIARIO' | 'INTERVALO_HORAS' | 'SEMANAL';
+
+export interface BackupDataPayload {
+  sheetRows: SheetRowData[];
+  sheetSnapshots: SheetSnapshotRecord[];
+  stockLaunches: StockLaunchRecord[];
+  stores: Store[];
+  suppliers: Supplier[];
+  products: Product[];
+  yieldParams: any;
+  users?: SystemUser[];
+  batches?: PurchaseBatch[];
+  wasteRecords?: WasteRecord[];
+}
+
+export interface CloudBackupItem {
+  id: string;                    // e.g. "BKP-20261004-201833"
+  title: string;
+  timestamp: number;
+  dateFormatted: string;
+  triggerType: BackupTriggerType;
+  status: BackupStatus;
+  author: string;
+  recordsCount: number;
+  sizeBytes: number;
+  checksum: string;
+  storageTarget: 'FIRESTORE_NUVEM' | 'LOCAL_CACHE';
+  payload?: BackupDataPayload;
+  notes?: string;
+}
+
+export interface BackupScheduleConfig {
+  enabled: boolean;              // Ativo / Inativo
+  periodicity: BackupPeriodicity;// 'DIARIO' | 'INTERVALO_HORAS' | 'SEMANAL'
+  scheduledTime: string;         // 'HH:mm' (ex: "23:00")
+  intervalHours: number;         // 1, 2, 4, 6, 12, 24 horas
+  selectedDaysOfWeek: number[];  // 0 = Domingo, 1 = Segunda, etc.
+  retentionDays: number;         // 7, 15, 30, 90, 0 = ilimitado
+  autoNotify: boolean;           // Exibir notificação / toast na tela
+  lastBackupTimestamp?: number;
+  lastBackupStatus?: BackupStatus;
+  nextScheduledTimestamp?: number;
+}
+

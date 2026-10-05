@@ -294,10 +294,10 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                   ? 'text-slate-600 hover:text-slate-900'
                   : 'text-zinc-400 hover:text-white'
               }`}
-              title="Tema: Solidcon Clássico ERP"
+              title="Tema: GAPP Classic ERP"
             >
               <Monitor className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Solidcon</span>
+              <span className="hidden sm:inline">GAPP Classic</span>
             </button>
           </div>
 
@@ -345,7 +345,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                 <div className="flex items-center gap-2">
                   <Monitor className="w-4 h-4 text-sky-200" />
                   <span className="tracking-wide">
-                    Solidcon ERP • Autenticação de Acesso ao Sistema - Apuração do Boi v10.1
+                    GAPP Classic • Autenticação de Acesso ao Sistema - Apuração do Boi v10.1
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">

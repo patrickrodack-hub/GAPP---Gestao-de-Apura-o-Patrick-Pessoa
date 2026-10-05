@@ -85,6 +85,12 @@ export async function testConnection(): Promise<boolean> {
   }
 }
 
+// Helper to sanitize payload and remove undefined fields before sending to Firestore
+export function sanitizeForFirestore<T>(data: T): T {
+  if (data === null || data === undefined) return data;
+  return JSON.parse(JSON.stringify(data, (_, value) => (value === undefined ? null : value)));
+}
+
 // Automatically test connection on boot
 testConnection().catch(() => {});
 
@@ -119,11 +125,12 @@ export const FirebaseService = {
     const safeStoreId = String(row.storeId || '1').replace(/[^a-zA-Z0-9_\-]/g, '_');
     const path = `sheet_rows/${safeStoreId}`;
     try {
-      await setDoc(doc(db, 'sheet_rows', safeStoreId), {
+      const cleanData = sanitizeForFirestore({
         ...row,
         storeId: safeStoreId,
         updatedAt: Date.now()
-      }, { merge: true });
+      });
+      await setDoc(doc(db, 'sheet_rows', safeStoreId), cleanData, { merge: true });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, path);
     }
@@ -136,11 +143,12 @@ export const FirebaseService = {
       for (const row of rows) {
         const safeStoreId = String(row.storeId || '1').replace(/[^a-zA-Z0-9_\-]/g, '_');
         const docRef = doc(db, 'sheet_rows', safeStoreId);
-        batch.set(docRef, {
+        const cleanData = sanitizeForFirestore({
           ...row,
           storeId: safeStoreId,
           updatedAt: Date.now()
-        }, { merge: true });
+        });
+        batch.set(docRef, cleanData, { merge: true });
       }
       await batch.commit();
     } catch (error) {
@@ -195,10 +203,12 @@ export const FirebaseService = {
     const safeId = String(snapshot.id).replace(/[^a-zA-Z0-9_\-]/g, '_');
     const path = `sheet_snapshots/${safeId}`;
     try {
-      await setDoc(doc(db, 'sheet_snapshots', safeId), {
+      const cleanData = sanitizeForFirestore({
         ...snapshot,
-        id: safeId
+        id: safeId,
+        notes: snapshot.notes?.trim() || ''
       });
+      await setDoc(doc(db, 'sheet_snapshots', safeId), cleanData);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, path);
     }
@@ -234,10 +244,12 @@ export const FirebaseService = {
     const safeId = String(record.id).replace(/[^a-zA-Z0-9_\-]/g, '_');
     const path = `stock_launches/${safeId}`;
     try {
-      await setDoc(doc(db, 'stock_launches', safeId), {
+      const cleanData = sanitizeForFirestore({
         ...record,
-        id: safeId
+        id: safeId,
+        notes: record.notes?.trim() || ''
       });
+      await setDoc(doc(db, 'stock_launches', safeId), cleanData);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, path);
     }
@@ -262,7 +274,8 @@ export const FirebaseService = {
       const batch = writeBatch(db);
       for (const s of stores) {
         const safeId = String(s.id).replace(/[^a-zA-Z0-9_\-]/g, '_');
-        batch.set(doc(db, 'stores', safeId), { ...s, id: safeId });
+        const cleanStore = sanitizeForFirestore({ ...s, id: safeId });
+        batch.set(doc(db, 'stores', safeId), cleanStore);
       }
       await batch.commit();
     } catch (e) {
@@ -288,7 +301,8 @@ export const FirebaseService = {
       const batch = writeBatch(db);
       for (const s of suppliers) {
         const safeId = String(s.id).replace(/[^a-zA-Z0-9_\-]/g, '_');
-        batch.set(doc(db, 'suppliers', safeId), { ...s, id: safeId });
+        const cleanSupplier = sanitizeForFirestore({ ...s, id: safeId });
+        batch.set(doc(db, 'suppliers', safeId), cleanSupplier);
       }
       await batch.commit();
     } catch (e) {
@@ -314,10 +328,13 @@ export const FirebaseService = {
   async savePortalLockConfig(config: PortalLockConfig): Promise<void> {
     const path = 'app_settings/portal_lock';
     try {
-      await setDoc(doc(db, 'app_settings', 'portal_lock'), {
+      const cleanData = sanitizeForFirestore({
         ...config,
+        customMessage: config.customMessage || '',
+        updatedBy: config.updatedBy || '',
         updatedAt: Date.now()
       });
+      await setDoc(doc(db, 'app_settings', 'portal_lock'), cleanData);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, path);
     }

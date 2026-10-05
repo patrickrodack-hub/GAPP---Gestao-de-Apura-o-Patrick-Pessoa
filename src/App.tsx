@@ -26,6 +26,8 @@ import { SolidconStatusBar } from './components/desktop/SolidconStatusBar';
 import { SolidconDesktopWallpaper } from './components/desktop/SolidconDesktopWallpaper';
 import { KeyboardShortcutsModal } from './components/modals/KeyboardShortcutsModal';
 import { MobileStockPortal } from './components/portal/MobileStockPortal';
+import { BackupManagerView } from './components/backup/BackupManagerView';
+import { useBackupScheduler } from './hooks/useBackupScheduler';
 import { useTheme } from './context/ThemeContext';
 import { ExcelExportService } from './services/excelExportService';
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
@@ -91,8 +93,17 @@ export default function App() {
   const [isPurchaseOrderOpen, setIsPurchaseOrderOpen] = useState(false);
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [isPortalControlOpen, setIsPortalControlOpen] = useState(false);
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [portalLockConfig, setPortalLockConfig] = useState<PortalLockConfig>(() => StorageService.getPortalLockConfig());
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
+
+  // Agendador automático de backups em segundo plano com notificações na tela
+  useBackupScheduler({
+    showToast: (msg: string) => setFeedbackToast(msg),
+    onBackupCompleted: () => {
+      setSheetSnapshots(StorageService.getSheetSnapshots());
+    }
+  });
 
   // User Authentication & Management State (Módulo de Gestão)
   const [currentUser, setCurrentUser] = useState<SystemUser | null>(() => {
@@ -428,6 +439,7 @@ export default function App() {
         purchases: 'Compras & Lotes (Alt+6)',
         waste: 'Descarte Sebo/Osso (Alt+7)',
         parameters: 'Módulo 1: Parâmetros (Alt+8)',
+        backup: 'Central de Backup Online (Alt+9)',
       };
       showToast(`Módulo: ${tabNames[tab] || tab}`);
     },
@@ -446,6 +458,7 @@ export default function App() {
       setIsPurchaseOrderOpen(false);
       setIsSupplierModalOpen(false);
       setIsExitModalOpen(false);
+      setIsBackupModalOpen(false);
     },
     onExitSystem: () => setIsExitModalOpen(true),
   });
@@ -467,6 +480,7 @@ export default function App() {
       case 'purchases': return 'Gestão de Compras e Lotes de Gado';
       case 'waste': return 'Controle de Descarte (Sebo e Osso)';
       case 'parameters': return 'Módulo 1: Cadastro e Parâmetros';
+      case 'backup': return 'Central de Backup Online & Agendamento Automático (Nuvem Firestore)';
       default: return 'Apuração do Boi';
     }
   };
@@ -611,6 +625,7 @@ export default function App() {
           onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
           onOpenMobilePortal={handleOpenMobilePortal}
           onOpenPortalControl={() => setIsPortalControlOpen(true)}
+          onOpenBackup={() => setIsBackupModalOpen(true)}
           onSaveSheet={() => handleSaveSheetSnapshot()}
           currentUser={currentUser}
           onOpenUserManagement={handleOpenUserManagement}
@@ -675,6 +690,7 @@ export default function App() {
                       { id: 'purchases', label: 'Compras & Lotes' },
                       { id: 'waste', label: 'Descarte (Sebo/Osso)' },
                       { id: 'parameters', label: 'Módulo 1: Parâmetros' },
+                      { id: 'backup', label: 'Backup Online' },
                     ].map(tab => (
                       <button
                         key={tab.id}
@@ -748,7 +764,11 @@ export default function App() {
                     <PurchasesTab
                       batches={batches}
                       suppliers={suppliers}
+                      stores={stores}
+                      sheetRows={sheetRows}
                       onAddBatch={handleAddBatch}
+                      onUpdateBatch={handleUpdateBatch}
+                      onDeleteBatch={handleDeleteBatch}
                       onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
                     />
                   )}
@@ -774,6 +794,21 @@ export default function App() {
                       currentUser={currentUser}
                     />
                   )}
+
+                  {activeTab === 'backup' && (
+                    <BackupManagerView
+                      showToast={showToast}
+                      onRestoreCompleted={() => {
+                        showToast('Backup restaurado com sucesso! Dados atualizados.');
+                        setSheetRows(StorageService.getSheetRows());
+                        setStores(StorageService.getStores());
+                        setBatches(StorageService.getBatches());
+                        setSuppliers(StorageService.getSuppliers());
+                        setProducts(StorageService.getProducts());
+                        setSheetSnapshots(StorageService.getSheetSnapshots());
+                      }}
+                    />
+                  )}
                 </div>
 
               </div>
@@ -781,7 +816,7 @@ export default function App() {
           )}
         </div>
 
-        {/* 3. Bottom Status Bar (Solidcon style: 01/10/2026 | Patrick Pessoa | 1.1.8719) */}
+        {/* 3. Bottom Status Bar (GAPP Classic style: 01/10/2026 | Patrick Pessoa | 1.1.8719) */}
         <SolidconStatusBar storeCount={stores.length} isCloudConnected={isCloudConnected} />
 
         {/* Modals */}
@@ -845,6 +880,28 @@ export default function App() {
           onLogoutOnly={handleLogoutOnly}
           userName={currentUser?.name}
         />
+
+        {/* Modal da Central de Backup Online no Tema GAPP Classic */}
+        {isBackupModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+            <div className="w-full max-w-6xl my-auto">
+              <BackupManagerView
+                onClose={() => setIsBackupModalOpen(false)}
+                showToast={showToast}
+                onRestoreCompleted={() => {
+                  showToast('Backup restaurado com sucesso! Dados atualizados.');
+                  setIsBackupModalOpen(false);
+                  setSheetRows(StorageService.getSheetRows());
+                  setStores(StorageService.getStores());
+                  setBatches(StorageService.getBatches());
+                  setSuppliers(StorageService.getSuppliers());
+                  setProducts(StorageService.getProducts());
+                  setSheetSnapshots(StorageService.getSheetSnapshots());
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -878,6 +935,7 @@ export default function App() {
         onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
         onOpenMobilePortal={handleOpenMobilePortal}
         onOpenPortalControl={() => setIsPortalControlOpen(true)}
+        onOpenBackup={() => setIsBackupModalOpen(true)}
         onSaveSheet={() => handleSaveSheetSnapshot()}
         currentUser={currentUser}
         onOpenUserManagement={handleOpenUserManagement}
@@ -976,6 +1034,21 @@ export default function App() {
             currentUser={currentUser}
           />
         )}
+
+        {activeTab === 'backup' && (
+          <BackupManagerView
+            showToast={showToast}
+            onRestoreCompleted={() => {
+              showToast('Backup restaurado com sucesso! Dados atualizados.');
+              setSheetRows(StorageService.getSheetRows());
+              setStores(StorageService.getStores());
+              setBatches(StorageService.getBatches());
+              setSuppliers(StorageService.getSuppliers());
+              setProducts(StorageService.getProducts());
+              setSheetSnapshots(StorageService.getSheetSnapshots());
+            }}
+          />
+        )}
       </main>
 
       {/* Footer */}
@@ -1056,6 +1129,28 @@ export default function App() {
         onLogoutOnly={handleLogoutOnly}
         userName={currentUser?.name}
       />
+
+      {/* Modal da Central de Backup Online */}
+      {isBackupModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="w-full max-w-6xl my-auto">
+            <BackupManagerView
+              onClose={() => setIsBackupModalOpen(false)}
+              showToast={showToast}
+              onRestoreCompleted={() => {
+                showToast('Backup restaurado com sucesso! Dados atualizados.');
+                setIsBackupModalOpen(false);
+                setSheetRows(StorageService.getSheetRows());
+                setStores(StorageService.getStores());
+                setBatches(StorageService.getBatches());
+                setSuppliers(StorageService.getSuppliers());
+                setProducts(StorageService.getProducts());
+                setSheetSnapshots(StorageService.getSheetSnapshots());
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

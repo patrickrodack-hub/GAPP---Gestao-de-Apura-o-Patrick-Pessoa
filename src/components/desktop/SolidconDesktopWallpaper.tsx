@@ -8,7 +8,8 @@ import {
   ShoppingCart, 
   Bone, 
   SlidersHorizontal,
-  LayoutDashboard
+  LayoutDashboard,
+  Cloud
 } from 'lucide-react';
 
 interface SolidconDesktopWallpaperProps {
@@ -29,6 +30,7 @@ export const SolidconDesktopWallpaper: React.FC<SolidconDesktopWallpaperProps> =
     { id: 'purchases', label: 'Lotes de Frigoríficos', icon: ShoppingCart, color: 'bg-purple-600 text-white' },
     { id: 'waste', label: 'Descarte (Sebo e Osso)', icon: Bone, color: 'bg-rose-600 text-white' },
     { id: 'parameters', label: 'Módulo 1 - Parâmetros', icon: SlidersHorizontal, color: 'bg-slate-700 text-white' },
+    { id: 'backup', label: 'Backup Online Nuvem', icon: Cloud, color: 'bg-sky-600 text-white' },
   ];
 
   return (
@@ -55,19 +57,19 @@ export const SolidconDesktopWallpaper: React.FC<SolidconDesktopWallpaperProps> =
       />
 
       {/* Desktop Quick Shortcuts (Top Left) */}
-      <div className="absolute top-4 left-6 z-10 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-sm">
-        {desktopShortcuts.slice(0, 4).map((sc) => {
+      <div className="absolute top-4 left-4 sm:left-6 z-10 grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-md max-h-[75vh] overflow-y-auto pr-1">
+        {desktopShortcuts.map((sc) => {
           const Icon = sc.icon;
           return (
             <button
               key={sc.id}
               onClick={() => onOpenTab(sc.id as NavigationTab)}
-              className="flex items-center gap-2.5 p-2 rounded-lg bg-white/20 hover:bg-white/40 border border-white/30 backdrop-blur-sm shadow-md hover:shadow-lg transition text-left group"
+              className="flex items-center gap-2.5 p-2 rounded-lg bg-white/30 hover:bg-white/50 border border-white/40 backdrop-blur-sm shadow-sm hover:shadow transition text-left group cursor-pointer"
             >
-              <div className={`p-1.5 rounded ${sc.color} shadow-sm group-hover:scale-105 transition`}>
-                <Icon className="w-4 h-4" />
+              <div className={`p-1.5 rounded ${sc.color} shadow-xs group-hover:scale-105 transition`}>
+                <Icon className="w-3.5 h-3.5" />
               </div>
-              <span className="text-[11px] font-bold text-slate-800 tracking-tight drop-shadow-sm">
+              <span className="text-[11px] font-bold text-slate-800 tracking-tight drop-shadow-xs">
                 {sc.label}
               </span>
             </button>
