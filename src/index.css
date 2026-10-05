@@ -51,6 +51,71 @@ body {
   background: rgba(100, 116, 139, 0.8);
 }
 
+/* ========================================================================= */
+/* BARRA DE ROLAGEM DEDICADA EXCLUSIVAMENTE AO MODO PORTAL DE ESTOQUE MOBILE */
+/* ========================================================================= */
+.portal-scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: #10b981 rgba(226, 232, 240, 0.8);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+.portal-scroll-container.dark,
+.dark .portal-scroll-container {
+  scrollbar-color: #10b981 rgba(15, 23, 42, 0.8);
+}
+
+.portal-scroll-container::-webkit-scrollbar,
+.portal-scroll-container *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  display: block;
+}
+
+.portal-scroll-container::-webkit-scrollbar-track,
+.portal-scroll-container *::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, 0.85);
+  border-radius: 9999px;
+  margin: 3px 0;
+}
+
+.dark .portal-scroll-container::-webkit-scrollbar-track,
+.portal-scroll-container.dark::-webkit-scrollbar-track,
+.dark .portal-scroll-container *::-webkit-scrollbar-track,
+.portal-scroll-container.dark *::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.85);
+  border-radius: 9999px;
+  margin: 3px 0;
+}
+
+.portal-scroll-container::-webkit-scrollbar-thumb,
+.portal-scroll-container *::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  border-radius: 9999px;
+  border: 2px solid rgba(241, 245, 249, 0.9);
+}
+
+.portal-scroll-container::-webkit-scrollbar-thumb:hover,
+.portal-scroll-container *::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #34d399 0%, #10b981 100%);
+}
+
+.dark .portal-scroll-container::-webkit-scrollbar-thumb,
+.portal-scroll-container.dark::-webkit-scrollbar-thumb,
+.dark .portal-scroll-container *::-webkit-scrollbar-thumb,
+.portal-scroll-container.dark *::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #10b981 0%, #047857 100%);
+  border: 2px solid rgba(15, 23, 42, 0.85);
+}
+
+.dark .portal-scroll-container::-webkit-scrollbar-thumb:hover,
+.portal-scroll-container.dark::-webkit-scrollbar-thumb:hover,
+.dark .portal-scroll-container *::-webkit-scrollbar-thumb:hover,
+.portal-scroll-container.dark *::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+}
+
 @media print {
   @page {
     margin: 8mm;

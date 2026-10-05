@@ -135,7 +135,7 @@ export const MobileStockPortal: React.FC<MobileStockPortalProps> = ({
   const currentRow = rows.find(r => r.storeId === loggedStoreId);
 
   return (
-    <div className={`min-h-screen transition-colors duration-200 ${portalTheme === 'dark' ? 'dark bg-slate-950 text-slate-100' : 'light bg-slate-50 text-slate-900'}`}>
+    <div className={`portal-scroll-container h-screen h-[100dvh] w-full overflow-y-auto overflow-x-hidden transition-colors duration-200 ${portalTheme === 'dark' ? 'dark bg-slate-950 text-slate-100' : 'light bg-slate-50 text-slate-900'}`}>
       {!loggedStoreId || !currentStore || !currentRow ? (
         <PortalLogin
           stores={stores}

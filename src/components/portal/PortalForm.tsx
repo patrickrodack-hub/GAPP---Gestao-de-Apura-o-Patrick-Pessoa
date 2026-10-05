@@ -334,7 +334,7 @@ export const PortalForm: React.FC<PortalFormProps> = ({
   const isSuinaVisited = visitedMainSections.has('suina_desossa');
 
   return (
-    <div className="min-h-screen flex flex-col font-sans pb-28 select-none transition-colors duration-200">
+    <div className="min-h-full flex flex-col font-sans pb-28 select-none transition-colors duration-200">
       {/* Toast Notification */}
       {isSavedToast && (
         <div className="fixed top-4 inset-x-4 z-50 max-w-md mx-auto bg-emerald-600 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between gap-3 border border-emerald-400 animate-bounce">

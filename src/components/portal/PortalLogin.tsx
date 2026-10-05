@@ -82,7 +82,7 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
   const isStoreNotSelected = !selectedStoreId;
 
   return (
-    <div className="min-h-screen flex flex-col justify-between p-4 sm:p-6 transition-colors duration-200">
+    <div className="min-h-full flex flex-col justify-between p-4 sm:p-6 transition-colors duration-200">
       {/* Top Header Bar */}
       <div className="flex items-center justify-between py-2 max-w-lg mx-auto w-full">
         <div className="flex items-center gap-2.5">
