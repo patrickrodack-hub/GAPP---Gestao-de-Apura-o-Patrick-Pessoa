@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SystemUser, UserRole } from '../../types/erp';
 import { StorageService } from '../../services/storageService';
 import { ALL_SYSTEM_MODULES } from '../../data/initialData';
@@ -39,6 +39,16 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [users, setUsers] = useState<SystemUser[]>(() => StorageService.getUsers());
   const [isEditing, setIsEditing] = useState(false);
   const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
+
+  // Sincroniza usuários da nuvem Firestore sempre que o modal for aberto
+  useEffect(() => {
+    if (isOpen) {
+      setUsers(StorageService.getUsers());
+      StorageService.syncUsersFromCloud().then(latest => {
+        setUsers(latest);
+      }).catch(() => {});
+    }
+  }, [isOpen]);
 
   // Form states
   const [formName, setFormName] = useState('');

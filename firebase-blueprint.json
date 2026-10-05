@@ -122,6 +122,24 @@
         "payloadJson": { "type": "string", "description": "Payload JSON serializado do backup consolidado" }
       },
       "required": ["id", "title", "timestamp", "dateFormatted", "triggerType", "status"]
+    },
+    "SystemUser": {
+      "title": "SystemUser",
+      "description": "Usuário credenciado do sistema ERP com login, senha, papel e controle de acesso",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "description": "ID único do usuário" },
+        "name": { "type": "string", "maxLength": 128, "description": "Nome completo do usuário" },
+        "username": { "type": "string", "maxLength": 64, "description": "Login/username único de autenticação" },
+        "password": { "type": "string", "maxLength": 128, "description": "Senha de acesso do usuário" },
+        "role": { "type": "string", "maxLength": 32, "description": "Papel do usuário: DESENVOLVEDOR, DIRETOR, COMPRADOR, OPERACIONAL, VISUALIZADOR" },
+        "roleTitle": { "type": "string", "maxLength": 128, "description": "Cargo ou função exibida no sistema" },
+        "email": { "type": "string", "maxLength": 128, "description": "E-mail de contato corporativo" },
+        "active": { "type": "boolean", "description": "Status ativo ou inativo" },
+        "createdAt": { "type": "number", "description": "Timestamp epoch de criação" },
+        "lastLoginAt": { "type": "number", "description": "Timestamp epoch do último login" }
+      },
+      "required": ["id", "name", "username", "password", "role", "active"]
     }
   },
   "firestore": {
@@ -152,6 +170,10 @@
     "/cloud_backups/{backupId}": {
       "schema": "CloudBackup",
       "description": "Coleção de backups online programados e manuais com histórico e restauração"
+    },
+    "/users/{userId}": {
+      "schema": "SystemUser",
+      "description": "Coleção permanente de usuários credenciados no sistema ERP"
     }
   }
 }

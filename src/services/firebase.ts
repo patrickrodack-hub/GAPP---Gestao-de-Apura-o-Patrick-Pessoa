@@ -16,7 +16,7 @@ import {
   limit
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { SheetRowData, SheetSnapshotRecord, StockLaunchRecord, Store, Supplier, Product, PortalLockConfig } from '../types/erp';
+import { SheetRowData, SheetSnapshotRecord, StockLaunchRecord, Store, Supplier, Product, PortalLockConfig, SystemUser } from '../types/erp';
 
 // Initialize Firebase App
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
@@ -349,6 +349,88 @@ export const FirebaseService = {
         }
       }, (error) => {
         console.warn('Erro ao escutar portal_lock do Firestore:', error);
+      });
+    } catch {
+      return () => {};
+    }
+  },
+
+  // 6. GESTÃO PERMANENTE DE USUÁRIOS (FIRESTORE CLOUD)
+  async getUsers(): Promise<SystemUser[] | null> {
+    const path = 'users';
+    try {
+      const snap = await getDocs(collection(db, path));
+      if (snap.empty) return null;
+      const users: SystemUser[] = [];
+      snap.forEach(d => {
+        users.push(d.data() as SystemUser);
+      });
+      return users;
+    } catch (e) {
+      console.warn('Erro ao carregar usuários do Firestore:', e);
+      return null;
+    }
+  },
+
+  async saveUser(user: SystemUser): Promise<void> {
+    const safeUserId = String(user.id).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `users/${safeUserId}`;
+    try {
+      const cleanData = sanitizeForFirestore({
+        ...user,
+        id: safeUserId,
+        roleTitle: user.roleTitle || '',
+        email: user.email || '',
+        allowedModules: user.allowedModules || []
+      });
+      await setDoc(doc(db, 'users', safeUserId), cleanData, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  },
+
+  async saveAllUsers(users: SystemUser[]): Promise<void> {
+    const path = 'users';
+    try {
+      const batch = writeBatch(db);
+      for (const u of users) {
+        const safeUserId = String(u.id).replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const cleanData = sanitizeForFirestore({
+          ...u,
+          id: safeUserId,
+          roleTitle: u.roleTitle || '',
+          email: u.email || '',
+          allowedModules: u.allowedModules || []
+        });
+        batch.set(doc(db, 'users', safeUserId), cleanData, { merge: true });
+      }
+      await batch.commit();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  },
+
+  async deleteUser(userId: string): Promise<void> {
+    const safeUserId = String(userId).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `users/${safeUserId}`;
+    try {
+      await deleteDoc(doc(db, 'users', safeUserId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  },
+
+  subscribeToUsers(callback: (users: SystemUser[]) => void): () => void {
+    const path = 'users';
+    try {
+      return onSnapshot(collection(db, path), (snap) => {
+        if (!snap.empty) {
+          const list: SystemUser[] = [];
+          snap.forEach(d => list.push(d.data() as SystemUser));
+          callback(list);
+        }
+      }, (error) => {
+        console.warn('Erro ao escutar coleção de usuários no Firestore:', error);
       });
     } catch {
       return () => {};

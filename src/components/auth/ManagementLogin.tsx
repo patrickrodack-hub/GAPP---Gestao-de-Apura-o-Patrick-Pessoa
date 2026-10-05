@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SystemUser } from '../../types/erp';
 import { StorageService } from '../../services/storageService';
 import { useTheme } from '../../context/ThemeContext';
@@ -33,7 +33,12 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  // Sincroniza os usuários cadastrados diretamente do Firestore ao abrir a tela de login
+  useEffect(() => {
+    StorageService.syncUsersFromCloud().catch(() => {});
+  }, []);
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -52,45 +57,48 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      const allUsers = StorageService.getUsers();
+    try {
+      // Garante a lista mais recente do Firestore antes de validar
+      await StorageService.syncUsersFromCloud();
+    } catch {}
 
-      // Busca por username ou nome (ex: "desenvolvedor", "patrick pessoa", "patrick")
-      const matchedUser = allUsers.find(u => {
-        const uName = u.username.toLowerCase();
-        const fName = u.name.toLowerCase();
-        
-        const isUserMatch = uName === trimmedUser || 
-                            fName === trimmedUser || 
-                            (trimmedUser === 'patrick' && u.role === 'DESENVOLVEDOR');
+    const allUsers = StorageService.getUsers();
 
-        return isUserMatch && u.password === trimmedPass;
-      });
+    // Busca por username ou nome (ex: "desenvolvedor", "patrick pessoa", "patrick")
+    const matchedUser = allUsers.find(u => {
+      const uName = u.username.toLowerCase();
+      const fName = u.name.toLowerCase();
+      
+      const isUserMatch = uName === trimmedUser || 
+                          fName === trimmedUser || 
+                          (trimmedUser === 'patrick' && u.role === 'DESENVOLVEDOR');
 
-      if (!matchedUser) {
-        setIsLoading(false);
-        setErrorMessage('Usuário ou senha incorretos. Verifique suas credenciais.');
-        return;
-      }
+      return isUserMatch && u.password === trimmedPass;
+    });
 
-      if (!matchedUser.active) {
-        setIsLoading(false);
-        setErrorMessage('Este usuário foi desativado pelo administrador do sistema.');
-        return;
-      }
-
-      // Registra último login
-      const updatedUser: SystemUser = {
-        ...matchedUser,
-        lastLoginAt: Date.now()
-      };
-      StorageService.updateUser(updatedUser);
-      // Sessão estritamente em memória do ciclo de vida da aplicação (sem salvar para auto-login)
-      StorageService.clearSessionUser();
-
+    if (!matchedUser) {
       setIsLoading(false);
-      onLoginSuccess(updatedUser);
-    }, 400);
+      setErrorMessage('Usuário ou senha incorretos. Verifique suas credenciais.');
+      return;
+    }
+
+    if (!matchedUser.active) {
+      setIsLoading(false);
+      setErrorMessage('Este usuário foi desativado pelo administrador do sistema.');
+      return;
+    }
+
+    // Registra último login
+    const updatedUser: SystemUser = {
+      ...matchedUser,
+      lastLoginAt: Date.now()
+    };
+    StorageService.updateUser(updatedUser);
+    // Sessão estritamente em memória do ciclo de vida da aplicação (sem salvar para auto-login)
+    StorageService.clearSessionUser();
+
+    setIsLoading(false);
+    onLoginSuccess(updatedUser);
   };
 
   return (

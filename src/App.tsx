@@ -255,10 +255,31 @@ export default function App() {
       console.warn('Ouvinte de portal_lock não iniciado:', e);
     }
 
+    // 4. Ouvinte em tempo real da lista de usuários para sincronização entre dispositivos
+    let unsubscribeUsers: (() => void) | undefined;
+    try {
+      unsubscribeUsers = FirebaseService.subscribeToUsers((cloudUsers) => {
+        if (!isMounted) return;
+        if (cloudUsers && cloudUsers.length > 0) {
+          const localUsers = StorageService.getUsers();
+          const map = new Map<string, SystemUser>();
+          cloudUsers.forEach(u => map.set(u.id, u));
+          localUsers.forEach(u => {
+            if (!map.has(u.id)) map.set(u.id, u);
+          });
+          const merged = Array.from(map.values());
+          localStorage.setItem('apuracao_boi_users_v1', JSON.stringify(merged));
+        }
+      });
+    } catch (e) {
+      console.warn('Ouvinte de usuários não iniciado:', e);
+    }
+
     return () => {
       isMounted = false;
       if (unsubscribeRows) unsubscribeRows();
       if (unsubscribeLock) unsubscribeLock();
+      if (unsubscribeUsers) unsubscribeUsers();
     };
   }, []);
 
@@ -963,9 +984,6 @@ export default function App() {
           activeTab={activeTab} 
           onTabChange={handleTabSelect} 
           currentUser={currentUser}
-          onOpenUserManagement={handleOpenUserManagement}
-          onOpenShortcuts={() => setIsShortcutsOpen(true)} 
-          onExitSystem={() => setIsExitModalOpen(true)}
         />
       </div>
 

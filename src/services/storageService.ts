@@ -358,14 +358,16 @@ export const StorageService = {
     launches?: StockLaunchRecord[];
     stores?: Store[];
     suppliers?: Supplier[];
+    users?: SystemUser[];
   }> {
     try {
-      const [cloudRows, cloudSnapshots, cloudLaunches, cloudStores, cloudSuppliers] = await Promise.all([
+      const [cloudRows, cloudSnapshots, cloudLaunches, cloudStores, cloudSuppliers, cloudUsers] = await Promise.all([
         FirebaseService.getSheetRows(),
         FirebaseService.getSheetSnapshots(),
         FirebaseService.getStockLaunches(),
         FirebaseService.getStores(),
-        FirebaseService.getSuppliers()
+        FirebaseService.getSuppliers(),
+        FirebaseService.getUsers()
       ]);
 
       const result: {
@@ -374,6 +376,7 @@ export const StorageService = {
         launches?: StockLaunchRecord[];
         stores?: Store[];
         suppliers?: Supplier[];
+        users?: SystemUser[];
       } = {};
 
       if (cloudRows && cloudRows.length > 0) {
@@ -408,6 +411,27 @@ export const StorageService = {
       if (cloudSuppliers && cloudSuppliers.length > 0) {
         localStorage.setItem(STORAGE_KEYS.SUPPLIERS, JSON.stringify(cloudSuppliers));
         result.suppliers = cloudSuppliers;
+      }
+
+      // Sincronização e persistência permanente de Usuários no Firestore
+      if (cloudUsers && cloudUsers.length > 0) {
+        const localUsers = this.getUsers();
+        const map = new Map<string, SystemUser>();
+        cloudUsers.forEach(u => map.set(u.id, u));
+        localUsers.forEach(u => {
+          if (!map.has(u.id)) {
+            map.set(u.id, u);
+            FirebaseService.saveUser(u).catch(() => {});
+          }
+        });
+        const mergedUsers = Array.from(map.values());
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(mergedUsers));
+        result.users = mergedUsers;
+      } else {
+        const localUsers = this.getUsers();
+        if (localUsers.length > 0) {
+          FirebaseService.saveAllUsers(localUsers).catch(() => {});
+        }
       }
 
       return result;
@@ -616,6 +640,10 @@ export const StorageService = {
   saveUsers(users: SystemUser[]) {
     try {
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+      // Persiste permanentemente no banco em nuvem Firestore
+      FirebaseService.saveAllUsers(users).catch((e) => {
+        console.warn('Erro ao sincronizar usuários salvos com Firestore:', e);
+      });
     } catch (e) {
       console.warn('Erro ao salvar usuários no localStorage:', e);
     }
@@ -629,14 +657,30 @@ export const StorageService = {
       throw new Error(`O login "${newUser.username}" já está em uso por outro usuário.`);
     }
     const updated = [newUser, ...current];
-    this.saveUsers(updated);
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated));
+      // Grava diretamente o novo usuário no Firestore para não ser perdido em atualizações
+      FirebaseService.saveUser(newUser).catch((e) => {
+        console.warn('Erro ao salvar novo usuário no Firestore:', e);
+      });
+    } catch (e) {
+      console.warn('Erro ao salvar usuário no localStorage:', e);
+    }
     return updated;
   },
 
   updateUser(updatedUser: SystemUser): SystemUser[] {
     const current = this.getUsers();
     const updated = current.map(u => u.id === updatedUser.id ? updatedUser : u);
-    this.saveUsers(updated);
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated));
+      // Atualiza diretamente no Firestore
+      FirebaseService.saveUser(updatedUser).catch((e) => {
+        console.warn('Erro ao atualizar usuário no Firestore:', e);
+      });
+    } catch (e) {
+      console.warn('Erro ao atualizar usuário no localStorage:', e);
+    }
     
     // Se o usuário atual logado for o editado, atualiza também a sessão
     const session = this.getSessionUser();
@@ -653,8 +697,61 @@ export const StorageService = {
       throw new Error('O usuário Desenvolvedor principal não pode ser excluído do sistema.');
     }
     const updated = current.filter(u => u.id !== userId);
-    this.saveUsers(updated);
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated));
+      // Remove permanentemente do Firestore
+      FirebaseService.deleteUser(userId).catch((e) => {
+        console.warn('Erro ao deletar usuário no Firestore:', e);
+      });
+    } catch (e) {
+      console.warn('Erro ao deletar usuário no localStorage:', e);
+    }
     return updated;
+  },
+
+  /**
+   * Sincronização explícita e prioritária de usuários com a nuvem Firestore
+   */
+  async syncUsersFromCloud(): Promise<SystemUser[]> {
+    try {
+      const cloudUsers = await FirebaseService.getUsers();
+      if (cloudUsers && cloudUsers.length > 0) {
+        const localUsers = this.getUsers();
+        const map = new Map<string, SystemUser>();
+        
+        // 1. Carrega todos os usuários da nuvem Firestore
+        cloudUsers.forEach(u => map.set(u.id, u));
+        
+        // 2. Se houver algum usuário local que ainda não está na nuvem, faz o upload dele
+        localUsers.forEach(u => {
+          if (!map.has(u.id)) {
+            map.set(u.id, u);
+            FirebaseService.saveUser(u).catch(() => {});
+          }
+        });
+
+        // 3. Garante que o Desenvolvedor principal Patrick Pessoa permaneça íntegro
+        const hasDev = Array.from(map.values()).some(u => u.username.toLowerCase() === 'desenvolvedor' || u.role === 'DESENVOLVEDOR');
+        if (!hasDev) {
+          map.set(INITIAL_USERS[0].id, INITIAL_USERS[0]);
+          FirebaseService.saveUser(INITIAL_USERS[0]).catch(() => {});
+        }
+
+        const merged = Array.from(map.values());
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(merged));
+        return merged;
+      } else {
+        // Nuvem vazia: faz o primeiro seed de todos os usuários atuais para o Firestore
+        const local = this.getUsers();
+        if (local.length > 0) {
+          await FirebaseService.saveAllUsers(local);
+        }
+        return local;
+      }
+    } catch (e) {
+      console.warn('Erro ao sincronizar usuários com a nuvem Firestore:', e);
+      return this.getUsers();
+    }
   },
 
   getSessionUser(): SystemUser | null {

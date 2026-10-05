@@ -8,9 +8,7 @@ import {
   ShoppingCart, 
   Bone, 
   SlidersHorizontal,
-  Users,
   Lock,
-  Power,
   Cloud
 } from 'lucide-react';
 import { SystemUser } from '../types/erp';
@@ -37,11 +35,8 @@ interface NavigationProps {
 
 export const Navigation: React.FC<NavigationProps> = ({ 
   activeTab, 
-  onTabChange,
-  currentUser,
-  onOpenUserManagement,
-  onOpenShortcuts,
-  onExitSystem
+  onTabChange, 
+  currentUser 
 }) => {
   const tabs = [
     { id: 'dashboard', label: 'Painel Geral', icon: LayoutDashboard, badge: null, shortcut: 'Alt+1' },
@@ -61,12 +56,10 @@ export const Navigation: React.FC<NavigationProps> = ({
     return currentUser.allowedModules?.includes(tabId);
   };
 
-  const canManageUsers = currentUser?.role === 'DESENVOLVEDOR' || currentUser?.role === 'DIRETOR';
-
   return (
-    <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors w-full max-w-full overflow-hidden">
-      <div className="max-w-[1920px] mx-auto px-2 sm:px-4 flex items-center justify-between gap-2 w-full min-w-0">
-        <nav className="flex space-x-1 overflow-x-auto py-2 sm:py-2.5 no-scrollbar min-w-0 flex-1 scroll-smooth" aria-label="Tabs">
+    <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors">
+      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 flex items-center">
+        <nav className="flex space-x-1 overflow-x-auto py-2.5 no-scrollbar w-full" aria-label="Tabs">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -120,43 +113,6 @@ export const Navigation: React.FC<NavigationProps> = ({
             );
           })}
         </nav>
-
-        <div className="flex items-center gap-2 shrink-0 ml-2">
-          {canManageUsers && onOpenUserManagement && (
-            <button
-              onClick={onOpenUserManagement}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30 text-xs font-bold transition"
-              title="Gerenciar Usuários e Permissões do Sistema"
-            >
-              <Users className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-              <span className="hidden sm:inline">Usuários</span>
-            </button>
-          )}
-
-          {onOpenShortcuts && (
-            <button
-              onClick={onOpenShortcuts}
-              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-300 dark:border-slate-700 transition shrink-0"
-              title="Ver todos os atalhos de teclado (F1 ou ?)"
-            >
-              <span className="text-[10px] font-mono font-bold bg-amber-500/20 text-amber-800 dark:text-amber-300 px-1 py-0.2 rounded border border-amber-500/30">
-                F1
-              </span>
-              <span>Atalhos</span>
-            </button>
-          )}
-
-          {onExitSystem && (
-            <button
-              onClick={onExitSystem}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-600 text-rose-600 hover:text-white dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:text-white border border-rose-300/60 dark:border-rose-800/60 text-xs font-bold transition shrink-0 cursor-pointer"
-              title="Sair do Sistema e Fechar Navegador"
-            >
-              <Power className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Sair</span>
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );
