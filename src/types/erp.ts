@@ -258,7 +258,7 @@ export interface SheetSnapshotRecord {
   date: string;                 // Data e hora legível (ex: "03/10/2026 13:45:10")
   timestamp: number;            // Timestamp numérico para ordenação e filtro
   author: string;               // Autor / Operador (ex: "Patrick Pessoa (Direção)", "Carlos Silva (Loja 01)")
-  source: 'MANUAL_SHEET' | 'PORTAL_MOBILE' | 'INVENTORY_TAB' | 'AUTO_BACKUP';
+  source: 'MANUAL_SHEET' | 'PORTAL_MOBILE' | 'INVENTORY_TAB' | 'AUTO_BACKUP' | 'PURCHASE_ORDER';
   notes?: string;               // Observações / Motivo da gravação
   totalStores: number;          // Quantidade de lojas salvas (16 lojas)
   totalPieces: number;          // Total de peças (pedidos + estoque)

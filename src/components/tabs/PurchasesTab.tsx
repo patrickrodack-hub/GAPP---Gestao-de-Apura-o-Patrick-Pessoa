@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PurchaseBatch, Supplier, Store, SheetRowData } from '../../types/erp';
 import { formatCurrencyBRL, formatNumberBR } from '../../services/calculationService';
+import { StorageService } from '../../services/storageService';
 import { 
   ShoppingCart, 
   Plus, 
@@ -30,10 +31,13 @@ interface PurchasesTabProps {
   suppliers?: Supplier[];
   stores?: Store[];
   sheetRows?: SheetRowData[];
+  yieldParams?: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; basis: 'carcass' | 'piece' };
   onAddBatch: (batch: PurchaseBatch) => void;
   onUpdateBatch?: (batch: PurchaseBatch) => void;
   onDeleteBatch?: (batchId: string) => void;
   onOpenSupplierManager?: () => void;
+  onUpdateYieldParams?: (params: any) => void;
+  onUpdateSheetRows?: (rows: SheetRowData[]) => void;
 }
 
 export const PurchasesTab: React.FC<PurchasesTabProps> = ({ 
@@ -41,17 +45,32 @@ export const PurchasesTab: React.FC<PurchasesTabProps> = ({
   suppliers = [],
   stores = [],
   sheetRows = [],
+  yieldParams,
   onAddBatch,
   onUpdateBatch,
   onDeleteBatch,
-  onOpenSupplierManager
+  onOpenSupplierManager,
+  onUpdateYieldParams,
+  onUpdateSheetRows
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [supplier, setSupplier] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [headsCount, setHeadsCount] = useState(40);
-  const [totalGrossWeightKg, setTotalGrossWeightKg] = useState(9600);
-  const [arrobaPrice, setArrobaPrice] = useState(312.00);
+  const [totalGrossWeightKg, setTotalGrossWeightKg] = useState(() => {
+    if (yieldParams && yieldParams.carcassWeight > 0) return yieldParams.carcassWeight * 40;
+    return 9600;
+  });
+  const [arrobaPrice, setArrobaPrice] = useState(() => {
+    if (yieldParams && yieldParams.costPerKg > 0) return Number((yieldParams.costPerKg * 15).toFixed(2));
+    return 312.00;
+  });
+
+  useEffect(() => {
+    if (yieldParams) {
+      if (yieldParams.costPerKg > 0) setArrobaPrice(Number((yieldParams.costPerKg * 15).toFixed(2)));
+    }
+  }, [yieldParams]);
 
   // Search filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,6 +108,22 @@ export const PurchasesTab: React.FC<PurchasesTabProps> = ({
     };
 
     onAddBatch(newBatch);
+
+    // Assume os dados do lote nos parâmetros globais de Rendimento & Desossa
+    const avgWeight = headsCount > 0 ? Math.round(totalGrossWeightKg / headsCount) : 260;
+    const newYieldParams = {
+      carcassWeight: avgWeight,
+      costPerKg: Number(costPerKg.toFixed(2)),
+      fatPriceKg: yieldParams?.fatPriceKg || 2.10,
+      bonePriceKg: yieldParams?.bonePriceKg || 0.70,
+      targetMargin: yieldParams?.targetMargin || 28,
+      basis: yieldParams?.basis || ('carcass' as const)
+    };
+    StorageService.saveYieldParams(newYieldParams);
+    if (onUpdateYieldParams) {
+      onUpdateYieldParams(newYieldParams);
+    }
+
     setShowModal(false);
     setSupplier('');
     setInvoiceNumber('');
@@ -433,6 +468,10 @@ export const PurchasesTab: React.FC<PurchasesTabProps> = ({
           batch={editingBatch}
           suppliers={suppliers}
           stores={stores}
+          sheetRows={sheetRows}
+          yieldParams={yieldParams}
+          onUpdateSheetRows={onUpdateSheetRows}
+          onUpdateYieldParams={onUpdateYieldParams}
           onSave={(updated) => {
             onUpdateBatch(updated);
             setEditingBatch(null);

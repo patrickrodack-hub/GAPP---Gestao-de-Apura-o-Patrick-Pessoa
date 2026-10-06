@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { simulateBeefYield, formatCurrencyBRL, formatNumberBR, arrobaToKg, kgToArroba } from '../../services/calculationService';
 import { StorageService } from '../../services/storageService';
+import { PurchaseBatch } from '../../types/erp';
 import { 
   Scissors, 
   Scale, 
@@ -14,17 +15,59 @@ import {
   Percent,
   Calculator,
   Save,
-  CheckCircle2
+  CheckCircle2,
+  Sparkles
 } from 'lucide-react';
 
-export const YieldTab: React.FC = () => {
-  // Parâmetros de simulação
-  const [carcassWeight, setCarcassWeight] = useState<number>(240); // 1 boi (2 meias carcaças de 120kg)
-  const [costPerKg, setCostPerKg] = useState<number>(26.00); // R$ 26,00/kg padrão da planilha
-  const [fatPriceKg, setFatPriceKg] = useState<number>(2.10); // Sebo R$ 2,10
-  const [bonePriceKg, setBonePriceKg] = useState<number>(0.70); // Osso R$ 0,70
-  const [targetMargin, setTargetMargin] = useState<number>(28); // Margem alvo sobre venda 28%
+interface YieldTabProps {
+  yieldParams?: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; basis: 'carcass' | 'piece' };
+  onSaveYieldParams?: (params: any) => void;
+  latestBatch?: PurchaseBatch;
+}
+
+export const YieldTab: React.FC<YieldTabProps> = ({
+  yieldParams,
+  onSaveYieldParams,
+  latestBatch
+}) => {
+  // Parâmetros de simulação inicializados com dados persistidos ou do lote ativo
+  const [carcassWeight, setCarcassWeight] = useState<number>(() => {
+    if (yieldParams?.carcassWeight) return yieldParams.carcassWeight;
+    const p = StorageService.getYieldParams();
+    return p.carcassWeight || 240;
+  });
+  const [costPerKg, setCostPerKg] = useState<number>(() => {
+    if (yieldParams?.costPerKg) return yieldParams.costPerKg;
+    const p = StorageService.getYieldParams();
+    return p.costPerKg || 26.00;
+  });
+  const [fatPriceKg, setFatPriceKg] = useState<number>(() => {
+    if (yieldParams?.fatPriceKg) return yieldParams.fatPriceKg;
+    const p = StorageService.getYieldParams();
+    return p.fatPriceKg || 2.10;
+  });
+  const [bonePriceKg, setBonePriceKg] = useState<number>(() => {
+    if (yieldParams?.bonePriceKg) return yieldParams.bonePriceKg;
+    const p = StorageService.getYieldParams();
+    return p.bonePriceKg || 0.70;
+  });
+  const [targetMargin, setTargetMargin] = useState<number>(() => {
+    if (yieldParams?.targetMargin) return yieldParams.targetMargin;
+    const p = StorageService.getYieldParams();
+    return p.targetMargin || 28;
+  });
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
+
+  // Sincroniza dinamicamente se yieldParams mudar externamente (ex: novo pedido salvo)
+  useEffect(() => {
+    if (yieldParams) {
+      if (yieldParams.carcassWeight > 0) setCarcassWeight(yieldParams.carcassWeight);
+      if (yieldParams.costPerKg > 0) setCostPerKg(yieldParams.costPerKg);
+      if (yieldParams.fatPriceKg > 0) setFatPriceKg(yieldParams.fatPriceKg);
+      if (yieldParams.bonePriceKg > 0) setBonePriceKg(yieldParams.bonePriceKg);
+      if (yieldParams.targetMargin > 0) setTargetMargin(yieldParams.targetMargin);
+    }
+  }, [yieldParams]);
 
   const simulation = simulateBeefYield(
     carcassWeight,
@@ -40,9 +83,33 @@ export const YieldTab: React.FC = () => {
     setCostPerKg(Number(arrobaToKg(val).toFixed(2)));
   };
 
+  const handleApplyLatestBatch = () => {
+    if (!latestBatch) return;
+    if (latestBatch.costPerKg > 0) {
+      setCostPerKg(latestBatch.costPerKg);
+    } else if (latestBatch.arrobaPrice > 0) {
+      setCostPerKg(Number((latestBatch.arrobaPrice / 15).toFixed(2)));
+    }
+    if (latestBatch.headsCount > 0 && latestBatch.totalGrossWeightKg > 0) {
+      setCarcassWeight(Math.round(latestBatch.totalGrossWeightKg / latestBatch.headsCount));
+    }
+  };
+
   const handleSaveToSettings = () => {
+    const updated = {
+      carcassWeight,
+      costPerKg: Number(costPerKg.toFixed(2)),
+      fatPriceKg: Number(fatPriceKg.toFixed(2)),
+      bonePriceKg: Number(bonePriceKg.toFixed(2)),
+      targetMargin: Number(targetMargin),
+      basis: 'carcass' as const
+    };
+    StorageService.saveYieldParams(updated);
+    if (onSaveYieldParams) {
+      onSaveYieldParams(updated);
+    }
     setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2500);
+    setTimeout(() => setSavedSuccess(false), 3500);
   };
 
   return (
@@ -66,15 +133,27 @@ export const YieldTab: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {latestBatch && (
+              <button
+                type="button"
+                onClick={handleApplyLatestBatch}
+                className="px-3.5 py-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-semibold flex items-center gap-1.5 transition shadow-2xs"
+                title={`Assumir valores do último pedido/lote: ${latestBatch.invoiceNumber} (${latestBatch.supplier}) - R$ ${latestBatch.arrobaPrice.toFixed(2)}/@`}
+              >
+                <Sparkles className="w-4 h-4 text-indigo-500" />
+                <span>Assumir Dados do Último Pedido / Lote</span>
+              </button>
+            )}
+
             <button
               onClick={handleSaveToSettings}
-              className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-2 transition shadow-sm"
+              className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-2 transition shadow-sm active:scale-95"
             >
               {savedSuccess ? (
                 <>
                   <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-                  <span>Parâmetros Salvos!</span>
+                  <span>Parâmetros Salvos no ERP!</span>
                 </>
               ) : (
                 <>

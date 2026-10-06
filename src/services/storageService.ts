@@ -39,6 +39,26 @@ export const StorageService = {
 
   saveProducts(products: Product[]) {
     localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+    FirebaseService.saveAllProducts(products).catch(() => {});
+  },
+
+  saveSingleProduct(product: Product) {
+    try {
+      const current = this.getProducts();
+      const exists = current.some(p => p.id === product.id);
+      const updated = exists ? current.map(p => p.id === product.id ? product : p) : [product, ...current];
+      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(updated));
+      FirebaseService.saveProduct(product).catch(() => {});
+    } catch {}
+  },
+
+  deleteProduct(productId: string) {
+    try {
+      const current = this.getProducts();
+      const updated = current.filter(p => p.id !== productId);
+      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(updated));
+      FirebaseService.deleteProduct(productId).catch(() => {});
+    } catch {}
   },
 
   getStores(): Store[] {
@@ -53,6 +73,25 @@ export const StorageService = {
   saveStores(stores: Store[]) {
     localStorage.setItem(STORAGE_KEYS.STORES, JSON.stringify(stores));
     FirebaseService.saveStores(stores).catch(() => {});
+  },
+
+  saveSingleStore(store: Store) {
+    try {
+      const current = this.getStores();
+      const exists = current.some(s => s.id === store.id);
+      const updated = exists ? current.map(s => s.id === store.id ? store : s) : [store, ...current];
+      localStorage.setItem(STORAGE_KEYS.STORES, JSON.stringify(updated));
+      FirebaseService.saveStore(store).catch(() => {});
+    } catch {}
+  },
+
+  deleteStore(storeId: string) {
+    try {
+      const current = this.getStores();
+      const updated = current.filter(s => s.id !== storeId);
+      localStorage.setItem(STORAGE_KEYS.STORES, JSON.stringify(updated));
+      FirebaseService.deleteStore(storeId).catch(() => {});
+    } catch {}
   },
 
   getSheetRows(): SheetRowData[] {
@@ -98,6 +137,26 @@ export const StorageService = {
 
   saveBatches(batches: PurchaseBatch[]) {
     localStorage.setItem(STORAGE_KEYS.BATCHES, JSON.stringify(batches));
+    FirebaseService.saveAllBatches(batches).catch(() => {});
+  },
+
+  saveSingleBatch(batch: PurchaseBatch) {
+    try {
+      const current = this.getBatches();
+      const exists = current.some(b => b.id === batch.id);
+      const updated = exists ? current.map(b => b.id === batch.id ? batch : b) : [batch, ...current];
+      localStorage.setItem(STORAGE_KEYS.BATCHES, JSON.stringify(updated));
+      FirebaseService.saveBatch(batch).catch(() => {});
+    } catch {}
+  },
+
+  deleteBatch(batchId: string) {
+    try {
+      const current = this.getBatches();
+      const updated = current.filter(b => b.id !== batchId);
+      localStorage.setItem(STORAGE_KEYS.BATCHES, JSON.stringify(updated));
+      FirebaseService.deleteBatch(batchId).catch(() => {});
+    } catch {}
   },
 
   getWasteRecords(): WasteRecord[] {
@@ -111,6 +170,26 @@ export const StorageService = {
 
   saveWasteRecords(waste: WasteRecord[]) {
     localStorage.setItem(STORAGE_KEYS.WASTE, JSON.stringify(waste));
+    FirebaseService.saveAllWasteRecords(waste).catch(() => {});
+  },
+
+  saveSingleWasteRecord(record: WasteRecord) {
+    try {
+      const current = this.getWasteRecords();
+      const exists = current.some(w => w.id === record.id);
+      const updated = exists ? current.map(w => w.id === record.id ? record : w) : [record, ...current];
+      localStorage.setItem(STORAGE_KEYS.WASTE, JSON.stringify(updated));
+      FirebaseService.saveWasteRecord(record).catch(() => {});
+    } catch {}
+  },
+
+  deleteWasteRecord(recordId: string) {
+    try {
+      const current = this.getWasteRecords();
+      const updated = current.filter(w => w.id !== recordId);
+      localStorage.setItem(STORAGE_KEYS.WASTE, JSON.stringify(updated));
+      FirebaseService.deleteWasteRecord(recordId).catch(() => {});
+    } catch {}
   },
 
   getSuppliers(): Supplier[] {
@@ -124,6 +203,34 @@ export const StorageService = {
 
   saveSuppliers(suppliers: Supplier[]) {
     localStorage.setItem(STORAGE_KEYS.SUPPLIERS, JSON.stringify(suppliers));
+    FirebaseService.saveAllSuppliers(suppliers).catch(() => {});
+  },
+
+  saveSingleSupplier(supplier: Supplier) {
+    try {
+      const current = this.getSuppliers();
+      const exists = current.some(s => s.id === supplier.id);
+      const updated = exists ? current.map(s => s.id === supplier.id ? supplier : s) : [supplier, ...current];
+      localStorage.setItem(STORAGE_KEYS.SUPPLIERS, JSON.stringify(updated));
+      FirebaseService.saveSupplier(supplier).catch(() => {});
+    } catch {}
+  },
+
+  deleteSupplier(supplierId: string) {
+    try {
+      const current = this.getSuppliers();
+      const updated = current.filter(s => s.id !== supplierId);
+      localStorage.setItem(STORAGE_KEYS.SUPPLIERS, JSON.stringify(updated));
+      FirebaseService.deleteSupplier(supplierId).catch(() => {});
+    } catch {}
+  },
+
+  savePurchaseOrder(order: any) {
+    try {
+      FirebaseService.savePurchaseOrder(order).catch(e => {
+        console.warn('Erro ao salvar pedido de compra no Firestore:', e);
+      });
+    } catch {}
   },
 
   getYieldParams(): { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; basis: 'carcass' | 'piece' } {
@@ -137,6 +244,41 @@ export const StorageService = {
 
   saveYieldParams(params: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; basis: 'carcass' | 'piece' }) {
     localStorage.setItem(STORAGE_KEYS.YIELD_PARAMS, JSON.stringify(params));
+    FirebaseService.saveYieldParams(params).catch(() => {});
+  },
+
+  /**
+   * Propaga e assume as quantidades de um pedido/lote para as filiais da Planilha Oficial.
+   * Atualiza pedidoFinal, bandaPedido e pTransito (em trânsito) recalculando todas as fórmulas.
+   */
+  propagateOrderToSheetRows(
+    currentRows: SheetRowData[],
+    orderItems: Array<{
+      storeId: string;
+      pedido?: number;
+      bandaPedido?: number;
+    }>,
+    options?: { updateTransit?: boolean }
+  ): SheetRowData[] {
+    const itemMap = new Map(orderItems.map(it => [it.storeId, it]));
+    const updated = currentRows.map(row => {
+      const item = itemMap.get(row.storeId);
+      if (!item) return row;
+      const boiPedido = Number(item.pedido !== undefined ? item.pedido : row.pedidoFinal || 0);
+      const bandaPedido = Number(item.bandaPedido !== undefined ? item.bandaPedido : row.bandaPedido || 0);
+      const transitVal = options?.updateTransit !== false ? boiPedido : Number(row.pTransito || 0);
+      
+      const draft = {
+        ...row,
+        pedidoFinal: boiPedido,
+        bandaPedido: bandaPedido,
+        pedidoSuino: bandaPedido,
+        pTransito: transitVal
+      };
+      return recalculateRowOrderFormulas(draft);
+    });
+    this.saveSheetRows(updated);
+    return updated;
   },
 
   // ==========================================
@@ -359,15 +501,34 @@ export const StorageService = {
     stores?: Store[];
     suppliers?: Supplier[];
     users?: SystemUser[];
+    batches?: PurchaseBatch[];
+    waste?: WasteRecord[];
+    products?: Product[];
+    yieldParams?: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; basis: 'carcass' | 'piece' };
   }> {
     try {
-      const [cloudRows, cloudSnapshots, cloudLaunches, cloudStores, cloudSuppliers, cloudUsers] = await Promise.all([
+      const [
+        cloudRows, 
+        cloudSnapshots, 
+        cloudLaunches, 
+        cloudStores, 
+        cloudSuppliers, 
+        cloudUsers,
+        cloudBatches,
+        cloudWaste,
+        cloudProducts,
+        cloudYieldParams
+      ] = await Promise.all([
         FirebaseService.getSheetRows(),
         FirebaseService.getSheetSnapshots(),
         FirebaseService.getStockLaunches(),
         FirebaseService.getStores(),
         FirebaseService.getSuppliers(),
-        FirebaseService.getUsers()
+        FirebaseService.getUsers(),
+        FirebaseService.getBatches(),
+        FirebaseService.getWasteRecords(),
+        FirebaseService.getProducts(),
+        FirebaseService.getYieldParams()
       ]);
 
       const result: {
@@ -377,6 +538,10 @@ export const StorageService = {
         stores?: Store[];
         suppliers?: Supplier[];
         users?: SystemUser[];
+        batches?: PurchaseBatch[];
+        waste?: WasteRecord[];
+        products?: Product[];
+        yieldParams?: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; basis: 'carcass' | 'piece' };
       } = {};
 
       if (cloudRows && cloudRows.length > 0) {
@@ -406,11 +571,51 @@ export const StorageService = {
       if (cloudStores && cloudStores.length > 0) {
         localStorage.setItem(STORAGE_KEYS.STORES, JSON.stringify(cloudStores));
         result.stores = cloudStores;
+      } else {
+        const localStores = this.getStores();
+        if (localStores.length > 0) {
+          FirebaseService.saveStores(localStores).catch(() => {});
+        }
       }
 
       if (cloudSuppliers && cloudSuppliers.length > 0) {
         localStorage.setItem(STORAGE_KEYS.SUPPLIERS, JSON.stringify(cloudSuppliers));
         result.suppliers = cloudSuppliers;
+      } else {
+        const localSuppliers = this.getSuppliers();
+        if (localSuppliers.length > 0) {
+          FirebaseService.saveAllSuppliers(localSuppliers).catch(() => {});
+        }
+      }
+
+      if (cloudBatches && cloudBatches.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.BATCHES, JSON.stringify(cloudBatches));
+        result.batches = cloudBatches;
+      } else {
+        const localBatches = this.getBatches();
+        if (localBatches.length > 0) {
+          FirebaseService.saveAllBatches(localBatches).catch(() => {});
+        }
+      }
+
+      if (cloudWaste && cloudWaste.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.WASTE, JSON.stringify(cloudWaste));
+        result.waste = cloudWaste;
+      } else {
+        const localWaste = this.getWasteRecords();
+        if (localWaste.length > 0) {
+          FirebaseService.saveAllWasteRecords(localWaste).catch(() => {});
+        }
+      }
+
+      if (cloudProducts && cloudProducts.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(cloudProducts));
+        result.products = cloudProducts;
+      } else {
+        const localProducts = this.getProducts();
+        if (localProducts.length > 0) {
+          FirebaseService.saveAllProducts(localProducts).catch(() => {});
+        }
       }
 
       // Sincronização e persistência permanente de Usuários no Firestore
@@ -432,6 +637,14 @@ export const StorageService = {
         if (localUsers.length > 0) {
           FirebaseService.saveAllUsers(localUsers).catch(() => {});
         }
+      }
+
+      if (cloudYieldParams && cloudYieldParams.costPerKg > 0) {
+        localStorage.setItem(STORAGE_KEYS.YIELD_PARAMS, JSON.stringify(cloudYieldParams));
+        result.yieldParams = cloudYieldParams;
+      } else {
+        const localParams = this.getYieldParams();
+        FirebaseService.saveYieldParams(localParams).catch(() => {});
       }
 
       return result;

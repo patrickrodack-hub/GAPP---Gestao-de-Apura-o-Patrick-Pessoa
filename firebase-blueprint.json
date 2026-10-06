@@ -140,6 +140,70 @@
         "lastLoginAt": { "type": "number", "description": "Timestamp epoch do último login" }
       },
       "required": ["id", "name", "username", "password", "role", "active"]
+    },
+    "PurchaseBatch": {
+      "title": "PurchaseBatch",
+      "description": "Lote de compra e entrada de carcaças de bovinos de frigoríficos com dados de NF e peso",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "description": "ID do lote" },
+        "date": { "type": "string", "maxLength": 64, "description": "Data de entrada da compra" },
+        "supplier": { "type": "string", "maxLength": 128, "description": "Frigorífico fornecedor" },
+        "invoiceNumber": { "type": "string", "maxLength": 64, "description": "Número da nota fiscal ou pedido" },
+        "headsCount": { "type": "number", "description": "Quantidade de cabeças/bois do lote" },
+        "totalGrossWeightKg": { "type": "number", "description": "Peso bruto total em kg" },
+        "arrobaPrice": { "type": "number", "description": "Preço da arroba (@) negociado em R$" },
+        "totalCostR$": { "type": "number", "description": "Custo total financeiro em R$" },
+        "costPerKg": { "type": "number", "description": "Custo por kg em R$" },
+        "status": { "type": "string", "maxLength": 32, "description": "PENDENTE, RECEBIDO ou DESOSSADO" },
+        "notes": { "type": "string", "maxLength": 500, "description": "Observações do lote" },
+        "deliveryDate": { "type": "string", "maxLength": 64, "description": "Data de entrega prevista" },
+        "targetStoreId": { "type": "string", "maxLength": 64, "description": "Loja de destino ou TODAS" }
+      },
+      "required": ["id", "date", "supplier", "invoiceNumber", "headsCount", "totalGrossWeightKg", "arrobaPrice", "totalCostR$", "costPerKg", "status"]
+    },
+    "WasteRecord": {
+      "title": "WasteRecord",
+      "description": "Registro de pesagem e controle de descarte de sebo, osso e subprodutos",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "description": "ID do registro de descarte" },
+        "date": { "type": "string", "maxLength": 64, "description": "Data da pesagem" },
+        "storeId": { "type": "string", "maxLength": 64, "description": "ID da filial" },
+        "batchId": { "type": "string", "maxLength": 128, "description": "ID do lote associado" },
+        "fatWeightKg": { "type": "number", "description": "Peso do sebo em kg" },
+        "boneWeightKg": { "type": "number", "description": "Peso do osso em kg" },
+        "carcassOriginWeightKg": { "type": "number", "description": "Peso da carcaça de origem em kg" },
+        "fatSalePriceKg": { "type": "number", "description": "Preço de venda do sebo por kg" },
+        "boneSalePriceKg": { "type": "number", "description": "Preço de venda do osso por kg" },
+        "fatRevenueR$": { "type": "number", "description": "Receita apurada com sebo em R$" },
+        "boneRevenueR$": { "type": "number", "description": "Receita apurada com osso em R$" },
+        "wastePercent": { "type": "number", "description": "Percentual de quebra/descarte" },
+        "renderingPlant": { "type": "string", "maxLength": 128, "description": "Empresa coletora ou graxaria" }
+      },
+      "required": ["id", "date", "storeId", "fatWeightKg", "boneWeightKg", "renderingPlant"]
+    },
+    "PurchaseOrder": {
+      "title": "PurchaseOrder",
+      "description": "Pedido oficial de compra de bovinos gerado pela diretoria com distribuição às lojas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "description": "ID do pedido de compra" },
+        "orderNumber": { "type": "string", "maxLength": 64, "description": "Número sequencial do pedido" },
+        "date": { "type": "string", "maxLength": 64, "description": "Data de emissão" },
+        "deliveryDate": { "type": "string", "maxLength": 64, "description": "Data prevista de entrega" },
+        "supplier": { "type": "string", "maxLength": 128, "description": "Frigorífico fornecedor" },
+        "buyer": { "type": "string", "maxLength": 128, "description": "Comprador responsável" },
+        "arrobaPrice": { "type": "number", "description": "Preço da arroba (@)" },
+        "pricePerKg": { "type": "number", "description": "Preço por kg" },
+        "totalBois": { "type": "number", "description": "Total de bois pedidos" },
+        "totalPieces": { "type": "number", "description": "Total de peças pedidas" },
+        "totalWeightKg": { "type": "number", "description": "Peso total estimado em kg" },
+        "totalCostR$": { "type": "number", "description": "Valor total estimado em R$" },
+        "status": { "type": "string", "maxLength": 32, "description": "RASCUNHO, ENVIADO ou CONFIRMADO" },
+        "notes": { "type": "string", "maxLength": 500, "description": "Observações comerciais" }
+      },
+      "required": ["id", "orderNumber", "date", "supplier", "totalBois", "totalWeightKg", "totalCostR$", "status"]
     }
   },
   "firestore": {
@@ -166,6 +230,18 @@
     "/products/{productId}": {
       "schema": "ProductEntity",
       "description": "Coleção de cortes e produtos"
+    },
+    "/purchase_batches/{batchId}": {
+      "schema": "PurchaseBatch",
+      "description": "Coleção com lotes de compra e entradas de frigoríficos"
+    },
+    "/waste_records/{recordId}": {
+      "schema": "WasteRecord",
+      "description": "Coleção de registros de descarte (sebo e osso)"
+    },
+    "/purchase_orders/{orderId}": {
+      "schema": "PurchaseOrder",
+      "description": "Coleção oficial de pedidos de compras gerados e emitidos"
     },
     "/cloud_backups/{backupId}": {
       "schema": "CloudBackup",

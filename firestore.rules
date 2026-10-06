@@ -66,6 +66,39 @@ service cloud.firestore {
         && data.role is string && data.role.size() <= 32;
     }
 
+    function isValidPurchaseBatch(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.date is string && data.date.size() <= 64
+        && data.supplier is string && data.supplier.size() <= 128
+        && data.invoiceNumber is string && data.invoiceNumber.size() <= 64
+        && data.headsCount is number
+        && data.totalGrossWeightKg is number
+        && data.arrobaPrice is number
+        && data.totalCostR$ is number
+        && data.costPerKg is number
+        && data.status is string && data.status.size() <= 32;
+    }
+
+    function isValidWasteRecord(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.date is string && data.date.size() <= 64
+        && data.storeId is string && data.storeId.size() <= 64
+        && data.fatWeightKg is number
+        && data.boneWeightKg is number
+        && data.renderingPlant is string && data.renderingPlant.size() <= 128;
+    }
+
+    function isValidPurchaseOrder(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.orderNumber is string && data.orderNumber.size() <= 64
+        && data.date is string && data.date.size() <= 64
+        && data.supplier is string && data.supplier.size() <= 128
+        && data.totalBois is number
+        && data.totalWeightKg is number
+        && data.totalCostR$ is number
+        && data.status is string && data.status.size() <= 32;
+    }
+
     // Sheet Rows (Planilha de Compra por Filial)
     match /sheet_rows/{storeId} {
       allow get: if isValidId(storeId);
@@ -112,6 +145,30 @@ service cloud.firestore {
       allow list: if true;
       allow create, update: if isValidId(productId) && isValidProduct(incoming());
       allow delete: if isValidId(productId);
+    }
+
+    // Purchase Batches (Lotes de Compra e Entradas de Frigoríficos)
+    match /purchase_batches/{batchId} {
+      allow get: if isValidId(batchId);
+      allow list: if true;
+      allow create, update: if isValidId(batchId) && isValidPurchaseBatch(incoming());
+      allow delete: if isValidId(batchId);
+    }
+
+    // Waste Records (Controle de Descarte de Sebo e Osso)
+    match /waste_records/{recordId} {
+      allow get: if isValidId(recordId);
+      allow list: if true;
+      allow create, update: if isValidId(recordId) && isValidWasteRecord(incoming());
+      allow delete: if isValidId(recordId);
+    }
+
+    // Purchase Orders (Pedidos de Compras Oficiais)
+    match /purchase_orders/{orderId} {
+      allow get: if isValidId(orderId);
+      allow list: if true;
+      allow create, update: if isValidId(orderId) && isValidPurchaseOrder(incoming());
+      allow delete: if isValidId(orderId);
     }
 
     // App Settings (Configurações e Rendimentos)

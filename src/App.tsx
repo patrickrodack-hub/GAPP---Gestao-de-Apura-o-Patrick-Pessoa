@@ -84,6 +84,7 @@ export default function App() {
   const [wasteRecords, setWasteRecords] = useState<WasteRecord[]>(() => StorageService.getWasteRecords());
   const [suppliers, setSuppliers] = useState<Supplier[]>(() => StorageService.getSuppliers());
   const [sheetSnapshots, setSheetSnapshots] = useState<SheetSnapshotRecord[]>(() => StorageService.getSheetSnapshots());
+  const [yieldParams, setYieldParams] = useState(() => StorageService.getYieldParams());
 
   // Iniciar sempre no "Painel Geral" (dashboard) conforme solicitado pelo usuário
   const [activeTab, setActiveTab] = useState<NavigationTab>('dashboard');
@@ -219,6 +220,18 @@ export default function App() {
       if (cloudData.suppliers && cloudData.suppliers.length > 0) {
         setSuppliers(prev => JSON.stringify(prev) === JSON.stringify(cloudData.suppliers) ? prev : cloudData.suppliers!);
       }
+      if (cloudData.batches && cloudData.batches.length > 0) {
+        setBatches(prev => JSON.stringify(prev) === JSON.stringify(cloudData.batches) ? prev : cloudData.batches!);
+      }
+      if (cloudData.waste && cloudData.waste.length > 0) {
+        setWasteRecords(prev => JSON.stringify(prev) === JSON.stringify(cloudData.waste) ? prev : cloudData.waste!);
+      }
+      if (cloudData.products && cloudData.products.length > 0) {
+        setProducts(prev => JSON.stringify(prev) === JSON.stringify(cloudData.products) ? prev : cloudData.products!);
+      }
+      if (cloudData.yieldParams && cloudData.yieldParams.costPerKg > 0) {
+        setYieldParams(prev => JSON.stringify(prev) === JSON.stringify(cloudData.yieldParams) ? prev : cloudData.yieldParams!);
+      }
       setIsCloudConnected(true);
     }).catch((e) => {
       console.warn('Banco Firestore inicializado em modo offline/local:', e);
@@ -241,6 +254,57 @@ export default function App() {
       });
     } catch (e) {
       console.warn('Ouvinte de Firestore não iniciado:', e);
+    }
+
+    // Ouvinte em tempo real para Lotes de Compras & Entradas de Frigoríficos
+    let unsubscribeBatches: (() => void) | undefined;
+    try {
+      unsubscribeBatches = FirebaseService.subscribeToBatches((remoteBatches) => {
+        if (!isMounted) return;
+        if (remoteBatches && remoteBatches.length > 0) {
+          setBatches(prev => {
+            if (JSON.stringify(prev) === JSON.stringify(remoteBatches)) return prev;
+            localStorage.setItem('apuracao_boi_batches_v1', JSON.stringify(remoteBatches));
+            return remoteBatches;
+          });
+        }
+      });
+    } catch (e) {
+      console.warn('Ouvinte de batches não iniciado:', e);
+    }
+
+    // Ouvinte em tempo real para Descarte e Subprodutos (Sebo e Osso)
+    let unsubscribeWaste: (() => void) | undefined;
+    try {
+      unsubscribeWaste = FirebaseService.subscribeToWasteRecords((remoteWaste) => {
+        if (!isMounted) return;
+        if (remoteWaste && remoteWaste.length > 0) {
+          setWasteRecords(prev => {
+            if (JSON.stringify(prev) === JSON.stringify(remoteWaste)) return prev;
+            localStorage.setItem('apuracao_boi_waste_v1', JSON.stringify(remoteWaste));
+            return remoteWaste;
+          });
+        }
+      });
+    } catch (e) {
+      console.warn('Ouvinte de waste_records não iniciado:', e);
+    }
+
+    // Ouvinte em tempo real para Fornecedores e Frigoríficos
+    let unsubscribeSuppliers: (() => void) | undefined;
+    try {
+      unsubscribeSuppliers = FirebaseService.subscribeToSuppliers((remoteSuppliers) => {
+        if (!isMounted) return;
+        if (remoteSuppliers && remoteSuppliers.length > 0) {
+          setSuppliers(prev => {
+            if (JSON.stringify(prev) === JSON.stringify(remoteSuppliers)) return prev;
+            localStorage.setItem('apuracao_boi_suppliers_v1', JSON.stringify(remoteSuppliers));
+            return remoteSuppliers;
+          });
+        }
+      });
+    } catch (e) {
+      console.warn('Ouvinte de suppliers não iniciado:', e);
     }
 
     // 3. Ouvinte das regras e horários do portal configurados pelo Gestor
@@ -282,6 +346,9 @@ export default function App() {
       if (unsubscribeRows) unsubscribeRows();
       if (unsubscribeLock) unsubscribeLock();
       if (unsubscribeUsers) unsubscribeUsers();
+      if (unsubscribeBatches) unsubscribeBatches();
+      if (unsubscribeWaste) unsubscribeWaste();
+      if (unsubscribeSuppliers) unsubscribeSuppliers();
     };
   }, []);
 
@@ -320,17 +387,20 @@ export default function App() {
   // Supplier CRUD handlers
   const handleAddSupplier = (newSupplier: Supplier) => {
     setSuppliers(prev => [newSupplier, ...prev]);
-    showToast(`Fornecedor ${newSupplier.name} cadastrado com sucesso!`);
+    StorageService.saveSingleSupplier(newSupplier);
+    showToast(`Fornecedor ${newSupplier.name} salvo no banco de dados com sucesso!`);
   };
 
   const handleUpdateSupplier = (updatedSupplier: Supplier) => {
     setSuppliers(prev => prev.map(s => s.id === updatedSupplier.id ? updatedSupplier : s));
-    showToast(`Fornecedor ${updatedSupplier.name} atualizado com sucesso!`);
+    StorageService.saveSingleSupplier(updatedSupplier);
+    showToast(`Fornecedor ${updatedSupplier.name} atualizado no banco de dados!`);
   };
 
   const handleDeleteSupplier = (supplierId: string) => {
     const target = suppliers.find(s => s.id === supplierId);
     setSuppliers(prev => prev.filter(s => s.id !== supplierId));
+    StorageService.deleteSupplier(supplierId);
     showToast(`Fornecedor ${target ? target.name : ''} excluído com sucesso!`);
   };
 
@@ -351,6 +421,7 @@ export default function App() {
 
   // Sheet Snapshots / Version History handlers
   const handleSaveSheetSnapshot = (name?: string, author?: string, notes?: string) => {
+    StorageService.saveSheetRows(sheetRows, true); // Garante persistência dos dados atuais no banco de dados local e nuvem
     const snapshot = StorageService.createSnapshotFromRows(
       sheetRows,
       name || '',
@@ -365,7 +436,7 @@ export default function App() {
 
   const handleRestoreSheetSnapshot = (snapshot: SheetSnapshotRecord) => {
     setSheetRows(snapshot.rows);
-    StorageService.saveSheetRows(snapshot.rows);
+    StorageService.saveSheetRows(snapshot.rows, true);
     showToast(`Planilha restaurada com sucesso para a versão de ${snapshot.date}!`);
   };
 
@@ -375,27 +446,90 @@ export default function App() {
     showToast('Versão removida do histórico.');
   };
 
+  // Yield & Technical Parameters handler (Parâmetros assumidos globalmente)
+  const handleUpdateYieldParams = (params: any) => {
+    setYieldParams(params);
+    StorageService.saveYieldParams(params);
+    showToast('Parâmetros técnicos e comerciais salvos e assumidos no ERP!');
+  };
+
   // Batch handler
   const handleAddBatch = (batch: PurchaseBatch) => {
-    setBatches([batch, ...batches]);
-    showToast(`Lote / Pedido ${batch.invoiceNumber} registrado com sucesso!`);
+    setBatches(prev => [batch, ...prev]);
+    StorageService.saveSingleBatch(batch);
+
+    // Assume os dados do lote nos parâmetros globais se fornecidos
+    if (batch.costPerKg || batch.arrobaPrice) {
+      const avgWeight = batch.headsCount > 0 ? Math.round(batch.totalGrossWeightKg / batch.headsCount) : 260;
+      const costPerKg = batch.costPerKg || (batch.arrobaPrice / 15);
+      const newParams = {
+        carcassWeight: avgWeight,
+        costPerKg: Number(costPerKg.toFixed(2)),
+        fatPriceKg: yieldParams?.fatPriceKg || 2.10,
+        bonePriceKg: yieldParams?.bonePriceKg || 0.70,
+        targetMargin: yieldParams?.targetMargin || 28,
+        basis: yieldParams?.basis || ('carcass' as const)
+      };
+      setYieldParams(newParams);
+      StorageService.saveYieldParams(newParams);
+    }
+
+    // Se o lote contiver distribuição por filiais, propaga e assume na planilha
+    if (batch.items && batch.items.length > 0) {
+      const updatedRows = StorageService.propagateOrderToSheetRows(sheetRows, batch.items.map(it => ({
+        storeId: it.storeId,
+        pedido: it.pedido,
+        bandaPedido: it.bandaPedido
+      })), { updateTransit: batch.status !== 'RECEBIDO' && batch.status !== 'DESOSSADO' });
+      setSheetRows(updatedRows);
+    }
+
+    showToast(`Lote / Pedido ${batch.invoiceNumber} salvo e assumido com sucesso!`);
   };
 
   const handleUpdateBatch = (updatedBatch: PurchaseBatch) => {
     setBatches(prev => prev.map(b => b.id === updatedBatch.id ? updatedBatch : b));
-    showToast(`Pedido / Lote ${updatedBatch.invoiceNumber} atualizado com sucesso!`);
+    StorageService.saveSingleBatch(updatedBatch);
+
+    if (updatedBatch.costPerKg || updatedBatch.arrobaPrice) {
+      const avgWeight = updatedBatch.headsCount > 0 ? Math.round(updatedBatch.totalGrossWeightKg / updatedBatch.headsCount) : 260;
+      const costPerKg = updatedBatch.costPerKg || (updatedBatch.arrobaPrice / 15);
+      const newParams = {
+        carcassWeight: avgWeight,
+        costPerKg: Number(costPerKg.toFixed(2)),
+        fatPriceKg: yieldParams?.fatPriceKg || 2.10,
+        bonePriceKg: yieldParams?.bonePriceKg || 0.70,
+        targetMargin: yieldParams?.targetMargin || 28,
+        basis: yieldParams?.basis || ('carcass' as const)
+      };
+      setYieldParams(newParams);
+      StorageService.saveYieldParams(newParams);
+    }
+
+    if (updatedBatch.items && updatedBatch.items.length > 0) {
+      const updatedRows = StorageService.propagateOrderToSheetRows(sheetRows, updatedBatch.items.map(it => ({
+        storeId: it.storeId,
+        pedido: it.pedido,
+        bandaPedido: it.bandaPedido
+      })), { updateTransit: updatedBatch.status !== 'RECEBIDO' && updatedBatch.status !== 'DESOSSADO' });
+      setSheetRows(updatedRows);
+    }
+
+    showToast(`Pedido / Lote ${updatedBatch.invoiceNumber} atualizado e assumido no sistema!`);
   };
 
   const handleDeleteBatch = (batchId: string) => {
     const target = batches.find(b => b.id === batchId);
     setBatches(prev => prev.filter(b => b.id !== batchId));
+    StorageService.deleteBatch(batchId);
     showToast(`Pedido / Lote ${target ? target.invoiceNumber : ''} excluído com sucesso!`);
   };
 
   // Waste handler
   const handleAddWasteRecord = (record: WasteRecord) => {
-    setWasteRecords([record, ...wasteRecords]);
-    showToast('Pesagem de descarte (sebo e osso) registrada com sucesso!');
+    setWasteRecords(prev => [record, ...prev]);
+    StorageService.saveSingleWasteRecord(record);
+    showToast('Pesagem de descarte (sebo e osso) registrada e salva no banco de dados!');
   };
 
   // Reset to original data
@@ -769,7 +903,13 @@ export default function App() {
                     />
                   )}
 
-                  {activeTab === 'yield' && <YieldTab />}
+                  {activeTab === 'yield' && (
+                    <YieldTab
+                      yieldParams={yieldParams}
+                      onSaveYieldParams={handleUpdateYieldParams}
+                      latestBatch={batches[0]}
+                    />
+                  )}
 
                   {activeTab === 'results' && (
                     <ResultsTab 
@@ -796,10 +936,13 @@ export default function App() {
                       suppliers={suppliers}
                       stores={stores}
                       sheetRows={sheetRows}
+                      yieldParams={yieldParams}
                       onAddBatch={handleAddBatch}
                       onUpdateBatch={handleUpdateBatch}
                       onDeleteBatch={handleDeleteBatch}
                       onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+                      onUpdateYieldParams={handleUpdateYieldParams}
+                      onUpdateSheetRows={handleUpdateMultipleRows}
                     />
                   )}
 
@@ -808,6 +951,8 @@ export default function App() {
                       wasteRecords={wasteRecords}
                       stores={stores}
                       onAddWasteRecord={handleAddWasteRecord}
+                      yieldParams={yieldParams}
+                      onUpdateYieldParams={handleUpdateYieldParams}
                     />
                   )}
 
@@ -871,10 +1016,13 @@ export default function App() {
           rows={sheetRows}
           stores={stores}
           suppliers={suppliers}
+          yieldParams={yieldParams}
+          latestBatch={batches[0]}
           onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
           onSaveBatch={handleAddBatch}
           onUpdateRow={handleUpdateRow}
           onUpdateMultiple={handleUpdateMultipleRows}
+          onUpdateYieldParams={handleUpdateYieldParams}
         />
 
         <SupplierManagementModal
@@ -1021,7 +1169,13 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'yield' && <YieldTab />}
+          {activeTab === 'yield' && (
+            <YieldTab
+              yieldParams={yieldParams}
+              onSaveYieldParams={handleUpdateYieldParams}
+              latestBatch={batches[0]}
+            />
+          )}
 
           {activeTab === 'results' && (
             <ResultsTab 
@@ -1048,10 +1202,13 @@ export default function App() {
               suppliers={suppliers}
               stores={stores}
               sheetRows={sheetRows}
+              yieldParams={yieldParams}
               onAddBatch={handleAddBatch}
               onUpdateBatch={handleUpdateBatch}
               onDeleteBatch={handleDeleteBatch}
               onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+              onUpdateYieldParams={handleUpdateYieldParams}
+              onUpdateSheetRows={handleUpdateMultipleRows}
             />
           )}
 
@@ -1060,6 +1217,8 @@ export default function App() {
               wasteRecords={wasteRecords}
               stores={stores}
               onAddWasteRecord={handleAddWasteRecord}
+              yieldParams={yieldParams}
+              onUpdateYieldParams={handleUpdateYieldParams}
             />
           )}
 
@@ -1131,10 +1290,13 @@ export default function App() {
         rows={sheetRows}
         stores={stores}
         suppliers={suppliers}
+        yieldParams={yieldParams}
+        latestBatch={batches[0]}
         onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
         onSaveBatch={handleAddBatch}
         onUpdateRow={handleUpdateRow}
         onUpdateMultiple={handleUpdateMultipleRows}
+        onUpdateYieldParams={handleUpdateYieldParams}
       />
 
       <SupplierManagementModal

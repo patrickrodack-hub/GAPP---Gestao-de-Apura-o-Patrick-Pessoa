@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { WasteRecord, Store } from '../../types/erp';
 import { formatCurrencyBRL } from '../../services/calculationService';
+import { StorageService } from '../../services/storageService';
 import { 
   Bone, 
   Trash2, 
@@ -17,17 +18,32 @@ interface WasteTabProps {
   wasteRecords: WasteRecord[];
   stores: Store[];
   onAddWasteRecord: (record: WasteRecord) => void;
+  yieldParams?: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; basis: 'carcass' | 'piece' };
+  onUpdateYieldParams?: (params: any) => void;
 }
 
-export const WasteTab: React.FC<WasteTabProps> = ({ wasteRecords, stores, onAddWasteRecord }) => {
+export const WasteTab: React.FC<WasteTabProps> = ({ 
+  wasteRecords, 
+  stores, 
+  onAddWasteRecord,
+  yieldParams,
+  onUpdateYieldParams
+}) => {
   const [showModal, setShowModal] = useState(false);
   const [storeId, setStoreId] = useState(stores[0]?.id || '');
   const [carcassWeight, setCarcassWeight] = useState(1500);
   const [boneWeight, setBoneWeight] = useState(262.5); // ~17.5%
   const [fatWeight, setFatWeight] = useState(97.5);   // ~6.5%
-  const [bonePrice, setBonePrice] = useState(0.70);
-  const [fatPrice, setFatPrice] = useState(2.10);
+  const [bonePrice, setBonePrice] = useState(() => yieldParams?.bonePriceKg || 0.70);
+  const [fatPrice, setFatPrice] = useState(() => yieldParams?.fatPriceKg || 2.10);
   const [renderingPlant, setRenderingPlant] = useState('Graxaria Fluminense Ltda');
+
+  useEffect(() => {
+    if (yieldParams) {
+      if (yieldParams.bonePriceKg > 0) setBonePrice(yieldParams.bonePriceKg);
+      if (yieldParams.fatPriceKg > 0) setFatPrice(yieldParams.fatPriceKg);
+    }
+  }, [yieldParams]);
 
   const totalFatRevenue = fatWeight * fatPrice;
   const totalBoneRevenue = boneWeight * bonePrice;
@@ -51,6 +67,20 @@ export const WasteTab: React.FC<WasteTabProps> = ({ wasteRecords, stores, onAddW
       renderingPlant
     };
     onAddWasteRecord(newRecord);
+
+    // Assume os novos preços de sebo e osso nos parâmetros globais de rendimento
+    if (yieldParams) {
+      const updatedParams = {
+        ...yieldParams,
+        bonePriceKg: Number(bonePrice),
+        fatPriceKg: Number(fatPrice)
+      };
+      StorageService.saveYieldParams(updatedParams);
+      if (onUpdateYieldParams) {
+        onUpdateYieldParams(updatedParams);
+      }
+    }
+
     setShowModal(false);
   };
 

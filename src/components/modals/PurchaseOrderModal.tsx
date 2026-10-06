@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SheetRowData, Store, PurchaseBatch, Supplier } from '../../types/erp';
-import { formatCurrencyBRL, formatNumberBR } from '../../services/calculationService';
+import { formatCurrencyBRL, formatNumberBR, recalculateRowOrderFormulas } from '../../services/calculationService';
+import { StorageService } from '../../services/storageService';
 import { PrintPurchaseOrderModal } from './PrintPurchaseOrderModal';
 import { 
   ShoppingCart, 
@@ -18,7 +19,8 @@ import {
   ArrowRight,
   Send,
   ShieldCheck,
-  Eye
+  Eye,
+  CheckCircle2
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 
@@ -28,10 +30,13 @@ interface PurchaseOrderModalProps {
   rows: SheetRowData[];
   stores: Store[];
   suppliers?: Supplier[];
+  yieldParams?: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; basis: 'carcass' | 'piece' };
+  latestBatch?: PurchaseBatch;
   onOpenSupplierManager?: () => void;
   onSaveBatch?: (batch: PurchaseBatch) => void;
   onUpdateRow?: (updatedRow: SheetRowData) => void;
   onUpdateMultiple?: (rows: SheetRowData[]) => void;
+  onUpdateYieldParams?: (params: any) => void;
 }
 
 const DEFAULT_SUPPLIERS = [
@@ -49,10 +54,13 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
   rows,
   stores,
   suppliers = [],
+  yieldParams,
+  latestBatch,
   onOpenSupplierManager,
   onSaveBatch,
   onUpdateRow,
-  onUpdateMultiple
+  onUpdateMultiple,
+  onUpdateYieldParams
 }) => {
   const activeSuppliers = suppliers.filter(s => s.active);
   const initialSupplierName = activeSuppliers.length > 0
@@ -61,8 +69,18 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
 
   const [supplier, setSupplier] = useState(initialSupplierName);
   const [customSupplier, setCustomSupplier] = useState('');
-  const [arrobaPrice, setArrobaPrice] = useState<number>(390.00); // R$ 390/@
-  const [carcassWeightPerBoiKg, setCarcassWeightPerBoiKg] = useState<number>(260); // 260kg por boi
+  const [arrobaPrice, setArrobaPrice] = useState<number>(() => {
+    if (yieldParams && yieldParams.costPerKg > 0) return Number((yieldParams.costPerKg * 15).toFixed(2));
+    if (latestBatch && latestBatch.arrobaPrice > 0) return latestBatch.arrobaPrice;
+    return 390.00;
+  });
+  const [carcassWeightPerBoiKg, setCarcassWeightPerBoiKg] = useState<number>(() => {
+    if (yieldParams && yieldParams.carcassWeight > 0) return yieldParams.carcassWeight;
+    if (latestBatch && latestBatch.headsCount > 0 && latestBatch.totalGrossWeightKg > 0) {
+      return Math.round(latestBatch.totalGrossWeightKg / latestBatch.headsCount);
+    }
+    return 260;
+  });
   const [notes, setNotes] = useState('Pedido emitido conforme apuração oficial da Matriz Direção v10.1. Entrega programada nas câmaras frigoríficas.');
   const [copiedToast, setCopiedToast] = useState(false);
   const [savedBatchSuccess, setSavedBatchSuccess] = useState(false);
@@ -71,6 +89,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
 
   // Carrega e sincroniza estritamente com a quantidade real lançada pelo usuário nas colunas Pedido (Boi e Banda)
+  // e assume os parâmetros vigentes (Preço da @ e Peso da Carcaça)
   React.useEffect(() => {
     if (isOpen) {
       const qMap: Record<string, number> = {};
@@ -82,8 +101,20 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
       });
       setQuantities(qMap);
       setQuantitiesSuino(qSuinoMap);
+
+      if (yieldParams && yieldParams.costPerKg > 0) {
+        setArrobaPrice(Number((yieldParams.costPerKg * 15).toFixed(2)));
+        if (yieldParams.carcassWeight > 0) {
+          setCarcassWeightPerBoiKg(yieldParams.carcassWeight);
+        }
+      } else if (latestBatch && latestBatch.arrobaPrice > 0) {
+        setArrobaPrice(latestBatch.arrobaPrice);
+        if (latestBatch.headsCount > 0 && latestBatch.totalGrossWeightKg > 0) {
+          setCarcassWeightPerBoiKg(Math.round(latestBatch.totalGrossWeightKg / latestBatch.headsCount));
+        }
+      }
     }
-  }, [isOpen, rows]);
+  }, [isOpen, rows, yieldParams, latestBatch]);
 
   if (!isOpen) return null;
 
@@ -270,7 +301,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
     selectedSupplierName.includes(s.name)
   );
 
-  // 1. Gravar lote no ERP
+  // 1. Gravar lote no ERP e assumir os dados em todas as áreas necessárias
   const handleSaveToERP = () => {
     if (!onSaveBatch) return;
     const newBatch: PurchaseBatch = {
@@ -290,9 +321,71 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
       items: orderItems,
     };
 
+    // 1. Salva o lote no módulo de compras
     onSaveBatch(newBatch);
+
+    // 2. Salva o registro completo do Pedido de Compras no banco de dados Firestore
+    StorageService.savePurchaseOrder({
+      id: `order_${orderNumber || Date.now()}`,
+      orderNumber: orderNumber,
+      date: todayStr || new Date().toISOString().slice(0, 10),
+      deliveryDate: deliveryDateStr,
+      supplier: selectedSupplierName,
+      buyer: 'Patrick Pessoa (Direção de Carnes)',
+      arrobaPrice: arrobaPrice,
+      pricePerKg: pricePerKg,
+      totalBois: Math.round(totalBoisPedidos),
+      totalPieces: Math.round(totalBoisPedidos * 4),
+      totalWeightKg: Math.round(totalWeightKg),
+      totalCostR$: Math.round(totalCostR$ * 100) / 100,
+      status: 'CONFIRMADO',
+      notes: notes || 'Pedido gerado pela Planilha da Direção',
+      items: orderItems,
+    });
+
+    // 3. ASSUME AS INFORMAÇÕES NOS DEMAIS CAMPOS (Planilha Oficial de Compras das 16 Lojas):
+    // Cada filial assume:
+    // - pedidoFinal = quantidade de bois pedida confirmada (item.pedido)
+    // - bandaPedido = quantidade de bandas suínas pedida (item.bandaPedido)
+    // - pedidoSuino = item.bandaPedido
+    // - pTransito = quantidade de bois em trânsito assumida para a filial (item.pedido)
+    const updatedRows = StorageService.propagateOrderToSheetRows(rows, orderItems.map(it => ({
+      storeId: it.storeId,
+      pedido: it.pedido,
+      bandaPedido: it.bandaPedido
+    })), { updateTransit: true });
+
+    if (onUpdateMultiple) {
+      onUpdateMultiple(updatedRows);
+    }
+
+    // 4. Salva Snapshot no Histórico da Planilha com data e identificador do Pedido
+    const orderSnapshot = StorageService.createSnapshotFromRows(
+      updatedRows,
+      `Pedido Emitido: ${orderNumber} (${selectedSupplierName})`,
+      'Patrick Pessoa (Direção)',
+      'PURCHASE_ORDER',
+      `Pedido oficial ${orderNumber} gerado para ${selectedSupplierName}. Quantidades e trânsito assumidos para as 16 filiais. Total: ${totalBoisPedidos} bois (${formatCurrencyBRL(totalCostR$)}).`
+    );
+    StorageService.addSheetSnapshot(orderSnapshot);
+
+    // 5. ASSUME AS INFORMAÇÕES NOS PARÂMETROS GLOBAIS DE RENDIMENTO & DESOSSA:
+    // Preço da arroba, custo/kg e peso da carcaça são assumidos em Rendimento, Desossa e Cálculos
+    const updatedYieldParams = {
+      carcassWeight: carcassWeightPerBoiKg,
+      costPerKg: Number(pricePerKg.toFixed(2)),
+      fatPriceKg: yieldParams?.fatPriceKg || 2.10,
+      bonePriceKg: yieldParams?.bonePriceKg || 0.70,
+      targetMargin: yieldParams?.targetMargin || 28,
+      basis: yieldParams?.basis || ('carcass' as const)
+    };
+    StorageService.saveYieldParams(updatedYieldParams);
+    if (onUpdateYieldParams) {
+      onUpdateYieldParams(updatedYieldParams);
+    }
+
     setSavedBatchSuccess(true);
-    setTimeout(() => setSavedBatchSuccess(false), 4000);
+    setTimeout(() => setSavedBatchSuccess(false), 5000);
   };
 
   // 2. Copiar texto estruturado para WhatsApp / E-mail
@@ -565,14 +658,21 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
           </div>
         </div>
 
-        {/* Success toast inside modal */}
+        {/* Success banner inside modal with detailed assumed fields */}
         {savedBatchSuccess && (
-          <div className="bg-emerald-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4" />
-              <span>Pedido de Compra registrado com sucesso no Módulo de Lotes Frigoríficos do ERP!</span>
+          <div className="bg-gradient-to-r from-emerald-700 to-teal-800 text-white px-5 py-3 text-xs font-bold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-lg border-b border-emerald-500/30 animate-fade-in">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0" />
+              <div>
+                <span>Pedido e Lote salvos com sucesso no banco de dados!</span>
+                <p className="text-[11px] font-normal text-emerald-100 mt-0.5">
+                  Dados assumidos automaticamente na <strong>Planilha de Compras</strong> (Pedido e Trânsito das 16 lojas) e nos parâmetros de <strong>Rendimento & Desossa</strong> (R$ {arrobaPrice.toFixed(2)}/@ • R$ {pricePerKg.toFixed(2)}/kg).
+                </p>
+              </div>
             </div>
-            <span className="text-[10px] uppercase tracking-wider bg-emerald-700 px-2 py-0.5 rounded">Status: Pendente</span>
+            <span className="text-[10px] uppercase font-mono tracking-wider bg-emerald-900/80 border border-emerald-400/40 px-2.5 py-1 rounded-md text-emerald-200 shrink-0">
+              Assumido no ERP
+            </span>
           </div>
         )}
 

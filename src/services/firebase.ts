@@ -16,7 +16,7 @@ import {
   limit
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { SheetRowData, SheetSnapshotRecord, StockLaunchRecord, Store, Supplier, Product, PortalLockConfig, SystemUser } from '../types/erp';
+import { SheetRowData, SheetSnapshotRecord, StockLaunchRecord, Store, Supplier, Product, PortalLockConfig, SystemUser, PurchaseBatch, WasteRecord, StandardPurchaseOrder } from '../types/erp';
 
 // Initialize Firebase App
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
@@ -283,6 +283,28 @@ export const FirebaseService = {
     }
   },
 
+  async saveStore(store: Store): Promise<void> {
+    const safeId = String(store.id).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `stores/${safeId}`;
+    try {
+      const cleanData = sanitizeForFirestore({ ...store, id: safeId });
+      await setDoc(doc(db, 'stores', safeId), cleanData, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  },
+
+  async deleteStore(storeId: string): Promise<void> {
+    const safeId = String(storeId).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `stores/${safeId}`;
+    try {
+      await deleteDoc(doc(db, 'stores', safeId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  },
+
+  // 5. SUPPLIERS (Cadastro de Frigoríficos e Fornecedores)
   async getSuppliers(): Promise<Supplier[] | null> {
     const path = 'suppliers';
     try {
@@ -293,6 +315,17 @@ export const FirebaseService = {
       return suppliers;
     } catch {
       return null;
+    }
+  },
+
+  async saveSupplier(supplier: Supplier): Promise<void> {
+    const safeId = String(supplier.id).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `suppliers/${safeId}`;
+    try {
+      const cleanData = sanitizeForFirestore({ ...supplier, id: safeId });
+      await setDoc(doc(db, 'suppliers', safeId), cleanData, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
     }
   },
 
@@ -307,6 +340,311 @@ export const FirebaseService = {
       await batch.commit();
     } catch (e) {
       console.warn('Erro ao salvar suppliers no Firestore:', e);
+    }
+  },
+
+  async saveAllSuppliers(suppliers: Supplier[]): Promise<void> {
+    return this.saveSuppliers(suppliers);
+  },
+
+  async deleteSupplier(supplierId: string): Promise<void> {
+    const safeId = String(supplierId).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `suppliers/${safeId}`;
+    try {
+      await deleteDoc(doc(db, 'suppliers', safeId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  },
+
+  subscribeToSuppliers(callback: (suppliers: Supplier[]) => void): () => void {
+    const path = 'suppliers';
+    try {
+      return onSnapshot(collection(db, path), (snap) => {
+        if (!snap.empty) {
+          const list: Supplier[] = [];
+          snap.forEach(d => list.push(d.data() as Supplier));
+          callback(list);
+        }
+      }, (error) => {
+        console.warn('Erro ao escutar suppliers do Firestore:', error);
+      });
+    } catch {
+      return () => {};
+    }
+  },
+
+  // 6. PRODUCTS (Cortes e Cadastro de Produtos)
+  async getProducts(): Promise<Product[] | null> {
+    const path = 'products';
+    try {
+      const snap = await getDocs(collection(db, path));
+      if (snap.empty) return null;
+      const products: Product[] = [];
+      snap.forEach(d => products.push(d.data() as Product));
+      return products;
+    } catch {
+      return null;
+    }
+  },
+
+  async saveProduct(product: Product): Promise<void> {
+    const safeId = String(product.id).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `products/${safeId}`;
+    try {
+      const cleanData = sanitizeForFirestore({ ...product, id: safeId });
+      await setDoc(doc(db, 'products', safeId), cleanData, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  },
+
+  async saveAllProducts(products: Product[]): Promise<void> {
+    try {
+      const batch = writeBatch(db);
+      for (const p of products) {
+        const safeId = String(p.id).replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const cleanProduct = sanitizeForFirestore({ ...p, id: safeId });
+        batch.set(doc(db, 'products', safeId), cleanProduct);
+      }
+      await batch.commit();
+    } catch (e) {
+      console.warn('Erro ao salvar produtos no Firestore:', e);
+    }
+  },
+
+  async deleteProduct(productId: string): Promise<void> {
+    const safeId = String(productId).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `products/${safeId}`;
+    try {
+      await deleteDoc(doc(db, 'products', safeId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  },
+
+  // 7. PURCHASE BATCHES (Histórico de Entradas de Frigoríficos & Lotes de Compras)
+  async getBatches(): Promise<PurchaseBatch[] | null> {
+    const path = 'purchase_batches';
+    try {
+      const q = query(collection(db, path), orderBy('date', 'desc'), limit(200));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        // Tenta sem orderBy caso haja documentos com data variada
+        const rawSnap = await getDocs(collection(db, path));
+        if (rawSnap.empty) return null;
+        const list: PurchaseBatch[] = [];
+        rawSnap.forEach(d => list.push(d.data() as PurchaseBatch));
+        return list;
+      }
+      const batches: PurchaseBatch[] = [];
+      snap.forEach(d => batches.push(d.data() as PurchaseBatch));
+      return batches;
+    } catch (e) {
+      console.warn('Erro ao carregar purchase_batches do Firestore:', e);
+      return null;
+    }
+  },
+
+  async saveBatch(batch: PurchaseBatch): Promise<void> {
+    const safeId = String(batch.id).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `purchase_batches/${safeId}`;
+    try {
+      const cleanData = sanitizeForFirestore({
+        ...batch,
+        id: safeId,
+        notes: batch.notes?.trim() || '',
+        deliveryDate: batch.deliveryDate || '',
+        targetStoreId: batch.targetStoreId || 'TODAS',
+        items: batch.items || []
+      });
+      await setDoc(doc(db, 'purchase_batches', safeId), cleanData, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  },
+
+  async saveAllBatches(batches: PurchaseBatch[]): Promise<void> {
+    try {
+      const batch = writeBatch(db);
+      for (const b of batches) {
+        const safeId = String(b.id).replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const cleanData = sanitizeForFirestore({
+          ...b,
+          id: safeId,
+          notes: b.notes?.trim() || '',
+          deliveryDate: b.deliveryDate || '',
+          targetStoreId: b.targetStoreId || 'TODAS',
+          items: b.items || []
+        });
+        batch.set(doc(db, 'purchase_batches', safeId), cleanData, { merge: true });
+      }
+      await batch.commit();
+    } catch (e) {
+      console.warn('Falha no batch de purchase_batches, salvando individualmente:', e);
+      for (const b of batches) {
+        await this.saveBatch(b).catch(() => {});
+      }
+    }
+  },
+
+  async deleteBatch(batchId: string): Promise<void> {
+    const safeId = String(batchId).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `purchase_batches/${safeId}`;
+    try {
+      await deleteDoc(doc(db, 'purchase_batches', safeId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  },
+
+  subscribeToBatches(callback: (batches: PurchaseBatch[]) => void): () => void {
+    const path = 'purchase_batches';
+    try {
+      return onSnapshot(collection(db, path), (snap) => {
+        if (!snap.empty) {
+          const list: PurchaseBatch[] = [];
+          snap.forEach(d => list.push(d.data() as PurchaseBatch));
+          list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+          callback(list);
+        }
+      }, (error) => {
+        console.warn('Erro ao escutar purchase_batches do Firestore:', error);
+      });
+    } catch {
+      return () => {};
+    }
+  },
+
+  // 8. WASTE RECORDS (Controle de Descarte & Subprodutos - Sebo e Osso)
+  async getWasteRecords(): Promise<WasteRecord[] | null> {
+    const path = 'waste_records';
+    try {
+      const q = query(collection(db, path), orderBy('date', 'desc'), limit(200));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        const rawSnap = await getDocs(collection(db, path));
+        if (rawSnap.empty) return null;
+        const list: WasteRecord[] = [];
+        rawSnap.forEach(d => list.push(d.data() as WasteRecord));
+        return list;
+      }
+      const list: WasteRecord[] = [];
+      snap.forEach(d => list.push(d.data() as WasteRecord));
+      return list;
+    } catch (e) {
+      console.warn('Erro ao carregar waste_records do Firestore:', e);
+      return null;
+    }
+  },
+
+  async saveWasteRecord(record: WasteRecord): Promise<void> {
+    const safeId = String(record.id).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `waste_records/${safeId}`;
+    try {
+      const cleanData = sanitizeForFirestore({
+        ...record,
+        id: safeId,
+        batchId: record.batchId || '',
+        renderingPlant: record.renderingPlant || 'Graxaria Regional'
+      });
+      await setDoc(doc(db, 'waste_records', safeId), cleanData, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  },
+
+  async saveAllWasteRecords(records: WasteRecord[]): Promise<void> {
+    try {
+      const batch = writeBatch(db);
+      for (const r of records) {
+        const safeId = String(r.id).replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const cleanData = sanitizeForFirestore({
+          ...r,
+          id: safeId,
+          batchId: r.batchId || '',
+          renderingPlant: r.renderingPlant || 'Graxaria Regional'
+        });
+        batch.set(doc(db, 'waste_records', safeId), cleanData, { merge: true });
+      }
+      await batch.commit();
+    } catch (e) {
+      console.warn('Falha no batch de waste_records, salvando individualmente:', e);
+      for (const r of records) {
+        await this.saveWasteRecord(r).catch(() => {});
+      }
+    }
+  },
+
+  async deleteWasteRecord(recordId: string): Promise<void> {
+    const safeId = String(recordId).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `waste_records/${safeId}`;
+    try {
+      await deleteDoc(doc(db, 'waste_records', safeId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  },
+
+  subscribeToWasteRecords(callback: (records: WasteRecord[]) => void): () => void {
+    const path = 'waste_records';
+    try {
+      return onSnapshot(collection(db, path), (snap) => {
+        if (!snap.empty) {
+          const list: WasteRecord[] = [];
+          snap.forEach(d => list.push(d.data() as WasteRecord));
+          list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+          callback(list);
+        }
+      }, (error) => {
+        console.warn('Erro ao escutar waste_records do Firestore:', error);
+      });
+    } catch {
+      return () => {};
+    }
+  },
+
+  // 9. PURCHASE ORDERS (Pedidos Oficiais de Compras Emitidos)
+  async getPurchaseOrders(): Promise<StandardPurchaseOrder[] | null> {
+    const path = 'purchase_orders';
+    try {
+      const snap = await getDocs(collection(db, path));
+      if (snap.empty) return null;
+      const list: StandardPurchaseOrder[] = [];
+      snap.forEach(d => list.push(d.data() as StandardPurchaseOrder));
+      return list;
+    } catch {
+      return null;
+    }
+  },
+
+  async savePurchaseOrder(order: StandardPurchaseOrder | any): Promise<void> {
+    const safeId = String(order.id || `order_${order.orderNumber || Date.now()}`).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `purchase_orders/${safeId}`;
+    try {
+      const cleanData = sanitizeForFirestore({
+        ...order,
+        id: safeId,
+        orderNumber: String(order.orderNumber || safeId),
+        date: order.date || new Date().toISOString().slice(0, 10),
+        supplier: order.supplier || order.supplierName || 'Frigorífico',
+        status: order.status || 'CONFIRMADO',
+        notes: order.notes || '',
+        updatedAt: Date.now()
+      });
+      await setDoc(doc(db, 'purchase_orders', safeId), cleanData, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  },
+
+  async deletePurchaseOrder(orderId: string): Promise<void> {
+    const safeId = String(orderId).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `purchase_orders/${safeId}`;
+    try {
+      await deleteDoc(doc(db, 'purchase_orders', safeId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
     }
   },
 
@@ -434,6 +772,32 @@ export const FirebaseService = {
       });
     } catch {
       return () => {};
+    }
+  },
+
+  // 12. YIELD PARAMS (Parâmetros Técnicos de Rendimento, Preços & Desossa)
+  async getYieldParams(): Promise<{ carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; basis: 'carcass' | 'piece' } | null> {
+    const path = 'app_settings/yield_params';
+    try {
+      const snap = await getDoc(doc(db, 'app_settings', 'yield_params'));
+      if (!snap.exists()) return null;
+      return snap.data() as any;
+    } catch (error) {
+      console.warn('Erro ao carregar yield_params do Firestore:', error);
+      return null;
+    }
+  },
+
+  async saveYieldParams(params: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; basis: 'carcass' | 'piece' }): Promise<void> {
+    const path = 'app_settings/yield_params';
+    try {
+      const cleanData = sanitizeForFirestore({
+        ...params,
+        updatedAt: Date.now()
+      });
+      await setDoc(doc(db, 'app_settings', 'yield_params'), cleanData, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
     }
   }
 };

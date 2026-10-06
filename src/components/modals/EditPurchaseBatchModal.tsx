@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { PurchaseBatch, Supplier, Store, PurchaseBatchItem } from '../../types/erp';
+import { PurchaseBatch, Supplier, Store, PurchaseBatchItem, SheetRowData } from '../../types/erp';
 import { formatCurrencyBRL, formatNumberBR } from '../../services/calculationService';
+import { StorageService } from '../../services/storageService';
 import { Edit, X, Save, Building2, Calendar, FileText, CheckCircle, Clock, Printer } from 'lucide-react';
 import { PrintPurchaseOrderModal } from './PrintPurchaseOrderModal';
 
@@ -10,7 +11,11 @@ interface EditPurchaseBatchModalProps {
   batch: PurchaseBatch;
   suppliers: Supplier[];
   stores: Store[];
+  sheetRows?: SheetRowData[];
+  yieldParams?: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; basis: 'carcass' | 'piece' };
   onSave: (updatedBatch: PurchaseBatch) => void;
+  onUpdateSheetRows?: (rows: SheetRowData[]) => void;
+  onUpdateYieldParams?: (params: any) => void;
 }
 
 export const EditPurchaseBatchModal: React.FC<EditPurchaseBatchModalProps> = ({
@@ -19,7 +24,11 @@ export const EditPurchaseBatchModal: React.FC<EditPurchaseBatchModalProps> = ({
   batch,
   suppliers,
   stores,
+  sheetRows,
+  yieldParams,
   onSave,
+  onUpdateSheetRows,
+  onUpdateYieldParams
 }) => {
   const [supplier, setSupplier] = useState(batch.supplier);
   const [invoiceNumber, setInvoiceNumber] = useState(batch.invoiceNumber);
@@ -123,6 +132,33 @@ export const EditPurchaseBatchModal: React.FC<EditPurchaseBatchModalProps> = ({
     };
 
     onSave(updatedBatch);
+
+    // Assume as informações nos demais campos:
+    // 1. Se houver itens por filial e sheetRows, propaga as quantidades para a Planilha Oficial
+    if (items && items.length > 0 && sheetRows && onUpdateSheetRows) {
+      const updatedRows = StorageService.propagateOrderToSheetRows(sheetRows, items.map(it => ({
+        storeId: it.storeId,
+        pedido: it.pedido,
+        bandaPedido: it.bandaPedido
+      })), { updateTransit: status !== 'RECEBIDO' && status !== 'DESOSSADO' });
+      onUpdateSheetRows(updatedRows);
+    }
+
+    // 2. Atualiza os parâmetros de rendimento e desossa com o novo preço da arroba e custo
+    const avgWeight = headsCount > 0 ? Math.round(totalGrossWeightKg / headsCount) : 260;
+    const newYieldParams = {
+      carcassWeight: avgWeight,
+      costPerKg: Math.round(costPerKg * 100) / 100,
+      fatPriceKg: yieldParams?.fatPriceKg || 2.10,
+      bonePriceKg: yieldParams?.bonePriceKg || 0.70,
+      targetMargin: yieldParams?.targetMargin || 28,
+      basis: yieldParams?.basis || ('carcass' as const)
+    };
+    StorageService.saveYieldParams(newYieldParams);
+    if (onUpdateYieldParams) {
+      onUpdateYieldParams(newYieldParams);
+    }
+
     onClose();
   };
 
