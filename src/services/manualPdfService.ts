@@ -364,18 +364,18 @@ export class ManualPdfService {
 
     y = 28;
 
-    // Seção 6 & 7: Compras e Descarte
+    // Seção 6 & 7: Compras, Pedidos e Descarte
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.setTextColor(15, 23, 42);
-    doc.text('5. Gestão de Compras, Lotes de Gado & Coletas de Graxaria', margin, y);
+    doc.text('5. Gestão de Compras, Pedidos Timbrados, WhatsApp & Descarte', margin, y);
     y += 5;
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(51, 65, 85);
     doc.text(
-      '• Compras & Lotes: Registro de notas fiscais, pesagem em balança de frigorífico, cotação da arroba (@), fornecedor e geração de pedidos formais de compra para entrega nas filiais.',
+      '• Pedidos & Planilha via WhatsApp: Emissão do documento timbrado oficial e envio direto por WhatsApp tanto da Planilha Matriz consolidada quanto dos Pedidos de Compra para os frigoríficos/fornecedores com PDF anexo.',
       margin, y, { maxWidth: contentWidth }
     );
     y += 8;
@@ -696,7 +696,7 @@ export class ManualPdfService {
     doc.setFontSize(8);
     doc.setTextColor(30, 41, 59);
     doc.text('1. Após revisar as abas, toque no botão verde grande no rodapé: "Salvar Contagem de Estoque".', margin + 4, y + 13);
-    doc.text('2. Aparecerá a mensagem verde de confirmação: "Contagem Gravada com Sucesso!".', margin + 4, y + 19);
+    doc.text('2. Aparecerá a caixa de confirmação: "Pedido salvo e enviado com sucesso" com o botão Fechar e o resumo dos dados.', margin + 4, y + 19);
     doc.text('3. Toque no botão "Histórico" (ícone de relógio) para ver os lançamentos de dias anteriores.', margin + 4, y + 25);
 
     y += 40;

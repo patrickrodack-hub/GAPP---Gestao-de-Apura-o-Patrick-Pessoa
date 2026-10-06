@@ -3,6 +3,7 @@ import { SheetRowData, Store, PurchaseBatch, Supplier } from '../../types/erp';
 import { formatCurrencyBRL, formatNumberBR, recalculateRowOrderFormulas } from '../../services/calculationService';
 import { StorageService } from '../../services/storageService';
 import { PrintPurchaseOrderModal } from './PrintPurchaseOrderModal';
+import { WhatsAppShareService } from '../../services/whatsAppShareService';
 import { 
   ShoppingCart, 
   X, 
@@ -21,7 +22,8 @@ import {
   ShieldCheck,
   Eye,
   CheckCircle2,
-  Link2
+  Link2,
+  MessageCircle
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 
@@ -87,6 +89,8 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
   const [notes, setNotes] = useState('Pedido emitido conforme apuração oficial da Matriz Direção v10.4. Entrega programada nas câmaras frigoríficas.');
   const [copiedToast, setCopiedToast] = useState(false);
   const [savedBatchSuccess, setSavedBatchSuccess] = useState(false);
+  const [isSharingPdfWhatsApp, setIsSharingPdfWhatsApp] = useState(false);
+  const [whatsappPdfSuccess, setWhatsappPdfSuccess] = useState(false);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [quantitiesSuino, setQuantitiesSuino] = useState<Record<string, number>>({});
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
@@ -422,7 +426,35 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
     setTimeout(() => setCopiedToast(false), 3000);
   };
 
-  // 3. Imprimir versão limpa timbrada (abre a prévia oficial do PDF com opção de imprimir)
+  // 3. Compartilhar PDF do Pedido de Compra via WhatsApp
+  const handleSharePdfWhatsApp = async () => {
+    try {
+      setIsSharingPdfWhatsApp(true);
+      setWhatsappPdfSuccess(false);
+      await WhatsAppShareService.sharePurchaseOrderPdfViaWhatsApp({
+        supplierName: selectedSupplierName,
+        supplierDetails: selectedSupplierObj,
+        orderNumber,
+        todayStr,
+        deliveryDateStr,
+        arrobaPrice,
+        pricePerKg,
+        carcassWeightPerBoiKg,
+        notes,
+        orderItems,
+        currentUser: 'Patrick Pessoa (Diretoria de Compras)',
+        targetPhone: selectedSupplierObj?.phone
+      });
+      setWhatsappPdfSuccess(true);
+      setTimeout(() => setWhatsappPdfSuccess(false), 3500);
+    } catch (err) {
+      console.error('Erro ao enviar PDF do pedido por WhatsApp:', err);
+    } finally {
+      setIsSharingPdfWhatsApp(false);
+    }
+  };
+
+  // 4. Imprimir versão limpa timbrada (abre a prévia oficial do PDF com opção de imprimir)
   const handlePrint = () => {
     setIsPrintPreviewOpen(true);
   };
@@ -623,10 +655,10 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handlePrint}
-              className="px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white font-semibold text-xs flex items-center gap-1.5 transition"
+              className="px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer"
               title="Imprimir documento oficial ou salvar PDF"
             >
               <Printer className="w-4 h-4" />
@@ -635,7 +667,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
 
             <button
               onClick={handleExportOrderXLSX}
-              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 transition shadow-sm"
+              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 transition shadow-sm cursor-pointer"
               title="Baixar planilha deste pedido em Excel (.xlsx)"
             >
               <Download className="w-4 h-4" />
@@ -643,17 +675,45 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
             </button>
 
             <button
+              onClick={handleSharePdfWhatsApp}
+              disabled={isSharingPdfWhatsApp}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer disabled:opacity-50 ${
+                whatsappPdfSuccess 
+                  ? 'bg-emerald-700 text-white' 
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+              }`}
+              title="Enviar o documento PDF oficial deste pedido diretamente por WhatsApp"
+            >
+              {isSharingPdfWhatsApp ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Gerando PDF...</span>
+                </>
+              ) : whatsappPdfSuccess ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Enviado!</span>
+                </>
+              ) : (
+                <>
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Enviar PDF p/ WhatsApp</span>
+                </>
+              )}
+            </button>
+
+            <button
               onClick={handleCopyText}
-              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition shadow-sm"
+              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition shadow-sm cursor-pointer"
               title="Copiar espelho do pedido formatado para WhatsApp ou E-mail"
             >
               {copiedToast ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              <span>{copiedToast ? 'Copiado!' : 'Copiar p/ WhatsApp'}</span>
+              <span>{copiedToast ? 'Copiado!' : 'Copiar Texto'}</span>
             </button>
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-white/20 text-white transition ml-1"
+              className="p-1.5 rounded-lg hover:bg-white/20 text-white transition ml-1 cursor-pointer"
               title="Fechar (Esc)"
             >
               <X className="w-5 h-5" />

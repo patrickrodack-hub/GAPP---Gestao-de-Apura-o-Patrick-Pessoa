@@ -1,8 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { SheetRowData, Store, Supplier } from '../../types/erp';
 import { formatCurrencyBRL, formatNumberBR } from '../../services/calculationService';
 import { PrintEngineService } from '../../services/printEngineService';
-import { Printer, X, ShoppingCart, Building2, Calendar, Scale, ShieldCheck, Sparkles } from 'lucide-react';
+import { PdfReportService } from '../../services/pdfReportService';
+import { WhatsAppShareService } from '../../services/whatsAppShareService';
+import { 
+  Printer, 
+  X, 
+  ShoppingCart, 
+  Building2, 
+  Calendar, 
+  Scale, 
+  ShieldCheck, 
+  Sparkles,
+  MessageCircle,
+  FileDown,
+  CheckCircle2
+} from 'lucide-react';
 
 interface PrintPurchaseOrderModalProps {
   isOpen: boolean;
@@ -56,6 +70,11 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
   notes,
   orderItems,
 }) => {
+  const [isSharingWhatsApp, setIsSharingWhatsApp] = useState(false);
+  const [whatsappSuccess, setWhatsappSuccess] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [pdfSuccess, setPdfSuccess] = useState(false);
+
   if (!isOpen) return null;
 
   // Bovino totals
@@ -101,12 +120,65 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
     });
   };
 
+  const handleDownloadPdf = async () => {
+    try {
+      setIsDownloadingPdf(true);
+      setPdfSuccess(false);
+      await PdfReportService.generateAndDownloadPurchaseOrderPdf({
+        supplierName,
+        supplierDetails,
+        orderNumber,
+        todayStr,
+        deliveryDateStr,
+        arrobaPrice,
+        pricePerKg,
+        carcassWeightPerBoiKg,
+        notes,
+        orderItems,
+        currentUser: 'Patrick Pessoa (Diretoria de Compras)'
+      });
+      setPdfSuccess(true);
+      setTimeout(() => setPdfSuccess(false), 3500);
+    } catch (err) {
+      console.error('Erro ao gerar PDF do pedido:', err);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
+  const handleShareWhatsApp = async () => {
+    try {
+      setIsSharingWhatsApp(true);
+      setWhatsappSuccess(false);
+      await WhatsAppShareService.sharePurchaseOrderPdfViaWhatsApp({
+        supplierName,
+        supplierDetails,
+        orderNumber,
+        todayStr,
+        deliveryDateStr,
+        arrobaPrice,
+        pricePerKg,
+        carcassWeightPerBoiKg,
+        notes,
+        orderItems,
+        currentUser: 'Patrick Pessoa (Diretoria de Compras)',
+        targetPhone: supplierDetails?.phone
+      });
+      setWhatsappSuccess(true);
+      setTimeout(() => setWhatsappSuccess(false), 3500);
+    } catch (err) {
+      console.error('Erro ao enviar PDF do pedido por WhatsApp:', err);
+    } finally {
+      setIsSharingWhatsApp(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       <div className="bg-white text-slate-900 rounded-2xl max-w-5xl w-full shadow-2xl flex flex-col my-auto max-h-[96vh] overflow-hidden border border-slate-300">
         
         {/* Actions bar (hidden in print) */}
-        <div className="flex items-center justify-between px-6 py-3 bg-gradient-to-r from-[#004b87] to-[#0078d7] text-white print:hidden shadow-md">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-6 py-3 bg-gradient-to-r from-[#004b87] to-[#0078d7] text-white print:hidden shadow-md gap-3">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 rounded-lg bg-white/20">
               <ShoppingCart className="w-5 h-5 text-amber-300" />
@@ -121,18 +193,78 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+            {/* Download PDF */}
             <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={isDownloadingPdf}
+              className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition active:scale-95 disabled:opacity-50 cursor-pointer"
+              title="Baixar Pedido de Compra em formato PDF"
+            >
+              {isDownloadingPdf ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Gerando PDF...</span>
+                </>
+              ) : pdfSuccess ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>PDF Baixado!</span>
+                </>
+              ) : (
+                <>
+                  <FileDown className="w-4 h-4" />
+                  <span>Baixar PDF</span>
+                </>
+              )}
+            </button>
+
+            {/* Enviar PDF por WhatsApp */}
+            <button
+              type="button"
+              onClick={handleShareWhatsApp}
+              disabled={isSharingWhatsApp}
+              className={`px-3.5 py-2 text-xs font-bold rounded-lg flex items-center gap-1.5 shadow transition active:scale-95 cursor-pointer disabled:opacity-50 ${
+                whatsappSuccess
+                  ? 'bg-emerald-700 text-white'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+              }`}
+              title="Enviar o documento em PDF e espelho do pedido diretamente para o WhatsApp do Frigorífico"
+            >
+              {isSharingWhatsApp ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Preparando WhatsApp...</span>
+                </>
+              ) : whatsappSuccess ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Enviado!</span>
+                </>
+              ) : (
+                <>
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Enviar PDF por WhatsApp</span>
+                </>
+              )}
+            </button>
+
+            {/* Imprimir */}
+            <button
+              type="button"
               onClick={handlePrint}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow transition active:scale-95"
-              title="Imprimir documento oficial ou Salvar como PDF"
+              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow transition active:scale-95 cursor-pointer"
+              title="Imprimir documento oficial ou Salvar como PDF via sistema"
             >
               <Printer className="w-4 h-4" />
-              <span>Imprimir / Salvar PDF</span>
+              <span>Imprimir</span>
             </button>
+
             <button
+              type="button"
               onClick={onClose}
-              className="p-1.5 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition"
+              className="p-1.5 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition cursor-pointer"
               title="Fechar (Esc)"
             >
               <X className="w-5 h-5" />

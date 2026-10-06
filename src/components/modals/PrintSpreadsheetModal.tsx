@@ -4,6 +4,7 @@ import { calculateSheetTotals } from '../../services/calculationService';
 import { PrintEngineService } from '../../services/printEngineService';
 import { PdfReportService } from '../../services/pdfReportService';
 import { StorageService } from '../../services/storageService';
+import { WhatsAppShareService } from '../../services/whatsAppShareService';
 import { 
   Printer, 
   X, 
@@ -16,7 +17,9 @@ import {
   Check, 
   ZoomIn, 
   ZoomOut, 
-  Maximize2 
+  Maximize2,
+  MessageCircle,
+  Share2
 } from 'lucide-react';
 
 interface PrintSpreadsheetModalProps {
@@ -42,6 +45,8 @@ export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
 }) => {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfSuccess, setPdfSuccess] = useState(false);
+  const [isSharingWhatsApp, setIsSharingWhatsApp] = useState(false);
+  const [whatsappSuccess, setWhatsappSuccess] = useState(false);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
 
   if (!isOpen) return null;
@@ -96,6 +101,26 @@ export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
       console.error('Erro ao gerar planilha em PDF:', e);
     } finally {
       setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleShareWhatsApp = async () => {
+    setIsSharingWhatsApp(true);
+    setWhatsappSuccess(false);
+    try {
+      await WhatsAppShareService.shareSpreadsheetPdfViaWhatsApp({
+        rows,
+        stores,
+        title: displayTitle,
+        emissionDate: activeDate,
+        currentUser: displayAuthor
+      });
+      setWhatsappSuccess(true);
+      setTimeout(() => setWhatsappSuccess(false), 3500);
+    } catch (e) {
+      console.error('Erro ao compartilhar planilha via WhatsApp:', e);
+    } finally {
+      setIsSharingWhatsApp(false);
     }
   };
 
@@ -181,6 +206,36 @@ export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
                 <>
                   <FileDown className="w-4 h-4" />
                   <span>Salvar / Baixar PDF</span>
+                </>
+              )}
+            </button>
+
+            {/* WhatsApp Share Button */}
+            <button
+              type="button"
+              onClick={handleShareWhatsApp}
+              disabled={isSharingWhatsApp}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition active:scale-95 cursor-pointer disabled:opacity-50 ${
+                whatsappSuccess 
+                  ? 'bg-emerald-700 text-white' 
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20'
+              }`}
+              title="Enviar arquivo PDF e espelho consolidado da planilha diretamente por WhatsApp"
+            >
+              {isSharingWhatsApp ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Preparando Envio...</span>
+                </>
+              ) : whatsappSuccess ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Enviado com Sucesso!</span>
+                </>
+              ) : (
+                <>
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Enviar por WhatsApp</span>
                 </>
               )}
             </button>
