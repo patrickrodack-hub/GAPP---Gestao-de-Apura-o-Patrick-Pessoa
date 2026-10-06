@@ -19,7 +19,8 @@ import {
   Printer,
   Search,
   AlertTriangle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Link2
 } from 'lucide-react';
 import { ViewPurchaseBatchModal } from '../modals/ViewPurchaseBatchModal';
 import { EditPurchaseBatchModal } from '../modals/EditPurchaseBatchModal';
@@ -53,12 +54,18 @@ export const PurchasesTab: React.FC<PurchasesTabProps> = ({
   onUpdateYieldParams,
   onUpdateSheetRows
 }) => {
+  // Peso da carcaça importado e vinculado sempre do módulo de Análise Técnica de Rendimento e Desossa do Boi
+  const technicalCarcassWeight = yieldParams?.carcassWeight || StorageService.getYieldParams()?.carcassWeight || 240;
+
   const [showModal, setShowModal] = useState(false);
   const [supplier, setSupplier] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [headsCount, setHeadsCount] = useState(40);
+  const [autoLinkWeight, setAutoLinkWeight] = useState(true);
   const [totalGrossWeightKg, setTotalGrossWeightKg] = useState(() => {
     if (yieldParams && yieldParams.carcassWeight > 0) return yieldParams.carcassWeight * 40;
+    const p = StorageService.getYieldParams();
+    if (p && p.carcassWeight > 0) return p.carcassWeight * 40;
     return 9600;
   });
   const [arrobaPrice, setArrobaPrice] = useState(() => {
@@ -69,8 +76,11 @@ export const PurchasesTab: React.FC<PurchasesTabProps> = ({
   useEffect(() => {
     if (yieldParams) {
       if (yieldParams.costPerKg > 0) setArrobaPrice(Number((yieldParams.costPerKg * 15).toFixed(2)));
+      if (yieldParams.carcassWeight > 0 && autoLinkWeight) {
+        setTotalGrossWeightKg(headsCount * yieldParams.carcassWeight);
+      }
     }
-  }, [yieldParams]);
+  }, [yieldParams, headsCount, autoLinkWeight]);
 
   // Search filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -641,21 +651,47 @@ export const PurchasesTab: React.FC<PurchasesTabProps> = ({
                     type="number"
                     min="1"
                     value={headsCount}
-                    onChange={(e) => setHeadsCount(Number(e.target.value) || 1)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
+                    onChange={(e) => {
+                      const val = Number(e.target.value) || 1;
+                      setHeadsCount(val);
+                      if (autoLinkWeight) {
+                        setTotalGrossWeightKg(Math.round(val * technicalCarcassWeight));
+                      }
+                    }}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono font-bold"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-400 mb-1 font-semibold">Peso Total Carcaça (kg)</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-slate-600 dark:text-slate-400 font-semibold">Peso Total Carcaça (kg)</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAutoLinkWeight(true);
+                        setTotalGrossWeightKg(Math.round(headsCount * technicalCarcassWeight));
+                      }}
+                      className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-0.5 font-bold"
+                      title={`Importado do campo Peso da Carcaça / Lote (${technicalCarcassWeight} kg/boi) do módulo de Rendimento`}
+                    >
+                      <Link2 className="w-3 h-3 text-amber-500" />
+                      <span>{technicalCarcassWeight}kg/boi</span>
+                    </button>
+                  </div>
                   <input
                     type="number"
                     min="100"
                     step="10"
                     value={totalGrossWeightKg}
-                    onChange={(e) => setTotalGrossWeightKg(Number(e.target.value) || 0)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono"
+                    onChange={(e) => {
+                      setAutoLinkWeight(false);
+                      setTotalGrossWeightKg(Number(e.target.value) || 0);
+                    }}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-white font-mono font-bold"
                   />
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 block">
+                    🔗 Base: {headsCount > 0 ? (totalGrossWeightKg / headsCount).toFixed(1) : 0} kg/boi (Vinculado ao Rendimento)
+                  </span>
                 </div>
               </div>
 

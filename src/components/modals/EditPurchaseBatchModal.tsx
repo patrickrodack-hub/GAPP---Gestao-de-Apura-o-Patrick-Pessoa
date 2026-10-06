@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { PurchaseBatch, Supplier, Store, PurchaseBatchItem, SheetRowData } from '../../types/erp';
 import { formatCurrencyBRL, formatNumberBR } from '../../services/calculationService';
 import { StorageService } from '../../services/storageService';
-import { Edit, X, Save, Building2, Calendar, FileText, CheckCircle, Clock, Printer } from 'lucide-react';
+import { Edit, X, Save, Building2, Calendar, FileText, CheckCircle, Clock, Printer, Link2 } from 'lucide-react';
 import { PrintPurchaseOrderModal } from './PrintPurchaseOrderModal';
 
 interface EditPurchaseBatchModalProps {
@@ -30,6 +30,8 @@ export const EditPurchaseBatchModal: React.FC<EditPurchaseBatchModalProps> = ({
   onUpdateSheetRows,
   onUpdateYieldParams
 }) => {
+  const technicalCarcassWeight = yieldParams?.carcassWeight || StorageService.getYieldParams()?.carcassWeight || 240;
+
   const [supplier, setSupplier] = useState(batch.supplier);
   const [invoiceNumber, setInvoiceNumber] = useState(batch.invoiceNumber);
   const [date, setDate] = useState(batch.date);
@@ -303,9 +305,20 @@ export const EditPurchaseBatchModal: React.FC<EditPurchaseBatchModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-slate-600 dark:text-slate-400 font-semibold mb-1">
-                Peso Total de Carcaça (kg)
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-slate-600 dark:text-slate-400 font-semibold">
+                  Peso Total de Carcaça (kg)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setTotalGrossWeightKg(Math.round(headsCount * technicalCarcassWeight))}
+                  className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-0.5 font-bold"
+                  title={`Calcular pelo Peso da Carcaça / Lote (${technicalCarcassWeight} kg/boi) do módulo de Rendimento`}
+                >
+                  <Link2 className="w-3 h-3 text-amber-500" />
+                  <span>{technicalCarcassWeight}kg/boi</span>
+                </button>
+              </div>
               <input
                 type="number"
                 step="10"
@@ -313,6 +326,9 @@ export const EditPurchaseBatchModal: React.FC<EditPurchaseBatchModalProps> = ({
                 onChange={(e) => setTotalGrossWeightKg(Number(e.target.value) || 0)}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2 font-mono font-bold"
               />
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 block">
+                Média: {headsCount > 0 ? (totalGrossWeightKg / headsCount).toFixed(1) : 0} kg/boi (Vinculado ao Rendimento)
+              </span>
             </div>
           </div>
 

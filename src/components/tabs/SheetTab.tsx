@@ -5,7 +5,8 @@ import {
   recalculateRowOrderFormulas,
   CutYieldWeights,
   DEFAULT_CUT_YIELD_WEIGHTS,
-  HALF_CARCASS_CUT_YIELD_WEIGHTS
+  HALF_CARCASS_CUT_YIELD_WEIGHTS,
+  getCutYieldWeightsFromSimulation
 } from '../../services/calculationService';
 import { StorageService } from '../../services/storageService';
 import { 
@@ -48,6 +49,7 @@ import { SheetSnapshotRecord, Store } from '../../types/erp';
 interface SheetTabProps {
   rows: SheetRowData[];
   stores?: Store[];
+  yieldParams?: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; basis: 'carcass' | 'piece' };
   onUpdateRow: (updatedRow: SheetRowData) => void;
   onUpdateMultiple: (rows: SheetRowData[]) => void;
   onExportXLSX?: () => void;
@@ -56,6 +58,8 @@ interface SheetTabProps {
   onSaveSheetSnapshot?: (name?: string, author?: string, notes?: string) => void;
   onRestoreSheetSnapshot?: (snapshot: SheetSnapshotRecord) => void;
   onDeleteSheetSnapshot?: (id: string) => void;
+  onUpdateYieldParams?: (params: any) => void;
+  onNavigateToYieldTab?: () => void;
 }
 
 // Sequence of editable columns matching the EXACT left-to-right display order in the matrix
@@ -107,6 +111,7 @@ export const EDITABLE_COLUMNS: { field: keyof SheetRowData; label: string; group
 export const SheetTab: React.FC<SheetTabProps> = ({ 
   rows, 
   stores,
+  yieldParams,
   onUpdateRow, 
   onUpdateMultiple,
   onExportXLSX,
@@ -114,7 +119,9 @@ export const SheetTab: React.FC<SheetTabProps> = ({
   sheetSnapshots,
   onSaveSheetSnapshot,
   onRestoreSheetSnapshot,
-  onDeleteSheetSnapshot
+  onDeleteSheetSnapshot,
+  onUpdateYieldParams,
+  onNavigateToYieldTab
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
@@ -175,13 +182,18 @@ export const SheetTab: React.FC<SheetTabProps> = ({
   const isNavigatingRef = useRef<boolean>(false);
 
   const [yieldBasis, setYieldBasis] = useState<'carcass' | 'piece'>(() => {
+    if (yieldParams?.basis) return yieldParams.basis;
     const p = StorageService.getYieldParams();
     return p.basis || 'carcass';
   });
 
-  const currentCutWeights: CutYieldWeights = yieldBasis === 'piece' 
-    ? HALF_CARCASS_CUT_YIELD_WEIGHTS 
-    : DEFAULT_CUT_YIELD_WEIGHTS;
+  // Peso da Carcaça / Lote vinculado e importado sempre do módulo de Análise Técnica de Rendimento e Desossa do Boi
+  const technicalCarcassWeight = yieldParams?.carcassWeight || StorageService.getYieldParams().carcassWeight || 240;
+
+  // Multiplicadores dos cortes calculados dinamicamente com base no Peso da Carcaça / Lote do módulo de Rendimento
+  const currentCutWeights: CutYieldWeights = useMemo(() => {
+    return getCutYieldWeightsFromSimulation(technicalCarcassWeight, yieldBasis);
+  }, [technicalCarcassWeight, yieldBasis]);
 
   // Real-time formula audit engine
   const auditReport = useMemo(() => {
@@ -189,14 +201,36 @@ export const SheetTab: React.FC<SheetTabProps> = ({
   }, [rows, currentCutWeights]);
 
   const handleToggleYieldBasis = () => {
-    const nextBasis = yieldBasis === 'carcass' ? 'piece' : 'carcass';
+    const nextBasis: 'carcass' | 'piece' = yieldBasis === 'carcass' ? 'piece' : 'carcass';
     setYieldBasis(nextBasis);
-    const newWeights = nextBasis === 'piece' ? HALF_CARCASS_CUT_YIELD_WEIGHTS : DEFAULT_CUT_YIELD_WEIGHTS;
-    const currentParams = StorageService.getYieldParams();
-    StorageService.saveYieldParams({ ...currentParams, basis: nextBasis });
+    const newWeights = getCutYieldWeightsFromSimulation(technicalCarcassWeight, nextBasis);
+    const currentParams = yieldParams || StorageService.getYieldParams();
+    const updatedParams = { ...currentParams, basis: nextBasis };
+    StorageService.saveYieldParams(updatedParams);
+    if (onUpdateYieldParams) {
+      onUpdateYieldParams(updatedParams);
+    }
     const updated = rows.map(r => recalculateRowOrderFormulas(r, newWeights));
     onUpdateMultiple(updated);
   };
+
+  // Quando o peso da carcaça do módulo de Rendimento mudar, sincroniza os cálculos na planilha
+  useEffect(() => {
+    const newWeights = getCutYieldWeightsFromSimulation(technicalCarcassWeight, yieldBasis);
+    const updated = rows.map(r => recalculateRowOrderFormulas(r, newWeights));
+    const hasChanged = updated.some((row, idx) => {
+      const orig = rows[idx];
+      return orig && (
+        orig.totalAlcatrao !== row.totalAlcatrao ||
+        orig.totalDianteiro !== row.totalDianteiro ||
+        orig.totalCoxao !== row.totalCoxao ||
+        orig.boi !== row.boi
+      );
+    });
+    if (hasChanged) {
+      onUpdateMultiple(updated);
+    }
+  }, [technicalCarcassWeight, yieldBasis]);
 
   const totals = calculateSheetTotals(rows);
 
@@ -491,18 +525,30 @@ export const SheetTab: React.FC<SheetTabProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-          {/* Base de Desossa dos Cortes */}
-          <button
-            onClick={handleToggleYieldBasis}
-            className="px-2.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-semibold text-xs flex items-center gap-1.5 transition shadow-sm"
-            title="Alternar se o multiplicador dos cortes de desossa utiliza a base Carcaça Inteira (240kg) ou Meia Carcaça / Peça (120kg)"
-          >
-            <Scissors className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-            <span>Desossa:</span>
-            <span className="font-bold underline">
-              {yieldBasis === 'carcass' ? 'Carcaça 240kg' : 'Meia Carcaça 120kg'}
-            </span>
-          </button>
+          {/* Base de Desossa dos Cortes - Importada e vinculada do campo "Peso da Carcaça / Lote" do módulo de Rendimento */}
+          <div className="flex items-center">
+            <button
+              onClick={handleToggleYieldBasis}
+              className={`px-2.5 py-1.5 ${onNavigateToYieldTab ? 'rounded-l-lg' : 'rounded-lg'} bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-semibold text-xs flex items-center gap-1.5 transition shadow-sm active:scale-95`}
+              title={`Importado e vinculado ao módulo de Análise Técnica de Rendimento e Desossa do Boi (Campo: Peso da Carcaça / Lote = ${technicalCarcassWeight}kg). Clique para alternar entre Carcaça Inteira (${technicalCarcassWeight}kg) ou Meia Carcaça (${Math.round(technicalCarcassWeight / 2)}kg).`}
+            >
+              <Scissors className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+              <span>Desossa:</span>
+              <span className="font-bold underline">
+                {yieldBasis === 'carcass' ? `Carcaça ${technicalCarcassWeight}kg` : `Meia Carcaça ${Math.round(technicalCarcassWeight / 2)}kg`}
+              </span>
+            </button>
+            {onNavigateToYieldTab && (
+              <button
+                type="button"
+                onClick={onNavigateToYieldTab}
+                className="px-1.5 py-1.5 rounded-r-lg bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/60 dark:hover:bg-purple-800/80 border-y border-r border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 transition shadow-sm"
+                title={`Alterar Peso da Carcaça / Lote (${technicalCarcassWeight}kg) no Módulo de Rendimento`}
+              >
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
 
           {/* Botão de Auditoria Matemática em Tempo Real */}
           <button

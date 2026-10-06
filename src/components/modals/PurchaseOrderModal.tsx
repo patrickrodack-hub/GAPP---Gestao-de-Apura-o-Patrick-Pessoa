@@ -20,7 +20,8 @@ import {
   Send,
   ShieldCheck,
   Eye,
-  CheckCircle2
+  CheckCircle2,
+  Link2
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 
@@ -67,6 +68,9 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
     ? (activeSuppliers[0].tradeName ? `${activeSuppliers[0].name} (${activeSuppliers[0].tradeName})` : activeSuppliers[0].name)
     : DEFAULT_SUPPLIERS[0];
 
+  // Peso da Carcaça / Lote: Importado e vinculado SEMPRE do módulo de Análise Técnica de Rendimento e Desossa do Boi
+  const masterTechnicalCarcassWeight = yieldParams?.carcassWeight || StorageService.getYieldParams()?.carcassWeight || 240;
+
   const [supplier, setSupplier] = useState(initialSupplierName);
   const [customSupplier, setCustomSupplier] = useState('');
   const [arrobaPrice, setArrobaPrice] = useState<number>(() => {
@@ -76,10 +80,9 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
   });
   const [carcassWeightPerBoiKg, setCarcassWeightPerBoiKg] = useState<number>(() => {
     if (yieldParams && yieldParams.carcassWeight > 0) return yieldParams.carcassWeight;
-    if (latestBatch && latestBatch.headsCount > 0 && latestBatch.totalGrossWeightKg > 0) {
-      return Math.round(latestBatch.totalGrossWeightKg / latestBatch.headsCount);
-    }
-    return 260;
+    const p = StorageService.getYieldParams();
+    if (p && p.carcassWeight > 0) return p.carcassWeight;
+    return 240;
   });
   const [notes, setNotes] = useState('Pedido emitido conforme apuração oficial da Matriz Direção v10.1. Entrega programada nas câmaras frigoríficas.');
   const [copiedToast, setCopiedToast] = useState(false);
@@ -89,7 +92,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
 
   // Carrega e sincroniza estritamente com a quantidade real lançada pelo usuário nas colunas Pedido (Boi e Banda)
-  // e assume os parâmetros vigentes (Preço da @ e Peso da Carcaça)
+  // e assume os parâmetros vigentes (Preço da @ e Peso da Carcaça / Lote do Módulo de Rendimento)
   React.useEffect(() => {
     if (isOpen) {
       const qMap: Record<string, number> = {};
@@ -102,16 +105,16 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
       setQuantities(qMap);
       setQuantitiesSuino(qSuinoMap);
 
+      // Sempre importa e vincula do módulo de análise técnica de rendimento e desossa do boi
+      const masterWeight = (yieldParams && yieldParams.carcassWeight > 0)
+        ? yieldParams.carcassWeight
+        : (StorageService.getYieldParams()?.carcassWeight || 240);
+      setCarcassWeightPerBoiKg(masterWeight);
+
       if (yieldParams && yieldParams.costPerKg > 0) {
         setArrobaPrice(Number((yieldParams.costPerKg * 15).toFixed(2)));
-        if (yieldParams.carcassWeight > 0) {
-          setCarcassWeightPerBoiKg(yieldParams.carcassWeight);
-        }
       } else if (latestBatch && latestBatch.arrobaPrice > 0) {
         setArrobaPrice(latestBatch.arrobaPrice);
-        if (latestBatch.headsCount > 0 && latestBatch.totalGrossWeightKg > 0) {
-          setCarcassWeightPerBoiKg(Math.round(latestBatch.totalGrossWeightKg / latestBatch.headsCount));
-        }
       }
     }
   }, [isOpen, rows, yieldParams, latestBatch]);
@@ -731,13 +734,6 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
                   onChange={(e) => {
                     const val = e.target.value;
                     setSupplier(val);
-                    const matched = suppliers.find(s => 
-                      s.name === val || 
-                      (s.tradeName && `${s.name} (${s.tradeName})` === val)
-                    );
-                    if (matched && matched.standardCarcassWeightKg) {
-                      setCarcassWeightPerBoiKg(matched.standardCarcassWeightKg);
-                    }
                   }}
                   className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-amber-500 font-medium"
                 >
@@ -776,16 +772,42 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                  Peso Médio Carcaça (kg/boi):
-                </label>
-                <input
-                  type="number"
-                  value={carcassWeightPerBoiKg}
-                  onChange={(e) => setCarcassWeightPerBoiKg(Number(e.target.value) || 260)}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 text-xs text-slate-800 dark:text-slate-200 font-mono focus:outline-none focus:border-amber-500"
-                />
+              <div className="bg-amber-50/70 dark:bg-amber-950/30 p-2 rounded-lg border border-amber-200 dark:border-amber-800/80">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-amber-900 dark:text-amber-200">
+                    Peso da Carcaça / Lote:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const master = (yieldParams && yieldParams.carcassWeight > 0)
+                        ? yieldParams.carcassWeight
+                        : (StorageService.getYieldParams()?.carcassWeight || 240);
+                      setCarcassWeightPerBoiKg(master);
+                    }}
+                    className="text-[10px] text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-0.5 font-bold"
+                    title={`Importado do Módulo de Análise Técnica de Rendimento e Desossa (${masterTechnicalCarcassWeight} kg)`}
+                  >
+                    <Link2 className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                    <span>Importado do Rendimento</span>
+                  </button>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min="50"
+                    step="5"
+                    value={carcassWeightPerBoiKg}
+                    onChange={(e) => setCarcassWeightPerBoiKg(Number(e.target.value) || masterTechnicalCarcassWeight)}
+                    className="w-full bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg p-1.5 text-xs text-slate-800 dark:text-slate-200 font-mono font-bold focus:outline-none focus:border-amber-500"
+                  />
+                  <span className="text-[10px] text-amber-800 dark:text-amber-300 font-semibold whitespace-nowrap">
+                    kg (= {(carcassWeightPerBoiKg / 15).toFixed(1)} @)
+                  </span>
+                </div>
+                <span className="text-[9px] text-amber-600 dark:text-amber-400 mt-1 block">
+                  🔗 Vinculado à Análise Técnica de Rendimento e Desossa
+                </span>
               </div>
 
               <div>

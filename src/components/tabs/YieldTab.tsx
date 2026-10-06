@@ -16,7 +16,8 @@ import {
   Calculator,
   Save,
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  Link2
 } from 'lucide-react';
 
 interface YieldTabProps {
@@ -168,10 +169,16 @@ export const YieldTab: React.FC<YieldTabProps> = ({
         {/* Input parameters grid */}
         <div className="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {/* Peso da Carcaça */}
-          <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
-            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
-              Peso da Carcaça / Lote
-            </label>
+          <div className="bg-amber-50/70 dark:bg-amber-950/30 p-3 rounded-lg border-2 border-amber-300 dark:border-amber-700 shadow-xs">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wider block">
+                Peso da Carcaça / Lote
+              </label>
+              <span className="flex items-center gap-0.5 text-[9px] text-amber-700 dark:text-amber-300 font-bold bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.5 rounded">
+                <Link2 className="w-2.5 h-2.5" />
+                <span>CAMPO MESTRE</span>
+              </span>
+            </div>
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -179,12 +186,12 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                 step="5"
                 value={carcassWeight}
                 onChange={(e) => setCarcassWeight(Number(e.target.value) || 0)}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                className="w-full bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded px-2.5 py-1.5 text-sm font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-2xs"
               />
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">kg</span>
+              <span className="text-xs text-amber-900 dark:text-amber-200 font-bold">kg</span>
             </div>
-            <span className="text-[10px] text-slate-500 mt-1 block">
-              Equivale a {(carcassWeight / 15).toFixed(1)} @ (arrobas)
+            <span className="text-[10px] text-amber-700 dark:text-amber-400 mt-1 block font-medium">
+              Equivale a {(carcassWeight / 15).toFixed(1)} @ • Vincula Pedidos, Lotes e 16 Lojas
             </span>
           </div>
 

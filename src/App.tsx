@@ -460,7 +460,10 @@ export default function App() {
 
     // Assume os dados do lote nos parâmetros globais se fornecidos
     if (batch.costPerKg || batch.arrobaPrice) {
-      const avgWeight = batch.headsCount > 0 ? Math.round(batch.totalGrossWeightKg / batch.headsCount) : 260;
+      const currentCarcass = yieldParams?.carcassWeight || StorageService.getYieldParams()?.carcassWeight || 240;
+      const avgWeight = (batch.headsCount > 0 && batch.totalGrossWeightKg > 0)
+        ? Math.round(batch.totalGrossWeightKg / batch.headsCount)
+        : currentCarcass;
       const costPerKg = batch.costPerKg || (batch.arrobaPrice / 15);
       const newParams = {
         carcassWeight: avgWeight,
@@ -492,7 +495,10 @@ export default function App() {
     StorageService.saveSingleBatch(updatedBatch);
 
     if (updatedBatch.costPerKg || updatedBatch.arrobaPrice) {
-      const avgWeight = updatedBatch.headsCount > 0 ? Math.round(updatedBatch.totalGrossWeightKg / updatedBatch.headsCount) : 260;
+      const currentCarcass = yieldParams?.carcassWeight || StorageService.getYieldParams()?.carcassWeight || 240;
+      const avgWeight = (updatedBatch.headsCount > 0 && updatedBatch.totalGrossWeightKg > 0)
+        ? Math.round(updatedBatch.totalGrossWeightKg / updatedBatch.headsCount)
+        : currentCarcass;
       const costPerKg = updatedBatch.costPerKg || (updatedBatch.arrobaPrice / 15);
       const newParams = {
         carcassWeight: avgWeight,
