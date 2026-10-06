@@ -48,10 +48,10 @@ export const AppBrandLogo: React.FC<AppBrandLogoProps> = ({
       {showText && (
         <div className="flex flex-col leading-tight">
           <span className={`font-black uppercase tracking-wider text-slate-900 dark:text-white ${text}`}>
-            Apuração do Boi
+            Gestão Apuração do Boi
           </span>
           <span className={`font-semibold text-emerald-700 dark:text-emerald-400 ${sub} truncate`}>
-            Patrick Pessoa • Gestão Integral
+            ERP Comercial • Grupo GAPP
           </span>
         </div>
       )}

@@ -47,10 +47,13 @@ export default function App() {
   } = useRegisterSW({
     onRegisteredSW(swUrl, r) {
       if (r) {
-        // Checa por novas versões a cada 30 minutos ou quando a aba volta a ter foco
+        // Checa imediatamente por atualização na inicialização
+        r.update().catch(() => {});
+
+        // Checa por novas versões a cada 10 minutos ou quando a janela ganha foco
         const intervalId = setInterval(() => {
           r.update().catch(() => {});
-        }, 30 * 60 * 1000);
+        }, 10 * 60 * 1000);
 
         const handleTabFocus = () => {
           r.update().catch(() => {});
@@ -673,10 +676,10 @@ export default function App() {
                 <span className="text-[10px] text-emerald-400 font-mono">v10.3</span>
               </div>
               <h3 className="text-sm font-bold text-white tracking-tight leading-snug">
-                Atualização do Sistema Pronta
+                Atualização Pronta: Gestão Apuração do Boi
               </h3>
               <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                Uma nova versão do ERP Apuração do Boi foi carregada em segundo plano. Recarregue a página para aplicar todas as melhorias e correções imediatamente.
+                O sistema e o atalho foram atualizados para <strong>Gestão Apuração do Boi</strong>. Clique abaixo para aplicar a atualização ao atalho instalado e ao sistema imediatamente.
               </p>
 
               <div className="flex items-center gap-2 mt-3 pt-2 border-t border-slate-800">
@@ -687,7 +690,7 @@ export default function App() {
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition cursor-pointer disabled:opacity-75"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isUpdatingSW ? 'animate-spin' : ''}`} />
-                  <span>{isUpdatingSW ? 'Recarregando...' : 'Recarregar e Atualizar Agora'}</span>
+                  <span>{isUpdatingSW ? 'Atualizando...' : 'Atualizar Atalho e Sistema Agora'}</span>
                 </button>
 
                 <button
@@ -914,6 +917,9 @@ export default function App() {
                       yieldParams={yieldParams}
                       onSaveYieldParams={handleUpdateYieldParams}
                       latestBatch={batches[0]}
+                      products={products}
+                      batches={batches}
+                      onUpdateProducts={setProducts}
                     />
                   )}
 
@@ -923,6 +929,8 @@ export default function App() {
                       stores={stores} 
                       batches={batches}
                       wasteRecords={wasteRecords}
+                      products={products}
+                      yieldParams={yieldParams}
                     />
                   )}
 
@@ -1180,6 +1188,9 @@ export default function App() {
               yieldParams={yieldParams}
               onSaveYieldParams={handleUpdateYieldParams}
               latestBatch={batches[0]}
+              products={products}
+              batches={batches}
+              onUpdateProducts={setProducts}
             />
           )}
 

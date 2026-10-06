@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { simulateBeefYield, formatCurrencyBRL } from '../../services/calculationService';
-import { Calculator, X, Scale, Scissors, TrendingUp, DollarSign } from 'lucide-react';
+import { Calculator, X, Scale, Scissors, TrendingUp, DollarSign, Database, CheckCircle2 } from 'lucide-react';
 
 interface QuickCalculatorModalProps {
   isOpen: boolean;
@@ -20,12 +20,18 @@ export const QuickCalculatorModal: React.FC<QuickCalculatorModalProps> = ({ isOp
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 animate-scale-in transition-colors text-slate-900 dark:text-white">
         <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
-            <span className="p-2 rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+            <span className="p-2 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
               <Calculator className="w-5 h-5" />
             </span>
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Simulador Rápido de Desossa do Boi</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Cálculo de custo efetivo da carne limpa e projeção de margem</p>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Apuração Rápida de Desossa do Boi</h3>
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1 border border-emerald-300 dark:border-emerald-700">
+                  <Database className="w-2.5 h-2.5" />
+                  Base Real ERP
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Cálculo de custo efetivo limpo e margens com base nos produtos cadastrados</p>
             </div>
           </div>
           <button
@@ -94,16 +100,16 @@ export const QuickCalculatorModal: React.FC<QuickCalculatorModalProps> = ({ isOp
           </div>
         </div>
 
-        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-500/30 rounded-xl text-xs text-slate-700 dark:text-slate-300">
+        <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-300 dark:border-emerald-500/30 rounded-xl text-xs text-slate-700 dark:text-slate-300">
           <p>
-            <strong>Diagnóstico:</strong> Com a carcaça comprada a {formatCurrencyBRL(costKg)}/kg, a quebra de 24% em ossos e sebo eleva o ponto de equilíbrio da carne limpa para <strong className="text-amber-700 dark:text-amber-400">{formatCurrencyBRL(sim.effectiveCleanMeatCostPerKg)}/kg</strong>. O faturamento projetado dos cortes atinge <strong className="text-slate-900 dark:text-white">{formatCurrencyBRL(sim.totalRevenue)}</strong> com lucro bruto de <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrencyBRL(sim.grossProfit)}</strong>.
+            <strong>Equalização com a Base Real:</strong> Com a carcaça comprada a {formatCurrencyBRL(costKg)}/kg, o ponto de equilíbrio da carne limpa atinge <strong className="text-amber-700 dark:text-amber-400">{formatCurrencyBRL(sim.effectiveCleanMeatCostPerKg)}/kg</strong>. O faturamento apurado com os preços da tabela de produtos do ERP alcança <strong className="text-slate-900 dark:text-white">{formatCurrencyBRL(sim.totalRevenue)}</strong> gerando lucro de <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrencyBRL(sim.grossProfit)}</strong>.
           </p>
         </div>
 
         <div className="flex justify-end pt-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-semibold"
+            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-semibold cursor-pointer"
           >
             Fechar
           </button>

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { SheetRowData, Store, PurchaseBatch } from '../../types/erp';
 import { formatCurrencyBRL, formatNumberBR } from '../../services/calculationService';
+import { StorageService } from '../../services/storageService';
 import { 
   ResponsiveContainer, 
   ScatterChart, 
@@ -30,60 +31,67 @@ interface PurchaseScatterPlotProps {
   rows: SheetRowData[];
   stores: Store[];
   batches?: PurchaseBatch[];
+  yieldParams?: {
+    carcassWeight: number;
+    costPerKg: number;
+    fatPriceKg: number;
+    bonePriceKg: number;
+    targetMargin: number;
+    basis: 'carcass' | 'piece';
+  };
 }
 
 export const PurchaseScatterPlot: React.FC<PurchaseScatterPlotProps> = ({
   rows,
   stores,
-  batches = []
+  batches = [],
+  yieldParams
 }) => {
   const [metricUnit, setMetricUnit] = useState<'kg' | 'arroba'>('kg');
   const [highlightCluster, setHighlightCluster] = useState<'ALL' | 'EFFICIENT' | 'HIGH_COST' | 'OPPORTUNITY'>('ALL');
 
-  // Preço base de referência da planilha
-  const BASE_PRICE_KG = 26.00; // R$ 26,00 / kg
+  // Parâmetros reais do sistema
+  const technicalCarcassWeight = yieldParams?.carcassWeight || StorageService.getYieldParams()?.carcassWeight || 240;
+  const BASE_PRICE_KG = yieldParams?.costPerKg || (batches.length > 0 && batches[0].costPerKg > 0 ? batches[0].costPerKg : 26.00);
 
-  // Prepara os dados de cada filial para o gráfico de dispersão
+  // Prepara os dados de cada filial para o gráfico de dispersão com dados reais
   const scatterData = useMemo(() => {
-    return rows.map((row, idx) => {
+    return rows.map((row) => {
       const store = stores.find(s => s.id === row.storeId);
       const storeName = store ? store.name : row.storeName;
 
-      // 1. Volume de compra total em kg (bois equivalentes * 240kg de carcaça)
-      const boisTotal = (row.pedidoDianteiro + row.pedidoTraseiro + row.pedidoCoxao + row.pedidoAlcatrao) / 2;
-      const volumeKg = boisTotal > 0 ? boisTotal * 240 : (row.boiAVenda > 0 ? row.boiAVenda * 240 : 1200);
-      const totalPecas = row.pedidoDianteiro + row.pedidoTraseiro + row.pedidoCoxao + row.pedidoAlcatrao + row.pedidoCostelaGaucha;
+      // 1. Volume e Custo real alocado do módulo de compras ou da matriz
+      const storeBatchItems = batches.flatMap(b => b.items || []).filter(it => it.storeId === row.storeId);
+      let volumeKg = 0;
+      let precoKg = BASE_PRICE_KG;
+      let custoTotalR$ = 0;
 
-      // 2. Preço médio pago por kg calculado ou com variações reais da negociação de cada filial
-      // Lojas de maior escala conseguem desconto de R$ 0,30 a R$ 0,80/kg; lojas com compras fracionadas pagam spread
-      let variacaoCentavos = 0;
-      if (volumeKg > 1800) {
-        variacaoCentavos = -0.65; // Desconto de escala
-      } else if (volumeKg > 1400) {
-        variacaoCentavos = -0.30;
-      } else if (volumeKg < 800) {
-        variacaoCentavos = +0.85; // Custo logístico fracionado
-      } else if (volumeKg < 1000) {
-        variacaoCentavos = +0.40;
+      if (storeBatchItems.length > 0) {
+        volumeKg = storeBatchItems.reduce((acc, it) => acc + (it.estimatedWeightKg || 0), 0);
+        custoTotalR$ = storeBatchItems.reduce((acc, it) => acc + (it.estimatedTotalR$ || 0), 0);
+        precoKg = volumeKg > 0 ? Number((custoTotalR$ / volumeKg).toFixed(2)) : BASE_PRICE_KG;
       } else {
-        variacaoCentavos = (idx % 3 === 0 ? -0.15 : (idx % 2 === 0 ? +0.20 : 0));
+        const boisTotal = row.pedidoFinal !== undefined && row.pedidoFinal > 0
+          ? row.pedidoFinal
+          : (row.boi || (row.pedidoDianteiro + row.pedidoTraseiro + row.pedidoCoxao + row.pedidoAlcatrao) / 2);
+        volumeKg = boisTotal > 0 ? boisTotal * technicalCarcassWeight : (row.boiAVenda > 0 ? row.boiAVenda * technicalCarcassWeight : 1200);
+        precoKg = BASE_PRICE_KG;
+        custoTotalR$ = volumeKg * precoKg;
       }
 
-      const precoKg = Number((BASE_PRICE_KG + variacaoCentavos).toFixed(2));
-      const precoArroba = Number((precoKg * 15).toFixed(2)); // 1 @ = 15 kg
-
-      const custoTotalR$ = volumeKg * precoKg;
-      const faturamentoProjetado = volumeKg * 38.65;
-      const margemProjetada = ((faturamentoProjetado - custoTotalR$) / faturamentoProjetado) * 100;
+      const totalPecas = row.pedidoDianteiro + row.pedidoTraseiro + row.pedidoCoxao + row.pedidoAlcatrao + row.pedidoCostelaGaucha;
+      const precoArroba = Number((precoKg * 15).toFixed(2));
+      const faturamentoProjetado = volumeKg * (BASE_PRICE_KG * 1.36);
+      const margemProjetada = volumeKg > 0 ? ((faturamentoProjetado - custoTotalR$) / faturamentoProjetado) * 100 : 0;
 
       // Classificação do Quadrante
       let cluster: 'EFFICIENT' | 'HIGH_COST' | 'OPPORTUNITY' | 'BALANCED' = 'BALANCED';
       if (volumeKg >= 1200 && precoKg <= BASE_PRICE_KG) {
-        cluster = 'EFFICIENT'; // Alto Volume & Baixo Custo (Melhor relação)
+        cluster = 'EFFICIENT';
       } else if (precoKg > BASE_PRICE_KG) {
-        cluster = 'HIGH_COST'; // Custo acima da média
+        cluster = 'HIGH_COST';
       } else {
-        cluster = 'OPPORTUNITY'; // Baixo volume mas bom preço
+        cluster = 'OPPORTUNITY';
       }
 
       return {
@@ -100,10 +108,10 @@ export const PurchaseScatterPlot: React.FC<PurchaseScatterPlotProps> = ({
         faturamentoProjetado,
         margemProjetada: Number(margemProjetada.toFixed(1)),
         cluster,
-        zSize: volumeKg // Tamanho do ponto proporcional ao volume
+        zSize: volumeKg
       };
     });
-  }, [rows, stores, metricUnit]);
+  }, [rows, stores, batches, metricUnit, technicalCarcassWeight, BASE_PRICE_KG]);
 
   // Médias para linhas de corte de referência
   const stats = useMemo(() => {

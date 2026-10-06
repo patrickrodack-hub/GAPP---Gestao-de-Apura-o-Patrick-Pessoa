@@ -103,21 +103,21 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="w-10 h-10 rounded-xl bg-[#0c140d] p-1 flex items-center justify-center shadow-md shadow-emerald-950/20 ring-1 ring-emerald-500/40 shrink-0 overflow-hidden">
               <img 
                 src="/icon.svg" 
-                alt="Patrick Pessoa - Gestão Integral de Compra" 
+                alt="Gestão Apuração do Boi" 
                 className="w-full h-full object-contain"
               />
             </div>
             <div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
-                  Grupo GAPP Sistemas
+                  Gestão Apuração do Boi
                 </h1>
                 <span className="text-[10px] px-1.5 py-0.2 rounded font-black bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/40 uppercase">
                   v10.3
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                Apuração do Boi • {storeCount} Filiais Conectadas
+                Grupo GAPP Sistemas • {storeCount} Filiais Conectadas
               </p>
             </div>
           </div>

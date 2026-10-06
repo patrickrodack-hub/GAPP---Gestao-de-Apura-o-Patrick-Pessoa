@@ -190,15 +190,15 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
             <div className="w-16 h-16 mx-auto rounded-2xl bg-[#0c140d] p-1 border border-emerald-500/40 shadow-xl shadow-emerald-950/20 mb-2 overflow-hidden flex items-center justify-center">
               <img 
                 src="/icon.svg" 
-                alt="Patrick Pessoa - Gestão Integral de Compra" 
+                alt="Gestão Apuração do Boi" 
                 className="w-full h-full object-contain"
               />
             </div>
             <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 block mb-0.5">
-              PATRICK PESSOA
+              GRUPO GAPP SISTEMAS
             </span>
             <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Gestão Integral de Compra
+              Gestão Apuração do Boi
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
               Lançamento Oficial de Estoque Bovino e Rendimento por Filial

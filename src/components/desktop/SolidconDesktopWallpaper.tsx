@@ -171,7 +171,7 @@ export const SolidconDesktopWallpaper: React.FC<SolidconDesktopWallpaperProps> =
         >
           <div className="flex items-center justify-center gap-2 mb-1">
             <span className="text-xs font-black uppercase tracking-wider text-slate-800">
-              GRUPO GAPP SISTEMAS • ERP APURAÇÃO DO BOI
+              GRUPO GAPP SISTEMAS • GESTÃO APURAÇÃO DO BOI
             </span>
             <span className="text-[10px] px-2 py-0.2 rounded font-bold bg-amber-500/30 text-amber-950 border border-amber-500/50">
               OFICIAL

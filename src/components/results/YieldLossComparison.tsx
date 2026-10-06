@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { SheetRowData, Store, PurchaseBatch, WasteRecord } from '../../types/erp';
 import { formatCurrencyBRL, formatNumberBR, CutYieldWeights, DEFAULT_CUT_YIELD_WEIGHTS } from '../../services/calculationService';
+import { StorageService } from '../../services/storageService';
 import { 
   Scale, 
   AlertTriangle, 
@@ -24,6 +25,14 @@ interface YieldLossComparisonProps {
   batches?: PurchaseBatch[];
   wasteRecords?: WasteRecord[];
   cutWeights?: CutYieldWeights;
+  yieldParams?: {
+    carcassWeight: number;
+    costPerKg: number;
+    fatPriceKg: number;
+    bonePriceKg: number;
+    targetMargin: number;
+    basis: 'carcass' | 'piece';
+  };
 }
 
 export const YieldLossComparison: React.FC<YieldLossComparisonProps> = ({
@@ -31,34 +40,36 @@ export const YieldLossComparison: React.FC<YieldLossComparisonProps> = ({
   stores,
   batches = [],
   wasteRecords = [],
-  cutWeights = DEFAULT_CUT_YIELD_WEIGHTS
+  cutWeights = DEFAULT_CUT_YIELD_WEIGHTS,
+  yieldParams
 }) => {
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'CRITICAL' | 'ATTENTION' | 'NORMAL'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStoreModal, setSelectedStoreModal] = useState<any | null>(null);
 
-  // Preço médio do custo de compra da carcaça por kg
-  const COST_PER_KG = 26.00;
+  // Parâmetros técnicos reais da base de dados
+  const technicalCarcassWeight = yieldParams?.carcassWeight || StorageService.getYieldParams()?.carcassWeight || 240;
+  const costPerKg = yieldParams?.costPerKg || (batches.length > 0 && batches[0].costPerKg > 0 ? batches[0].costPerKg : 26.00);
 
   // -------------------------------------------------------------
-  // CÁLCULO DA RECONCILIAÇÃO POR FILIAL (COMPRADO VS DESOSSADO)
+  // CÁLCULO DA RECONCILIAÇÃO POR FILIAL (COMPRADO VS DESOSSADO & VENDIDO)
   // -------------------------------------------------------------
   const reconciliationData = useMemo(() => {
     return rows.map((row) => {
       const store = stores.find(s => s.id === row.storeId);
       const storeName = store ? store.name : row.storeName;
 
-      // 1. VOLUME COMPRADO / DESTINADO (KG)
-      // Base: soma dos pedidos da loja ou lote de compras alocado (boi = carcaça equivalente ~240kg)
-      const boisComprados = (row.pedidoDianteiro + row.pedidoTraseiro + row.pedidoCoxao + row.pedidoAlcatrao) / 2;
-      const volumeCompradoKg = boisComprados > 0 
-        ? boisComprados * 240 
-        : (row.boiAVenda > 0 ? row.boiAVenda * 240 : 1200);
+      // 1. VOLUME COMPRADO / DESTINADO (KG) REAL
+      const storeBatchItems = batches.flatMap(b => b.items || []).filter(it => it.storeId === row.storeId);
+      const batchBoughtKg = storeBatchItems.reduce((acc, it) => acc + (it.estimatedWeightKg || 0), 0);
+      const boisComprados = row.pedidoFinal !== undefined && row.pedidoFinal > 0
+        ? row.pedidoFinal
+        : (row.boi || (row.pedidoDianteiro + row.pedidoTraseiro + row.pedidoCoxao + row.pedidoAlcatrao) / 2);
 
-      const custoCompraTotal = volumeCompradoKg * COST_PER_KG;
+      const volumeCompradoKg = batchBoughtKg > 0 ? batchBoughtKg : (boisComprados * technicalCarcassWeight);
+      const custoCompraTotal = volumeCompradoKg * costPerKg;
 
       // 2. VOLUME DESOSSADO EM BALCÃO (CARNE LIMPA EM KG)
-      // Soma de todos os cortes nobres, dianteiro e traseiro
       const cortesNobresKg = (row.alcatraKg || (row.alcatra * cutWeights.alcatra)) +
                             (row.contraFileKg || (row.contraFile * cutWeights.contraFile)) +
                             (row.picanhaKg || (row.picanha * cutWeights.picanha)) +
@@ -76,8 +87,12 @@ export const YieldLossComparison: React.FC<YieldLossComparisonProps> = ({
 
       const carneLimpaKg = cortesNobresKg + cortesDianteiroKg + cortesTraseiroKg;
 
-      // 3. DESCARTE JUSTIFICADO (SEBO E OSSO APURADOS)
-      // Verifica se há registros reais de pesagem na filial, caso contrário usa o padrão técnico de 24% da desossa comercial
+      // 3. CARNE LIMPA VENDIDA (VOLUME COMERCIALIZADO DA FILIAL)
+      // As vendas de carcaça geram 74.3% de carne limpa vendida aos clientes
+      const boisVendidos = (row.boiAVenda !== undefined ? row.boiAVenda : (row.venda || 0));
+      const vendasCarneKg = boisVendidos * technicalCarcassWeight * 0.743;
+
+      // 4. DESCARTE JUSTIFICADO (SEBO E OSSO APURADOS)
       const storeWasteRecords = wasteRecords.filter(w => w.storeId === row.storeId);
       let seboKg = 0;
       let ossoKg = 0;
@@ -92,8 +107,7 @@ export const YieldLossComparison: React.FC<YieldLossComparisonProps> = ({
       }
       const descarteTotalKg = seboKg + ossoKg;
 
-      // 4. ESTOQUE RETIDO EM CÂMARA FRIA (KG EQUIVALENTE)
-      // Peças inteiras penduradas (Quarto Traseiro ~60kg, Dianteiro ~60kg, Costela ~25kg, Coxão/Alcatrão ~30kg)
+      // 5. ESTOQUE RETIDO EM CÂMARA FRIA (KG EQUIVALENTE)
       const camaraDiantKg = row.camaraDianteiro * 60;
       const camaraTrasKg = row.camaraTraseiro * 60;
       const camaraCoxKg = row.camaraCoxao * 35;
@@ -101,25 +115,25 @@ export const YieldLossComparison: React.FC<YieldLossComparisonProps> = ({
       const camaraCostKg = row.camaraCostelaGaucha * 25;
       const estoqueCamaraKg = camaraDiantKg + camaraTrasKg + camaraCoxKg + camaraAlcKg + camaraCostKg;
 
-      // 5. VOLUME TOTAL APURADO
-      // Total de peso físico rastreado na loja
-      const volumeApuradoKg = carneLimpaKg + descarteTotalKg + estoqueCamaraKg;
+      // 6. QUEBRA OPERACIONAL FISIOLÓGICA (DESIDRATAÇÃO NORMAL DO GANCHO ~1.5%)
+      const quebraFisiologicaKg = volumeCompradoKg * 0.015;
 
-      // 6. DIVERGÊNCIA / QUEBRA NÃO JUSTIFICADA
-      // Se o volume apurado for menor que o comprado, temos perda não justificada
-      const quebraKg = Math.max(0, volumeCompradoKg - volumeApuradoKg);
+      // 7. VOLUME TOTAL APURADO (FÍSICO RASTREADO NA LOJA)
+      const volumeApuradoKg = vendasCarneKg + carneLimpaKg + descarteTotalKg + estoqueCamaraKg + quebraFisiologicaKg;
+
+      // 8. DIVERGÊNCIA / QUEBRA NÃO JUSTIFICADA
+      const quebraKg = volumeCompradoKg > volumeApuradoKg ? volumeCompradoKg - volumeApuradoKg : 0;
       const quebraPercent = volumeCompradoKg > 0 ? (quebraKg / volumeCompradoKg) * 100 : 0;
-      const perdaFinanceiraR$ = quebraKg * COST_PER_KG;
+      const perdaFinanceiraR$ = quebraKg * costPerKg;
 
       // Rendimento apurado de carne limpa
-      const rendimentoCarnePercent = volumeCompradoKg > 0 ? (carneLimpaKg / volumeCompradoKg) * 100 : 0;
+      const rendimentoCarnePercent = volumeCompradoKg > 0 ? ((vendasCarneKg + carneLimpaKg) / volumeCompradoKg) * 100 : 74.3;
 
-      // 7. STATUS DE AUDITORIA
-      // Tolerância aceitável de quebra operacional por desidratação/gotejamento: até 1.8%
+      // 9. STATUS DE AUDITORIA
       let status: 'NORMAL' | 'ATTENTION' | 'CRITICAL' = 'NORMAL';
-      if (quebraPercent > 3.0) {
+      if (quebraPercent > 3.5) {
         status = 'CRITICAL';
-      } else if (quebraPercent > 1.8) {
+      } else if (quebraPercent > 2.0) {
         status = 'ATTENTION';
       }
 
@@ -243,7 +257,7 @@ export const YieldLossComparison: React.FC<YieldLossComparisonProps> = ({
             {totals.totalCompradoKg.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} <span className="text-xs font-normal">kg</span>
           </div>
           <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-            Custo Base: {formatCurrencyBRL(totals.totalCompradoKg * COST_PER_KG)}
+            Custo Base: {formatCurrencyBRL(totals.totalCompradoKg * costPerKg)}
           </div>
         </div>
 

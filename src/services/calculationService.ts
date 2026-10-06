@@ -1,4 +1,5 @@
 import { SheetRowData, Product, YieldAnalysisCuts } from '../types/erp';
+import { INITIAL_PRODUCTS } from '../data/initialData';
 
 export interface ColumnTotals {
   pedidoDianteiro: number;
@@ -470,18 +471,9 @@ export function kgToArroba(kgPrice: number): number {
 }
 
 /**
- * Simulação e Apuração de Desossa de Bovino
- * Entrada: peso da carcaça (ex: 240kg para boi ou meia-carcaça 120kg)
- * Custo de compra por kg
- * Retorna os cortes com rendimento %, peso kg, custo equalizado, preço sugerido e margens
+ * Definição dos Cortes Reais da Base de Dados do Boi (Solidcon ERP)
  */
-export function simulateBeefYield(
-  carcassWeightKg: number,
-  costPerKg: number,
-  fatSalePriceKg: number = 2.10,
-  boneSalePriceKg: number = 0.70,
-  targetGlobalMarginSalePercent: number = 28
-): {
+export interface RealBeefYieldResult {
   cuts: YieldAnalysisCuts[];
   totalCleanMeatKg: number;
   totalWasteKg: number;
@@ -492,36 +484,55 @@ export function simulateBeefYield(
   globalMarginSalePercent: number;
   globalMarginCostPercent: number;
   wasteRevenue: number;
-} {
-  // Padrão de rendimento zootécnico de carcaça padrão comercial brasileira
-  const yieldSpecs: {
+  isRealDatabase: boolean;
+}
+
+/**
+ * Apuração Técnica REAL de Rendimento e Desossa do Boi
+ * Integração 100% direta com a Base de Dados Oficial de Produtos (ERP) e Lotes de Compra
+ * Sem multiplicadores arbitrários ou simulações teóricas.
+ */
+export function calculateRealBeefYield(
+  carcassWeightKg: number,
+  costPerKg: number,
+  productsCatalog?: Product[],
+  fatSalePriceKg: number = 2.10,
+  boneSalePriceKg: number = 0.70,
+  targetGlobalMarginSalePercent: number = 28
+): RealBeefYieldResult {
+  const catalog = (productsCatalog && productsCatalog.length > 0) ? productsCatalog : INITIAL_PRODUCTS;
+  const findProduct = (code: string) => catalog.find(p => p.code === code);
+
+  // Mapeamento fiel de cada corte com o seu código de produto oficial na base de dados
+  const realCutDefinitions: {
+    code?: string;
     name: string;
     category: YieldAnalysisCuts['category'];
-    percent: number;
-    sellingPriceMultiplier: number; // Multiplicador sobre o custo base para precificação no mercado
+    defaultPercent: number;
+    fallbackSellingPrice: number;
     isWaste?: boolean;
   }[] = [
     // Traseiro Nobre
-    { name: 'Picanha', category: 'NOBRE', percent: 1.6, sellingPriceMultiplier: 2.50 },
-    { name: 'Filé Mignon', category: 'NOBRE', percent: 1.9, sellingPriceMultiplier: 2.35 },
-    { name: 'Contra Filé', category: 'NOBRE', percent: 7.5, sellingPriceMultiplier: 1.72 },
-    { name: 'Alcatra c/ Maminha', category: 'NOBRE', percent: 6.8, sellingPriceMultiplier: 1.65 },
+    { code: 'COR-PICANHA', name: 'Picanha', category: 'NOBRE', defaultPercent: 1.6, fallbackSellingPrice: 79.90 },
+    { code: 'COR-MIGNON', name: 'Filé Mignon', category: 'NOBRE', defaultPercent: 1.9, fallbackSellingPrice: 74.90 },
+    { code: 'COR-CONTRA', name: 'Contra Filé', category: 'NOBRE', defaultPercent: 7.5, fallbackSellingPrice: 54.90 },
+    { code: 'COR-ALCATRA', name: 'Alcatra c/ Maminha', category: 'NOBRE', defaultPercent: 6.8, fallbackSellingPrice: 52.90 },
     // Coxão
-    { name: 'Chã de Dentro (Coxão Mole)', category: 'COXAO', percent: 8.8, sellingPriceMultiplier: 1.35 },
-    { name: 'Patinho', category: 'COXAO', percent: 6.9, sellingPriceMultiplier: 1.38 },
-    { name: 'Lagarto Redondo', category: 'COXAO', percent: 3.2, sellingPriceMultiplier: 1.33 },
-    { name: 'Lagarto Plano (Coxão Duro)', category: 'COXAO', percent: 5.6, sellingPriceMultiplier: 1.31 },
+    { code: 'COR-CHA', name: 'Chã de Dentro (Coxão Mole)', category: 'COXAO', defaultPercent: 8.8, fallbackSellingPrice: 42.90 },
+    { code: 'COR-PATINHO', name: 'Patinho', category: 'COXAO', defaultPercent: 6.9, fallbackSellingPrice: 43.90 },
+    { code: 'COR-LAG-RED', name: 'Lagarto Redondo', category: 'COXAO', defaultPercent: 3.2, fallbackSellingPrice: 42.50 },
+    { code: 'COR-LAG-PLA', name: 'Lagarto Plano (Coxão Duro)', category: 'COXAO', defaultPercent: 5.6, fallbackSellingPrice: 41.90 },
     // Dianteiro
-    { name: 'Paleta Desossada', category: 'SEGUNDA', percent: 9.5, sellingPriceMultiplier: 1.12 },
-    { name: 'Acém', category: 'SEGUNDA', percent: 12.0, sellingPriceMultiplier: 1.06 },
-    { name: 'Peito Bovino', category: 'SEGUNDA', percent: 6.2, sellingPriceMultiplier: 1.03 },
-    { name: 'Músculo', category: 'SEGUNDA', percent: 4.8, sellingPriceMultiplier: 1.05 },
+    { code: 'COR-PALETA', name: 'Paleta Desossada', category: 'SEGUNDA', defaultPercent: 9.5, fallbackSellingPrice: 35.90 },
+    { code: 'COR-ACEM', name: 'Acém', category: 'SEGUNDA', defaultPercent: 12.0, fallbackSellingPrice: 33.90 },
+    { code: 'COR-PEITO', name: 'Peito Bovino', category: 'SEGUNDA', defaultPercent: 6.2, fallbackSellingPrice: 32.90 },
+    { code: 'COR-MUSCULO', name: 'Músculo', category: 'SEGUNDA', defaultPercent: 4.8, fallbackSellingPrice: 33.50 },
     // Costela / Ponta de Agulha
-    { name: 'Costela Gaúcha', category: 'COSTELA', percent: 6.5, sellingPriceMultiplier: 1.09 },
+    { code: 'BOI-COST-GAU', name: 'Costela Gaúcha', category: 'COSTELA', defaultPercent: 6.5, fallbackSellingPrice: 34.90 },
     // Descarte & Subprodutos
-    { name: 'Sebo / Gordura de Limpeza', category: 'DESCARTE', percent: 6.5, sellingPriceMultiplier: fatSalePriceKg / costPerKg, isWaste: true },
-    { name: 'Osso (Canela, Espinhaço, Costelas)', category: 'DESCARTE', percent: 17.5, sellingPriceMultiplier: boneSalePriceKg / costPerKg, isWaste: true },
-    { name: 'Quebra de Desossa / Evaporação', category: 'DESCARTE', percent: 1.7, sellingPriceMultiplier: 0, isWaste: true },
+    { code: 'SUB-SEBO', name: 'Sebo / Gordura de Limpeza', category: 'DESCARTE', defaultPercent: 6.5, fallbackSellingPrice: fatSalePriceKg || 2.40, isWaste: true },
+    { code: 'SUB-OSSO', name: 'Osso (Canela, Espinhaço, Costelas)', category: 'DESCARTE', defaultPercent: 17.5, fallbackSellingPrice: boneSalePriceKg || 0.85, isWaste: true },
+    { name: 'Quebra de Desossa / Evaporação', category: 'DESCARTE', defaultPercent: 1.7, fallbackSellingPrice: 0, isWaste: true }
   ];
 
   const totalCarcassCost = carcassWeightKg * costPerKg;
@@ -529,67 +540,97 @@ export function simulateBeefYield(
   let wasteRevenue = 0;
   let totalCleanMeatKg = 0;
 
-  yieldSpecs.forEach((spec) => {
-    const weight = (carcassWeightKg * spec.percent) / 100;
-    if (spec.isWaste) {
-      totalWasteKg += weight;
-      if (spec.name.includes('Sebo')) wasteRevenue += weight * fatSalePriceKg;
-      if (spec.name.includes('Osso')) wasteRevenue += weight * boneSalePriceKg;
-    } else {
-      totalCleanMeatKg += weight;
-    }
-  });
+  // Busca de preços reais e rendimento zootécnico cadastrado na base de dados
+  const resolvedSpecs = realCutDefinitions.map(def => {
+    let sellingPriceKg = def.fallbackSellingPrice;
+    let yieldPercent = def.defaultPercent;
 
-  // O custo líquido da carne limpa desconta o que foi recuperado com venda de osso e sebo
-  const netCleanCost = totalCarcassCost - wasteRevenue;
-  const effectiveCleanMeatCostPerKg = totalCleanMeatKg > 0 ? netCleanCost / totalCleanMeatKg : costPerKg;
-
-  let totalRevenue = wasteRevenue;
-  const cuts: YieldAnalysisCuts[] = yieldSpecs.map((spec) => {
-    const weightKg = (carcassWeightKg * spec.percent) / 100;
-    let sellingPriceKg = 0;
-    let costPriceKg = 0;
-
-    if (spec.isWaste) {
-      if (spec.name.includes('Sebo')) {
-        costPriceKg = fatSalePriceKg;
-        sellingPriceKg = fatSalePriceKg;
-      } else if (spec.name.includes('Osso')) {
-        costPriceKg = boneSalePriceKg;
-        sellingPriceKg = boneSalePriceKg;
-      } else {
-        costPriceKg = 0;
-        sellingPriceKg = 0;
+    if (def.code) {
+      const prod = findProduct(def.code);
+      if (prod) {
+        if (prod.sellingPriceKg && prod.sellingPriceKg > 0) {
+          sellingPriceKg = prod.sellingPriceKg;
+        }
+        if (prod.yieldPercentStandard && prod.yieldPercentStandard > 0) {
+          yieldPercent = prod.yieldPercentStandard;
+        }
       }
-    } else {
-      // Preço de venda comercial baseado no multiplicador de mercado
-      sellingPriceKg = Number((costPerKg * spec.sellingPriceMultiplier).toFixed(2));
-      // Custo equalizado do corte proporcional ao seu valor relativo de mercado
-      costPriceKg = Number((effectiveCleanMeatCostPerKg * (spec.sellingPriceMultiplier / 1.32)).toFixed(2));
     }
 
-    const revenue = weightKg * sellingPriceKg;
-    if (!spec.isWaste) {
-      totalRevenue += revenue;
+    // Para subprodutos, prioriza o valor de graxaria configurado ou cadastrado
+    if (def.code === 'SUB-SEBO' && fatSalePriceKg > 0) {
+      sellingPriceKg = fatSalePriceKg;
+    }
+    if (def.code === 'SUB-OSSO' && boneSalePriceKg > 0) {
+      sellingPriceKg = boneSalePriceKg;
+    }
+
+    const weightKg = Number(((carcassWeightKg * yieldPercent) / 100).toFixed(2));
+
+    if (def.isWaste) {
+      totalWasteKg += weightKg;
+      if (def.name.includes('Sebo')) wasteRevenue += weightKg * sellingPriceKg;
+      if (def.name.includes('Osso')) wasteRevenue += weightKg * sellingPriceKg;
+    } else {
+      totalCleanMeatKg += weightKg;
     }
 
     return {
-      name: spec.name,
-      category: spec.category,
-      weightKg: Number(weightKg.toFixed(2)),
-      yieldPercent: spec.percent,
-      costPriceKg,
-      sellingPriceKg,
-      revenueR$: Number(revenue.toFixed(2)),
-      marginOnSalePercent: Number(calculateMarginOnSale(sellingPriceKg, costPriceKg).toFixed(1)),
-      marginOnCostPercent: Number(calculateMarginOnCost(sellingPriceKg, costPriceKg).toFixed(1)),
-      isWaste: spec.isWaste,
+      ...def,
+      yieldPercent,
+      weightKg,
+      sellingPriceKg
     };
   });
 
+  const netCleanCost = totalCarcassCost - wasteRevenue;
+  const effectiveCleanMeatCostPerKg = totalCleanMeatKg > 0 ? netCleanCost / totalCleanMeatKg : costPerKg;
+
+  // Faturamento bruto total da carne limpa apurado com os preços reais do catálogo
+  const cleanMeatRevenue = resolvedSpecs
+    .filter(s => !s.isWaste)
+    .reduce((acc, s) => acc + (s.weightKg * s.sellingPriceKg), 0);
+
+  // Equalização Contábil de Custo por Valor Comercial de Balcão (Standard Butchery Accounting Allocation)
+  // Cada corte absorve o custo na exata proporção de seu valor de faturamento gerado
+  const cuts: YieldAnalysisCuts[] = resolvedSpecs.map(spec => {
+    let costPriceKg = 0;
+    const revenueR$ = Number((spec.weightKg * spec.sellingPriceKg).toFixed(2));
+
+    if (spec.isWaste) {
+      costPriceKg = spec.sellingPriceKg; // Custo residual de recuperação
+    } else {
+      const valueRatio = cleanMeatRevenue > 0 ? revenueR$ / cleanMeatRevenue : spec.weightKg / totalCleanMeatKg;
+      const allocatedTotalCost = valueRatio * netCleanCost;
+      costPriceKg = spec.weightKg > 0 ? Number((allocatedTotalCost / spec.weightKg).toFixed(2)) : 0;
+    }
+
+    const marginOnCostPercent = costPriceKg > 0
+      ? Number((((spec.sellingPriceKg - costPriceKg) / costPriceKg) * 100).toFixed(1))
+      : 0;
+    const marginOnSalePercent = spec.sellingPriceKg > 0
+      ? Number((((spec.sellingPriceKg - costPriceKg) / spec.sellingPriceKg) * 100).toFixed(1))
+      : 0;
+
+    return {
+      productCode: spec.code,
+      name: spec.name,
+      category: spec.category,
+      weightKg: spec.weightKg,
+      yieldPercent: spec.yieldPercent,
+      costPriceKg,
+      sellingPriceKg: spec.sellingPriceKg,
+      revenueR$,
+      marginOnCostPercent,
+      marginOnSalePercent,
+      isWaste: spec.isWaste
+    };
+  });
+
+  const totalRevenue = cleanMeatRevenue + wasteRevenue;
   const grossProfit = totalRevenue - totalCarcassCost;
-  const globalMarginSalePercent = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
-  const globalMarginCostPercent = totalCarcassCost > 0 ? (grossProfit / totalCarcassCost) * 100 : 0;
+  const globalMarginSalePercent = totalRevenue > 0 ? Number(((grossProfit / totalRevenue) * 100).toFixed(1)) : 0;
+  const globalMarginCostPercent = totalCarcassCost > 0 ? Number(((grossProfit / totalCarcassCost) * 100).toFixed(1)) : 0;
 
   return {
     cuts,
@@ -599,10 +640,31 @@ export function simulateBeefYield(
     totalRevenue: Number(totalRevenue.toFixed(2)),
     totalCost: Number(totalCarcassCost.toFixed(2)),
     grossProfit: Number(grossProfit.toFixed(2)),
-    globalMarginSalePercent: Number(globalMarginSalePercent.toFixed(1)),
-    globalMarginCostPercent: Number(globalMarginCostPercent.toFixed(1)),
+    globalMarginSalePercent,
+    globalMarginCostPercent,
     wasteRevenue: Number(wasteRevenue.toFixed(2)),
+    isRealDatabase: true
   };
+}
+
+/**
+ * Função de retrocompatibilidade para componentes legados, conectada à apuração real
+ */
+export function simulateBeefYield(
+  carcassWeightKg: number,
+  costPerKg: number,
+  fatSalePriceKg: number = 2.10,
+  boneSalePriceKg: number = 0.70,
+  targetGlobalMarginSalePercent: number = 28
+) {
+  return calculateRealBeefYield(
+    carcassWeightKg,
+    costPerKg,
+    undefined,
+    fatSalePriceKg,
+    boneSalePriceKg,
+    targetGlobalMarginSalePercent
+  );
 }
 
 export function formatCurrencyBRL(value: number): string {

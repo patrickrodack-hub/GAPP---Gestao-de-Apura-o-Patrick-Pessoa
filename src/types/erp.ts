@@ -164,6 +164,7 @@ export interface PurchaseBatch {
 }
 
 export interface YieldAnalysisCuts {
+  productCode?: string;     // Código oficial do produto na base do ERP (ex: COR-PICANHA)
   name: string;
   category: 'NOBRE' | 'SEGUNDA' | 'COXAO' | 'COSTELA' | 'DESCARTE';
   weightKg: number;

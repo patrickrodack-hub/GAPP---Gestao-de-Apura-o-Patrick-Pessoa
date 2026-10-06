@@ -466,7 +466,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                         isSolidcon ? 'text-slate-800' : isLight ? 'text-slate-900' : 'text-white'
                       }`}
                     >
-                      Módulo de
+                      Gestão
                     </h1>
                     <h1 
                       className={`text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[1.08] ${
@@ -477,7 +477,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                           : 'text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-indigo-300'
                       }`}
                     >
-                      Gestão
+                      Apuração do Boi
                     </h1>
                   </div>
 
@@ -488,7 +488,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                     }`}
                   >
                     Ambiente corporativo oficial para apuração de compras de gado, 
-                    simulação zootécnica de rendimento de carcaças, auditoria de margens 
+                    apuração técnica e real de rendimento de carcaças, auditoria de margens 
                     e consolidação de estoque nas câmaras das 16 lojas filiais.
                   </p>
                 </div>

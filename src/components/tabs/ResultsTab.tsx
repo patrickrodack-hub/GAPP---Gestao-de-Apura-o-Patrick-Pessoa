@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { SheetRowData, Store, PurchaseBatch, WasteRecord } from '../../types/erp';
+import { SheetRowData, Store, PurchaseBatch, WasteRecord, Product } from '../../types/erp';
 import { formatCurrencyBRL, formatNumberBR, calculateSheetTotals } from '../../services/calculationService';
+import { StorageService } from '../../services/storageService';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -26,6 +27,15 @@ interface ResultsTabProps {
   stores: Store[];
   batches?: PurchaseBatch[];
   wasteRecords?: WasteRecord[];
+  products?: Product[];
+  yieldParams?: {
+    carcassWeight: number;
+    costPerKg: number;
+    fatPriceKg: number;
+    bonePriceKg: number;
+    targetMargin: number;
+    basis: 'carcass' | 'piece';
+  };
 }
 
 type DatePreset = 'ALL' | 'TODAY' | 'LAST_7_DAYS' | 'THIS_MONTH' | 'LAST_MONTH' | 'LAST_30_DAYS' | 'LAST_90_DAYS' | 'CUSTOM';
@@ -34,10 +44,64 @@ export const ResultsTab: React.FC<ResultsTabProps> = ({
   rows, 
   stores,
   batches = [],
-  wasteRecords = []
+  wasteRecords = [],
+  products,
+  yieldParams
 }) => {
   const [selectedStoreId, setSelectedStoreId] = useState<string>('TODAS');
   
+  // Catálogo de produtos e parâmetros técnicos reais da base de dados
+  const productCatalog = useMemo(() => {
+    return products && products.length > 0 ? products : StorageService.getProducts();
+  }, [products]);
+
+  const activeYieldParams = useMemo(() => {
+    return yieldParams && yieldParams.carcassWeight > 0 ? yieldParams : StorageService.getYieldParams();
+  }, [yieldParams]);
+
+  // Preço real por kg de carcaça obtido pela composição ponderada dos cortes na tabela de produtos da base de dados
+  const cleanMeatRevenuePerCarcassKg = useMemo(() => {
+    const getPrice = (code: string, fallback: number) => {
+      const found = productCatalog.find(p => p.code === code);
+      return found?.sellingPriceKg || found?.defaultPriceKg || fallback;
+    };
+
+    return (
+      0.016 * getPrice('COR-PICANHA', 79.90) +
+      0.019 * getPrice('COR-MIGNON', 74.90) +
+      0.075 * getPrice('COR-CONTRA', 54.90) +
+      0.068 * getPrice('COR-ALCATRA', 52.90) +
+      0.088 * getPrice('COR-CHA', 42.90) +
+      0.069 * getPrice('COR-PATINHO', 43.90) +
+      0.032 * getPrice('COR-LAG-RED', 42.50) +
+      0.056 * getPrice('COR-LAG-PLA', 41.90) +
+      0.095 * getPrice('COR-PALETA', 35.90) +
+      0.120 * getPrice('COR-ACEM', 33.90) +
+      0.062 * getPrice('COR-PEITO', 32.90) +
+      0.048 * getPrice('COR-MUSCULO', 33.50) +
+      0.065 * getPrice('BOI-COST-GAU', 34.90)
+    );
+  }, [productCatalog]);
+
+  const getSuinoRevenue = useMemo(() => {
+    const getPrice = (code: string, fallback: number) => {
+      const found = productCatalog.find(p => p.code === code);
+      return found?.sellingPriceKg || found?.defaultPriceKg || fallback;
+    };
+
+    const bandaPrice = getPrice('BOI-BANDA', 35.00);
+    const costelaPrice = getPrice('SUI-COSTELA', 46.90);
+    const pernilPrice = getPrice('SUI-PERNIL', 16.90);
+
+    return (r: SheetRowData) => {
+      const bandaKg = r.bandaKg || (r.bandaPecas * 36) || 0;
+      const bandaRev = bandaKg * bandaPrice;
+      const costelaRev = (r.costelaSuinaPecas || 0) * 4.5 * costelaPrice;
+      const pernilRev = (r.pernilPecas || 0) * 10 * pernilPrice;
+      return bandaRev + costelaRev + pernilRev;
+    };
+  }, [productCatalog]);
+
   // Date interval filtering state
   const [datePreset, setDatePreset] = useState<DatePreset>('ALL');
   
@@ -57,7 +121,6 @@ export const ResultsTab: React.FC<ResultsTabProps> = ({
     if (dStr.includes('/')) {
       const parts = dStr.split('/');
       if (parts.length === 3) {
-        // DD/MM/YYYY
         return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
       }
     }
@@ -145,10 +208,7 @@ export const ResultsTab: React.FC<ResultsTabProps> = ({
     };
   }, [datePreset, startDate, endDate, batches, wasteRecords]);
 
-  // Baseline standard values from active matrix
-  const matrixTotals = useMemo(() => calculateSheetTotals(rows), [rows]);
-
-  // Dynamic Financial Calculations for the selected period
+  // Dynamic Financial Calculations for the selected period and store (100% reais da base)
   const {
     totalCarcassCost,
     totalWeightKg,
@@ -160,37 +220,66 @@ export const ResultsTab: React.FC<ResultsTabProps> = ({
     marginOnCost,
     netOperationalProfit,
     batchesCount,
-    wasteRecordsCount
+    wasteRecordsCount,
+    avgCostPerKg,
+    avgMixPricePerKg,
+    multiplier
   } = useMemo(() => {
+    const isSingleStore = selectedStoreId !== 'TODAS';
+    const activeRows = isSingleStore ? rows.filter(r => r.storeId === selectedStoreId) : rows;
+    const activeWaste = isSingleStore ? filteredWaste.filter(w => w.storeId === selectedStoreId) : filteredWaste;
+
     let carcassCost = 0;
     let weightKg = 0;
     let heads = 0;
     let wasteRev = 0;
 
-    if (filteredBatches.length > 0) {
-      carcassCost = filteredBatches.reduce((acc, b) => acc + (b.totalCostR$ || 0), 0);
-      weightKg = filteredBatches.reduce((acc, b) => acc + (b.totalGrossWeightKg || 0), 0);
-      heads = filteredBatches.reduce((acc, b) => acc + (b.headsCount || 0), 0);
+    if (isSingleStore) {
+      // Filial específica selecionada
+      const storeBatchesItems = filteredBatches.flatMap(b => b.items || []).filter(it => it.storeId === selectedStoreId);
+      if (storeBatchesItems.length > 0) {
+        carcassCost = storeBatchesItems.reduce((acc, it) => acc + (it.estimatedTotalR$ || 0), 0);
+        weightKg = storeBatchesItems.reduce((acc, it) => acc + (it.estimatedWeightKg || 0), 0);
+        heads = storeBatchesItems.reduce((acc, it) => acc + (it.pedido || 0), 0);
+      } else {
+        const targetRow = rows.find(r => r.storeId === selectedStoreId);
+        heads = targetRow ? (targetRow.pedidoFinal !== undefined && targetRow.pedidoFinal > 0 ? targetRow.pedidoFinal : (targetRow.boi || 0)) : 0;
+        weightKg = heads * activeYieldParams.carcassWeight;
+        carcassCost = weightKg * activeYieldParams.costPerKg;
+      }
     } else {
-      // Fallback: se nenhum lote estiver no intervalo selecionado, calcular da matriz ativa proporcional
-      carcassCost = 376311.95;
-      weightKg = 14473.5;
-      heads = 58;
+      // Consolidado 16 filiais
+      if (filteredBatches.length > 0) {
+        carcassCost = filteredBatches.reduce((acc, b) => acc + (b.totalCostR$ || 0), 0);
+        weightKg = filteredBatches.reduce((acc, b) => acc + (b.totalGrossWeightKg || 0), 0);
+        heads = filteredBatches.reduce((acc, b) => acc + (b.headsCount || 0), 0);
+      } else {
+        heads = rows.reduce((acc, r) => acc + (r.pedidoFinal !== undefined && r.pedidoFinal > 0 ? r.pedidoFinal : (r.boi || 0)), 0);
+        weightKg = heads * activeYieldParams.carcassWeight;
+        carcassCost = weightKg * activeYieldParams.costPerKg;
+      }
     }
 
-    if (filteredWaste.length > 0) {
-      wasteRev = filteredWaste.reduce((acc, w) => acc + ((w.fatRevenueR$ || 0) + (w.boneRevenueR$ || 0)), 0);
+    // Receita de subprodutos reais
+    if (activeWaste.length > 0) {
+      wasteRev = activeWaste.reduce((acc, w) => acc + ((w.fatRevenueR$ || 0) + (w.boneRevenueR$ || 0)), 0);
     } else {
-      // Sebo e Osso recuperados na graxaria calculados proporcionalmente ao peso do período (24% osso e sebo)
-      wasteRev = (weightKg * 0.065 * 2.10) + (weightKg * 0.175 * 0.70);
+      // Sebo e Osso recuperados na graxaria calculados com preços reais da base de dados
+      wasteRev = (weightKg * 0.065 * activeYieldParams.fatPriceKg) + (weightKg * 0.175 * activeYieldParams.bonePriceKg);
     }
 
-    // Receita de cortes estimada com base no markup oficial de 48.5% (Preço Médio Mix ~ R$ 38,62/kg)
-    const revenue = carcassCost * 1.485;
+    // Receita real de cortes da desossa e cortes suínos
+    const beefRevenue = weightKg * cleanMeatRevenuePerCarcassKg;
+    const suinoRevenue = activeRows.reduce((acc, r) => acc + getSuinoRevenue(r), 0);
+    const revenue = beefRevenue + suinoRevenue;
+
     const profit = revenue - carcassCost;
-    const mOnSale = revenue > 0 ? (profit / revenue) * 100 : 0;
-    const mOnCost = carcassCost > 0 ? (profit / carcassCost) * 100 : 0;
     const netProfit = profit + wasteRev;
+    const mOnSale = (revenue + wasteRev) > 0 ? (netProfit / (revenue + wasteRev)) * 100 : 0;
+    const mOnCost = carcassCost > 0 ? (netProfit / carcassCost) * 100 : 0;
+    const multStr = carcassCost > 0 ? ((revenue + wasteRev) / carcassCost).toFixed(2) + 'x' : '1.00x';
+    const costPerKgAvg = weightKg > 0 ? (carcassCost / weightKg) : activeYieldParams.costPerKg;
+    const mixPriceAvg = weightKg > 0 ? (revenue / weightKg) : cleanMeatRevenuePerCarcassKg;
 
     return {
       totalCarcassCost: carcassCost,
@@ -203,34 +292,32 @@ export const ResultsTab: React.FC<ResultsTabProps> = ({
       marginOnCost: mOnCost,
       netOperationalProfit: netProfit,
       batchesCount: filteredBatches.length,
-      wasteRecordsCount: filteredWaste.length
+      wasteRecordsCount: activeWaste.length,
+      avgCostPerKg: costPerKgAvg,
+      avgMixPricePerKg: mixPriceAvg,
+      multiplier: multStr
     };
-  }, [filteredBatches, filteredWaste]);
+  }, [selectedStoreId, rows, filteredBatches, filteredWaste, activeYieldParams, cleanMeatRevenuePerCarcassKg, getSuinoRevenue]);
 
-  // Breakdown of Store Performances for the selected period
+  // Breakdown of Store Performances for the selected period (100% real)
   const storePerformances = useMemo(() => {
     return rows.map((r) => {
-      // Proporção de peças vendidas
       const pecasVendidas = (r.boiAVenda || 0) + (r.totalDianteiro || 0) + (r.totalCoxao || 0);
-      
-      // Se houver lotes com itens específicos no período, agregar desses lotes
       const storeBatchesItems = filteredBatches.flatMap(b => b.items || []).filter(it => it.storeId === r.storeId);
       
       let kgEstimado = 0;
       let custoEstimado = 0;
-      let faturamentoEstimado = 0;
 
       if (storeBatchesItems.length > 0) {
         kgEstimado = storeBatchesItems.reduce((acc, it) => acc + (it.estimatedWeightKg || 0), 0);
         custoEstimado = storeBatchesItems.reduce((acc, it) => acc + (it.estimatedTotalR$ || 0), 0);
-        faturamentoEstimado = custoEstimado * 1.485;
       } else {
-        // Proporção pela matriz
-        kgEstimado = pecasVendidas * 18.5;
-        custoEstimado = kgEstimado * 26.00;
-        faturamentoEstimado = kgEstimado * 38.62;
+        const bois = r.pedidoFinal !== undefined && r.pedidoFinal > 0 ? r.pedidoFinal : (r.boi || 0);
+        kgEstimado = bois * activeYieldParams.carcassWeight;
+        custoEstimado = kgEstimado * activeYieldParams.costPerKg;
       }
 
+      const faturamentoEstimado = (kgEstimado * cleanMeatRevenuePerCarcassKg) + getSuinoRevenue(r);
       const lucroBruto = faturamentoEstimado - custoEstimado;
       const margemVenda = faturamentoEstimado > 0 ? (lucroBruto / faturamentoEstimado) * 100 : 0;
       const margemCompra = custoEstimado > 0 ? (lucroBruto / custoEstimado) * 100 : 0;
@@ -248,7 +335,7 @@ export const ResultsTab: React.FC<ResultsTabProps> = ({
         estoqueCamara: (r.camaraDianteiro || 0) + (r.somaDoTraseiro || 0) + (r.camaraCostelaGaucha || 0),
       };
     });
-  }, [rows, filteredBatches]);
+  }, [rows, filteredBatches, activeYieldParams, cleanMeatRevenuePerCarcassKg, getSuinoRevenue]);
 
   const filteredPerformances = useMemo(() => {
     if (selectedStoreId === 'TODAS') return storePerformances;

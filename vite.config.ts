@@ -10,13 +10,13 @@ export default defineConfig(() => {
       react(),
       tailwindcss(),
       VitePWA({
-        registerType: 'prompt',
+        registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
         manifest: {
           id: '/',
-          name: 'Patrick Pessoa - Gestão Integral de Compra',
-          short_name: 'PatrickPessoa',
-          description: 'Gestão Integral de Compra Personalizado por Patrick Pessoa - Apuração do Boi, Rendimento de Desossa e Controle de Estoque.',
+          name: 'Gestão Apuração do Boi',
+          short_name: 'Gestão Apuração do Boi',
+          description: 'Gestão Apuração do Boi - Sistema completo de gestão de ciclo de compra, rendimento de desossa, controle de estoque e apuração de resultados da carne bovina.',
           theme_color: '#131e14',
           background_color: '#131e14',
           display: 'standalone',
@@ -45,6 +45,9 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
+          cleanupOutdatedCaches: true,
+          clientsClaim: true,
+          skipWaiting: true,
           maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
           runtimeCaching: [

@@ -126,13 +126,13 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({
               </div>
               <div>
                 <span className="inline-block text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full mb-1">
-                  {isIOS ? 'Versão iOS Apple' : isAndroid ? 'Versão Android' : 'Instalação Mobile PWA'}
+                  {isIOS ? 'Versão iOS Apple' : isAndroid ? 'Versão Android' : 'Computador & Celular PWA'}
                 </span>
                 <h2 className="text-lg font-black tracking-tight leading-tight">
-                  Instalar Aplicativo no Celular
+                  Criar Atalho no Computador ou Celular
                 </h2>
                 <p className="text-xs text-emerald-200 font-medium">
-                  Patrick Pessoa • Gestão Integral de Compra Personalizado
+                  Gestão Apuração do Boi • ERP Oficial
                 </p>
               </div>
             </div>
@@ -158,10 +158,10 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({
               </div>
               <div>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                  Aplicativo Pronto para Uso!
+                  Atalho "Gestão Apuração do Boi" Pronto!
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 max-w-sm mx-auto">
-                  O ícone do ERP Apuração do Boi já está configurado no seu dispositivo com suporte a tela cheia e sincronização direta com a rede.
+                  O atalho oficial com o ícone do sistema já está configurado no seu computador ou celular com suporte a tela cheia e sincronização contínua.
                 </p>
               </div>
 
@@ -339,8 +339,8 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({
                 >
                   <Download className="w-4 h-4 stroke-[2.5]" />
                   {isIOS 
-                    ? 'Confirmar Instalação no iPhone / iPad' 
-                    : 'Instalar Agora no Celular (Criar Ícone)'}
+                    ? 'Confirmar Atalho no iPhone / iPad' 
+                    : 'Criar Atalho "Gestão Apuração do Boi"'}
                 </button>
 
                 <button

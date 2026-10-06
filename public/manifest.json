@@ -1,0 +1,32 @@
+{
+  "id": "/",
+  "name": "Gestão Apuração do Boi",
+  "short_name": "Gestão Apuração do Boi",
+  "description": "Gestão Apuração do Boi - Sistema completo de gestão de ciclo de compra, rendimento de desossa, controle de estoque e apuração de resultados da carne bovina.",
+  "theme_color": "#131e14",
+  "background_color": "#131e14",
+  "display": "standalone",
+  "orientation": "any",
+  "start_url": "/",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
