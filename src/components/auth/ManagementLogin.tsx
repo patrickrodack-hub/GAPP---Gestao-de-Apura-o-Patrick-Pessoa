@@ -236,7 +236,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                 isSolidcon ? 'text-blue-200' : isLight ? 'text-slate-500' : 'text-zinc-400'
               }`}
             >
-              Módulo de Gestão • Apuração do Boi v10.3
+              Módulo de Gestão • Gestão Apuração do Boi v10.4
             </span>
           </div>
         </div>
@@ -348,7 +348,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                 <div className="flex items-center gap-2">
                   <Monitor className="w-4 h-4 text-sky-200" />
                   <span className="tracking-wide">
-                    GAPP Classic • Autenticação de Acesso ao Sistema - Apuração do Boi v10.3
+                    GAPP Classic • Autenticação de Acesso ao Sistema - Gestão Apuração do Boi v10.4
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -434,7 +434,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                             : 'text-transparent bg-clip-text bg-gradient-to-r from-white via-emerald-100 to-emerald-300'
                         }`}
                       >
-                        Apuração do BOI v10.3
+                        Gestão Apuração do Boi v10.4
                       </span>
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                         <span 
@@ -752,7 +752,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
           isSolidcon ? 'text-blue-200/70 font-mono' : isLight ? 'text-slate-500' : 'text-zinc-500'
         }`}
       >
-        Grupo GAPP • Patrick Pessoa • Apuração do Boi v10.3 • 16 Filiais Conectadas
+        Grupo GAPP • Patrick Pessoa • Gestão Apuração do Boi v10.4 • 16 Filiais Conectadas
       </footer>
 
     </div>

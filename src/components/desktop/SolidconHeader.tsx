@@ -300,7 +300,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
 
   const getActiveTabTitle = () => {
     switch (activeTab) {
-      case 'sheet': return 'Planilha de Compra da Direção da Empresa v10.3 - Matriz 16 Filiais';
+      case 'sheet': return 'Planilha de Compra da Direção da Empresa v10.4 - Matriz 16 Filiais';
       case 'dashboard': return 'Painel Executivo Geral - Apuração do Boi';
       case 'yield': return 'Análise Técnica de Rendimento, Desossa e Cortes';
       case 'results': return 'DRE Gerencial, Margens de Compra e Venda (Markup)';
@@ -411,7 +411,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
 
                       {/* Footer hint */}
                       <div className="px-3 pt-1.5 pb-0.5 border-t border-slate-100 flex items-center justify-between text-[9px] text-slate-400">
-                        <span>Grupo GAPP Sistemas v10.3</span>
+                        <span>Grupo GAPP Sistemas v10.4</span>
                         <span>[ESC] para fechar</span>
                       </div>
                     </div>
@@ -539,7 +539,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
                 <span className="hidden xl:inline">Novo Lote</span>
               </button>
 
-              {/* Planilha Matriz v10.3 */}
+              {/* Planilha Matriz v10.4 */}
               <button
                 onClick={() => onTabChange('sheet')}
                 className={`h-7.5 px-2.5 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 ${
@@ -547,10 +547,10 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
                     ? 'bg-[#0078d7] text-white border-[#005a9e] shadow-sm'
                     : 'bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800'
                 }`}
-                title="Planilha Matriz da Direção v10.3 (F2)"
+                title="Planilha Matriz da Direção v10.4 (F2)"
               >
                 <FileSpreadsheet className={`w-3.5 h-3.5 ${activeTab === 'sheet' && !isDesktopView ? 'text-white' : 'text-blue-700'}`} />
-                <span>Matriz v10.3</span>
+                <span>Matriz v10.4</span>
               </button>
 
               {/* Salvar / Gravar */}
@@ -742,11 +742,11 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
                 </button>
               )}
 
-              {/* Restaurar v10.3 */}
+              {/* Restaurar v10.4 */}
               <button
                 onClick={onReset}
                 className="h-7.5 w-7.5 flex items-center justify-center rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800"
-                title="Restaurar Planilha Oficial da Direção v10.3 (F5)"
+                title="Restaurar Planilha Oficial da Direção v10.4 (F5)"
               >
                 <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
               </button>

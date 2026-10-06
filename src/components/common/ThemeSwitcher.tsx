@@ -71,7 +71,7 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ variant = 'full' }
           <div className="absolute right-0 mt-1 w-64 bg-white border border-[#9ca3af] shadow-2xl rounded-md z-[9999] p-1.5 text-xs animate-scale-in font-sans">
             <div className="px-2 py-1 border-b border-slate-200 font-bold text-slate-700 text-[11px] uppercase tracking-wide flex items-center justify-between">
               <span>Selecione o Tema</span>
-              <span className="text-[10px] text-slate-500 font-normal">v10.3</span>
+              <span className="text-[10px] text-slate-500 font-normal">v10.4</span>
             </div>
             <div className="mt-1 space-y-1">
               {themes.map(t => {

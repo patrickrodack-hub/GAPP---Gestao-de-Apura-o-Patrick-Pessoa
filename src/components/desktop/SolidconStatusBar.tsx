@@ -100,7 +100,7 @@ export const SolidconStatusBar: React.FC<SolidconStatusBarProps> = ({ storeCount
 
         {/* Identificação Corporativa */}
         <div className="hidden lg:flex items-center gap-1.5 text-slate-500 font-mono text-[10px] border-l border-slate-300 pl-2.5">
-          <span>GRUPO GAPP SISTEMAS v10.3</span>
+          <span>GRUPO GAPP SISTEMAS v10.4</span>
         </div>
       </div>
 

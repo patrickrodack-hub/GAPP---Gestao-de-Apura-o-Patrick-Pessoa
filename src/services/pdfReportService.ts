@@ -319,7 +319,7 @@ export class PdfReportService {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(6.5);
         doc.setTextColor(148, 163, 184);
-        doc.text('Grupo GAPP Sistemas • ERP Apuração do Boi v10.3 • Portal: www.gipp-site.vercel.app', margin, footerY + 12);
+        doc.text('Grupo GAPP Sistemas • ERP Apuração do Boi v10.4 • Portal: www.gipp-site.vercel.app', margin, footerY + 12);
 
         const totalPages = doc.getNumberOfPages();
         const pageStr = `Página ${data.pageNumber} de ${totalPages}`;
@@ -396,7 +396,7 @@ export class PdfReportService {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(71, 85, 105);
-    doc.text(`Matriz Oficial Consolidada de 16 Filiais • v10.3 • Validação de Compra & Apuração • Emissão: ${emissionDateFormatted} às ${emissionTimeFormatted}`, headerLeftX, margin + 13);
+    doc.text(`Matriz Oficial Consolidada de 16 Filiais • v10.4 • Validação de Compra & Apuração • Emissão: ${emissionDateFormatted} às ${emissionTimeFormatted}`, headerLeftX, margin + 13);
 
     // Meta Direita
     doc.setFont('helvetica', 'bold');
@@ -598,7 +598,7 @@ export class PdfReportService {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(5.5);
         doc.setTextColor(148, 163, 184);
-        doc.text('Grupo GAPP Sistemas • ERP Apuração do Boi v10.3 • Planilha de Compras Oficial • Patrick Pessoa', margin, footerY);
+        doc.text('Grupo GAPP Sistemas • ERP Apuração do Boi v10.4 • Planilha de Compras Oficial • Patrick Pessoa', margin, footerY);
 
         const totalPages = doc.getNumberOfPages();
         const pageStr = `Página ${data.pageNumber} de ${totalPages}`;

@@ -230,7 +230,7 @@ export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
                     PLANILHA OFICIAL DE COMPRAS E APURAÇÃO DO BOI
                   </h2>
                   <p className="text-[11px] text-slate-600">
-                    Matriz Oficial Consolidada de 16 Filiais • v10.3 • Validação Contábil de Compra e Desossa
+                    Matriz Oficial Consolidada de 16 Filiais • v10.4 • Validação Contábil de Compra e Desossa
                   </p>
                 </div>
               </div>
@@ -238,7 +238,7 @@ export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
               <div className="text-right bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-600">
                 <div><strong>Data de Emissão:</strong> {emissionDateFormatted} às {emissionTimeFormatted}</div>
                 <div><strong>Operador Responsável:</strong> {sessionUser?.name || 'Patrick Pessoa (Direção de Carnes)'}</div>
-                <div className="text-[10px] font-mono text-slate-400 mt-0.5">Autenticação: GAPP-SHEET-OFFICIAL-v10.3</div>
+                <div className="text-[10px] font-mono text-slate-400 mt-0.5">Autenticação: GAPP-SHEET-OFFICIAL-v10.4</div>
               </div>
             </div>
 

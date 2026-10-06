@@ -113,7 +113,7 @@ export const Header: React.FC<HeaderProps> = ({
                   Gestão Apuração do Boi
                 </h1>
                 <span className="text-[10px] px-1.5 py-0.2 rounded font-black bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/40 uppercase">
-                  v10.3
+                  v10.4
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
@@ -320,7 +320,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={onReset}
                 className="h-7.5 w-7.5 flex items-center justify-center rounded-lg hover:bg-red-100 dark:hover:bg-red-950/40 text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 transition cursor-pointer"
-                title="Restaurar Planilha Oficial da Direção v10.3 (F5)"
+                title="Restaurar Planilha Oficial da Direção v10.4 (F5)"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>

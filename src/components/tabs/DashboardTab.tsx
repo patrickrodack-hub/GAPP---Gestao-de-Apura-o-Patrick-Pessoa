@@ -699,7 +699,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <StoreIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Giro das 16 Lojas & Sugestões de Reposição da Planilha v10.1</span>
+              <span>Giro das 16 Lojas & Sugestões de Reposição da Planilha v10.4</span>
             </h3>
             <button
               onClick={() => onNavigate('sheet')}
@@ -778,7 +778,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             </span>
             <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 group-hover:translate-x-1 transition" />
           </div>
-          <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Planilha da Direção v10.1</h4>
+          <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Planilha da Direção v10.4</h4>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Acesse a matriz com todas as 16 lojas, edição de células e totais idênticos ao PDF.
           </p>

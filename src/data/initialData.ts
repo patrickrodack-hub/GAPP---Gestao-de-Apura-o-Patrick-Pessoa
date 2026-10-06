@@ -988,7 +988,7 @@ export const INITIAL_SUPPLIERS: Supplier[] = [
 // ==========================================
 export const ALL_SYSTEM_MODULES = [
   { id: 'dashboard', label: 'Painel Geral', description: 'Visão executiva, tendências D3.js e KPIs em tempo real' },
-  { id: 'sheet', label: 'Planilha Direção v10.1', description: 'Planilha matriz oficial de compras (16 filiais)' },
+  { id: 'sheet', label: 'Planilha Direção v10.4', description: 'Planilha matriz oficial de compras (16 filiais)' },
   { id: 'yield', label: 'Desossa & Rendimento', description: 'Simulador zootécnico e apuração de carne limpa' },
   { id: 'results', label: 'Apuração & Margens', description: 'Demonstrativo de Resultados (DRE), CMV e Markups' },
   { id: 'inventory', label: 'Estoque & Câmaras', description: 'Lançamentos de balcão e câmaras frigoríficas' },

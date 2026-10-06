@@ -153,7 +153,7 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
                       Documento Oficial de Compra
                     </span>
                     <span className="text-[10px] font-bold text-slate-500 font-mono">
-                      v10.1 MATRIZ
+                      v10.4 MATRIZ
                     </span>
                   </div>
                   <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-1">

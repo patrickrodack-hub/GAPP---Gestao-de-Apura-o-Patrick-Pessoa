@@ -543,7 +543,7 @@ export default function App() {
 
   // Reset to original data
   const handleReset = () => {
-    if (window.confirm('Deseja restaurar todos os dados originais da Planilha de Compra da Direção v10.3? Quaisquer edições manuais serão redefinidas.')) {
+    if (window.confirm('Deseja restaurar todos os dados originais da Planilha de Compra da Direção v10.4? Quaisquer edições manuais serão redefinidas.')) {
       const defaults = StorageService.resetAllToDefaults();
       setProducts(defaults.products);
       setStores(defaults.stores);
@@ -551,7 +551,7 @@ export default function App() {
       setBatches(defaults.batches);
       setWasteRecords(defaults.waste);
       setSuppliers(defaults.suppliers);
-      showToast('Dados oficiais da Planilha v10.3 restaurados!');
+      showToast('Dados oficiais da Planilha v10.4 restaurados!');
     }
   };
 
@@ -599,7 +599,7 @@ export default function App() {
       handleTabSelect(tab);
       const tabNames: Record<NavigationTab, string> = {
         dashboard: 'Painel Geral (Alt+1)',
-        sheet: 'Planilha Direção v10.3 (Alt+2)',
+        sheet: 'Planilha Direção v10.4 (Alt+2)',
         yield: 'Desossa & Rendimento (Alt+3)',
         results: 'DRE & Margens (Alt+4)',
         inventory: 'Estoque & Câmaras (Alt+5)',
@@ -639,7 +639,7 @@ export default function App() {
 
   const getActiveTabTitle = () => {
     switch (activeTab) {
-      case 'sheet': return 'Planilha de Compra da Direção v10.3 (Matriz 16 Filiais)';
+      case 'sheet': return 'Planilha de Compra da Direção v10.4 (Matriz 16 Filiais)';
       case 'dashboard': return 'Painel Executivo Geral';
       case 'yield': return 'Rendimento e Desossa do Boi';
       case 'results': return 'Apuração de Resultados DRE e Margens';
@@ -673,7 +673,7 @@ export default function App() {
                 <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950">
                   Nova Versão Disponível
                 </span>
-                <span className="text-[10px] text-emerald-400 font-mono">v10.3</span>
+                <span className="text-[10px] text-emerald-400 font-mono">v10.4</span>
               </div>
               <h3 className="text-sm font-bold text-white tracking-tight leading-snug">
                 Atualização Pronta: Gestão Apuração do Boi
@@ -854,7 +854,7 @@ export default function App() {
                 <div className="shrink-0 bg-[#f1f5f9] border-b border-slate-300 px-3 py-1 flex items-center justify-between text-xs select-none">
                   <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar py-0.5">
                     {[
-                      { id: 'sheet', label: 'Planilha v10.3' },
+                      { id: 'sheet', label: 'Planilha v10.4' },
                       { id: 'dashboard', label: 'Dashboard' },
                       { id: 'yield', label: 'Rendimento & Desossa' },
                       { id: 'results', label: 'DRE & Margens' },
@@ -1283,7 +1283,7 @@ export default function App() {
             </span>
           </div>
           <div className="text-[11px] text-slate-500 dark:text-slate-400">
-            Planilha Matriz Oficial da Direção v10.3 • 16 Filiais Integradas
+            Planilha Matriz Oficial da Direção v10.4 • 16 Filiais Integradas
           </div>
         </div>
       </footer>
