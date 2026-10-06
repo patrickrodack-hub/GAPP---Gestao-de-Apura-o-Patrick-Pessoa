@@ -18,10 +18,14 @@ import {
   AlertTriangle,
   ShieldAlert,
   Maximize2,
-  Minimize2
+  Minimize2,
+  FileText,
+  Download,
+  BookOpen
 } from 'lucide-react';
 import { PortalTheme } from './MobileStockPortal';
 import { requestPortalFullscreen } from '../../utils/fullscreen';
+import { ManualPdfService } from '../../services/manualPdfService';
 
 interface PortalLoginProps {
   stores: Store[];
@@ -350,9 +354,9 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
             </div>
           </div>
 
-          {/* Link para Instalação no Celular */}
-          {!isStandalone && onOpenInstallModal && (
-            <div className="pt-2 text-center border-t border-slate-100 dark:border-slate-800">
+          {/* Link para Instalação no Celular & Manual em PDF */}
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-2">
+            {!isStandalone && onOpenInstallModal && (
               <button
                 type="button"
                 onClick={onOpenInstallModal}
@@ -361,8 +365,19 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
                 <Smartphone className="w-3.5 h-3.5" />
                 <span>Instalar aplicativo na tela inicial do celular</span>
               </button>
-            </div>
-          )}
+            )}
+
+            <button
+              type="button"
+              onClick={() => ManualPdfService.generateAndDownloadPortalManual()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-xs font-bold shadow-xs active:scale-95 transition cursor-pointer"
+              title="Baixar Manual Prático do Portal das Filiais em PDF"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Baixar Manual do Usuário (PDF)</span>
+              <Download className="w-3 h-3 text-emerald-600 dark:text-emerald-400 ml-0.5" />
+            </button>
+          </div>
         </div>
       </div>
 

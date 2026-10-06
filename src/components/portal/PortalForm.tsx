@@ -34,10 +34,13 @@ import {
   HelpCircle,
   X,
   Maximize2,
-  Minimize2
+  Minimize2,
+  BookOpen,
+  Download
 } from 'lucide-react';
 import { PortalLaunchHistory } from './PortalLaunchHistory';
 import { PortalTheme } from './MobileStockPortal';
+import { ManualPdfService } from '../../services/manualPdfService';
 
 interface PortalFormProps {
   store: Store;
@@ -69,6 +72,17 @@ export const PortalForm: React.FC<PortalFormProps> = ({
   const [launchNotes, setLaunchNotes] = useState('');
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successModalData, setSuccessModalData] = useState<{
+    date: string;
+    storeName: string;
+    operatorName: string;
+    totalPieces: number;
+    totalKg: number;
+    boisEquivalente: number;
+    recebeuBoiHoje: boolean;
+    notes?: string;
+  } | null>(null);
   const [historyRecords, setHistoryRecords] = useState<StockLaunchRecord[]>(() => StorageService.getStockLaunchRecords());
 
   // Pergunta obrigatória: Recebeu BOI hoje?
@@ -283,6 +297,19 @@ export const PortalForm: React.FC<PortalFormProps> = ({
     setIsSavedToast(true);
     setTimeout(() => setIsSavedToast(false), 4500);
 
+    // Abre a caixa de diálogo de confirmação solicitada pelo usuário
+    setSuccessModalData({
+      date: formattedDate,
+      storeName: store.name,
+      operatorName: operatorName,
+      totalPieces: totalPecas,
+      totalKg: Math.round(totalKg),
+      boisEquivalente: finalRow.boi || 0,
+      recebeuBoiHoje: recebeuBoiHoje ?? false,
+      notes: launchNotes.trim()
+    });
+    setShowSuccessModal(true);
+
     // Limpa os campos do formulário para o próximo lançamento
     const cleanRow = getZeroedRow();
     setDraft(cleanRow);
@@ -406,6 +433,17 @@ export const PortalForm: React.FC<PortalFormProps> = ({
               )}
             </button>
           )}
+
+          {/* Botão Baixar Manual PDF */}
+          <button
+            type="button"
+            onClick={() => ManualPdfService.generateAndDownloadPortalManual()}
+            className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/80 transition cursor-pointer flex items-center gap-1"
+            title="Baixar Manual Prático do Usuário (PDF)"
+          >
+            <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="hidden sm:inline text-xs font-bold">Manual</span>
+          </button>
 
           {/* Theme Switcher Toggle (Claro / Escuro) */}
           <button
@@ -1102,6 +1140,79 @@ export const PortalForm: React.FC<PortalFormProps> = ({
           theme={theme}
           onToggleTheme={onToggleTheme}
         />
+      )}
+
+      {/* Modal / Box de Confirmação: Pedido salvo e enviado com sucesso */}
+      {showSuccessModal && successModalData && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in font-sans">
+          <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500 rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-center transition-colors animate-scale-in">
+            
+            {/* Icon & Badge */}
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 border-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-lg mb-2">
+                <CheckCircle2 className="w-9 h-9" />
+              </div>
+              
+              <span className="text-[10px] font-mono uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                CONFIRMAÇÃO DE ENVIO
+              </span>
+
+              <h3 className="text-lg font-black text-slate-900 dark:text-white mt-2 leading-tight">
+                Pedido salvo e enviado com sucesso
+              </h3>
+              
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Os dados foram registrados no banco e transmitidos em tempo real para a Planilha da Direção.
+              </p>
+            </div>
+
+            {/* Summary Details */}
+            <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 p-3.5 text-left space-y-2 text-xs">
+              <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-1.5">
+                <span className="text-slate-500 text-[11px]">Filial / Loja:</span>
+                <strong className="text-slate-900 dark:text-white font-bold">{successModalData.storeName}</strong>
+              </div>
+
+              <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-1.5">
+                <span className="text-slate-500 text-[11px]">Responsável:</span>
+                <strong className="text-slate-800 dark:text-slate-200">{successModalData.operatorName}</strong>
+              </div>
+
+              <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-1.5">
+                <span className="text-slate-500 text-[11px]">Data e Hora:</span>
+                <span className="text-slate-700 dark:text-slate-300 font-mono text-[11px]">{successModalData.date}</span>
+              </div>
+
+              <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-1.5">
+                <span className="text-slate-500 text-[11px]">Recebeu Boi Hoje?</span>
+                <strong className={successModalData.recebeuBoiHoje ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-amber-600 dark:text-amber-400 font-bold'}>
+                  {successModalData.recebeuBoiHoje ? 'SIM (Recebido)' : 'NÃO (Sem Recebimento)'}
+                </strong>
+              </div>
+
+              <div className="flex items-center justify-between pt-0.5">
+                <span className="text-slate-500 text-[11px]">Total Lançado:</span>
+                <strong className="text-emerald-600 dark:text-emerald-400 font-bold font-mono">
+                  {successModalData.totalPieces} peças ({successModalData.boisEquivalente} bois)
+                </strong>
+              </div>
+            </div>
+
+            {/* Close Button */}
+            <div className="pt-2">
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-extrabold text-sm shadow-md active:scale-98 transition cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Check className="w-4 h-4" />
+                <span>Fechar</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
       )}
     </div>
   );

@@ -31,7 +31,8 @@ import {
   Clock,
   Smartphone,
   Power,
-  Cloud
+  Cloud,
+  BookOpen
 } from 'lucide-react';
 
 export interface ERPMenuItem {
@@ -885,6 +886,40 @@ export const getERPMenuCategories = (
     accessKey: 'U',
     divisionArea: 'Documentação & Suporte Técnico',
     items: [
+      {
+        id: 'hlp-manuais',
+        name: 'Central de Manuais do Usuário (PDF)',
+        division: 'Documentação Oficial',
+        code: 'HLP-00',
+        shortcut: 'Ctrl+F1',
+        badge: 'PDF',
+        description: 'Baixar Manual do Sistema ERP e Manual do Portal das Lojas em PDF',
+        icon: BookOpen,
+        actionType: 'modal',
+        actionId: 'manuals'
+      },
+      {
+        id: 'hlp-manual-erp',
+        name: 'Manual do Usuário - Sistema ERP (PDF)',
+        division: 'Diretoria & Gestão',
+        code: 'DOC-01',
+        badge: 'PDF 4 Págs',
+        description: 'Guia completo da Matriz de Compra, DRE, Desossa e Atalhos do ERP',
+        icon: FileText,
+        actionType: 'action',
+        actionId: 'downloadManualERP'
+      },
+      {
+        id: 'hlp-manual-portal',
+        name: 'Manual do Usuário - Portal das Lojas (PDF)',
+        division: 'Filiais & Açougues',
+        code: 'DOC-02',
+        badge: 'PDF Didático',
+        description: 'Guia simples e ilustrado para o operador de loja contar estoque no celular',
+        icon: Smartphone,
+        actionType: 'action',
+        actionId: 'downloadManualPortal'
+      },
       {
         id: 'hlp-sobre',
         name: 'Sobre o Grupo GAPP Sistemas v10.4',

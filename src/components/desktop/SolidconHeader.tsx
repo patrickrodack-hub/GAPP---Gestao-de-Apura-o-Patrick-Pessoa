@@ -44,9 +44,12 @@ import {
   ChevronDown,
   Terminal,
   Cloud,
-  Key
+  Key,
+  BookOpen,
+  FileText
 } from 'lucide-react';
 import { SystemUser } from '../../types/erp';
+import { ManualPdfService } from '../../services/manualPdfService';
 
 interface SolidconHeaderProps {
   activeTab: NavigationTab;
@@ -60,6 +63,7 @@ interface SolidconHeaderProps {
   onToggleDesktop: () => void;
   storeCount: number;
   onOpenShortcuts?: () => void;
+  onOpenManuals?: () => void;
   onOpenPurchaseOrder?: () => void;
   onOpenSupplierManager?: () => void;
   onOpenMobilePortal?: () => void;
@@ -85,6 +89,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
   onToggleDesktop,
   storeCount,
   onOpenShortcuts,
+  onOpenManuals,
   onOpenPurchaseOrder,
   onOpenSupplierManager,
   onOpenMobilePortal,
@@ -250,6 +255,12 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
           if (onOpenBackup) onOpenBackup();
           else onTabChange('backup');
           break;
+        case 'downloadManualERP':
+          ManualPdfService.generateAndDownloadERPManual();
+          break;
+        case 'downloadManualPortal':
+          ManualPdfService.generateAndDownloadPortalManual();
+          break;
         case 'exit':
           if (onExitSystem) onExitSystem();
           else if (onLogout) onLogout();
@@ -259,6 +270,9 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
       }
     } else if (item.actionType === 'modal') {
       switch (item.actionId) {
+        case 'manuals':
+          if (onOpenManuals) onOpenManuals();
+          break;
         case 'about':
           setActiveDialog('about');
           break;
@@ -730,6 +744,18 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
               >
                 <Printer className="w-3.5 h-3.5 text-slate-700" />
               </button>
+
+              {/* Manuais do Usuário em PDF */}
+              {onOpenManuals && (
+                <button
+                  onClick={onOpenManuals}
+                  className="h-7.5 px-2 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800"
+                  title="Manuais do Usuário em PDF (Sistema ERP e Portal das Lojas)"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-emerald-700" />
+                  <span className="hidden xl:inline">Manuais (PDF)</span>
+                </button>
+              )}
 
               {/* Atalhos de Teclado */}
               {onOpenShortcuts && (

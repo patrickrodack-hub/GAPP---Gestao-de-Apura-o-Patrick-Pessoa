@@ -20,6 +20,7 @@ import { PortalControlModal } from './components/modals/PortalControlModal';
 import { UserManagementModal } from './components/modals/UserManagementModal';
 import { ChangePasswordModal } from './components/modals/ChangePasswordModal';
 import { ExitSystemModal } from './components/modals/ExitSystemModal';
+import { UserManualsModal } from './components/modals/UserManualsModal';
 import { ManagementLogin } from './components/auth/ManagementLogin';
 import { SystemClosedScreen } from './components/auth/SystemClosedScreen';
 import { SolidconHeader } from './components/desktop/SolidconHeader';
@@ -99,6 +100,7 @@ export default function App() {
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [isPortalControlOpen, setIsPortalControlOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [isUserManualsModalOpen, setIsUserManualsModalOpen] = useState(false);
   const [portalLockConfig, setPortalLockConfig] = useState<PortalLockConfig>(() => StorageService.getPortalLockConfig());
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
 
@@ -801,6 +803,7 @@ export default function App() {
             onToggleDesktop={() => setIsDesktopView(!isDesktopView)}
             storeCount={stores.length}
             onOpenShortcuts={() => setIsShortcutsOpen(true)}
+            onOpenManuals={() => setIsUserManualsModalOpen(true)}
             onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
             onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
             onOpenMobilePortal={handleOpenMobilePortal}
@@ -1382,6 +1385,12 @@ export default function App() {
         onExitAndCloseBrowser={handleExitAndCloseBrowser}
         onLogoutOnly={handleLogoutOnly}
         userName={currentUser?.name}
+      />
+
+      <UserManualsModal
+        isOpen={isUserManualsModalOpen}
+        onClose={() => setIsUserManualsModalOpen(false)}
+        showToast={showToast}
       />
 
       {/* Modal da Central de Backup Online */}
