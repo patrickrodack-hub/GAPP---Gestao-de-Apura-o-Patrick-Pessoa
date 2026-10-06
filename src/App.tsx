@@ -541,6 +541,18 @@ export default function App() {
     showToast('Pesagem de descarte (sebo e osso) registrada e salva no banco de dados!');
   };
 
+  const handleUpdateWasteRecord = (record: WasteRecord) => {
+    setWasteRecords(prev => prev.map(r => r.id === record.id ? record : r));
+    StorageService.saveSingleWasteRecord(record);
+    showToast('Registro de coleta de graxaria atualizado com sucesso!');
+  };
+
+  const handleDeleteWasteRecord = (recordId: string) => {
+    setWasteRecords(prev => prev.filter(r => r.id !== recordId));
+    StorageService.deleteWasteRecord(recordId);
+    showToast('Registro de coleta de graxaria excluído com sucesso.');
+  };
+
   // Reset to original data
   const handleReset = () => {
     if (window.confirm('Deseja restaurar todos os dados originais da Planilha de Compra da Direção v10.4? Quaisquer edições manuais serão redefinidas.')) {
@@ -965,6 +977,8 @@ export default function App() {
                       wasteRecords={wasteRecords}
                       stores={stores}
                       onAddWasteRecord={handleAddWasteRecord}
+                      onUpdateWasteRecord={handleUpdateWasteRecord}
+                      onDeleteWasteRecord={handleDeleteWasteRecord}
                       yieldParams={yieldParams}
                       onUpdateYieldParams={handleUpdateYieldParams}
                     />
@@ -1234,6 +1248,8 @@ export default function App() {
               wasteRecords={wasteRecords}
               stores={stores}
               onAddWasteRecord={handleAddWasteRecord}
+              onUpdateWasteRecord={handleUpdateWasteRecord}
+              onDeleteWasteRecord={handleDeleteWasteRecord}
               yieldParams={yieldParams}
               onUpdateYieldParams={handleUpdateYieldParams}
             />
