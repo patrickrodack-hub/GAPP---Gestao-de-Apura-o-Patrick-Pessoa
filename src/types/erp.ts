@@ -163,6 +163,17 @@ export interface PurchaseBatch {
   items?: PurchaseBatchItem[]; // Detalhamento por loja das 16 filiais
 }
 
+export interface YieldParams {
+  carcassWeight: number;
+  costPerKg: number;
+  fatPriceKg: number;
+  bonePriceKg: number;
+  targetMargin: number;
+  breakagePercent?: number; // % de quebra total padrão (default 25.0%, faixa 20% a 30%)
+  costFormationMode?: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR'; // Padrão de formação de custo
+  basis: 'carcass' | 'piece';
+}
+
 export interface YieldAnalysisCuts {
   productCode?: string;     // Código oficial do produto na base do ERP (ex: COR-PICANHA)
   name: string;

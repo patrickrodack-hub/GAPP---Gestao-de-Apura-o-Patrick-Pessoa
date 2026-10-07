@@ -32,7 +32,8 @@ import {
   Smartphone,
   Power,
   Cloud,
-  BookOpen
+  BookOpen,
+  Activity
 } from 'lucide-react';
 
 export interface ERPMenuItem {
@@ -99,6 +100,18 @@ export const getERPMenuCategories = (
         icon: FileSpreadsheet,
         actionType: 'tab',
         targetTab: 'sheet'
+      },
+      {
+        id: 'arq-cotacao-tempo-real',
+        name: 'Cotação em Tempo Real (CEPEA / B3)',
+        division: 'Mercado Pecuário & Arroba',
+        code: 'COT-01',
+        shortcut: 'Alt+0',
+        badge: 'Ao Vivo',
+        description: 'Indicadores oficiais CEPEA/B3, Boi China, praças e cortes no atacado',
+        icon: Activity,
+        actionType: 'tab',
+        targetTab: 'quotes'
       },
       {
         id: 'arq-painel',

@@ -49,9 +49,9 @@ export const INITIAL_PRODUCTS: Product[] = [
   { id: 'prd_20', code: 'SUI-COSTELA', name: 'Costela Suína', category: 'suino', defaultPriceKg: 35.00, sellingPriceKg: 46.90, averageWeightPieceKg: 4.5, targetMarginPercent: 25.3, unit: 'KG', yieldPercentStandard: 10.0 },
   { id: 'prd_21', code: 'SUI-PERNIL', name: 'Pernil Suíno', category: 'suino', defaultPriceKg: 9.00, sellingPriceKg: 16.90, averageWeightPieceKg: 10.0, targetMarginPercent: 46.7, unit: 'KG', yieldPercentStandard: 25.0 },
 
-  // Descarte e Subprodutos
-  { id: 'prd_22', code: 'SUB-OSSO', name: 'Osso para Graxaria / Ração', category: 'subproduto', defaultPriceKg: 0.60, sellingPriceKg: 0.85, averageWeightPieceKg: 1.0, targetMarginPercent: 29.4, unit: 'KG', isBoneOrFatWaste: true, yieldPercentStandard: 18.5 },
-  { id: 'prd_23', code: 'SUB-SEBO', name: 'Sebo / Gordura Industrial', category: 'subproduto', defaultPriceKg: 1.80, sellingPriceKg: 2.40, averageWeightPieceKg: 1.0, targetMarginPercent: 25.0, unit: 'KG', isBoneOrFatWaste: true, yieldPercentStandard: 6.5 },
+  // Descarte e Subprodutos de Graxaria (Cotação Real de Mercado)
+  { id: 'prd_22', code: 'SUB-OSSO', name: 'Osso para Graxaria / Rendering', category: 'subproduto', defaultPriceKg: 0.90, sellingPriceKg: 0.90, averageWeightPieceKg: 1.0, targetMarginPercent: 0.0, unit: 'KG', isBoneOrFatWaste: true, yieldPercentStandard: 15.5 },
+  { id: 'prd_23', code: 'SUB-SEBO', name: 'Sebo Bovino Industrial (Graxaria)', category: 'subproduto', defaultPriceKg: 4.85, sellingPriceKg: 4.85, averageWeightPieceKg: 1.0, targetMarginPercent: 0.0, unit: 'KG', isBoneOrFatWaste: true, yieldPercentStandard: 6.5 },
 ];
 
 // Dados fiéis da planilha oficial v10.1 (quinta-feira, 1 de outubro de 2026)
@@ -989,6 +989,7 @@ export const INITIAL_SUPPLIERS: Supplier[] = [
 export const ALL_SYSTEM_MODULES = [
   { id: 'dashboard', label: 'Painel Geral', description: 'Visão executiva, tendências D3.js e KPIs em tempo real' },
   { id: 'sheet', label: 'Planilha Direção v10.4', description: 'Planilha matriz oficial de compras (16 filiais)' },
+  { id: 'quotes', label: 'Cotação em Tempo Real', description: 'Cotações oficiais de mercado (CEPEA/B3, carcaça e desossa)' },
   { id: 'yield', label: 'Desossa & Rendimento', description: 'Simulador zootécnico e apuração de carne limpa' },
   { id: 'results', label: 'Apuração & Margens', description: 'Demonstrativo de Resultados (DRE), CMV e Markups' },
   { id: 'inventory', label: 'Estoque & Câmaras', description: 'Lançamentos de balcão e câmaras frigoríficas' },
@@ -1008,7 +1009,7 @@ export const INITIAL_USERS: import('../types/erp').SystemUser[] = [
     roleTitle: 'Desenvolvedor do Software',
     email: 'patrickrodack@gmail.com',
     active: true,
-    allowedModules: ['dashboard', 'sheet', 'yield', 'results', 'inventory', 'purchases', 'waste', 'parameters', 'users'],
+    allowedModules: ['dashboard', 'sheet', 'quotes', 'yield', 'results', 'inventory', 'purchases', 'waste', 'parameters', 'users'],
     createdAt: 1727740800000, // Outubro 2026
   },
   {
@@ -1020,7 +1021,7 @@ export const INITIAL_USERS: import('../types/erp').SystemUser[] = [
     roleTitle: 'Diretor Geral de Carnes',
     email: 'diretoria@grupogapp.com.br',
     active: true,
-    allowedModules: ['dashboard', 'sheet', 'yield', 'results', 'inventory', 'purchases', 'waste', 'parameters'],
+    allowedModules: ['dashboard', 'sheet', 'quotes', 'yield', 'results', 'inventory', 'purchases', 'waste', 'parameters'],
     createdAt: 1727740800000,
   },
   {

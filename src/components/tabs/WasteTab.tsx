@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { WasteRecord, Store } from '../../types/erp';
+import { WasteRecord, Store, YieldParams } from '../../types/erp';
 import { formatCurrencyBRL } from '../../services/calculationService';
 import { StorageService } from '../../services/storageService';
 import { 
@@ -27,7 +27,7 @@ interface WasteTabProps {
   onAddWasteRecord: (record: WasteRecord) => void;
   onUpdateWasteRecord?: (record: WasteRecord) => void;
   onDeleteWasteRecord?: (recordId: string) => void;
-  yieldParams?: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; basis: 'carcass' | 'piece' };
+  yieldParams?: YieldParams;
   onUpdateYieldParams?: (params: any) => void;
 }
 
@@ -45,10 +45,10 @@ export const WasteTab: React.FC<WasteTabProps> = ({
   const [storeId, setStoreId] = useState(stores[0]?.id || '');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [carcassWeight, setCarcassWeight] = useState(1500);
-  const [boneWeight, setBoneWeight] = useState(262.5); // ~17.5%
+  const [boneWeight, setBoneWeight] = useState(255); // ~17.0%
   const [fatWeight, setFatWeight] = useState(97.5);   // ~6.5%
-  const [bonePrice, setBonePrice] = useState(() => yieldParams?.bonePriceKg || 0.70);
-  const [fatPrice, setFatPrice] = useState(() => yieldParams?.fatPriceKg || 2.10);
+  const [bonePrice, setBonePrice] = useState(() => yieldParams?.bonePriceKg || 0.90);
+  const [fatPrice, setFatPrice] = useState(() => yieldParams?.fatPriceKg || 4.85);
   const [renderingPlant, setRenderingPlant] = useState('Graxaria Fluminense Ltda');
 
   // Modal de Visualização Detalhada

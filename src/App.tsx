@@ -7,6 +7,7 @@ import { Navigation, NavigationTab } from './components/Navigation';
 import { DashboardTab } from './components/tabs/DashboardTab';
 import { SheetTab } from './components/tabs/SheetTab';
 import { YieldTab } from './components/tabs/YieldTab';
+import { QuotesTab } from './components/tabs/QuotesTab';
 import { ResultsTab } from './components/tabs/ResultsTab';
 import { InventoryTab } from './components/tabs/InventoryTab';
 import { PurchasesTab } from './components/tabs/PurchasesTab';
@@ -234,8 +235,16 @@ export default function App() {
       if (cloudData.products && cloudData.products.length > 0) {
         setProducts(prev => JSON.stringify(prev) === JSON.stringify(cloudData.products) ? prev : cloudData.products!);
       }
-      if (cloudData.yieldParams && cloudData.yieldParams.costPerKg > 0) {
-        setYieldParams(prev => JSON.stringify(prev) === JSON.stringify(cloudData.yieldParams) ? prev : cloudData.yieldParams!);
+      if (cloudData.yieldParams && (cloudData.yieldParams as any).costPerKg > 0) {
+        const cloudYield = cloudData.yieldParams as any;
+        setYieldParams(prev => {
+          const merged = {
+            ...prev,
+            ...cloudYield,
+            recoverGraxaria: cloudYield.recoverGraxaria ?? prev.recoverGraxaria ?? true
+          };
+          return JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged;
+        });
       }
       setIsCloudConnected(true);
     }).catch((e) => {
@@ -473,10 +482,11 @@ export default function App() {
       const newParams = {
         carcassWeight: avgWeight,
         costPerKg: Number(costPerKg.toFixed(2)),
-        fatPriceKg: yieldParams?.fatPriceKg || 2.10,
-        bonePriceKg: yieldParams?.bonePriceKg || 0.70,
+        fatPriceKg: yieldParams?.fatPriceKg || 4.85,
+        bonePriceKg: yieldParams?.bonePriceKg || 0.90,
         targetMargin: yieldParams?.targetMargin || 28,
-        basis: yieldParams?.basis || ('carcass' as const)
+        basis: yieldParams?.basis || ('carcass' as const),
+        recoverGraxaria: yieldParams?.recoverGraxaria ?? true
       };
       setYieldParams(newParams);
       StorageService.saveYieldParams(newParams);
@@ -508,10 +518,11 @@ export default function App() {
       const newParams = {
         carcassWeight: avgWeight,
         costPerKg: Number(costPerKg.toFixed(2)),
-        fatPriceKg: yieldParams?.fatPriceKg || 2.10,
-        bonePriceKg: yieldParams?.bonePriceKg || 0.70,
+        fatPriceKg: yieldParams?.fatPriceKg || 4.85,
+        bonePriceKg: yieldParams?.bonePriceKg || 0.90,
         targetMargin: yieldParams?.targetMargin || 28,
-        basis: yieldParams?.basis || ('carcass' as const)
+        basis: yieldParams?.basis || ('carcass' as const),
+        recoverGraxaria: yieldParams?.recoverGraxaria ?? true
       };
       setYieldParams(newParams);
       StorageService.saveYieldParams(newParams);
@@ -614,6 +625,7 @@ export default function App() {
       const tabNames: Record<NavigationTab, string> = {
         dashboard: 'Painel Geral (Alt+1)',
         sheet: 'Planilha Direção v10.4 (Alt+2)',
+        quotes: 'Cotação em Tempo Real (Alt+0)',
         yield: 'Desossa & Rendimento (Alt+3)',
         results: 'DRE & Margens (Alt+4)',
         inventory: 'Estoque & Câmaras (Alt+5)',
@@ -927,6 +939,14 @@ export default function App() {
                     />
                   )}
 
+                  {activeTab === 'quotes' && (
+                    <QuotesTab
+                      yieldParams={yieldParams}
+                      onUpdateYieldParams={handleUpdateYieldParams}
+                      showToast={showToast}
+                    />
+                  )}
+
                   {activeTab === 'yield' && (
                     <YieldTab
                       yieldParams={yieldParams}
@@ -1197,6 +1217,14 @@ export default function App() {
               onSaveSheetSnapshot={handleSaveSheetSnapshot}
               onRestoreSheetSnapshot={handleRestoreSheetSnapshot}
               onDeleteSheetSnapshot={handleDeleteSheetSnapshot}
+            />
+          )}
+
+          {activeTab === 'quotes' && (
+            <QuotesTab
+              yieldParams={yieldParams}
+              onUpdateYieldParams={handleUpdateYieldParams}
+              showToast={showToast}
             />
           )}
 

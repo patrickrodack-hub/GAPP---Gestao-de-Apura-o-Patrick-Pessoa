@@ -9,13 +9,15 @@ import {
   Bone, 
   SlidersHorizontal,
   Lock,
-  Cloud
+  Cloud,
+  Activity
 } from 'lucide-react';
 import { SystemUser } from '../types/erp';
 
 export type NavigationTab = 
   | 'dashboard'
   | 'sheet'
+  | 'quotes'
   | 'yield'
   | 'results'
   | 'inventory'
@@ -41,6 +43,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   const tabs = [
     { id: 'dashboard', label: 'Painel Geral', icon: LayoutDashboard, badge: null, shortcut: 'Alt+1' },
     { id: 'sheet', label: 'Planilha Direção v10.4', icon: FileSpreadsheet, badge: '16 Lojas', shortcut: 'Alt+2' },
+    { id: 'quotes', label: 'Cotação em Tempo Real', icon: Activity, badge: 'Ao Vivo', shortcut: 'Alt+0' },
     { id: 'yield', label: 'Desossa & Rendimento', icon: Scissors, badge: 'Calculadora', shortcut: 'Alt+3' },
     { id: 'results', label: 'Apuração & Margens', icon: DollarSign, badge: 'DRE', shortcut: 'Alt+4' },
     { id: 'inventory', label: 'Estoque & Câmaras', icon: Boxes, badge: null, shortcut: 'Alt+5' },

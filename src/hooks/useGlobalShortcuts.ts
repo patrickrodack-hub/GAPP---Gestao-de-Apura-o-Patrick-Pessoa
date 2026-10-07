@@ -80,6 +80,11 @@ export function useGlobalShortcuts({
             e.preventDefault();
             onNavigateTab('sheet');
             return;
+          case 'Digit0':
+          case 'Numpad0':
+            e.preventDefault();
+            onNavigateTab('quotes');
+            return;
           case 'Digit3':
           case 'Numpad3':
             e.preventDefault();

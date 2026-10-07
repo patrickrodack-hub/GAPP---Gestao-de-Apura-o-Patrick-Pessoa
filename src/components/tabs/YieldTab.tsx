@@ -7,7 +7,7 @@ import {
   kgToArroba 
 } from '../../services/calculationService';
 import { StorageService } from '../../services/storageService';
-import { PurchaseBatch, Product } from '../../types/erp';
+import { PurchaseBatch, Product, YieldParams } from '../../types/erp';
 import { 
   Scissors, 
   Scale, 
@@ -24,18 +24,16 @@ import {
   Database,
   Layers,
   Edit3,
-  RotateCcw
+  RotateCcw,
+  SlidersHorizontal,
+  Info,
+  ShieldCheck,
+  Check,
+  Building2
 } from 'lucide-react';
 
 interface YieldTabProps {
-  yieldParams?: { 
-    carcassWeight: number; 
-    costPerKg: number; 
-    fatPriceKg: number; 
-    bonePriceKg: number; 
-    targetMargin: number; 
-    basis: 'carcass' | 'piece' 
-  };
+  yieldParams?: YieldParams;
   onSaveYieldParams?: (params: any) => void;
   latestBatch?: PurchaseBatch;
   products?: Product[];
@@ -78,17 +76,31 @@ export const YieldTab: React.FC<YieldTabProps> = ({
   const [fatPriceKg, setFatPriceKg] = useState<number>(() => {
     if (yieldParams?.fatPriceKg) return yieldParams.fatPriceKg;
     const p = StorageService.getYieldParams();
-    return p.fatPriceKg || 2.10;
+    return p.fatPriceKg || 4.85;
   });
   const [bonePriceKg, setBonePriceKg] = useState<number>(() => {
     if (yieldParams?.bonePriceKg) return yieldParams.bonePriceKg;
     const p = StorageService.getYieldParams();
-    return p.bonePriceKg || 0.70;
+    return p.bonePriceKg || 0.90;
   });
   const [targetMargin, setTargetMargin] = useState<number>(() => {
     if (yieldParams?.targetMargin) return yieldParams.targetMargin;
     const p = StorageService.getYieldParams();
     return p.targetMargin || 28;
+  });
+
+  // Quebra técnica da desossa (padrão varejo 25.0%, faixa de 20% a 30%)
+  const [breakagePercent, setBreakagePercent] = useState<number>(() => {
+    if (yieldParams?.breakagePercent) return yieldParams.breakagePercent;
+    const p = StorageService.getYieldParams();
+    return p.breakagePercent || 25.0;
+  });
+
+  // Modo de formação de custo: 'VAREJO_PADRAO' (formação direta pela quebra) ou 'COM_GRAXARIA_AUXILIAR'
+  const [costFormationMode, setCostFormationMode] = useState<'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR'>(() => {
+    if (yieldParams?.costFormationMode) return yieldParams.costFormationMode;
+    const p = StorageService.getYieldParams();
+    return p.costFormationMode || 'VAREJO_PADRAO';
   });
 
   // Preços editáveis em tempo real para sincronização com o banco de dados
@@ -98,7 +110,7 @@ export const YieldTab: React.FC<YieldTabProps> = ({
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
   const [savedProductsSuccess, setSavedProductsSuccess] = useState<boolean>(false);
 
-  // Sincroniza dinamicamente se yieldParams mudar externamente (ex: novo pedido salvo)
+  // Sincroniza dinamicamente se yieldParams mudar externamente
   useEffect(() => {
     if (yieldParams) {
       if (yieldParams.carcassWeight > 0) setCarcassWeight(yieldParams.carcassWeight);
@@ -106,6 +118,8 @@ export const YieldTab: React.FC<YieldTabProps> = ({
       if (yieldParams.fatPriceKg > 0) setFatPriceKg(yieldParams.fatPriceKg);
       if (yieldParams.bonePriceKg > 0) setBonePriceKg(yieldParams.bonePriceKg);
       if (yieldParams.targetMargin > 0) setTargetMargin(yieldParams.targetMargin);
+      if (yieldParams.breakagePercent) setBreakagePercent(yieldParams.breakagePercent);
+      if (yieldParams.costFormationMode) setCostFormationMode(yieldParams.costFormationMode);
     }
   }, [yieldParams]);
 
@@ -119,7 +133,7 @@ export const YieldTab: React.FC<YieldTabProps> = ({
     });
   }, [realCatalog, customSellingPrices]);
 
-  // Apuração REAL de rendimento e desossa com dados do ERP
+  // Apuração REAL de rendimento e desossa com dados do ERP e quebra de varejo
   const realYield = useMemo(() => {
     return calculateRealBeefYield(
       carcassWeight,
@@ -127,9 +141,11 @@ export const YieldTab: React.FC<YieldTabProps> = ({
       effectiveCatalog,
       fatPriceKg,
       bonePriceKg,
-      targetMargin
+      targetMargin,
+      breakagePercent,
+      costFormationMode
     );
-  }, [carcassWeight, costPerKg, effectiveCatalog, fatPriceKg, bonePriceKg, targetMargin]);
+  }, [carcassWeight, costPerKg, effectiveCatalog, fatPriceKg, bonePriceKg, targetMargin, breakagePercent, costFormationMode]);
 
   const arrobaPrice = kgToArroba(costPerKg);
 
@@ -191,7 +207,7 @@ export const YieldTab: React.FC<YieldTabProps> = ({
     setTimeout(() => setSavedProductsSuccess(false), 3500);
   };
 
-  // Salva parâmetros técnicos no ERP (atualiza campo mestre de carcaça e custo)
+  // Salva parâmetros técnicos no ERP
   const handleSaveToSettings = () => {
     const updated = {
       carcassWeight,
@@ -199,6 +215,8 @@ export const YieldTab: React.FC<YieldTabProps> = ({
       fatPriceKg: Number(fatPriceKg.toFixed(2)),
       bonePriceKg: Number(bonePriceKg.toFixed(2)),
       targetMargin: Number(targetMargin),
+      breakagePercent: Number(breakagePercent),
+      costFormationMode,
       basis: 'carcass' as const
     };
     StorageService.saveYieldParams(updated);
@@ -213,7 +231,8 @@ export const YieldTab: React.FC<YieldTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Real Database Official Verification Banner */}
+      
+      {/* 1. REAL DATABASE & RETAIL STANDARDS VERIFICATION BANNER */}
       <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-indigo-950/40 border-2 border-emerald-500/30 rounded-xl p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-lg bg-emerald-600 text-white shadow-sm shrink-0">
@@ -222,15 +241,15 @@ export const YieldTab: React.FC<YieldTabProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white">
-                DADOS 100% REAIS • NÃO SIMULADO
+                DADOS 100% REAIS • PADRÃO VAREJO AÇOUGUE
               </span>
               <span className="text-xs text-emerald-800 dark:text-emerald-300 font-semibold flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                Base de Dados Oficial Solidcon ERP
+                Quebra Padrão de 25% (20% a 30%) + Graxaria Auxiliar
               </span>
             </div>
             <p className="text-xs text-slate-700 dark:text-slate-300 mt-0.5">
-              Todos os preços, rendimentos zootécnicos e custos são calculados com a <strong>tabela real de produtos</strong> (Módulo 1) e os <strong>lotes de compra</strong> cadastrados na sua base de dados.
+              Cálculo técnico padrão de mercado: <strong>75,0% carne limpa comercializável</strong> e <strong>25,0% quebra técnica de desossa</strong> (osso, sebo e aparas), com formação de custo direta e crédito auxiliar de graxaria.
             </p>
           </div>
         </div>
@@ -278,7 +297,7 @@ export const YieldTab: React.FC<YieldTabProps> = ({
         </div>
       )}
 
-      {/* Header & Controls */}
+      {/* 2. HEADER & PARAMETER CONTROLS */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-md transition-colors">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div>
@@ -291,7 +310,7 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                   Apuração Real de Rendimento e Desossa do Boi
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Equalização contábil de desossa comercial: dados reais de cortes nobres, dianteiro, coxão e impacto da receita de graxaria (osso e sebo)
+                  Formação de custo efetivo da carne limpa no varejo supermercadista com quebra técnica padrão e crédito de graxaria
                 </p>
               </div>
             </div>
@@ -338,17 +357,58 @@ export const YieldTab: React.FC<YieldTabProps> = ({
           </div>
         </div>
 
+        {/* Seletor de Modo de Formação de Custo */}
+        <div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+              Modo de Formação de Custo:
+            </span>
+            <span className="text-[11px] text-slate-500">
+              (Escolha como o custo da carne limpa é formado para o balcão)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCostFormationMode('VAREJO_PADRAO')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                costFormationMode === 'VAREJO_PADRAO'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              {costFormationMode === 'VAREJO_PADRAO' && <Check className="w-3.5 h-3.5" />}
+              <span>Padrão Varejo (Quebra Técnica {breakagePercent.toFixed(1)}%)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCostFormationMode('COM_GRAXARIA_AUXILIAR')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                costFormationMode === 'COM_GRAXARIA_AUXILIAR'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              {costFormationMode === 'COM_GRAXARIA_AUXILIAR' && <Check className="w-3.5 h-3.5" />}
+              <span>Com Crédito Graxaria Auxiliar</span>
+            </button>
+          </div>
+        </div>
+
         {/* Input parameters grid */}
-        <div className="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {/* Peso da Carcaça - Campo Mestre Real */}
+        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+          
+          {/* 1. Peso da Carcaça - Campo Mestre Real */}
           <div className="bg-amber-50/70 dark:bg-amber-950/30 p-3 rounded-lg border-2 border-amber-300 dark:border-amber-700 shadow-xs">
             <div className="flex items-center justify-between mb-1">
               <label className="text-[11px] font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wider block">
-                Peso da Carcaça / Lote
+                Peso Carcaça / Lote
               </label>
               <span className="flex items-center gap-0.5 text-[9px] text-amber-700 dark:text-amber-300 font-bold bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.5 rounded">
                 <Link2 className="w-2.5 h-2.5" />
-                <span>CAMPO MESTRE</span>
+                <span>MESTRE</span>
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -358,19 +418,19 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                 step="1"
                 value={carcassWeight}
                 onChange={(e) => setCarcassWeight(Number(e.target.value) || 0)}
-                className="w-full bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded px-2.5 py-1.5 text-sm font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-2xs"
+                className="w-full bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded px-2 py-1.5 text-sm font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-2xs"
               />
               <span className="text-xs text-amber-900 dark:text-amber-200 font-bold">kg</span>
             </div>
             <span className="text-[10px] text-amber-700 dark:text-amber-400 mt-1 block font-medium">
-              Equivale a {(carcassWeight / 15).toFixed(1)} @ • Vincula Pedidos, Lotes e 16 Lojas
+              Equivale a {(carcassWeight / 15).toFixed(1)} @
             </span>
           </div>
 
-          {/* Custo de Compra por Kg Real */}
+          {/* 2. Custo de Compra por Kg Real */}
           <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
             <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
-              Custo de Compra (R$/kg)
+              Custo Compra (R$/kg)
             </label>
             <div className="flex items-center gap-2">
               <input
@@ -379,19 +439,19 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                 step="0.10"
                 value={costPerKg}
                 onChange={(e) => setCostPerKg(Number(e.target.value) || 0)}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1.5 text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
               />
               <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">R$/kg</span>
             </div>
             <span className="text-[10px] text-slate-500 mt-1 block">
-              Preço real negociado com frigorífico
+              Preço carcaça c/ osso
             </span>
           </div>
 
-          {/* Preço da Arroba correspondente Real */}
+          {/* 3. Preço da Arroba correspondente Real */}
           <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
             <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
-              Preço da Arroba (R$/@)
+              Preço Arroba (R$/@)
             </label>
             <div className="flex items-center gap-2">
               <input
@@ -400,20 +460,77 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                 step="1"
                 value={arrobaPrice}
                 onChange={(e) => handleArrobaChange(Number(e.target.value) || 0)}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1.5 text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
               />
               <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">R$/@</span>
             </div>
             <span className="text-[10px] text-slate-500 mt-1 block">
-              1 @ = 15 kg de carcaça bovina
+              1 @ = 15 kg carcaça
             </span>
           </div>
 
-          {/* Venda de Sebo Real */}
+          {/* 4. Quebra Técnica da Desossa (Padrão 25%, faixa 20% a 30%) */}
+          <div className="bg-rose-50/70 dark:bg-rose-950/30 p-3 rounded-lg border-2 border-rose-300 dark:border-rose-700 shadow-xs">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-bold text-rose-900 dark:text-rose-200 uppercase tracking-wider block">
+                Quebra Desossa (%)
+              </label>
+              <span className="text-[9px] font-bold text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-900/60 px-1.5 py-0.5 rounded">
+                PADRÃO 25%
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="15"
+                max="35"
+                step="0.5"
+                value={breakagePercent}
+                onChange={(e) => setBreakagePercent(Number(e.target.value) || 25.0)}
+                className="w-full bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 rounded px-2 py-1.5 text-sm font-mono font-black text-rose-700 dark:text-rose-300 focus:outline-none focus:border-rose-500"
+              />
+              <span className="text-xs text-rose-900 dark:text-rose-200 font-bold">%</span>
+            </div>
+            
+            {/* Botões rápidos de presets de quebra */}
+            <div className="flex items-center gap-1 mt-1.5">
+              {[
+                { val: 20, label: '20%' },
+                { val: 25, label: '25% (Padrão)' },
+                { val: 28, label: '28%' },
+                { val: 30, label: '30%' }
+              ].map(p => (
+                <button
+                  key={p.val}
+                  type="button"
+                  onClick={() => setBreakagePercent(p.val)}
+                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded transition cursor-pointer ${
+                    breakagePercent === p.val 
+                      ? 'bg-rose-600 text-white' 
+                      : 'bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300 hover:bg-rose-200'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 5. Venda de Sebo Real (Graxaria Auxiliar) */}
           <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
-            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
-              Recuperação Sebo (R$/kg)
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                Sebo Graxaria (R$/kg)
+              </label>
+              <button
+                type="button"
+                onClick={() => setFatPriceKg(4.85)}
+                className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                title="Aplicar cotação de mercado (R$ 4,85/kg)"
+              >
+                R$ 4,85
+              </button>
+            </div>
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -421,20 +538,30 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                 step="0.05"
                 value={fatPriceKg}
                 onChange={(e) => setFatPriceKg(Number(e.target.value) || 0)}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1.5 text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
               />
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">R$/kg</span>
+              <span className="text-xs text-slate-500 font-semibold">R$/kg</span>
             </div>
             <span className="text-[10px] text-slate-500 mt-1 block">
-              Subproduto cadastrado SUB-SEBO
+              Graxaria industrial (~6.5%)
             </span>
           </div>
 
-          {/* Venda de Osso Real */}
+          {/* 6. Venda de Osso Real (Graxaria Auxiliar) */}
           <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
-            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
-              Recuperação Osso (R$/kg)
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                Osso Graxaria (R$/kg)
+              </label>
+              <button
+                type="button"
+                onClick={() => setBonePriceKg(0.90)}
+                className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                title="Aplicar cotação de mercado (R$ 0,90/kg)"
+              >
+                R$ 0,90
+              </button>
+            </div>
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -442,105 +569,160 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                 step="0.05"
                 value={bonePriceKg}
                 onChange={(e) => setBonePriceKg(Number(e.target.value) || 0)}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1.5 text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1.5 text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
               />
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">R$/kg</span>
+              <span className="text-xs text-slate-500 font-semibold">R$/kg</span>
             </div>
             <span className="text-[10px] text-slate-500 mt-1 block">
-              Subproduto cadastrado SUB-OSSO
+              Rendering FCO (~17.0%)
             </span>
           </div>
+
         </div>
       </div>
 
-      {/* KPI Metric Cards of Real Yield */}
+      {/* 3. KPI METRIC CARDS OF REAL YIELD & RETAIL BREAKAGE */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Custo Efetivo Real da Carne Limpa */}
+        
+        {/* Card 1: Custo Efetivo Real da Carne Limpa */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm relative overflow-hidden transition-colors">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs uppercase font-semibold text-slate-500 dark:text-slate-400 tracking-wider">
-              Custo Efetivo Carne Limpa
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs uppercase font-bold text-slate-700 dark:text-slate-300 tracking-wider">
+              {costFormationMode === 'VAREJO_PADRAO' ? 'Custo Base Carne Limpa (Varejo)' : 'Custo Líquido c/ Graxaria'}
             </span>
             <Scale className="w-5 h-5 text-amber-600 dark:text-amber-400" />
           </div>
-          <div className="text-2xl font-bold font-mono text-amber-600 dark:text-amber-400">
+
+          <div className="text-2xl sm:text-3xl font-black font-mono text-amber-600 dark:text-amber-400">
             {formatCurrencyBRL(realYield.effectiveCleanMeatCostPerKg)}
-            <span className="text-xs font-normal text-slate-500 dark:text-slate-400"> /kg</span>
+            <span className="text-xs font-normal text-slate-500 dark:text-slate-400"> /kg limpo</span>
           </div>
-          <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
-            <span>Carcaça: {formatCurrencyBRL(costPerKg)}</span>
-            <ArrowRight className="w-3 h-3 text-slate-400 inline" />
-            <span className="text-rose-600 dark:text-rose-400 font-semibold">
-              +{( ((realYield.effectiveCleanMeatCostPerKg - costPerKg) / costPerKg) * 100 ).toFixed(1)}% (impacto osso/sebo)
-            </span>
+
+          <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+            <div className="flex items-center justify-between">
+              <span>Carcaça com Osso:</span>
+              <strong className="text-slate-800 dark:text-slate-200 font-mono">{formatCurrencyBRL(costPerKg)}/kg</strong>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Fator Quebra ({realYield.breakagePercent.toFixed(1)}%):</span>
+              <span className="text-rose-600 dark:text-rose-400 font-bold font-mono">
+                +{(((realYield.baseCleanMeatCostPerKg - costPerKg) / costPerKg) * 100).toFixed(1)}% ({realYield.breakageMultiplier.toFixed(4)}x)
+              </span>
+            </div>
+            <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[10px]">
+              <span>Crédito Graxaria Auxiliar:</span>
+              <strong className="text-emerald-600 dark:text-emerald-400 font-mono">
+                -R$ {realYield.graxariaDiscountPerKg.toFixed(2)}/kg ({formatCurrencyBRL(realYield.wasteRevenue)}/boi)
+              </strong>
+            </div>
           </div>
         </div>
 
-        {/* Rendimento Real de Carne Limpa vs Descarte */}
+        {/* Card 2: Rendimento de Carne Limpa vs Quebra Técnica */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm transition-colors">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs uppercase font-semibold text-slate-500 dark:text-slate-400 tracking-wider">
-              Aproveitamento de Carne
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs uppercase font-bold text-slate-700 dark:text-slate-300 tracking-wider">
+              Rendimento da Desossa
             </span>
             <PieChart className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
-            {((realYield.totalCleanMeatKg / carcassWeight) * 100).toFixed(1)}%
+
+          <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+            {realYield.cleanMeatYieldPercent.toFixed(1)}%
+            <span className="text-xs font-normal text-slate-500"> Carne Limpa</span>
           </div>
-          <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
-            {formatNumberBR(realYield.totalCleanMeatKg, 1)} kg carne limpa • {formatNumberBR(realYield.totalWasteKg, 1)} kg descarte ({( (realYield.totalWasteKg / carcassWeight) * 100 ).toFixed(1)}%)
+
+          <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+            <div className="flex items-center justify-between">
+              <span>Carne Comercializável:</span>
+              <strong className="text-slate-800 dark:text-slate-200 font-mono">{formatNumberBR(realYield.totalCleanMeatKg, 1)} kg</strong>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Quebra Total ({realYield.breakagePercent.toFixed(1)}%):</span>
+              <strong className="text-rose-600 dark:text-rose-400 font-mono">{formatNumberBR(realYield.totalWasteKg, 1)} kg</strong>
+            </div>
+            <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[10px]">
+              <span>Composição da Quebra:</span>
+              <span className="text-slate-600 dark:text-slate-300 font-mono font-medium">Osso 17% • Sebo 6.5% • Quebra 1.5%</span>
+            </div>
           </div>
         </div>
 
-        {/* Faturamento Real da Desossa com Preços de Balcão Cadastrados */}
+        {/* Card 3: Faturamento Real da Desossa */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm transition-colors">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs uppercase font-semibold text-slate-500 dark:text-slate-400 tracking-wider">
-              Faturamento Real no Balcão
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs uppercase font-bold text-slate-700 dark:text-slate-300 tracking-wider">
+              Faturamento no Balcão
             </span>
             <DollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           </div>
-          <div className="text-2xl font-bold font-mono text-slate-900 dark:text-white">
+
+          <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 dark:text-white">
             {formatCurrencyBRL(realYield.totalRevenue)}
           </div>
-          <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
-            <span>Custo: {formatCurrencyBRL(realYield.totalCost)}</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-semibold font-mono">
-              Lucro: {formatCurrencyBRL(realYield.grossProfit)}
-            </span>
+
+          <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+            <div className="flex items-center justify-between">
+              <span>Custo Total Carcaça:</span>
+              <strong className="text-slate-800 dark:text-slate-200 font-mono">{formatCurrencyBRL(realYield.totalCost)}</strong>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Lucro Bruto Obtido:</span>
+              <strong className="text-emerald-600 dark:text-emerald-400 font-mono">+{formatCurrencyBRL(realYield.grossProfit)}</strong>
+            </div>
+            <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[10px]">
+              <span>Venda de Graxaria:</span>
+              <strong className="text-emerald-600 dark:text-emerald-400 font-mono">+{formatCurrencyBRL(realYield.wasteRevenue)}</strong>
+            </div>
           </div>
         </div>
 
-        {/* Margem Real Global */}
+        {/* Card 4: Margem Global Real */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm transition-colors">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs uppercase font-semibold text-slate-500 dark:text-slate-400 tracking-wider">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs uppercase font-bold text-slate-700 dark:text-slate-300 tracking-wider">
               Margem Global Real
             </span>
             <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
           </div>
+
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-purple-600 dark:text-purple-400">
+            <span className="text-2xl sm:text-3xl font-black font-mono text-purple-600 dark:text-purple-400">
               {realYield.globalMarginSalePercent}%
             </span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">s/ venda</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">s/ venda</span>
           </div>
-          <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
-            Markup s/ compra: <strong className="text-slate-700 dark:text-slate-200 font-mono">+{realYield.globalMarginCostPercent}%</strong>
+
+          <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+            <div className="flex items-center justify-between">
+              <span>Markup sobre Compra:</span>
+              <strong className="text-purple-700 dark:text-purple-300 font-mono">+{realYield.globalMarginCostPercent}%</strong>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Meta Cadastrada:</span>
+              <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{targetMargin}%</span>
+            </div>
+            <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[10px]">
+              <span>Status Operacional:</span>
+              <strong className={realYield.globalMarginSalePercent >= targetMargin ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600'}>
+                {realYield.globalMarginSalePercent >= targetMargin ? '🟢 Acima da Meta' : '🟡 Ajustar Balcão'}
+              </strong>
+            </div>
           </div>
         </div>
+
       </div>
 
-      {/* Real Cuts Detail Table */}
+      {/* 4. REAL CUTS DETAIL TABLE */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden transition-colors">
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Scissors className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              <span>Detalhamento dos Cortes • Base de Dados Oficial de Produtos</span>
+              <span>Detalhamento dos Cortes • Base de Dados Oficial de Produtos & Quebra Técnica</span>
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              Preços de venda e custos vinculados ao cadastro do ERP Solidcon. Clique no preço para editar e gravar no sistema.
+              Custo equalizado proporcional ao valor comercial de balcão (Standard Butchery Accounting). Clique no preço de venda para editar e gravar no ERP.
             </p>
           </div>
           <div className="flex items-center gap-2 text-xs">
@@ -551,7 +733,7 @@ export const YieldTab: React.FC<YieldTabProps> = ({
               <button
                 type="button"
                 onClick={() => setCustomSellingPrices({})}
-                className="text-[11px] text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1"
+                className="text-[11px] text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 cursor-pointer"
                 title="Descartar edições locais e recarregar os preços originais do banco"
               >
                 <RotateCcw className="w-3 h-3" />
@@ -642,8 +824,16 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                     </td>
 
                     {/* Custo equalizado R$/kg */}
-                    <td className="px-3 py-2.5 text-right text-slate-600 dark:text-slate-300">
-                      {formatCurrencyBRL(cut.costPriceKg)}
+                    <td className="px-3 py-2.5 text-right font-medium">
+                      {isWaste ? (
+                        <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-sans font-bold bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-800">
+                          Crédito Graxaria
+                        </span>
+                      ) : (
+                        <span className="text-slate-700 dark:text-slate-300 font-bold">
+                          {formatCurrencyBRL(cut.costPriceKg)}
+                        </span>
+                      )}
                     </td>
 
                     {/* Preço de venda real (editável em tempo real) */}
@@ -675,7 +865,9 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                     {/* Margem s/ Compra (Markup) */}
                     <td className="px-3 py-2.5 text-right">
                       {isWaste ? (
-                        <span className="text-slate-400 dark:text-slate-500">-</span>
+                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-800">
+                          +100% Retorno
+                        </span>
                       ) : (
                         <span className={cut.marginOnCostPercent > 40 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-700 dark:text-slate-300'}>
                           +{cut.marginOnCostPercent}%
@@ -686,7 +878,9 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                     {/* Margem s/ Venda */}
                     <td className="px-3 py-2.5 text-right">
                       {isWaste ? (
-                        <span className="text-slate-400 dark:text-slate-500">-</span>
+                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                          {cut.name.includes('Sebo') ? 'Abate R$ 0,32/kg' : cut.name.includes('Osso') ? 'Abate R$ 0,14/kg' : 'Evaporação'}
+                        </span>
                       ) : (
                         <span className={`font-bold ${
                           cut.marginOnSalePercent >= 30 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
@@ -718,34 +912,35 @@ export const YieldTab: React.FC<YieldTabProps> = ({
         </div>
       </div>
 
-      {/* Explanatory Box on Beef Yield Economics */}
-      <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-700 dark:text-slate-300 transition-colors">
+      {/* 5. EXPLANATORY BOX ON RETAIL BEEF YIELD & BREAKAGE ECONOMICS */}
+      <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-5 grid grid-cols-1 md:grid-cols-2 gap-5 text-xs text-slate-700 dark:text-slate-300 transition-colors">
         <div className="space-y-2">
           <h4 className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
             <Bone className="w-4 h-4" />
-            <span>Equalização Contábil por Valor Comercial de Balcão</span>
+            <span>Formação Operacional do Custo no Mercado Varejista</span>
           </h4>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-            Ao adquirir uma carcaça de <strong>{carcassWeight} kg</strong> ao custo real de <strong>{formatCurrencyBRL(costPerKg)}/kg</strong> (investimento de {formatCurrencyBRL(realYield.totalCost)}), a desossa gera subprodutos de graxaria (<strong>{formatNumberBR(carcassWeight * 0.175, 1)} kg de osso</strong> e <strong>{formatNumberBR(carcassWeight * 0.065, 1)} kg de sebo</strong>).
+            • <strong>Quebra Técnica Padrão de 25,0% (faixa de 20% a 30%):</strong> Ao adquirir uma carcaça com osso de <strong>{carcassWeight} kg</strong> a <strong>{formatCurrencyBRL(costPerKg)}/kg</strong> (investimento de {formatCurrencyBRL(realYield.totalCost)}), a desossa gera <strong>{formatNumberBR(realYield.totalCleanMeatKg, 1)} kg de carne limpa (75,0%)</strong> e <strong>{formatNumberBR(realYield.totalWasteKg, 1)} kg de quebra/descarte (25,0%)</strong>.
           </p>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-            A receita recuperada com graxaria ({formatCurrencyBRL(realYield.wasteRevenue)}) abate o desembolso total, transferindo o custo líquido para os <strong>{formatNumberBR(realYield.totalCleanMeatKg, 1)} kg de carne limpa</strong>, resultando no custo efetivo limpo de <strong>{formatCurrencyBRL(realYield.effectiveCleanMeatCostPerKg)}/kg</strong>.
+            • <strong>Fator Multiplicador de Quebra:</strong> Para cobrir a perda de peso dos 25%, o multiplicador é de <strong>1,3333x (+33,33%)</strong>, formando o <strong>Custo Base Varejo de {formatCurrencyBRL(realYield.baseCleanMeatCostPerKg)}/kg</strong>.
           </p>
         </div>
 
         <div className="space-y-2">
           <h4 className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-            <Scale className="w-4 h-4" />
-            <span>Sincronização Ativa com a Base de Dados</span>
+            <ShieldCheck className="w-4 h-4" />
+            <span>Graxaria como Crédito Auxiliar de Recuperação</span>
           </h4>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-            • <strong>Preços Reais do Balcão:</strong> Carregados do catálogo de produtos cadastrados na base de dados da empresa. Qualquer alteração feita aqui pode ser gravada com um clique no cadastro do ERP.
+            • <strong>Receita Residual de Graxaria:</strong> A venda do sebo (R$ {fatPriceKg.toFixed(2)}/kg) e do osso (R$ {bonePriceKg.toFixed(2)}/kg) gera <strong>{formatCurrencyBRL(realYield.wasteRevenue)} por boi</strong>.
           </p>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-            • <strong>Peso da Carcaça / Lote:</strong> Atua como o <em>parâmetro mestre</em> do sistema, recalculando os volumes das 16 lojas na Planilha Direção e alimentando o módulo de Gestão de Compras & Lotes.
+            • <strong>Abatimento Efetivo:</strong> Esse valor atua como crédito auxiliar abatendo <strong>R$ {realYield.graxariaDiscountPerKg.toFixed(2)}/kg</strong> da carne limpa, resultando no <strong>Custo Líquido com Graxaria de {formatCurrencyBRL(realYield.netCleanMeatCostPerKg)}/kg</strong>.
           </p>
         </div>
       </div>
+
     </div>
   );
 };

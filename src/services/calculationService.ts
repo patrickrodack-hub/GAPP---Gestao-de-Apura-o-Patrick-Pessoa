@@ -477,33 +477,58 @@ export interface RealBeefYieldResult {
   cuts: YieldAnalysisCuts[];
   totalCleanMeatKg: number;
   totalWasteKg: number;
-  effectiveCleanMeatCostPerKg: number;
+  breakagePercent: number; // % de quebra total padrão (padrão 25.0%, faixa 20% a 30%)
+  cleanMeatYieldPercent: number; // % de aproveitamento de carne limpa (ex: 75.0%)
+  breakageMultiplier: number; // Multiplicador de quebra (ex: 1.3333)
+  baseCleanMeatCostPerKg: number; // Custo base varejo pela quebra (sem graxaria): R$ 26,00 / 0,75 = R$ 34,67/kg
+  graxariaDiscountPerKg: number; // Abatimento auxiliar da graxaria: R$ 0,62/kg
+  netCleanMeatCostPerKg: number; // Custo efetivo com graxaria auxiliar: R$ 34,04/kg
+  effectiveCleanMeatCostPerKg: number; // Custo efetivo vigente conforme modo ativo
+  costFormationMode: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR';
   totalRevenue: number;
   totalCost: number;
   grossProfit: number;
   globalMarginSalePercent: number;
   globalMarginCostPercent: number;
   wasteRevenue: number;
+  fatRevenue: number;
+  boneRevenue: number;
   isRealDatabase: boolean;
 }
 
 /**
  * Apuração Técnica REAL de Rendimento e Desossa do Boi
- * Integração 100% direta com a Base de Dados Oficial de Produtos (ERP) e Lotes de Compra
- * Sem multiplicadores arbitrários ou simulações teóricas.
+ * Integração 100% direta com a Base de Dados Oficial de Produtos (ERP) e Lotes de Compra.
+ * Considera a quebra técnica padrão do varejo supermercadista (20% a 30%, padrão 25%)
+ * para formação do custo efetivo da carne limpa, com a graxaria atuando como crédito auxiliar.
  */
 export function calculateRealBeefYield(
   carcassWeightKg: number,
   costPerKg: number,
   productsCatalog?: Product[],
-  fatSalePriceKg: number = 2.10,
-  boneSalePriceKg: number = 0.70,
-  targetGlobalMarginSalePercent: number = 28
+  fatSalePriceKg: number = 4.85,
+  boneSalePriceKg: number = 0.90,
+  targetGlobalMarginSalePercent: number = 28,
+  breakagePercent: number = 25.0,
+  costFormationMode: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR' = 'VAREJO_PADRAO'
 ): RealBeefYieldResult {
   const catalog = (productsCatalog && productsCatalog.length > 0) ? productsCatalog : INITIAL_PRODUCTS;
   const findProduct = (code: string) => catalog.find(p => p.code === code);
 
-  // Mapeamento fiel de cada corte com o seu código de produto oficial na base de dados
+  // Validação da faixa de quebra técnica do varejo (20% a 30%, padrão 25%)
+  const clampedBreakage = Math.max(15, Math.min(35, breakagePercent || 25.0));
+  const cleanMeatYieldPercent = Number((100 - clampedBreakage).toFixed(2)); // Padrão: 75.0%
+  const breakageMultiplier = Number((100 / cleanMeatYieldPercent).toFixed(4)); // Padrão: 1.3333 (+33.33%)
+
+  // Distribuição Zootécnica Canônica dos Cortes na Carne Limpa (soma base = 75.0% da carcaça)
+  const baseScaleFactor = cleanMeatYieldPercent / 75.0;
+
+  // Subprodutos da Quebra Técnica:
+  // Sebo: ~6.5% | Quebra/Evaporação: ~1.5% | Osso: restante da quebra (ex: 25 - 6.5 - 1.5 = 17.0%)
+  const fatYieldPercent = 6.5;
+  const evaporationYieldPercent = 1.5;
+  const boneYieldPercent = Math.max(0, clampedBreakage - fatYieldPercent - evaporationYieldPercent);
+
   const realCutDefinitions: {
     code?: string;
     name: string;
@@ -512,32 +537,34 @@ export function calculateRealBeefYield(
     fallbackSellingPrice: number;
     isWaste?: boolean;
   }[] = [
-    // Traseiro Nobre
-    { code: 'COR-PICANHA', name: 'Picanha', category: 'NOBRE', defaultPercent: 1.6, fallbackSellingPrice: 79.90 },
-    { code: 'COR-MIGNON', name: 'Filé Mignon', category: 'NOBRE', defaultPercent: 1.9, fallbackSellingPrice: 74.90 },
-    { code: 'COR-CONTRA', name: 'Contra Filé', category: 'NOBRE', defaultPercent: 7.5, fallbackSellingPrice: 54.90 },
-    { code: 'COR-ALCATRA', name: 'Alcatra c/ Maminha', category: 'NOBRE', defaultPercent: 6.8, fallbackSellingPrice: 52.90 },
-    // Coxão
-    { code: 'COR-CHA', name: 'Chã de Dentro (Coxão Mole)', category: 'COXAO', defaultPercent: 8.8, fallbackSellingPrice: 42.90 },
-    { code: 'COR-PATINHO', name: 'Patinho', category: 'COXAO', defaultPercent: 6.9, fallbackSellingPrice: 43.90 },
-    { code: 'COR-LAG-RED', name: 'Lagarto Redondo', category: 'COXAO', defaultPercent: 3.2, fallbackSellingPrice: 42.50 },
-    { code: 'COR-LAG-PLA', name: 'Lagarto Plano (Coxão Duro)', category: 'COXAO', defaultPercent: 5.6, fallbackSellingPrice: 41.90 },
-    // Dianteiro
-    { code: 'COR-PALETA', name: 'Paleta Desossada', category: 'SEGUNDA', defaultPercent: 9.5, fallbackSellingPrice: 35.90 },
-    { code: 'COR-ACEM', name: 'Acém', category: 'SEGUNDA', defaultPercent: 12.0, fallbackSellingPrice: 33.90 },
-    { code: 'COR-PEITO', name: 'Peito Bovino', category: 'SEGUNDA', defaultPercent: 6.2, fallbackSellingPrice: 32.90 },
-    { code: 'COR-MUSCULO', name: 'Músculo', category: 'SEGUNDA', defaultPercent: 4.8, fallbackSellingPrice: 33.50 },
-    // Costela / Ponta de Agulha
-    { code: 'BOI-COST-GAU', name: 'Costela Gaúcha', category: 'COSTELA', defaultPercent: 6.5, fallbackSellingPrice: 34.90 },
-    // Descarte & Subprodutos
-    { code: 'SUB-SEBO', name: 'Sebo / Gordura de Limpeza', category: 'DESCARTE', defaultPercent: 6.5, fallbackSellingPrice: fatSalePriceKg || 2.40, isWaste: true },
-    { code: 'SUB-OSSO', name: 'Osso (Canela, Espinhaço, Costelas)', category: 'DESCARTE', defaultPercent: 17.5, fallbackSellingPrice: boneSalePriceKg || 0.85, isWaste: true },
-    { name: 'Quebra de Desossa / Evaporação', category: 'DESCARTE', defaultPercent: 1.7, fallbackSellingPrice: 0, isWaste: true }
+    // Traseiro Nobre (~16.2% com quebra 25%)
+    { code: 'COR-PICANHA', name: 'Picanha', category: 'NOBRE', defaultPercent: 1.5 * baseScaleFactor, fallbackSellingPrice: 79.90 },
+    { code: 'COR-MIGNON', name: 'Filé Mignon', category: 'NOBRE', defaultPercent: 1.7 * baseScaleFactor, fallbackSellingPrice: 74.90 },
+    { code: 'COR-CONTRA', name: 'Contra Filé', category: 'NOBRE', defaultPercent: 6.8 * baseScaleFactor, fallbackSellingPrice: 54.90 },
+    { code: 'COR-ALCATRA', name: 'Alcatra c/ Maminha', category: 'NOBRE', defaultPercent: 6.2 * baseScaleFactor, fallbackSellingPrice: 52.90 },
+    // Coxão (~23.0% com quebra 25%)
+    { code: 'COR-CHA', name: 'Chã de Dentro (Coxão Mole)', category: 'COXAO', defaultPercent: 8.3 * baseScaleFactor, fallbackSellingPrice: 42.90 },
+    { code: 'COR-PATINHO', name: 'Patinho', category: 'COXAO', defaultPercent: 6.4 * baseScaleFactor, fallbackSellingPrice: 43.90 },
+    { code: 'COR-LAG-RED', name: 'Lagarto Redondo', category: 'COXAO', defaultPercent: 2.9 * baseScaleFactor, fallbackSellingPrice: 42.50 },
+    { code: 'COR-LAG-PLA', name: 'Lagarto Plano (Coxão Duro)', category: 'COXAO', defaultPercent: 5.4 * baseScaleFactor, fallbackSellingPrice: 41.90 },
+    // Dianteiro (~30.0% com quebra 25%)
+    { code: 'COR-PALETA', name: 'Paleta Desossada', category: 'SEGUNDA', defaultPercent: 8.8 * baseScaleFactor, fallbackSellingPrice: 35.90 },
+    { code: 'COR-ACEM', name: 'Acém', category: 'SEGUNDA', defaultPercent: 10.8 * baseScaleFactor, fallbackSellingPrice: 33.90 },
+    { code: 'COR-PEITO', name: 'Peito Bovino', category: 'SEGUNDA', defaultPercent: 5.9 * baseScaleFactor, fallbackSellingPrice: 32.90 },
+    { code: 'COR-MUSCULO', name: 'Músculo', category: 'SEGUNDA', defaultPercent: 4.4 * baseScaleFactor, fallbackSellingPrice: 33.50 },
+    // Costela / Ponta de Agulha (~5.7% com quebra 25%)
+    { code: 'BOI-COST-GAU', name: 'Costela Gaúcha', category: 'COSTELA', defaultPercent: 5.7 * baseScaleFactor, fallbackSellingPrice: 34.90 },
+    // Descarte & Subprodutos de Graxaria (Quebra Técnica Padrão 25.0%)
+    { code: 'SUB-SEBO', name: 'Sebo / Gordura Industrial', category: 'DESCARTE', defaultPercent: fatYieldPercent, fallbackSellingPrice: fatSalePriceKg || 4.85, isWaste: true },
+    { code: 'SUB-OSSO', name: 'Osso para Graxaria / Rendering', category: 'DESCARTE', defaultPercent: boneYieldPercent, fallbackSellingPrice: boneSalePriceKg || 0.90, isWaste: true },
+    { name: 'Quebra de Desossa / Evaporação', category: 'DESCARTE', defaultPercent: evaporationYieldPercent, fallbackSellingPrice: 0, isWaste: true }
   ];
 
   const totalCarcassCost = carcassWeightKg * costPerKg;
   let totalWasteKg = 0;
   let wasteRevenue = 0;
+  let fatRevenue = 0;
+  let boneRevenue = 0;
   let totalCleanMeatKg = 0;
 
   // Busca de preços reais e rendimento zootécnico cadastrado na base de dados
@@ -550,9 +577,6 @@ export function calculateRealBeefYield(
       if (prod) {
         if (prod.sellingPriceKg && prod.sellingPriceKg > 0) {
           sellingPriceKg = prod.sellingPriceKg;
-        }
-        if (prod.yieldPercentStandard && prod.yieldPercentStandard > 0) {
-          yieldPercent = prod.yieldPercentStandard;
         }
       }
     }
@@ -569,8 +593,16 @@ export function calculateRealBeefYield(
 
     if (def.isWaste) {
       totalWasteKg += weightKg;
-      if (def.name.includes('Sebo')) wasteRevenue += weightKg * sellingPriceKg;
-      if (def.name.includes('Osso')) wasteRevenue += weightKg * sellingPriceKg;
+      if (def.name.includes('Sebo')) {
+        const rev = weightKg * sellingPriceKg;
+        wasteRevenue += rev;
+        fatRevenue += rev;
+      }
+      if (def.name.includes('Osso')) {
+        const rev = weightKg * sellingPriceKg;
+        wasteRevenue += rev;
+        boneRevenue += rev;
+      }
     } else {
       totalCleanMeatKg += weightKg;
     }
@@ -583,8 +615,27 @@ export function calculateRealBeefYield(
     };
   });
 
+  // 1. Custo Base Varejo (Formação Padrão pela Quebra Técnica de 25%)
+  // Custo por kg de carne limpa antes do crédito de graxaria
+  const baseCleanMeatCostPerKg = totalCleanMeatKg > 0 
+    ? Number((totalCarcassCost / totalCleanMeatKg).toFixed(2)) 
+    : Number((costPerKg * breakageMultiplier).toFixed(2));
+
+  // 2. Abatimento / Crédito Auxiliar da Graxaria por kg de Carne Limpa
+  const graxariaDiscountPerKg = totalCleanMeatKg > 0 
+    ? Number((wasteRevenue / totalCleanMeatKg).toFixed(2)) 
+    : 0;
+
+  // 3. Custo Efetivo Líquido com Graxaria Auxiliar
   const netCleanCost = totalCarcassCost - wasteRevenue;
-  const effectiveCleanMeatCostPerKg = totalCleanMeatKg > 0 ? netCleanCost / totalCleanMeatKg : costPerKg;
+  const netCleanMeatCostPerKg = totalCleanMeatKg > 0 
+    ? Number((netCleanCost / totalCleanMeatKg).toFixed(2)) 
+    : costPerKg;
+
+  // Custo ativo conforme o modo selecionado
+  const effectiveCleanMeatCostPerKg = costFormationMode === 'COM_GRAXARIA_AUXILIAR' 
+    ? netCleanMeatCostPerKg 
+    : baseCleanMeatCostPerKg;
 
   // Faturamento bruto total da carne limpa apurado com os preços reais do catálogo
   const cleanMeatRevenue = resolvedSpecs
@@ -592,7 +643,8 @@ export function calculateRealBeefYield(
     .reduce((acc, s) => acc + (s.weightKg * s.sellingPriceKg), 0);
 
   // Equalização Contábil de Custo por Valor Comercial de Balcão (Standard Butchery Accounting Allocation)
-  // Cada corte absorve o custo na exata proporção de seu valor de faturamento gerado
+  const activeCostToAllocate = costFormationMode === 'COM_GRAXARIA_AUXILIAR' ? netCleanCost : totalCarcassCost;
+
   const cuts: YieldAnalysisCuts[] = resolvedSpecs.map(spec => {
     let costPriceKg = 0;
     const revenueR$ = Number((spec.weightKg * spec.sellingPriceKg).toFixed(2));
@@ -601,7 +653,7 @@ export function calculateRealBeefYield(
       costPriceKg = spec.sellingPriceKg; // Custo residual de recuperação
     } else {
       const valueRatio = cleanMeatRevenue > 0 ? revenueR$ / cleanMeatRevenue : spec.weightKg / totalCleanMeatKg;
-      const allocatedTotalCost = valueRatio * netCleanCost;
+      const allocatedTotalCost = valueRatio * activeCostToAllocate;
       costPriceKg = spec.weightKg > 0 ? Number((allocatedTotalCost / spec.weightKg).toFixed(2)) : 0;
     }
 
@@ -636,13 +688,22 @@ export function calculateRealBeefYield(
     cuts,
     totalCleanMeatKg: Number(totalCleanMeatKg.toFixed(2)),
     totalWasteKg: Number(totalWasteKg.toFixed(2)),
-    effectiveCleanMeatCostPerKg: Number(effectiveCleanMeatCostPerKg.toFixed(2)),
+    breakagePercent: clampedBreakage,
+    cleanMeatYieldPercent,
+    breakageMultiplier,
+    baseCleanMeatCostPerKg,
+    graxariaDiscountPerKg,
+    netCleanMeatCostPerKg,
+    effectiveCleanMeatCostPerKg,
+    costFormationMode,
     totalRevenue: Number(totalRevenue.toFixed(2)),
     totalCost: Number(totalCarcassCost.toFixed(2)),
     grossProfit: Number(grossProfit.toFixed(2)),
     globalMarginSalePercent,
     globalMarginCostPercent,
     wasteRevenue: Number(wasteRevenue.toFixed(2)),
+    fatRevenue: Number(fatRevenue.toFixed(2)),
+    boneRevenue: Number(boneRevenue.toFixed(2)),
     isRealDatabase: true
   };
 }
@@ -653,8 +714,8 @@ export function calculateRealBeefYield(
 export function simulateBeefYield(
   carcassWeightKg: number,
   costPerKg: number,
-  fatSalePriceKg: number = 2.10,
-  boneSalePriceKg: number = 0.70,
+  fatSalePriceKg: number = 4.85,
+  boneSalePriceKg: number = 0.90,
   targetGlobalMarginSalePercent: number = 28
 ) {
   return calculateRealBeefYield(
