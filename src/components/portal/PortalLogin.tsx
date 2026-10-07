@@ -102,9 +102,14 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
             <span className="text-[10px] uppercase font-extrabold tracking-wider text-emerald-600 dark:text-emerald-400 block">
               PATRICK PESSOA • GESTÃO INTEGRAL
             </span>
-            <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
-              Portal de Estoque Mobile
-            </h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
+                Portal de Estoque Mobile
+              </h1>
+              <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 font-mono text-[10px] font-extrabold border border-emerald-300 dark:border-emerald-800">
+                v10.6
+              </span>
+            </div>
           </div>
         </div>
 
@@ -428,7 +433,7 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
 
       {/* Footer Info */}
       <div className="text-center text-[11px] text-slate-500 dark:text-slate-400 py-2 space-y-1">
-        <div>Sistema de Apuração do Boi • Matriz Oficial v10.4 (Patrick Pessoa)</div>
+        <div>Sistema de Apuração do Boi • Matriz Oficial v10.6 (Patrick Pessoa)</div>
         <div>
           Conheça o nosso site:{' '}
           <a

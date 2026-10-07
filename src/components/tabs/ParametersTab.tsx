@@ -62,7 +62,7 @@ export const ParametersTab: React.FC<ParametersTabProps> = ({
     { num: 3, title: 'Quantidades & Pesos', icon: Scale, desc: 'Peso médio/peça e rendimento padrão' },
     { num: 4, title: 'Número de Lojas', icon: Building2, desc: 'Gestão das 16 filiais e câmaras' },
     { num: 5, title: 'Consolidações', icon: Layers, desc: 'Agrupamentos e rateios por categoria' },
-    { num: 6, title: 'Totais Gerais', icon: Calculator, desc: 'Métricas gerais da matriz v10.4' },
+    { num: 6, title: 'Totais Gerais', icon: Calculator, desc: 'Métricas gerais da matriz v10.6' },
     { num: 7, title: 'Informações Adicionais', icon: FileText, desc: 'Premissas e notas operacionais' },
   ];
 
@@ -198,7 +198,7 @@ export const ParametersTab: React.FC<ParametersTabProps> = ({
                   <span>1. Cadastro dos Produtos ({products.length} itens cadastrados)</span>
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Produtos bovinos, suínos e subprodutos da desossa extraídos da planilha matriz v10.4
+                  Produtos bovinos, suínos e subprodutos da desossa extraídos da planilha matriz v10.6
                 </p>
               </div>
             </div>
@@ -470,7 +470,7 @@ export const ParametersTab: React.FC<ParametersTabProps> = ({
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Calculator className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>6. Totais e Fechamento da Matriz v10.4</span>
+                <span>6. Totais e Fechamento da Matriz v10.6</span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Conferência dos totais oficiais constantes no rodapé da planilha enviada
@@ -521,7 +521,7 @@ export const ParametersTab: React.FC<ParametersTabProps> = ({
 
             <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
               <p>
-                • <strong>Versão da Matriz:</strong> Planilha de Compra de Boi da Direção da Empresa v10.4 (Data de referência: quinta-feira, 1 de outubro de 2026).
+                • <strong>Versão da Matriz:</strong> Planilha de Compra de Boi da Direção da Empresa v10.6 (Data de referência: quinta-feira, 1 de outubro de 2026).
               </p>
               <p>
                 • <strong>Divisão de Quartos:</strong> A direção gerencia a compra entre <em>Dianteiro</em>, <em>Traseiro</em>, <em>Coxão</em> e <em>Alcatrão</em> de forma fracionada para abastecer lojas com perfis de consumo distintos (algumas lojas vendem mais dianteiro/acém e outras mais traseiro/alcatra).

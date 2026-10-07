@@ -515,7 +515,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
             </span>
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
-                PLANILHA DE COMPRA DE BOI DA DIREÇÃO DA EMPRESA v10.4
+                PLANILHA DE COMPRA DE BOI DA DIREÇÃO DA EMPRESA v10.6
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Matriz operacional das 16 filiais • <strong>Boi = (D+T+C+A)/2</strong> • <strong>Sugestão = Venda - Boi</strong> • <strong>Navegação Natural por Teclado (Excel / Google Sheets)</strong>

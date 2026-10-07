@@ -175,7 +175,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                   ERP APURAÇÃO DO BOI
                 </h1>
                 <p className="text-xs text-slate-600 font-semibold flex items-center gap-2 mt-0.5">
-                  <span>DIREÇÃO DA EMPRESA • PLANILHA MATRIZ v10.4</span>
+                  <span>DIREÇÃO DA EMPRESA • PLANILHA MATRIZ v10.6</span>
                   <span>•</span>
                   <span className="text-emerald-700 font-bold">16 Filiais Integradas</span>
                 </p>
@@ -327,7 +327,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
 
           {/* Rodapé Informativo */}
           <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-400 font-mono gap-1">
-            <span>Grupo GAPP • Patrick Pessoa • ERP Apuração do Boi v10.4 • Portal: www.gipp-site.vercel.app</span>
+            <span>Grupo GAPP • Patrick Pessoa • ERP Apuração do Boi v10.6 • Portal: www.gipp-site.vercel.app</span>
             <span className="flex items-center gap-1 text-emerald-700 font-sans font-semibold">
               <ShieldCheck className="w-3.5 h-3.5" />
               Documento Oficial Emitido em {emissionDateFormatted}

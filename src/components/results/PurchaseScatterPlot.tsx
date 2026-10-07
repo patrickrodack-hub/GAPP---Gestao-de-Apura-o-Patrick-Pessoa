@@ -444,7 +444,7 @@ export const PurchaseScatterPlot: React.FC<PurchaseScatterPlotProps> = ({
             <span>Q4: Equilíbrio</span>
           </div>
           <p className="text-[11px] text-slate-600 dark:text-slate-400">
-            Operação estável alinhada ao custo padrão da Planilha Matriz v10.4.
+            Operação estável alinhada ao custo padrão da Planilha Matriz v10.6.
           </p>
         </div>
       </div>

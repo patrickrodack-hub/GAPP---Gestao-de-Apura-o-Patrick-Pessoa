@@ -1228,8 +1228,8 @@ export const PortalForm: React.FC<PortalFormProps> = ({
               </div>
             </div>
 
-            {/* Close Button */}
-            <div className="pt-2">
+            {/* Close Button & Link para Site */}
+            <div className="pt-2 flex flex-col gap-2">
               <button
                 type="button"
                 autoFocus
@@ -1239,6 +1239,18 @@ export const PortalForm: React.FC<PortalFormProps> = ({
                 <Check className="w-4 h-4" />
                 <span>Fechar</span>
               </button>
+
+              <a
+                href="https://gipp-site.vercel.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 text-xs text-teal-600 dark:text-teal-400 font-bold hover:underline transition py-1"
+                title="Acessar nosso site oficial: https://gipp-site.vercel.app/"
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span>Visite nosso site: gipp-site.vercel.app</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
 
           </div>

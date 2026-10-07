@@ -505,7 +505,7 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({
                 <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <h4 className="font-bold text-emerald-900 dark:text-emerald-200">
-                    Restaurar Dados Padrão da Planilha v10.4
+                    Restaurar Dados Padrão da Planilha v10.6
                   </h4>
                   <p className="text-xs text-emerald-700 dark:text-emerald-300 leading-relaxed">
                     Restaura todos os lançamentos originais de referência da planilha oficial (pedidos, estoque de câmara, desossa e suíno de todas as 16 lojas).

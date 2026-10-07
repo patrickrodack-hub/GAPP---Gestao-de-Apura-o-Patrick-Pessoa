@@ -18,7 +18,9 @@ import {
   Sparkles,
   Download,
   Sun,
-  Moon
+  Moon,
+  Globe,
+  ExternalLink
 } from 'lucide-react';
 import { formatNumberBR } from '../../services/calculationService';
 import { PortalTheme } from './MobileStockPortal';
@@ -76,6 +78,19 @@ export const PortalLaunchHistory: React.FC<PortalLaunchHistoryProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Link para o site oficial */}
+          <a
+            href="https://gipp-site.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 text-xs font-bold transition shadow-2xs cursor-pointer"
+            title="Acessar nosso site oficial: https://gipp-site.vercel.app/"
+          >
+            <Globe className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+            <span className="hidden sm:inline">Nosso Site</span>
+            <ExternalLink className="w-3 h-3 opacity-60" />
+          </a>
+
           {/* Theme switcher */}
           <button
             type="button"

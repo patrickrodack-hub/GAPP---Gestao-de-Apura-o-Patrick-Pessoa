@@ -211,7 +211,7 @@ export const InventoryTab: React.FC<InventoryTabProps> = ({
               Lançamento de Estoque por Filial & Câmaras Frias
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Lançamentos sincronizados em tempo real com a Planilha de Compras Oficial v10.4
+              Lançamentos sincronizados em tempo real com a Planilha de Compras Oficial v10.6
             </p>
           </div>
         </div>

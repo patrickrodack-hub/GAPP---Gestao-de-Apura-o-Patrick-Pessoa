@@ -20,9 +20,9 @@ export const ExcelExportService = {
     const totals = calculateSheetTotals(sheetRows);
 
     // ==========================================
-    // ABA 1: PLANILHA MATRIZ v10.4 (COMPRA DO BOI)
+    // ABA 1: PLANILHA MATRIZ v10.6 (COMPRA DO BOI)
     // ==========================================
-    const ws1 = workbook.addWorksheet('Planilha Matriz v10.4', {
+    const ws1 = workbook.addWorksheet('Planilha Matriz v10.6', {
       views: [{ state: 'frozen', xSplit: 1, ySplit: 5 }],
       properties: { tabColor: { argb: 'FF005A9E' } }
     });
@@ -30,7 +30,7 @@ export const ExcelExportService = {
     // Title rows
     ws1.mergeCells('A1:AS1');
     const titleCell = ws1.getCell('A1');
-    titleCell.value = 'GRUPO GAPP SISTEMAS • PLANILHA DE COMPRA DE BOI DA DIREÇÃO DA EMPRESA v10.4';
+    titleCell.value = 'GRUPO GAPP SISTEMAS • PLANILHA DE COMPRA DE BOI DA DIREÇÃO DA EMPRESA v10.6';
     titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
     titleCell.fill = {
       type: 'pattern',
@@ -280,7 +280,7 @@ export const ExcelExportService = {
 
     ws1.mergeCells(`G${totalGeralRow}:AY${totalGeralRow}`);
     const tgNote = ws1.getCell(`G${totalGeralRow}`);
-    tgNote.value = 'Validação Contábil Oficial da Direção Conforme Matriz v10.4 • 16 Filiais Consolidadas • Custo Médio Quarto: R$ 26,00/kg (@ R$ 390,00)';
+    tgNote.value = 'Validação Contábil Oficial da Direção Conforme Matriz v10.6 • 16 Filiais Consolidadas • Custo Médio Quarto: R$ 26,00/kg (@ R$ 390,00)';
     tgNote.font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FFFFFFFF' } };
     tgNote.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF047857' } };
     tgNote.alignment = { horizontal: 'left', vertical: 'middle' };
@@ -392,7 +392,7 @@ export const ExcelExportService = {
       ['(+) Receita Bruta com Venda de Carne', 526836.73, 1.00, 36.40, 'Projeção sobre o mix de cortes das 16 lojas'],
       ['(-) Impostos sobre Vendas e Deduções', -36878.57, -0.07, -2.55, 'ICMS, PIS/COFINS e abatimentos'],
       ['(=) RECEITA OPERACIONAL LÍQUIDA', 489958.16, 0.93, 33.85, 'Faturamento líquido realizável'],
-      ['(-) Custo da Mercadoria Vendida (CMV)', -376311.95, -0.714, -26.00, 'Matriz oficial de compra v10.4 (Lote de Boi)'],
+      ['(-) Custo da Mercadoria Vendida (CMV)', -376311.95, -0.714, -26.00, 'Matriz oficial de compra v10.6 (Lote de Boi)'],
       ['(=) LUCRO BRUTO OPERACIONAL', 113646.21, 0.216, 7.85, 'Margem bruta de desossa gerencial'],
       ['(-) Custos Operacionais de Desossa & Câmaras', -36183.75, -0.069, -2.50, 'Mão de obra, energia de câmaras e embalagens'],
       ['(+) Receitas de Subprodutos (Graxaria/Sebo/Osso)', 8684.10, 0.016, 0.60, 'Venda de sebo de cobertura e ossos'],
@@ -451,7 +451,7 @@ export const ExcelExportService = {
     const a = document.createElement('a');
     a.href = url;
     const dateStr = new Date().toISOString().slice(0, 10);
-    a.download = `Grupo_GAPP_Apuracao_Boi_v10.4_${dateStr}.xlsx`;
+    a.download = `Grupo_GAPP_Apuracao_Boi_v10.6_${dateStr}.xlsx`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
