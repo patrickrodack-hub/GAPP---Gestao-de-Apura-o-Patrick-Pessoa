@@ -364,3 +364,33 @@ export interface BackupScheduleConfig {
   nextScheduledTimestamp?: number;
 }
 
+// ==========================================
+// MÓDULO DE APARELHOS CONECTADOS & SESSÕES
+// ==========================================
+export type DeviceAccessStatus = 'LIBERADO' | 'BLOQUEADO';
+
+export interface ConnectedDevice {
+  id: string;                      // ID único do dispositivo ou da sessão (ex: "dev-store1-169...")
+  deviceId: string;                // Fingerprint persistente do aparelho (localStorage)
+  storeId?: string;                // ID da filial conectada
+  storeName?: string;              // Nome da filial conectada
+  operatorName?: string;           // Nome do operador / encarregado conectado
+  ip: string;                      // Endereço IP do cliente ou simulado/detectado
+  macAddress: string;              // Endereço MAC ou Identificador de Hardware Simulado / Hash de Rede
+  deviceModel: string;             // Modelo do celular / computador (ex: "Samsung Galaxy S23", "iPhone 15", "Chrome Windows")
+  os: string;                      // Sistema operacional (ex: "Android 14", "iOS 17.4", "Windows 11")
+  browser: string;                 // Navegador (ex: "Chrome Mobile 123", "Safari Mobile")
+  connectionType: 'MOBILE_PORTAL' | 'DESKTOP_ERP' | 'TABLET_PWA';
+  status: DeviceAccessStatus;      // 'LIBERADO' ou 'BLOQUEADO'
+  firstConnectedAt: number;        // Timestamp da primeira conexão
+  lastSeenAt: number;              // Timestamp da última atividade (heartbeat)
+  sessionDurationSeconds: number;  // Tempo total de permanência / conectado em segundos
+  accessCount: number;             // Quantidade total de acessos / conexões realizadas
+  isOnline: boolean;               // Conectado em tempo real no momento (heartbeat < 2 min)
+  blockedReason?: string;          // Motivo do bloqueio caso status seja 'BLOQUEADO'
+  blockedAt?: number;              // Timestamp de quando foi bloqueado
+  blockedBy?: string;              // Quem bloqueou (ex: "Patrick Pessoa (Direção)")
+  locationHint?: string;           // Localização aproximada (ex: "Rio de Janeiro, RJ")
+}
+
+

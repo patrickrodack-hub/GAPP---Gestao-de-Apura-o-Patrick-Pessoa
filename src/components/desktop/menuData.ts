@@ -195,6 +195,18 @@ export const getERPMenuCategories = (
         targetTab: 'backup'
       },
       {
+        id: 'arq-aparelhos-conectados',
+        name: 'Aparelhos Conectados & Controle de Acessos',
+        division: 'Segurança & Auditoria',
+        code: 'SEC-02',
+        shortcut: 'Alt+M',
+        badge: 'Dispositivos',
+        description: 'Monitoramento de IP, MAC, quantidade de acessos, tempo de permanência e bloqueio',
+        icon: Smartphone,
+        actionType: 'tab',
+        targetTab: 'devices'
+      },
+      {
         id: 'arq-restaurar',
         name: 'Restaurar Matriz Oficial v10.4',
         division: 'Administração do Sistema',
@@ -890,6 +902,17 @@ export const getERPMenuCategories = (
         icon: Cloud,
         actionType: 'tab',
         targetTab: 'backup'
+      },
+      {
+        id: 'win-devices',
+        name: 'Janela: Aparelhos Conectados & Sessões',
+        division: 'Módulo MDI',
+        code: 'WIN-11',
+        shortcut: 'Alt+M',
+        description: 'Monitoramento em tempo real de dispositivos móveis, IP, MAC e bloqueio',
+        icon: Smartphone,
+        actionType: 'tab',
+        targetTab: 'devices'
       }
     ]
   },

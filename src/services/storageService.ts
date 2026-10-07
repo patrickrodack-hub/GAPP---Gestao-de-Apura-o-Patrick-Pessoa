@@ -1,5 +1,6 @@
-import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, StockLaunchRecord, SheetSnapshotRecord, PortalLockConfig, SystemUser } from '../types/erp';
+import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, StockLaunchRecord, SheetSnapshotRecord, PortalLockConfig, SystemUser, ConnectedDevice, DeviceAccessStatus } from '../types/erp';
 import { INITIAL_PRODUCTS, INITIAL_STORES, INITIAL_SHEET_ROWS, INITIAL_BATCHES, INITIAL_WASTE_RECORDS, INITIAL_SUPPLIERS, INITIAL_USERS } from '../data/initialData';
+import { INITIAL_CONNECTED_DEVICES } from '../data/initialDevices';
 import { recalculateRowOrderFormulas, calculateSheetTotals } from './calculationService';
 import { FirebaseService } from './firebase';
 
@@ -16,6 +17,7 @@ const STORAGE_KEYS = {
   PORTAL_LOCK: 'apuracao_boi_portal_lock_v1',
   USERS: 'apuracao_boi_users_v1',
   SESSION_USER: 'apuracao_boi_session_user_v1',
+  CONNECTED_DEVICES: 'gapp_connected_devices_v1',
 };
 
 export const DEFAULT_PORTAL_LOCK: PortalLockConfig = {
@@ -996,5 +998,221 @@ export const StorageService = {
       localStorage.removeItem(STORAGE_KEYS.SESSION_USER);
       sessionStorage.removeItem('apuracao_boi_temp_user');
     } catch {}
+  },
+
+  // ========================================================
+  // MÓDULO DE APARELHOS CONECTADOS & SESSÕES DE ACESSO
+  // ========================================================
+
+  getConnectedDevices(): ConnectedDevice[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.CONNECTED_DEVICES);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+      // Inicializa com a lista de dispositivos padrão das filiais
+      localStorage.setItem(STORAGE_KEYS.CONNECTED_DEVICES, JSON.stringify(INITIAL_CONNECTED_DEVICES));
+      return INITIAL_CONNECTED_DEVICES;
+    } catch {
+      return INITIAL_CONNECTED_DEVICES;
+    }
+  },
+
+  saveConnectedDevices(devices: ConnectedDevice[]) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.CONNECTED_DEVICES, JSON.stringify(devices));
+      FirebaseService.saveAllConnectedDevices(devices).catch(() => {});
+    } catch (e) {
+      console.warn('Erro ao salvar aparelhos conectados:', e);
+    }
+  },
+
+  saveSingleDevice(device: ConnectedDevice): ConnectedDevice[] {
+    try {
+      const current = this.getConnectedDevices();
+      const idx = current.findIndex(d => d.id === device.id || d.deviceId === device.deviceId);
+      let updated: ConnectedDevice[];
+      if (idx >= 0) {
+        updated = [...current];
+        updated[idx] = { ...updated[idx], ...device };
+      } else {
+        updated = [device, ...current];
+      }
+      localStorage.setItem(STORAGE_KEYS.CONNECTED_DEVICES, JSON.stringify(updated));
+      FirebaseService.saveConnectedDevice(device).catch(() => {});
+      return updated;
+    } catch (e) {
+      console.warn('Erro ao salvar dispositivo individual:', e);
+      return this.getConnectedDevices();
+    }
+  },
+
+  setDeviceStatus(deviceId: string, status: DeviceAccessStatus, blockedReason?: string, blockedBy?: string): ConnectedDevice[] {
+    const current = this.getConnectedDevices();
+    const updated = current.map(d => {
+      if (d.id === deviceId || d.deviceId === deviceId) {
+        return {
+          ...d,
+          status,
+          blockedReason: status === 'BLOQUEADO' ? (blockedReason || 'Bloqueado pela administração da rede') : undefined,
+          blockedAt: status === 'BLOQUEADO' ? Date.now() : undefined,
+          blockedBy: status === 'BLOQUEADO' ? (blockedBy || 'Patrick Pessoa (Direção)') : undefined,
+          lastSeenAt: Date.now()
+        };
+      }
+      return d;
+    });
+    this.saveConnectedDevices(updated);
+    return updated;
+  },
+
+  isDeviceBlocked(deviceId: string): { isBlocked: boolean; device?: ConnectedDevice } {
+    const current = this.getConnectedDevices();
+    const dev = current.find(d => d.deviceId === deviceId || d.id === deviceId);
+    if (dev && dev.status === 'BLOQUEADO') {
+      return { isBlocked: true, device: dev };
+    }
+    return { isBlocked: false, device: dev };
+  },
+
+  registerDeviceConnection(info: {
+    deviceId: string;
+    storeId?: string;
+    storeName?: string;
+    operatorName?: string;
+    ip?: string;
+    macAddress?: string;
+    deviceModel?: string;
+    os?: string;
+    browser?: string;
+    connectionType?: 'MOBILE_PORTAL' | 'DESKTOP_ERP' | 'TABLET_PWA';
+    locationHint?: string;
+  }): ConnectedDevice {
+    const current = this.getConnectedDevices();
+    const existingIndex = current.findIndex(d => d.deviceId === info.deviceId);
+    const now = Date.now();
+
+    if (existingIndex >= 0) {
+      const existing = current[existingIndex];
+      const updated: ConnectedDevice = {
+        ...existing,
+        storeId: info.storeId || existing.storeId,
+        storeName: info.storeName || existing.storeName,
+        operatorName: info.operatorName || existing.operatorName,
+        ip: info.ip || existing.ip,
+        macAddress: info.macAddress || existing.macAddress,
+        deviceModel: info.deviceModel || existing.deviceModel,
+        os: info.os || existing.os,
+        browser: info.browser || existing.browser,
+        connectionType: info.connectionType || existing.connectionType,
+        accessCount: (existing.accessCount || 0) + 1,
+        lastSeenAt: now,
+        isOnline: true,
+        sessionDurationSeconds: (existing.sessionDurationSeconds || 0) + 60,
+        locationHint: info.locationHint || existing.locationHint
+      };
+
+      current[existingIndex] = updated;
+      this.saveConnectedDevices(current);
+      return updated;
+    } else {
+      const newDev: ConnectedDevice = {
+        id: `dev_${info.storeId || 'geral'}_${now.toString(36)}`,
+        deviceId: info.deviceId,
+        storeId: info.storeId,
+        storeName: info.storeName,
+        operatorName: info.operatorName || 'Operador Conectado',
+        ip: info.ip || '187.58.10.50',
+        macAddress: info.macAddress || '02:42:AC:11:00:02',
+        deviceModel: info.deviceModel || 'Aparelho Web',
+        os: info.os || 'Desconhecido',
+        browser: info.browser || 'Navegador Web',
+        connectionType: info.connectionType || 'MOBILE_PORTAL',
+        status: 'LIBERADO',
+        firstConnectedAt: now,
+        lastSeenAt: now,
+        sessionDurationSeconds: 60,
+        accessCount: 1,
+        isOnline: true,
+        locationHint: info.locationHint
+      };
+
+      const updatedList = [newDev, ...current];
+      this.saveConnectedDevices(updatedList);
+      return newDev;
+    }
+  },
+
+  updateDeviceHeartbeat(deviceId: string, deltaSeconds: number = 30): void {
+    try {
+      const current = this.getConnectedDevices();
+      const dev = current.find(d => d.deviceId === deviceId || d.id === deviceId);
+      if (dev) {
+        dev.lastSeenAt = Date.now();
+        dev.isOnline = true;
+        dev.sessionDurationSeconds = (dev.sessionDurationSeconds || 0) + deltaSeconds;
+        localStorage.setItem(STORAGE_KEYS.CONNECTED_DEVICES, JSON.stringify(current));
+        FirebaseService.saveConnectedDevice(dev).catch(() => {});
+      }
+    } catch (e) {
+      console.warn('Erro ao atualizar heartbeat do aparelho:', e);
+    }
+  },
+
+  markDeviceOffline(deviceId: string): void {
+    try {
+      const current = this.getConnectedDevices();
+      const dev = current.find(d => d.deviceId === deviceId || d.id === deviceId);
+      if (dev) {
+        dev.isOnline = false;
+        dev.lastSeenAt = Date.now();
+        localStorage.setItem(STORAGE_KEYS.CONNECTED_DEVICES, JSON.stringify(current));
+        FirebaseService.saveConnectedDevice(dev).catch(() => {});
+      }
+    } catch {}
+  },
+
+  deleteConnectedDevice(deviceId: string): ConnectedDevice[] {
+    const current = this.getConnectedDevices();
+    const updated = current.filter(d => d.id !== deviceId && d.deviceId !== deviceId);
+    this.saveConnectedDevices(updated);
+    FirebaseService.deleteConnectedDevice(deviceId).catch(() => {});
+    return updated;
+  },
+
+  async syncConnectedDevices(): Promise<ConnectedDevice[]> {
+    try {
+      const cloud = await FirebaseService.getConnectedDevices();
+      if (cloud && cloud.length > 0) {
+        const local = this.getConnectedDevices();
+        const map = new Map<string, ConnectedDevice>();
+        cloud.forEach(c => {
+          const key = c.deviceId || c.id;
+          map.set(key, c);
+        });
+        local.forEach(l => {
+          const key = l.deviceId || l.id;
+          if (!map.has(key)) {
+            map.set(key, l);
+            FirebaseService.saveConnectedDevice(l).catch(() => {});
+          }
+        });
+        const merged = Array.from(map.values());
+        localStorage.setItem(STORAGE_KEYS.CONNECTED_DEVICES, JSON.stringify(merged));
+        return merged;
+      } else {
+        const local = this.getConnectedDevices();
+        if (local.length > 0) {
+          await FirebaseService.saveAllConnectedDevices(local);
+        }
+        return local;
+      }
+    } catch (e) {
+      console.warn('Erro ao sincronizar aparelhos com a nuvem:', e);
+      return this.getConnectedDevices();
+    }
   }
 };

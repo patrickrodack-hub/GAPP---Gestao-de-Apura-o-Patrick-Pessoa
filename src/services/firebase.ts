@@ -16,7 +16,7 @@ import {
   limit
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { SheetRowData, SheetSnapshotRecord, StockLaunchRecord, Store, Supplier, Product, PortalLockConfig, SystemUser, PurchaseBatch, WasteRecord, StandardPurchaseOrder } from '../types/erp';
+import { SheetRowData, SheetSnapshotRecord, StockLaunchRecord, Store, Supplier, Product, PortalLockConfig, SystemUser, PurchaseBatch, WasteRecord, StandardPurchaseOrder, ConnectedDevice } from '../types/erp';
 
 // Initialize Firebase App
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
@@ -798,6 +798,73 @@ export const FirebaseService = {
       await setDoc(doc(db, 'app_settings', 'yield_params'), cleanData, { merge: true });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  },
+
+  // 13. CONNECTED DEVICES & SESSIONS (Aparelhos Conectados & Controle de Acessos)
+  async getConnectedDevices(): Promise<ConnectedDevice[]> {
+    const path = 'connected_devices';
+    try {
+      const snap = await getDocs(collection(db, path));
+      if (snap.empty) return [];
+      const list: ConnectedDevice[] = [];
+      snap.forEach(d => list.push(d.data() as ConnectedDevice));
+      return list;
+    } catch (error) {
+      console.warn('Erro ao carregar aparelhos conectados do Firestore:', error);
+      return [];
+    }
+  },
+
+  async saveConnectedDevice(device: ConnectedDevice): Promise<void> {
+    const safeId = String(device.id || device.deviceId).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `connected_devices/${safeId}`;
+    try {
+      const clean = sanitizeForFirestore(device);
+      await setDoc(doc(db, 'connected_devices', safeId), clean, { merge: true });
+    } catch (error) {
+      console.warn('Erro ao salvar aparelho no Firestore:', error);
+    }
+  },
+
+  async saveAllConnectedDevices(devices: ConnectedDevice[]): Promise<void> {
+    const path = 'connected_devices';
+    try {
+      const batch = writeBatch(db);
+      for (const dev of devices) {
+        const safeId = String(dev.id || dev.deviceId).replace(/[^a-zA-Z0-9_\-]/g, '_');
+        batch.set(doc(db, 'connected_devices', safeId), sanitizeForFirestore(dev), { merge: true });
+      }
+      await batch.commit();
+    } catch (error) {
+      console.warn('Erro ao salvar lote de aparelhos no Firestore:', error);
+    }
+  },
+
+  async deleteConnectedDevice(deviceId: string): Promise<void> {
+    const safeId = String(deviceId).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `connected_devices/${safeId}`;
+    try {
+      await deleteDoc(doc(db, 'connected_devices', safeId));
+    } catch (error) {
+      console.warn('Erro ao remover aparelho do Firestore:', error);
+    }
+  },
+
+  subscribeToConnectedDevices(callback: (devices: ConnectedDevice[]) => void): () => void {
+    const path = 'connected_devices';
+    try {
+      return onSnapshot(collection(db, path), (snap) => {
+        if (!snap.empty) {
+          const list: ConnectedDevice[] = [];
+          snap.forEach(d => list.push(d.data() as ConnectedDevice));
+          callback(list);
+        }
+      }, (error) => {
+        console.warn('Erro ao escutar aparelhos conectados no Firestore:', error);
+      });
+    } catch {
+      return () => {};
     }
   }
 };

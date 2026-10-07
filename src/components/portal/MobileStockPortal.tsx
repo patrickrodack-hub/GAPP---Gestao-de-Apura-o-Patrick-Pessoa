@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { SheetRowData, Store, PortalLockConfig } from '../../types/erp';
+import React, { useState, useEffect, useRef } from 'react';
+import { SheetRowData, Store, PortalLockConfig, ConnectedDevice } from '../../types/erp';
 import { StorageService } from '../../services/storageService';
 import { FirebaseService } from '../../services/firebase';
 import { PortalLogin } from './PortalLogin';
 import { PortalForm } from './PortalForm';
+import { PortalDeviceBlockedScreen } from './PortalDeviceBlockedScreen';
+import { collectCurrentDeviceInfo, DeviceInfo } from '../../utils/deviceInfo';
 import { requestPortalFullscreen, exitPortalFullscreen, isPortalFullscreen } from '../../utils/fullscreen';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
 import { PWAInstallModal } from '../pwa/PWAInstallModal';
@@ -20,18 +22,92 @@ interface MobileStockPortalProps {
 export const MobileStockPortal: React.FC<MobileStockPortalProps> = ({
   stores,
   rows,
-  onUpdateRow
+  onUpdateRow,
+  onSwitchToAdmin
 }) => {
   const [loggedStoreId, setLoggedStoreId] = useState<string | null>(null);
   const [operatorName, setOperatorName] = useState<string>('');
   
+  // Aparelho Conectado & Controle de Acesso
+  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
+  const [isDeviceBlocked, setIsDeviceBlocked] = useState<boolean>(false);
+  const [blockedDevice, setBlockedDevice] = useState<ConnectedDevice | null>(null);
+  const [isCheckingBlock, setIsCheckingBlock] = useState<boolean>(false);
+  const heartbeatTimerRef = useRef<any>(null);
+
+  // Inicializa e detecta o aparelho atual
+  useEffect(() => {
+    let isMounted = true;
+    collectCurrentDeviceInfo().then(info => {
+      if (!isMounted) return;
+      setDeviceInfo(info);
+      const check = StorageService.isDeviceBlocked(info.deviceId);
+      setIsDeviceBlocked(check.isBlocked);
+      if (check.device) {
+        setBlockedDevice(check.device);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Escuta alterações em tempo real dos aparelhos na nuvem Firestore
+  useEffect(() => {
+    const unsubscribe = FirebaseService.subscribeToConnectedDevices((allDevices) => {
+      if (!deviceInfo) return;
+      const myDevice = allDevices.find(d => d.deviceId === deviceInfo.deviceId || d.id === deviceInfo.deviceId);
+      if (myDevice) {
+        if (myDevice.status === 'BLOQUEADO') {
+          setIsDeviceBlocked(true);
+          setBlockedDevice(myDevice);
+        } else {
+          setIsDeviceBlocked(false);
+          setBlockedDevice(null);
+        }
+      }
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [deviceInfo]);
+
+  // Função manual para verificar se o gestor desbloqueou o aparelho
+  const handleCheckDeviceStatus = async () => {
+    setIsCheckingBlock(true);
+    try {
+      await StorageService.syncConnectedDevices();
+      if (deviceInfo) {
+        const check = StorageService.isDeviceBlocked(deviceInfo.deviceId);
+        setIsDeviceBlocked(check.isBlocked);
+        setBlockedDevice(check.device || null);
+      }
+    } finally {
+      setTimeout(() => setIsCheckingBlock(false), 600);
+    }
+  };
+
+  // Heartbeat do aparelho enquanto estiver navegando ou conectado
+  useEffect(() => {
+    if (!deviceInfo || isDeviceBlocked) return;
+
+    // Atualiza heartbeat a cada 25 segundos
+    heartbeatTimerRef.current = setInterval(() => {
+      StorageService.updateDeviceHeartbeat(deviceInfo.deviceId, 25);
+    }, 25000);
+
+    return () => {
+      if (heartbeatTimerRef.current) clearInterval(heartbeatTimerRef.current);
+    };
+  }, [deviceInfo, isDeviceBlocked, loggedStoreId]);
+
   // PWA Install Detection & First-time flow
   const { shouldShowFirstTimeInstall, isStandalone } = usePWAInstall();
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
 
   useEffect(() => {
-    // Ao iniciar pela primeira vez (não instalado e não em modo standalone),
-    // inicia o processo guiado de instalação com animação no celular
     if (shouldShowFirstTimeInstall) {
       const timer = setTimeout(() => {
         setIsInstallModalOpen(true);
@@ -82,10 +158,8 @@ export const MobileStockPortal: React.FC<MobileStockPortalProps> = ({
   const [isFullscreen, setIsFullscreen] = useState<boolean>(() => isPortalFullscreen());
 
   useEffect(() => {
-    // 1. Inicia em Fullscreen assim que o portal for aberto
     requestPortalFullscreen();
 
-    // 2. Se o navegador exigir gesto do usuário, o primeiro toque/clique acionará o fullscreen automaticamente
     const handleFirstGesture = () => {
       requestPortalFullscreen();
       window.removeEventListener('click', handleFirstGesture);
@@ -95,7 +169,6 @@ export const MobileStockPortal: React.FC<MobileStockPortalProps> = ({
     window.addEventListener('click', handleFirstGesture, { passive: true });
     window.addEventListener('touchstart', handleFirstGesture, { passive: true });
 
-    // 3. Listener para atualizar o estado de tela cheia caso o usuário saia/entre
     const handleFullscreenChange = () => {
       setIsFullscreen(isPortalFullscreen());
     };
@@ -120,16 +193,57 @@ export const MobileStockPortal: React.FC<MobileStockPortalProps> = ({
   };
 
   const handleLogin = (storeId: string, name: string) => {
-    // Garante fullscreen no envio do login
+    // Garante que o aparelho não está bloqueado
+    if (deviceInfo) {
+      const check = StorageService.isDeviceBlocked(deviceInfo.deviceId);
+      if (check.isBlocked) {
+        setIsDeviceBlocked(true);
+        setBlockedDevice(check.device || null);
+        return;
+      }
+
+      // Registra conexão do aparelho no módulo de segurança
+      const store = stores.find(s => s.id === storeId);
+      StorageService.registerDeviceConnection({
+        deviceId: deviceInfo.deviceId,
+        storeId,
+        storeName: store?.name || 'Filial',
+        operatorName: name,
+        ip: deviceInfo.ip,
+        macAddress: deviceInfo.macAddress,
+        deviceModel: deviceInfo.deviceModel,
+        os: deviceInfo.os,
+        browser: deviceInfo.browser,
+        connectionType: deviceInfo.connectionType,
+        locationHint: store?.city ? `${store.city}, RJ` : 'Rio de Janeiro, RJ'
+      });
+    }
+
     requestPortalFullscreen();
     setLoggedStoreId(storeId);
     setOperatorName(name);
   };
 
   const handleLogout = () => {
+    if (deviceInfo) {
+      StorageService.markDeviceOffline(deviceInfo.deviceId);
+    }
     setLoggedStoreId(null);
     setOperatorName('');
   };
+
+  // Se o aparelho estiver bloqueado, exibe tela de bloqueio impenetrável
+  if (isDeviceBlocked) {
+    return (
+      <PortalDeviceBlockedScreen
+        deviceInfo={deviceInfo}
+        blockedDevice={blockedDevice}
+        onCheckStatus={handleCheckDeviceStatus}
+        isChecking={isCheckingBlock}
+        onSwitchToAdmin={onSwitchToAdmin}
+      />
+    );
+  }
 
   const currentStore = stores.find(s => s.id === loggedStoreId);
   const currentRow = rows.find(r => r.storeId === loggedStoreId);
@@ -147,6 +261,7 @@ export const MobileStockPortal: React.FC<MobileStockPortalProps> = ({
           onToggleFullscreen={toggleFullscreen}
           isStandalone={isStandalone}
           onOpenInstallModal={() => setIsInstallModalOpen(true)}
+          deviceInfo={deviceInfo}
         />
       ) : (
         <PortalForm

@@ -115,6 +115,15 @@ export function useGlobalShortcuts({
             e.preventDefault();
             onNavigateTab('parameters');
             return;
+          case 'Digit9':
+          case 'Numpad9':
+            e.preventDefault();
+            onNavigateTab('backup');
+            return;
+          case 'KeyM':
+            e.preventDefault();
+            onNavigateTab('devices');
+            return;
           case 'KeyX':
             e.preventDefault();
             onExportXLSX();

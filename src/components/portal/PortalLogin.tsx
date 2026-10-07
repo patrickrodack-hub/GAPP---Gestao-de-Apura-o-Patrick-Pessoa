@@ -26,6 +26,7 @@ import {
 import { PortalTheme } from './MobileStockPortal';
 import { requestPortalFullscreen } from '../../utils/fullscreen';
 import { ManualPdfService } from '../../services/manualPdfService';
+import { DeviceInfo } from '../../utils/deviceInfo';
 
 interface PortalLoginProps {
   stores: Store[];
@@ -37,6 +38,7 @@ interface PortalLoginProps {
   onToggleFullscreen?: () => void;
   isStandalone?: boolean;
   onOpenInstallModal?: () => void;
+  deviceInfo?: DeviceInfo | null;
 }
 
 export const PortalLogin: React.FC<PortalLoginProps> = ({
@@ -48,7 +50,8 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
   isFullscreen,
   onToggleFullscreen,
   isStandalone,
-  onOpenInstallModal
+  onOpenInstallModal,
+  deviceInfo
 }) => {
   // Primordial: A seleção de lojas inicia SEM nenhuma loja selecionada ('')
   const [selectedStoreId, setSelectedStoreId] = useState<string>('');
@@ -378,6 +381,20 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
               <Download className="w-3 h-3 text-emerald-600 dark:text-emerald-400 ml-0.5" />
             </button>
           </div>
+
+          {/* Badge de Dispositivo Conectado & Auditado */}
+          {deviceInfo && (
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-500 dark:text-slate-400 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+              <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Aparelho Autorizado
+              </span>
+              <span>•</span>
+              <span className="font-mono">IP: {deviceInfo.ip}</span>
+              <span>•</span>
+              <span className="font-mono">MAC: {deviceInfo.macAddress}</span>
+            </div>
+          )}
         </div>
       </div>
 

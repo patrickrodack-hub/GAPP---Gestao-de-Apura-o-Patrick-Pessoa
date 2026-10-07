@@ -18,7 +18,9 @@ import {
   Table,
   Building2,
   Power,
-  Activity
+  Activity,
+  Smartphone,
+  Cloud
 } from 'lucide-react';
 
 interface KeyboardShortcutsModalProps {
@@ -43,7 +45,9 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
     { key: 'Alt + 5', label: 'Estoque & Câmaras Frias (16 Lojas)', tabId: 'inventory', icon: Boxes },
     { key: 'Alt + 6', label: 'Gestão de Compras & Lotes Frigoríficos', tabId: 'purchases', icon: ShoppingCart },
     { key: 'Alt + 7', label: 'Controle de Descarte (Sebo e Osso)', tabId: 'waste', icon: Bone },
+    { key: 'Alt + M', label: 'Aparelhos Conectados & Controle de Acesso', tabId: 'devices', icon: Smartphone, highlight: true },
     { key: 'Alt + 8', label: 'Módulo 1: Cadastro & Parâmetros', tabId: 'parameters', icon: SlidersHorizontal },
+    { key: 'Alt + 9', label: 'Central de Backup Online Nuvem', tabId: 'backup', icon: Cloud },
   ];
 
   const actionShortcuts = [

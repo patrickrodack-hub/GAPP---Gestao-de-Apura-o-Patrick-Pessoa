@@ -204,6 +204,35 @@
         "notes": { "type": "string", "maxLength": 500, "description": "Observações comerciais" }
       },
       "required": ["id", "orderNumber", "date", "supplier", "totalBois", "totalWeightKg", "totalCostR$", "status"]
+    },
+    "ConnectedDevice": {
+      "title": "ConnectedDevice",
+      "description": "Aparelho ou terminal conectado ao sistema do portal com auditoria, status de liberação/bloqueio, IP, MAC e tempo de permanência",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "description": "ID único do dispositivo registrado" },
+        "deviceId": { "type": "string", "maxLength": 128, "description": "Fingerprint identificador do aparelho" },
+        "storeId": { "type": "string", "maxLength": 64, "description": "ID da loja filial conectada" },
+        "storeName": { "type": "string", "maxLength": 128, "description": "Nome da loja filial" },
+        "operatorName": { "type": "string", "maxLength": 128, "description": "Nome do operador ou encarregado" },
+        "ip": { "type": "string", "maxLength": 64, "description": "Endereço IP público ou de rede do dispositivo" },
+        "macAddress": { "type": "string", "maxLength": 64, "description": "Endereço MAC ou hash de hardware" },
+        "deviceModel": { "type": "string", "maxLength": 128, "description": "Modelo do aparelho (ex: Samsung Galaxy, iPhone)" },
+        "os": { "type": "string", "maxLength": 64, "description": "Sistema operacional do dispositivo" },
+        "browser": { "type": "string", "maxLength": 64, "description": "Navegador web utilizado" },
+        "connectionType": { "type": "string", "maxLength": 32, "description": "MOBILE_PORTAL, DESKTOP_ERP ou TABLET_PWA" },
+        "status": { "type": "string", "maxLength": 32, "description": "LIBERADO ou BLOQUEADO" },
+        "firstConnectedAt": { "type": "number", "description": "Timestamp epoch da primeira conexão" },
+        "lastSeenAt": { "type": "number", "description": "Timestamp epoch do último heartbeat/atividade" },
+        "sessionDurationSeconds": { "type": "number", "description": "Tempo acumulado de permanência em segundos" },
+        "accessCount": { "type": "number", "description": "Quantidade total de acessos realizados" },
+        "isOnline": { "type": "boolean", "description": "Se está com conexão ativa em tempo real" },
+        "blockedReason": { "type": "string", "maxLength": 256, "description": "Motivo do bloqueio caso esteja bloqueado" },
+        "blockedAt": { "type": "number", "description": "Timestamp de quando foi bloqueado" },
+        "blockedBy": { "type": "string", "maxLength": 128, "description": "Usuário gestor que aplicou o bloqueio" },
+        "locationHint": { "type": "string", "maxLength": 128, "description": "Localização aproximada (ex: Niterói, RJ)" }
+      },
+      "required": ["id", "deviceId", "ip", "macAddress", "deviceModel", "os", "browser", "connectionType", "status", "firstConnectedAt", "lastSeenAt", "sessionDurationSeconds", "accessCount", "isOnline"]
     }
   },
   "firestore": {
@@ -242,6 +271,10 @@
     "/purchase_orders/{orderId}": {
       "schema": "PurchaseOrder",
       "description": "Coleção oficial de pedidos de compras gerados e emitidos"
+    },
+    "/connected_devices/{deviceId}": {
+      "schema": "ConnectedDevice",
+      "description": "Coleção em tempo real de aparelhos conectados ao sistema do portal com controle de bloqueio e liberação"
     },
     "/cloud_backups/{backupId}": {
       "schema": "CloudBackup",

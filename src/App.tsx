@@ -13,6 +13,7 @@ import { InventoryTab } from './components/tabs/InventoryTab';
 import { PurchasesTab } from './components/tabs/PurchasesTab';
 import { WasteTab } from './components/tabs/WasteTab';
 import { ParametersTab } from './components/tabs/ParametersTab';
+import { DevicesTab } from './components/tabs/DevicesTab';
 import { QuickCalculatorModal } from './components/modals/QuickCalculatorModal';
 import { PrintReportModal } from './components/modals/PrintReportModal';
 import { PurchaseOrderModal } from './components/modals/PurchaseOrderModal';
@@ -631,6 +632,7 @@ export default function App() {
         inventory: 'Estoque & Câmaras (Alt+5)',
         purchases: 'Compras & Lotes (Alt+6)',
         waste: 'Descarte Sebo/Osso (Alt+7)',
+        devices: 'Aparelhos Conectados & Auditoria (Alt+M)',
         parameters: 'Módulo 1: Parâmetros (Alt+8)',
         backup: 'Central de Backup Online (Alt+9)',
       };
@@ -1036,6 +1038,15 @@ export default function App() {
                       }}
                     />
                   )}
+
+                  {activeTab === 'devices' && (
+                    <DevicesTab
+                      stores={stores}
+                      currentUser={currentUser}
+                      showToast={showToast}
+                      onOpenMobilePortal={() => setIsPortalMode(true)}
+                    />
+                  )}
                 </div>
 
               </div>
@@ -1096,6 +1107,10 @@ export default function App() {
           onClose={() => setIsPortalControlOpen(false)}
           currentConfig={portalLockConfig}
           onSaveConfig={handleSavePortalLockConfig}
+          onOpenConnectedDevices={() => {
+            setIsPortalControlOpen(false);
+            handleTabSelect('devices');
+          }}
         />
 
         <UserManagementModal
@@ -1315,6 +1330,15 @@ export default function App() {
               }}
             />
           )}
+
+          {activeTab === 'devices' && (
+            <DevicesTab
+              stores={stores}
+              currentUser={currentUser}
+              showToast={showToast}
+              onOpenMobilePortal={() => setIsPortalMode(true)}
+            />
+          )}
         </div>
       </main>
 
@@ -1383,6 +1407,10 @@ export default function App() {
         onClose={() => setIsPortalControlOpen(false)}
         currentConfig={portalLockConfig}
         onSaveConfig={handleSavePortalLockConfig}
+        onOpenConnectedDevices={() => {
+          setIsPortalControlOpen(false);
+          handleTabSelect('devices');
+        }}
       />
 
       <UserManagementModal

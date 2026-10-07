@@ -9,7 +9,8 @@ import {
   Bone, 
   SlidersHorizontal,
   LayoutDashboard,
-  Cloud
+  Cloud,
+  Smartphone
 } from 'lucide-react';
 
 interface SolidconDesktopWallpaperProps {
@@ -29,6 +30,7 @@ export const SolidconDesktopWallpaper: React.FC<SolidconDesktopWallpaperProps> =
     { id: 'inventory', label: 'Câmaras Frias & Estoque', icon: Warehouse, color: 'bg-cyan-600 text-white' },
     { id: 'purchases', label: 'Lotes de Frigoríficos', icon: ShoppingCart, color: 'bg-purple-600 text-white' },
     { id: 'waste', label: 'Descarte (Sebo e Osso)', icon: Bone, color: 'bg-rose-600 text-white' },
+    { id: 'devices', label: 'Aparelhos Conectados', icon: Smartphone, color: 'bg-teal-600 text-white' },
     { id: 'parameters', label: 'Módulo 1 - Parâmetros', icon: SlidersHorizontal, color: 'bg-slate-700 text-white' },
     { id: 'backup', label: 'Backup Online Nuvem', icon: Cloud, color: 'bg-sky-600 text-white' },
   ];
