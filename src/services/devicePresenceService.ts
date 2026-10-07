@@ -172,12 +172,16 @@ export async function registerCurrentRealDevice(params?: {
   const now = Date.now();
   const existingDev = StorageService.getConnectedDevices().find(d => d.deviceId === deviceId || d.id === deviceId);
 
+  const isMobile = (params?.connectionType || clientInfo.connectionType) === 'MOBILE_PORTAL';
+  const defaultOp = isMobile ? 'Operador do Portal Mobile' : 'Usuário Desktop ERP';
+  const defaultStore = isMobile ? 'Portal de Estoque das Filiais' : 'Diretoria / Matriz GAPP';
+
   const device: ConnectedDevice = {
     id: deviceId,
     deviceId: deviceId,
-    storeId: params?.storeId || existingDev?.storeId || 'matriz',
-    storeName: params?.storeName || existingDev?.storeName || 'Diretoria / Matriz',
-    operatorName: params?.operatorName || existingDev?.operatorName || 'Patrick Pessoa (Gestor)',
+    storeId: params?.storeId || existingDev?.storeId || (isMobile ? undefined : 'matriz'),
+    storeName: params?.storeName || existingDev?.storeName || defaultStore,
+    operatorName: params?.operatorName || existingDev?.operatorName || defaultOp,
     ip: ip,
     macAddress: stableMac,
     deviceModel: clientInfo.deviceModel,

@@ -22,7 +22,9 @@ import {
   LayoutGrid,
   List,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Edit3,
+  User
 } from 'lucide-react';
 import { ConnectedDevice, DeviceAccessStatus, Store, SystemUser } from '../../types/erp';
 import { StorageService } from '../../services/storageService';
@@ -60,6 +62,37 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
   const [selectedDeviceDetails, setSelectedDeviceDetails] = useState<ConnectedDevice | null>(null);
   const [isConfirmBlockAllModalOpen, setIsConfirmBlockAllModalOpen] = useState(false);
   const [isConfirmUnlockAllModalOpen, setIsConfirmUnlockAllModalOpen] = useState(false);
+
+  // Modal de Edição/Atribuição de Operador & Filial
+  const [deviceToEdit, setDeviceToEdit] = useState<ConnectedDevice | null>(null);
+  const [editOperatorName, setEditOperatorName] = useState('');
+  const [editStoreId, setEditStoreId] = useState('');
+
+  const handleOpenEditModal = (device: ConnectedDevice) => {
+    setDeviceToEdit(device);
+    setEditOperatorName(device.operatorName || '');
+    setEditStoreId(device.storeId || '');
+  };
+
+  const handleSaveDeviceEdit = () => {
+    if (!deviceToEdit) return;
+    const selectedStore = stores.find(s => s.id === editStoreId);
+    let updatedStoreName = deviceToEdit.storeName;
+    if (editStoreId === 'matriz') {
+      updatedStoreName = 'Diretoria / Matriz GAPP';
+    } else if (selectedStore) {
+      updatedStoreName = `${selectedStore.code} • ${selectedStore.name}`;
+    }
+
+    const updatedList = StorageService.updateDeviceMetadata(deviceToEdit.deviceId, {
+      operatorName: editOperatorName.trim() || deviceToEdit.operatorName,
+      storeId: editStoreId || undefined,
+      storeName: updatedStoreName
+    });
+    setDevices(updatedList);
+    setDeviceToEdit(null);
+    if (showToast) showToast('Identificação do operador e filial atualizadas!');
+  };
 
   // Sincronização em tempo real do Firestore
   useEffect(() => {
@@ -658,8 +691,8 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
 
                       {/* Usuário & Filial */}
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-slate-900 dark:text-white text-xs">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-extrabold text-slate-900 dark:text-white text-xs">
                             {dev.operatorName || 'Operador Conectado'}
                           </span>
                           {isCurrent && (
@@ -667,11 +700,16 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
                               Você
                             </span>
                           )}
+                          {dev.connectionType === 'MOBILE_PORTAL' && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                              Portal Celular
+                            </span>
+                          )}
                         </div>
-                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                          <Building2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                          <span className="font-semibold text-slate-700 dark:text-slate-300">
-                            {dev.storeName || 'MATRIZ / DIRETORIA'}
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                          <Building2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span className="font-bold text-slate-700 dark:text-slate-300">
+                            {dev.storeName || 'Portal de Filiais'}
                           </span>
                         </div>
                       </td>
@@ -770,6 +808,14 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
                               <span>Bloquear</span>
                             </button>
                           )}
+
+                          <button
+                            onClick={() => handleOpenEditModal(dev)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition"
+                            title="Editar / Atribuir Operador e Filial"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
 
                           <button
                             onClick={() => setSelectedDeviceDetails(dev)}
@@ -941,6 +987,14 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
                         <span>Bloquear</span>
                       </button>
                     )}
+
+                    <button
+                      onClick={() => handleOpenEditModal(dev)}
+                      className="p-1.5 rounded-xl text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition"
+                      title="Editar Operador e Filial"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
 
                     <button
                       onClick={() => setSelectedDeviceDetails(dev)}
@@ -1184,6 +1238,94 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
               >
                 Liberar Todos Agora
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ======================================================== */}
+      {/* MODAL 5: EDITAR / ATRIBUIR OPERADOR E FILIAL AO APARELHO */}
+      {/* ======================================================== */}
+      {deviceToEdit && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden animate-scale-in">
+            <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-amber-700 text-slate-950 p-5 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-black/10">
+                  <Edit3 className="w-5 h-5 text-slate-950" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black">Identificar Aparelho Conectado</h3>
+                  <p className="text-xs font-semibold text-slate-900/80">Atribuir Operador e Filial ao Dispositivo</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setDeviceToEdit(null)}
+                className="p-1.5 rounded-xl hover:bg-black/10 text-slate-950/80 hover:text-slate-950 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                <div className="flex items-center justify-between font-mono text-[11px] mb-1">
+                  <span><strong>Modelo:</strong> {deviceToEdit.deviceModel}</span>
+                  <span className="text-amber-700 dark:text-amber-400 font-bold">{deviceToEdit.os}</span>
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                  IP: {deviceToEdit.ip} • MAC: {deviceToEdit.macAddress}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>Nome do Usuário / Operador:</span>
+                </label>
+                <input
+                  type="text"
+                  value={editOperatorName}
+                  onChange={(e) => setEditOperatorName(e.target.value)}
+                  placeholder="Ex: Carlos Silva (Encarregado)"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-amber-500/40 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Filial Conectada:</span>
+                </label>
+                <select
+                  value={editStoreId}
+                  onChange={(e) => setEditStoreId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-emerald-500/40 focus:outline-none"
+                >
+                  <option value="matriz">Diretoria / Matriz GAPP</option>
+                  {stores.map((store) => (
+                    <option key={store.id} value={store.id}>
+                      {store.code} • {store.name} ({store.city})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setDeviceToEdit(null)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveDeviceEdit}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition active:scale-95 shadow-md shadow-amber-500/20"
+                >
+                  Salvar Identificação
+                </button>
+              </div>
             </div>
           </div>
         </div>

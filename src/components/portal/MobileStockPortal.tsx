@@ -46,6 +46,37 @@ export const MobileStockPortal: React.FC<MobileStockPortalProps> = ({
       if (check.device) {
         setBlockedDevice(check.device);
       }
+
+      // Recupera última identificação de loja e operador deste aparelho se houver
+      let initialStoreId = loggedStoreId;
+      let initialOp = operatorName;
+      try {
+        if (!initialStoreId) {
+          initialStoreId = localStorage.getItem('gapp_portal_last_store_id');
+        }
+        if (!initialOp) {
+          initialOp = localStorage.getItem('gapp_portal_last_operator') || '';
+        }
+      } catch {}
+
+      const store = initialStoreId ? stores.find(s => s.id === initialStoreId) : undefined;
+      const formattedStoreName = store ? `${store.code} • ${store.name}` : 'Portal de Estoque Mobile';
+      const formattedOpName = initialOp.trim() ? `${initialOp.trim()} (Portal Móvel)` : 'Operador Móvel (Portal de Filiais)';
+
+      // Registra presença imediata do dispositivo real no Firestore e Storage local
+      StorageService.registerDeviceConnection({
+        deviceId: info.deviceId,
+        storeId: initialStoreId || undefined,
+        storeName: formattedStoreName,
+        operatorName: formattedOpName,
+        ip: info.ip,
+        macAddress: info.macAddress,
+        deviceModel: info.deviceModel,
+        os: info.os,
+        browser: info.browser,
+        connectionType: 'MOBILE_PORTAL',
+        locationHint: store?.city || 'Rio de Janeiro, RJ'
+      });
     });
 
     return () => {
@@ -192,6 +223,26 @@ export const MobileStockPortal: React.FC<MobileStockPortalProps> = ({
     }
   };
 
+  const handleDraftIdentityChange = (storeId: string, name: string) => {
+    if (!deviceInfo) return;
+    const store = stores.find(s => s.id === storeId);
+    const formattedStore = store ? `${store.code} • ${store.name}` : 'Portal de Estoque Mobile';
+    const formattedOp = name.trim() ? `${name.trim()} (Portal Móvel)` : 'Operador Móvel (Portal de Filiais)';
+    StorageService.registerDeviceConnection({
+      deviceId: deviceInfo.deviceId,
+      storeId: storeId || undefined,
+      storeName: formattedStore,
+      operatorName: formattedOp,
+      ip: deviceInfo.ip,
+      macAddress: deviceInfo.macAddress,
+      deviceModel: deviceInfo.deviceModel,
+      os: deviceInfo.os,
+      browser: deviceInfo.browser,
+      connectionType: 'MOBILE_PORTAL',
+      locationHint: store?.city || 'Rio de Janeiro, RJ'
+    });
+  };
+
   const handleLogin = (storeId: string, name: string) => {
     // Garante que o aparelho não está bloqueado
     if (deviceInfo) {
@@ -207,17 +258,22 @@ export const MobileStockPortal: React.FC<MobileStockPortalProps> = ({
       StorageService.registerDeviceConnection({
         deviceId: deviceInfo.deviceId,
         storeId,
-        storeName: store?.name || 'Filial',
-        operatorName: name,
+        storeName: store ? `${store.code} • ${store.name}` : 'Filial',
+        operatorName: `${name} (Encarregado)`,
         ip: deviceInfo.ip,
         macAddress: deviceInfo.macAddress,
         deviceModel: deviceInfo.deviceModel,
         os: deviceInfo.os,
         browser: deviceInfo.browser,
-        connectionType: deviceInfo.connectionType,
-        locationHint: store?.city ? `${store.city}, RJ` : 'Rio de Janeiro, RJ'
+        connectionType: 'MOBILE_PORTAL',
+        locationHint: store?.city ? `${store.city}` : 'Rio de Janeiro, RJ'
       });
     }
+
+    try {
+      localStorage.setItem('gapp_portal_last_store_id', storeId);
+      localStorage.setItem('gapp_portal_last_operator', name);
+    } catch {}
 
     requestPortalFullscreen();
     setLoggedStoreId(storeId);
@@ -254,6 +310,7 @@ export const MobileStockPortal: React.FC<MobileStockPortalProps> = ({
         <PortalLogin
           stores={stores}
           onLogin={handleLogin}
+          onDraftIdentityChange={handleDraftIdentityChange}
           theme={portalTheme}
           onToggleTheme={togglePortalTheme}
           portalLockConfig={portalLockConfig}

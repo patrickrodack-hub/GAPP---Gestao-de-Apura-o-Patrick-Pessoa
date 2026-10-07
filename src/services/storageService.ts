@@ -1019,7 +1019,17 @@ export const StorageService = {
             !d.deviceId?.startsWith('dev-xiaomi-note12-str') &&
             !d.deviceId?.startsWith('dev-samsung-s22-str') &&
             !d.deviceId?.startsWith('sim-dev-')
-          );
+          ).map(d => {
+            // Se for dispositivo móvel que ficou com nome herdado "Patrick Pessoa (Gestor)" no passado, ajusta para identificação real
+            if ((d.connectionType === 'MOBILE_PORTAL' || /Android|iPhone|iPad|Mobile/i.test(d.os || '') || /Android|iPhone|iPad|Mobile/i.test(d.browser || '')) && d.operatorName === 'Patrick Pessoa (Gestor)') {
+              return {
+                ...d,
+                operatorName: 'Operador Móvel (Portal)',
+                storeName: 'Portal de Estoque Mobile'
+              };
+            }
+            return d;
+          });
           if (cleaned.length !== parsed.length) {
             localStorage.setItem(STORAGE_KEYS.CONNECTED_DEVICES, JSON.stringify(cleaned));
           }
@@ -1208,6 +1218,26 @@ export const StorageService = {
     return active;
   },
 
+  updateDeviceMetadata(deviceId: string, updates: { operatorName?: string; storeId?: string; storeName?: string }): ConnectedDevice[] {
+    const current = this.getConnectedDevices();
+    const updated = current.map(d => {
+      if (d.id === deviceId || d.deviceId === deviceId) {
+        const item: ConnectedDevice = {
+          ...d,
+          operatorName: updates.operatorName !== undefined ? updates.operatorName : d.operatorName,
+          storeId: updates.storeId !== undefined ? updates.storeId : d.storeId,
+          storeName: updates.storeName !== undefined ? updates.storeName : d.storeName,
+          lastSeenAt: Date.now()
+        };
+        FirebaseService.saveConnectedDevice(item).catch(() => {});
+        return item;
+      }
+      return d;
+    });
+    this.saveConnectedDevices(updated);
+    return updated;
+  },
+
   async syncConnectedDevices(): Promise<ConnectedDevice[]> {
     try {
       const cloud = await FirebaseService.getConnectedDevices();
@@ -1225,6 +1255,12 @@ export const StorageService = {
           if (isMock) {
             FirebaseService.deleteConnectedDevice(c.deviceId || c.id).catch(() => {});
           } else {
+            // Se for celular que veio com o nome padrão antigo do Gestor, ajusta
+            if ((c.connectionType === 'MOBILE_PORTAL' || /Android|iPhone|iPad|Mobile/i.test(c.os || '') || /Android|iPhone|iPad|Mobile/i.test(c.browser || '')) && c.operatorName === 'Patrick Pessoa (Gestor)') {
+              c.operatorName = 'Operador Móvel (Portal)';
+              c.storeName = 'Portal de Estoque Mobile';
+              FirebaseService.saveConnectedDevice(c).catch(() => {});
+            }
             validCloud.push(c);
           }
         }

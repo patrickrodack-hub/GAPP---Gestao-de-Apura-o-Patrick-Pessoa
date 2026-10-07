@@ -33,6 +33,7 @@ import { DeviceInfo } from '../../utils/deviceInfo';
 interface PortalLoginProps {
   stores: Store[];
   onLogin: (storeId: string, operatorName: string) => void;
+  onDraftIdentityChange?: (storeId: string, operatorName: string) => void;
   theme: PortalTheme;
   onToggleTheme: () => void;
   portalLockConfig?: PortalLockConfig;
@@ -46,6 +47,7 @@ interface PortalLoginProps {
 export const PortalLogin: React.FC<PortalLoginProps> = ({
   stores,
   onLogin,
+  onDraftIdentityChange,
   theme,
   onToggleTheme,
   portalLockConfig,
@@ -55,12 +57,39 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
   onOpenInstallModal,
   deviceInfo
 }) => {
-  // Primordial: A seleção de lojas inicia SEM nenhuma loja selecionada ('')
-  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
-  const [operatorName, setOperatorName] = useState<string>('');
+  // Primordial: A seleção de lojas inicia SEM nenhuma loja selecionada ('') ou recupera última sessão válida
+  const [selectedStoreId, setSelectedStoreId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('gapp_portal_last_store_id') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [operatorName, setOperatorName] = useState<string>(() => {
+    try {
+      return localStorage.getItem('gapp_portal_last_operator') || '';
+    } catch {
+      return '';
+    }
+  });
   const [error, setError] = useState<string | null>(null);
 
   const selectedStore = stores.find(s => s.id === selectedStoreId);
+
+  // Sincroniza identificação em tempo real no módulo de aparelhos conectados conforme o operador digita/seleciona
+  const handleStoreChange = (storeId: string) => {
+    setSelectedStoreId(storeId);
+    if (onDraftIdentityChange) {
+      onDraftIdentityChange(storeId, operatorName);
+    }
+  };
+
+  const handleOperatorNameChange = (name: string) => {
+    setOperatorName(name);
+    if (onDraftIdentityChange) {
+      onDraftIdentityChange(selectedStoreId, name);
+    }
+  };
 
   // Verifica permissão e horário do portal
   const portalAccess = StorageService.checkPortalAccess(portalLockConfig);
@@ -258,7 +287,7 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
                 <select
                   value={selectedStoreId}
                   onChange={(e) => {
-                    setSelectedStoreId(e.target.value);
+                    handleStoreChange(e.target.value);
                     if (error) setError(null);
                   }}
                   className={`w-full appearance-none rounded-xl p-3.5 pr-10 text-sm font-bold transition-all cursor-pointer focus:outline-none ${
@@ -310,7 +339,7 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
                 type="text"
                 value={operatorName}
                 onChange={(e) => {
-                  setOperatorName(e.target.value);
+                  handleOperatorNameChange(e.target.value);
                   if (error) setError(null);
                 }}
                 placeholder="Ex: Carlos Encarregado / João Açougueiro"

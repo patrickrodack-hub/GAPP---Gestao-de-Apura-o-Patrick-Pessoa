@@ -193,5 +193,13 @@ service cloud.firestore {
       allow create, update: if isValidId(userId) && isValidUser(incoming());
       allow delete: if isValidId(userId);
     }
+
+    // Connected Devices (Aparelhos Conectados, Celulares e Auditoria de Acesso)
+    match /connected_devices/{deviceId} {
+      allow get: if isValidId(deviceId);
+      allow list: if true;
+      allow create, update: if isValidId(deviceId);
+      allow delete: if isValidId(deviceId);
+    }
   }
 }

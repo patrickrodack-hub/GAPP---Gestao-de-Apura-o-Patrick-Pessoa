@@ -357,13 +357,15 @@ export default function App() {
       console.warn('Ouvinte de usuários não iniciado:', e);
     }
 
-    // 5. Inicia o registro e o heartbeat do dispositivo real
-    startRealDeviceHeartbeat({
-      storeId: 'matriz',
-      storeName: 'Diretoria / Matriz GAPP',
-      operatorName: currentUser ? `${currentUser.name} (${currentUser.role})` : 'Patrick Pessoa (Gestor)',
-      connectionType: 'DESKTOP_ERP'
-    });
+    // 5. Inicia o registro e o heartbeat do dispositivo real (somente no modo Desktop ERP)
+    if (!isPortalMode) {
+      startRealDeviceHeartbeat({
+        storeId: currentUser?.storeId || 'matriz',
+        storeName: currentUser?.storeId && currentUser.storeId !== 'matriz' ? (stores.find(s => s.id === currentUser.storeId)?.name || 'Filial ERP') : 'Diretoria / Matriz GAPP',
+        operatorName: currentUser ? `${currentUser.name} (${currentUser.role})` : 'Usuário Desktop ERP',
+        connectionType: 'DESKTOP_ERP'
+      });
+    }
 
     return () => {
       isMounted = false;
