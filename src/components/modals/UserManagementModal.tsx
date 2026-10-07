@@ -120,15 +120,15 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
         break;
       case 'COMPRADOR':
         setFormRoleTitle('Mesa de Compras Matriz');
-        setFormAllowedModules(['dashboard', 'sheet', 'purchases', 'parameters']);
+        setFormAllowedModules(['dashboard', 'sheet', 'quotes', 'yield', 'purchases', 'parameters']);
         break;
       case 'OPERACIONAL':
         setFormRoleTitle('Encarregado / Conferente');
-        setFormAllowedModules(['dashboard', 'inventory', 'yield']);
+        setFormAllowedModules(['dashboard', 'inventory', 'yield', 'waste', 'portal']);
         break;
       case 'VISUALIZADOR':
         setFormRoleTitle('Visualizador / Auditor');
-        setFormAllowedModules(['dashboard', 'results']);
+        setFormAllowedModules(['dashboard', 'results', 'sheet', 'quotes']);
         break;
     }
   };
@@ -678,7 +678,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                               </span>
                               {isDev ? (
                                 <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
-                                  ✓ Todos os 9 Módulos do ERP (100%)
+                                  ✓ Acesso Total • Todos os {ALL_SYSTEM_MODULES.length} Módulos (100%)
                                 </span>
                               ) : (
                                 (user.allowedModules || []).map(modId => {

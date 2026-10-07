@@ -10,7 +10,8 @@ import {
   SlidersHorizontal,
   LayoutDashboard,
   Cloud,
-  Smartphone
+  Smartphone,
+  Activity
 } from 'lucide-react';
 
 interface SolidconDesktopWallpaperProps {
@@ -25,6 +26,7 @@ export const SolidconDesktopWallpaper: React.FC<SolidconDesktopWallpaperProps> =
   const desktopShortcuts = [
     { id: 'sheet', label: 'Planilha Direção v10.6', icon: FileSpreadsheet, color: 'bg-emerald-600 text-white' },
     { id: 'dashboard', label: 'Painel Geral de Gestão', icon: LayoutDashboard, color: 'bg-blue-600 text-white' },
+    { id: 'quotes', label: 'Cotação em Tempo Real', icon: Activity, color: 'bg-emerald-700 text-white' },
     { id: 'yield', label: 'Rendimento & Desossa', icon: Scissors, color: 'bg-amber-600 text-white' },
     { id: 'results', label: 'DRE & Margens', icon: DollarSign, color: 'bg-indigo-600 text-white' },
     { id: 'inventory', label: 'Câmaras Frias & Estoque', icon: Warehouse, color: 'bg-cyan-600 text-white' },

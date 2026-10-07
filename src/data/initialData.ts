@@ -995,8 +995,11 @@ export const ALL_SYSTEM_MODULES = [
   { id: 'inventory', label: 'Estoque & Câmaras', description: 'Lançamentos de balcão e câmaras frigoríficas' },
   { id: 'purchases', label: 'Compras & Lotes', description: 'Histórico de lotes, notas fiscais e cotação da arroba' },
   { id: 'waste', label: 'Descarte (Sebo & Osso)', description: 'Apuração de quebra e subprodutos vendidos para graxarias' },
+  { id: 'devices', label: 'Aparelhos Conectados', description: 'Auditoria de conexões, controle de IP/MAC e bloqueio de acessos' },
   { id: 'parameters', label: 'Módulo 1: Cadastros', description: 'Tabela de produtos, filiais e frigoríficos' },
+  { id: 'backup', label: 'Backup Online Nuvem', description: 'Central de backup e agendamento no Firestore' },
   { id: 'users', label: 'Gestão de Usuários', description: 'Controle de acessos, senhas e permissões do sistema' },
+  { id: 'portal', label: 'Portal Mobile de Filiais', description: 'Lançamento diário de estoque nas 16 lojas' },
 ];
 
 export const INITIAL_USERS: import('../types/erp').SystemUser[] = [
@@ -1009,7 +1012,7 @@ export const INITIAL_USERS: import('../types/erp').SystemUser[] = [
     roleTitle: 'Desenvolvedor do Software',
     email: 'patrickrodack@gmail.com',
     active: true,
-    allowedModules: ['dashboard', 'sheet', 'quotes', 'yield', 'results', 'inventory', 'purchases', 'waste', 'parameters', 'users'],
+    allowedModules: ['dashboard', 'sheet', 'quotes', 'yield', 'results', 'inventory', 'purchases', 'waste', 'devices', 'parameters', 'backup', 'users', 'portal'],
     createdAt: 1727740800000, // Outubro 2026
   },
   {
@@ -1021,7 +1024,7 @@ export const INITIAL_USERS: import('../types/erp').SystemUser[] = [
     roleTitle: 'Diretor Geral de Carnes',
     email: 'diretoria@grupogapp.com.br',
     active: true,
-    allowedModules: ['dashboard', 'sheet', 'quotes', 'yield', 'results', 'inventory', 'purchases', 'waste', 'parameters'],
+    allowedModules: ['dashboard', 'sheet', 'quotes', 'yield', 'results', 'inventory', 'purchases', 'waste', 'devices', 'parameters', 'backup', 'portal'],
     createdAt: 1727740800000,
   },
   {
@@ -1033,7 +1036,31 @@ export const INITIAL_USERS: import('../types/erp').SystemUser[] = [
     roleTitle: 'Comprador de Carcaça e Arroba',
     email: 'compras@grupogapp.com.br',
     active: true,
-    allowedModules: ['dashboard', 'sheet', 'purchases', 'parameters'],
+    allowedModules: ['dashboard', 'sheet', 'quotes', 'yield', 'purchases', 'parameters'],
+    createdAt: 1727740800000,
+  },
+  {
+    id: 'user_operacional',
+    name: 'Encarregado de Carnes',
+    username: 'operador',
+    password: '123',
+    role: 'OPERACIONAL',
+    roleTitle: 'Encarregado de Câmaras & Açougue',
+    email: 'operador@grupogapp.com.br',
+    active: true,
+    allowedModules: ['dashboard', 'inventory', 'yield', 'waste', 'portal'],
+    createdAt: 1727740800000,
+  },
+  {
+    id: 'user_visualizador',
+    name: 'Auditoria & Controladoria',
+    username: 'auditor',
+    password: '123',
+    role: 'VISUALIZADOR',
+    roleTitle: 'Auditor Fiscal e Contábil',
+    email: 'auditoria@grupogapp.com.br',
+    active: true,
+    allowedModules: ['dashboard', 'results', 'sheet', 'quotes'],
     createdAt: 1727740800000,
   }
 ];

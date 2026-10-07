@@ -1,5 +1,5 @@
 import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, StockLaunchRecord, SheetSnapshotRecord, PortalLockConfig, SystemUser, ConnectedDevice, DeviceAccessStatus } from '../types/erp';
-import { INITIAL_PRODUCTS, INITIAL_STORES, INITIAL_SHEET_ROWS, INITIAL_BATCHES, INITIAL_WASTE_RECORDS, INITIAL_SUPPLIERS, INITIAL_USERS } from '../data/initialData';
+import { INITIAL_PRODUCTS, INITIAL_STORES, INITIAL_SHEET_ROWS, INITIAL_BATCHES, INITIAL_WASTE_RECORDS, INITIAL_SUPPLIERS, INITIAL_USERS, ALL_SYSTEM_MODULES } from '../data/initialData';
 import { INITIAL_CONNECTED_DEVICES } from '../data/initialDevices';
 import { recalculateRowOrderFormulas, calculateSheetTotals } from './calculationService';
 import { FirebaseService } from './firebase';
@@ -854,7 +854,7 @@ export const StorageService = {
             username: 'desenvolvedor',
             role: 'DESENVOLVEDOR',
             active: true,
-            allowedModules: ['dashboard', 'sheet', 'yield', 'results', 'inventory', 'purchases', 'waste', 'parameters', 'users']
+            allowedModules: ALL_SYSTEM_MODULES.map(m => m.id)
           };
         }
       }
@@ -1009,15 +1009,26 @@ export const StorageService = {
       const data = localStorage.getItem(STORAGE_KEYS.CONNECTED_DEVICES);
       if (data) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+        if (Array.isArray(parsed)) {
+          // Filtra e remove resquícios de IDs mockados antigos
+          const cleaned = parsed.filter(d => 
+            !d.id?.startsWith('dev_str_') && 
+            !d.deviceId?.startsWith('dev-samsung-a54-str') && 
+            !d.deviceId?.startsWith('dev-iphone-13-str') &&
+            !d.deviceId?.startsWith('dev-motorola-g84-str') &&
+            !d.deviceId?.startsWith('dev-xiaomi-note12-str') &&
+            !d.deviceId?.startsWith('dev-samsung-s22-str') &&
+            !d.deviceId?.startsWith('sim-dev-')
+          );
+          if (cleaned.length !== parsed.length) {
+            localStorage.setItem(STORAGE_KEYS.CONNECTED_DEVICES, JSON.stringify(cleaned));
+          }
+          return cleaned;
         }
       }
-      // Inicializa com a lista de dispositivos padrão das filiais
-      localStorage.setItem(STORAGE_KEYS.CONNECTED_DEVICES, JSON.stringify(INITIAL_CONNECTED_DEVICES));
-      return INITIAL_CONNECTED_DEVICES;
+      return [];
     } catch {
-      return INITIAL_CONNECTED_DEVICES;
+      return [];
     }
   },
 
@@ -1183,13 +1194,44 @@ export const StorageService = {
     return updated;
   },
 
+  async clearAllOfflineDevices(): Promise<ConnectedDevice[]> {
+    const current = this.getConnectedDevices();
+    const now = Date.now();
+    const active = current.filter(d => d.isOnline && (now - d.lastSeenAt < 120000));
+    this.saveConnectedDevices(active);
+    
+    // Apaga os inativos do Firestore
+    const toDelete = current.filter(d => !active.some(a => a.deviceId === d.deviceId));
+    for (const d of toDelete) {
+      FirebaseService.deleteConnectedDevice(d.deviceId || d.id).catch(() => {});
+    }
+    return active;
+  },
+
   async syncConnectedDevices(): Promise<ConnectedDevice[]> {
     try {
       const cloud = await FirebaseService.getConnectedDevices();
       if (cloud && cloud.length > 0) {
+        // Filtra qualquer mock do cloud e deleta do Firestore
+        const validCloud: ConnectedDevice[] = [];
+        for (const c of cloud) {
+          const isMock = c.id?.startsWith('dev_str_') || 
+            c.deviceId?.startsWith('dev-samsung-a54-str') || 
+            c.deviceId?.startsWith('dev-iphone-13-str') ||
+            c.deviceId?.startsWith('dev-motorola-g84-str') ||
+            c.deviceId?.startsWith('dev-xiaomi-note12-str') ||
+            c.deviceId?.startsWith('dev-samsung-s22-str') ||
+            c.deviceId?.startsWith('sim-dev-');
+          if (isMock) {
+            FirebaseService.deleteConnectedDevice(c.deviceId || c.id).catch(() => {});
+          } else {
+            validCloud.push(c);
+          }
+        }
+
         const local = this.getConnectedDevices();
         const map = new Map<string, ConnectedDevice>();
-        cloud.forEach(c => {
+        validCloud.forEach(c => {
           const key = c.deviceId || c.id;
           map.set(key, c);
         });
@@ -1205,9 +1247,6 @@ export const StorageService = {
         return merged;
       } else {
         const local = this.getConnectedDevices();
-        if (local.length > 0) {
-          await FirebaseService.saveAllConnectedDevices(local);
-        }
         return local;
       }
     } catch (e) {

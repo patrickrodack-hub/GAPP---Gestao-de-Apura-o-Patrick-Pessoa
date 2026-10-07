@@ -38,11 +38,14 @@ import {
   BookOpen,
   Download,
   Globe,
-  ExternalLink
+  ExternalLink,
+  Send,
+  Share2
 } from 'lucide-react';
 import { PortalLaunchHistory } from './PortalLaunchHistory';
 import { PortalTheme } from './MobileStockPortal';
 import { ManualPdfService } from '../../services/manualPdfService';
+import { PortalLaunchPdfService } from '../../services/portalLaunchPdfService';
 
 interface PortalFormProps {
   store: Store;
@@ -75,6 +78,8 @@ export const PortalForm: React.FC<PortalFormProps> = ({
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isSharingWhatsApp, setIsSharingWhatsApp] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [successModalData, setSuccessModalData] = useState<{
     date: string;
     storeName: string;
@@ -84,6 +89,7 @@ export const PortalForm: React.FC<PortalFormProps> = ({
     boisEquivalente: number;
     recebeuBoiHoje: boolean;
     notes?: string;
+    record?: StockLaunchRecord;
   } | null>(null);
   const [historyRecords, setHistoryRecords] = useState<StockLaunchRecord[]>(() => StorageService.getStockLaunchRecords());
 
@@ -299,7 +305,15 @@ export const PortalForm: React.FC<PortalFormProps> = ({
     setIsSavedToast(true);
     setTimeout(() => setIsSavedToast(false), 4500);
 
-    // Abre a caixa de diálogo de confirmação solicitada pelo usuário
+    // 5. Gera automaticamente o Extrato Oficial em PDF e dispara via WhatsApp
+    PortalLaunchPdfService.shareLaunchViaWhatsApp({
+      record: launchRecord,
+      store,
+      operatorName,
+      notes: launchNotes
+    }).catch(err => console.warn('Disparo WhatsApp Extrato PDF:', err));
+
+    // Abre a caixa de diálogo de confirmação com opções de reenvio do WhatsApp e download do PDF
     setSuccessModalData({
       date: formattedDate,
       storeName: store.name,
@@ -308,7 +322,8 @@ export const PortalForm: React.FC<PortalFormProps> = ({
       totalKg: Math.round(totalKg),
       boisEquivalente: finalRow.boi || 0,
       recebeuBoiHoje: recebeuBoiHoje ?? false,
-      notes: launchNotes.trim()
+      notes: launchNotes.trim(),
+      record: launchRecord
     });
     setShowSuccessModal(true);
 
@@ -1228,16 +1243,60 @@ export const PortalForm: React.FC<PortalFormProps> = ({
               </div>
             </div>
 
-            {/* Close Button & Link para Site */}
+            {/* Ações de Extrato em PDF e WhatsApp */}
             <div className="pt-2 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!successModalData?.record) return;
+                  setIsSharingWhatsApp(true);
+                  try {
+                    await PortalLaunchPdfService.shareLaunchViaWhatsApp({
+                      record: successModalData.record,
+                      store,
+                      operatorName: successModalData.operatorName,
+                      notes: successModalData.notes
+                    });
+                  } finally {
+                    setIsSharingWhatsApp(false);
+                  }
+                }}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-md active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Send className={`w-4 h-4 ${isSharingWhatsApp ? 'animate-bounce' : ''}`} />
+                <span>{isSharingWhatsApp ? 'Enviando ao WhatsApp...' : 'Enviar Extrato via WhatsApp (PDF)'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!successModalData?.record) return;
+                  setIsDownloadingPdf(true);
+                  try {
+                    await PortalLaunchPdfService.downloadLaunchPdf({
+                      record: successModalData.record,
+                      store,
+                      operatorName: successModalData.operatorName,
+                      notes: successModalData.notes
+                    });
+                  } finally {
+                    setIsDownloadingPdf(false);
+                  }
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Download className={`w-4 h-4 text-emerald-600 dark:text-emerald-400 ${isDownloadingPdf ? 'animate-spin' : ''}`} />
+                <span>{isDownloadingPdf ? 'Baixando PDF...' : 'Baixar / Visualizar Extrato em PDF'}</span>
+              </button>
+
               <button
                 type="button"
                 autoFocus
                 onClick={() => setShowSuccessModal(false)}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-extrabold text-sm shadow-md active:scale-98 transition cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-extrabold text-xs transition cursor-pointer flex items-center justify-center gap-2"
               >
                 <Check className="w-4 h-4" />
-                <span>Fechar</span>
+                <span>Concluir Lançamento</span>
               </button>
 
               <a

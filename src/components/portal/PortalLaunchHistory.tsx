@@ -20,10 +20,12 @@ import {
   Sun,
   Moon,
   Globe,
-  ExternalLink
+  ExternalLink,
+  Send
 } from 'lucide-react';
 import { formatNumberBR } from '../../services/calculationService';
 import { PortalTheme } from './MobileStockPortal';
+import { PortalLaunchPdfService } from '../../services/portalLaunchPdfService';
 
 interface PortalLaunchHistoryProps {
   history: StockLaunchRecord[];
@@ -296,21 +298,72 @@ export const PortalLaunchHistory: React.FC<PortalLaunchHistoryProps> = ({
                       </div>
                     </div>
 
-                    {/* Restore button */}
-                    {onRestoreLaunch && (
-                      <div className="flex justify-end pt-2">
+                    {/* Actions: WhatsApp PDF, Download PDF and Restore */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                      <div className="flex items-center gap-2">
                         <button
+                          type="button"
+                          onClick={() => {
+                            const currentStore = stores.find(s => s.id === item.storeId) || {
+                              id: item.storeId,
+                              code: 'FILIAL',
+                              name: item.storeName,
+                              city: 'Rio de Janeiro',
+                              initialOrders: { dianteiro: 0, traseiro: 0, costelaGaucha: 0 }
+                            };
+                            PortalLaunchPdfService.shareLaunchViaWhatsApp({
+                              record: item,
+                              store: currentStore,
+                              operatorName: item.operatorName,
+                              notes: item.notes
+                            });
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                          title="Reenviar este Extrato em PDF via WhatsApp"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>WhatsApp (PDF)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const currentStore = stores.find(s => s.id === item.storeId) || {
+                              id: item.storeId,
+                              code: 'FILIAL',
+                              name: item.storeName,
+                              city: 'Rio de Janeiro',
+                              initialOrders: { dianteiro: 0, traseiro: 0, costelaGaucha: 0 }
+                            };
+                            PortalLaunchPdfService.downloadLaunchPdf({
+                              record: item,
+                              store: currentStore,
+                              operatorName: item.operatorName,
+                              notes: item.notes
+                            });
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                          title="Baixar Extrato Oficial em PDF"
+                        >
+                          <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span>Baixar PDF</span>
+                        </button>
+                      </div>
+
+                      {onRestoreLaunch && (
+                        <button
+                          type="button"
                           onClick={() => {
                             onRestoreLaunch(item);
                             onClose();
                           }}
-                          className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition font-sans shadow-xs cursor-pointer"
+                          className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
                         >
                           <RotateCcw className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                          <span>Carregar estes dados no formulário</span>
+                          <span>Carregar no formulário</span>
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

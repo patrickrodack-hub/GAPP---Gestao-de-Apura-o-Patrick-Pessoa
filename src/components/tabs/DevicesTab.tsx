@@ -13,29 +13,21 @@ import {
   Filter, 
   RefreshCw, 
   Download, 
-  CheckCircle2, 
-  AlertTriangle, 
   Copy, 
   Trash2, 
   Eye, 
-  Plus, 
-  Wifi, 
-  Server, 
-  Globe, 
   Building2, 
-  User, 
-  Calendar, 
-  Hash, 
   X, 
-  Sparkles, 
   Radio, 
-  Monitor,
   LayoutGrid,
-  List
+  List,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { ConnectedDevice, DeviceAccessStatus, Store, SystemUser } from '../../types/erp';
 import { StorageService } from '../../services/storageService';
 import { FirebaseService } from '../../services/firebase';
+import { getOrCreateDeviceId } from '../../services/devicePresenceService';
 
 interface DevicesTabProps {
   stores: Store[];
@@ -59,26 +51,36 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // ID do dispositivo atual sendo operado neste navegador
+  const currentDeviceId = useMemo(() => getOrCreateDeviceId(), []);
+
   // Modais de Ação
   const [deviceToBlock, setDeviceToBlock] = useState<ConnectedDevice | null>(null);
   const [blockReason, setBlockReason] = useState('Uso fora do horário comercial');
   const [selectedDeviceDetails, setSelectedDeviceDetails] = useState<ConnectedDevice | null>(null);
-  const [isSimulationModalOpen, setIsSimulationModalOpen] = useState(false);
   const [isConfirmBlockAllModalOpen, setIsConfirmBlockAllModalOpen] = useState(false);
   const [isConfirmUnlockAllModalOpen, setIsConfirmUnlockAllModalOpen] = useState(false);
 
-  // Form Simulação de Aparelho
-  const [simStoreId, setSimStoreId] = useState(stores[0]?.id || 'str_1');
-  const [simOperatorName, setSimOperatorName] = useState('João Pedro (Açougueiro)');
-  const [simDeviceModel, setSimDeviceModel] = useState('Xiaomi Poco X5 Pro 5G');
-  const [simOs, setSimOs] = useState('Android 14 (HyperOS)');
-  const [simBrowser, setSimBrowser] = useState('Chrome Mobile 128.0');
-
   // Sincronização em tempo real do Firestore
   useEffect(() => {
+    // Sincroniza e limpa quaisquer resquícios mockados
+    StorageService.syncConnectedDevices().then(synced => {
+      setDevices(synced);
+    }).catch(() => {});
+
     const unsubscribe = FirebaseService.subscribeToConnectedDevices((cloudDevices) => {
-      if (cloudDevices && cloudDevices.length > 0) {
-        setDevices(cloudDevices);
+      if (cloudDevices) {
+        // Filtra apenas registros válidos reais
+        const valid = cloudDevices.filter(d => 
+          !d.id?.startsWith('dev_str_') && 
+          !d.deviceId?.startsWith('dev-samsung-a54-str') && 
+          !d.deviceId?.startsWith('dev-iphone-13-str') &&
+          !d.deviceId?.startsWith('dev-motorola-g84-str') &&
+          !d.deviceId?.startsWith('dev-xiaomi-note12-str') &&
+          !d.deviceId?.startsWith('dev-samsung-s22-str') &&
+          !d.deviceId?.startsWith('sim-dev-')
+        );
+        setDevices(valid);
       }
     });
 
@@ -87,21 +89,21 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
     };
   }, []);
 
-  // Timer para atualização periódica de "tempo online" e status dinâmico
+  // Timer para atualização periódica de "tempo online" e status dinâmico (a cada 10 segundos)
   useEffect(() => {
     const timer = setInterval(() => {
       setDevices(prev => {
         const now = Date.now();
         return prev.map(d => {
-          // Considera online se visto nos últimos 3 minutos
-          const isReallyOnline = (now - d.lastSeenAt) < 180000;
+          // Considera online se visto nos últimos 60 segundos
+          const isReallyOnline = (now - d.lastSeenAt) < 60000;
           if (d.isOnline !== isReallyOnline) {
             return { ...d, isOnline: isReallyOnline };
           }
           return d;
         });
       });
-    }, 15000);
+    }, 10000);
 
     return () => clearInterval(timer);
   }, []);
@@ -112,11 +114,25 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
     try {
       const synced = await StorageService.syncConnectedDevices();
       setDevices(synced);
-      if (showToast) showToast('Status de rede e aparelhos atualizados com sucesso!');
+      if (showToast) showToast('Status de rede e aparelhos atualizados em tempo real!');
     } catch {
       setDevices(StorageService.getConnectedDevices());
     } finally {
-      setTimeout(() => setIsRefreshing(false), 500);
+      setTimeout(() => setIsRefreshing(false), 400);
+    }
+  };
+
+  // Limpar histórico de desconectados
+  const handleClearOffline = async () => {
+    if (window.confirm('Deseja limpar todos os aparelhos offline do histórico? Apenas os dispositivos conectados e com atividade em tempo real serão mantidos.')) {
+      setIsRefreshing(true);
+      try {
+        const remaining = await StorageService.clearAllOfflineDevices();
+        setDevices(remaining);
+        if (showToast) showToast('Histórico de aparelhos offline limpo com sucesso!');
+      } finally {
+        setIsRefreshing(false);
+      }
     }
   };
 
@@ -136,55 +152,55 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
 
   const handleConfirmBlock = () => {
     if (!deviceToBlock) return;
-    const adminName = currentUser?.name || 'Patrick Pessoa (Direção)';
+    const operator = currentUser?.name ? `${currentUser.name} (${currentUser.role})` : 'Patrick Pessoa (Direção)';
     const updated = StorageService.setDeviceStatus(
-      deviceToBlock.id, 
-      'BLOQUEADO', 
-      blockReason, 
-      adminName
+      deviceToBlock.deviceId,
+      'BLOQUEADO',
+      blockReason.trim() || 'Bloqueado pela administração da rede',
+      operator
     );
     setDevices(updated);
-    if (showToast) showToast(`Dispositivo de ${deviceToBlock.operatorName || 'Operador'} foi BLOQUEADO.`);
     setDeviceToBlock(null);
+    if (showToast) showToast(`Aparelho "${deviceToBlock.deviceModel}" BLOQUEADO com sucesso.`);
   };
 
   const handleUnlockDevice = (device: ConnectedDevice) => {
-    const updated = StorageService.setDeviceStatus(device.id, 'LIBERADO');
+    const updated = StorageService.setDeviceStatus(device.deviceId, 'LIBERADO');
     setDevices(updated);
-    if (showToast) showToast(`Acesso LIBERADO para ${device.operatorName || 'Operador'}.`);
+    if (showToast) showToast(`Aparelho "${device.deviceModel}" LIBERADO para acesso.`);
   };
 
   const handleDeleteDevice = (deviceId: string) => {
-    if (confirm('Tem certeza que deseja remover este aparelho do histórico de acessos?')) {
+    if (window.confirm('Deseja remover este aparelho do registro de auditoria?')) {
       const updated = StorageService.deleteConnectedDevice(deviceId);
       setDevices(updated);
-      if (showToast) showToast('Aparelho removido do histórico.');
+      if (showToast) showToast('Aparelho removido do registro.');
     }
   };
 
-  // Bloquear todos os celulares móveis (exceto matriz desktop)
+  // Bloquear Todos os Celulares (exceto estações Desktop ERP)
   const handleConfirmBlockAll = () => {
+    const operator = currentUser?.name ? `${currentUser.name} (${currentUser.role})` : 'Patrick Pessoa (Direção)';
     const current = StorageService.getConnectedDevices();
-    const adminName = currentUser?.name || 'Patrick Pessoa (Direção)';
+    const now = Date.now();
     const updated = current.map(d => {
-      if (d.connectionType !== 'DESKTOP_ERP') {
-        return {
-          ...d,
-          status: 'BLOQUEADO' as DeviceAccessStatus,
-          blockedReason: 'Bloqueio geral preventivo acionado pela Direção',
-          blockedAt: Date.now(),
-          blockedBy: adminName
-        };
-      }
-      return d;
+      // Não bloqueia a própria estação Desktop se for o desenvolvedor/diretor
+      if (d.connectionType === 'DESKTOP_ERP') return d;
+      return {
+        ...d,
+        status: 'BLOQUEADO' as DeviceAccessStatus,
+        blockedReason: 'Bloqueio geral acionado pela Diretoria',
+        blockedAt: now,
+        blockedBy: operator
+      };
     });
     StorageService.saveConnectedDevices(updated);
     setDevices(updated);
     setIsConfirmBlockAllModalOpen(false);
-    if (showToast) showToast('Todos os aparelhos móveis das filiais foram BLOQUEADOS.');
+    if (showToast) showToast('Todos os celulares das filiais foram BLOQUEADOS.');
   };
 
-  // Liberar todos os aparelhos
+  // Liberar Todos
   const handleConfirmUnlockAll = () => {
     const current = StorageService.getConnectedDevices();
     const updated = current.map(d => ({
@@ -198,38 +214,6 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
     setDevices(updated);
     setIsConfirmUnlockAllModalOpen(false);
     if (showToast) showToast('Todos os aparelhos tiveram o acesso LIBERADO com sucesso.');
-  };
-
-  // Simular conexão de um novo dispositivo
-  const handleSimulateConnection = (e: React.FormEvent) => {
-    e.preventDefault();
-    const selectedStore = stores.find(s => s.id === simStoreId);
-    const simulatedDeviceId = 'sim-dev-' + Math.random().toString(36).substring(2, 9);
-    
-    // Gera MAC e IP realistas
-    const hex = '0123456789ABCDEF';
-    const randomMac = Array.from({ length: 6 }, () => 
-      hex[Math.floor(Math.random() * 16)] + hex[Math.floor(Math.random() * 16)]
-    ).join(':');
-    const randomIp = `187.58.${Math.floor(10 + Math.random() * 80)}.${Math.floor(5 + Math.random() * 240)}`;
-
-    const newDev = StorageService.registerDeviceConnection({
-      deviceId: simulatedDeviceId,
-      storeId: simStoreId,
-      storeName: selectedStore?.name || 'FILIAL REDE',
-      operatorName: simOperatorName.trim(),
-      deviceModel: simDeviceModel.trim(),
-      os: simOs.trim(),
-      browser: simBrowser.trim(),
-      connectionType: 'MOBILE_PORTAL',
-      ip: randomIp,
-      macAddress: randomMac,
-      locationHint: `${selectedStore?.city || 'Rio de Janeiro'}, RJ`
-    });
-
-    setDevices(StorageService.getConnectedDevices());
-    setIsSimulationModalOpen(false);
-    if (showToast) showToast(`Aparelho simulado com sucesso para ${newDev.storeName}!`);
   };
 
   // Exportar relatório completo em CSV
@@ -257,7 +241,7 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
       `"${d.storeName || 'Matriz'}"`,
       `"${d.operatorName || 'Operador'}"`,
       `"${d.status}"`,
-      `"${d.isOnline ? 'SIM (Online)' : 'NÃO (Offline)'}"`,
+      `"${isDeviceOnline(d) ? 'SIM (Online)' : 'NÃO (Offline)'}"`,
       `"${d.connectionType}"`,
       `"${d.deviceModel}"`,
       `"${d.os}"`,
@@ -275,19 +259,23 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Relatorio_Aparelhos_Conectados_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `Relatorio_Aparelhos_Conectados_Real_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-    if (showToast) showToast('Relatório de aparelhos baixado em formato CSV/Excel!');
+    if (showToast) showToast('Relatório de conexões reais baixado em CSV!');
   };
 
-  // Métricas Consolidadas
+  // Verificação precisa de status online em tempo real (heartbeat < 60s)
+  const isDeviceOnline = (d: ConnectedDevice) => {
+    return d.isOnline !== false && (Date.now() - (d.lastSeenAt || 0) < 60000);
+  };
+
+  // Métricas Consolidadas 100% Reais
   const totalDevices = devices.length;
-  const onlineDevices = devices.filter(d => d.isOnline).length;
+  const onlineDevices = devices.filter(d => isDeviceOnline(d)).length;
   const authorizedDevices = devices.filter(d => d.status === 'LIBERADO').length;
   const blockedDevices = devices.filter(d => d.status === 'BLOQUEADO').length;
   const totalAccessEvents = devices.reduce((sum, d) => sum + (d.accessCount || 1), 0);
-  const totalDurationSeconds = devices.reduce((sum, d) => sum + (d.sessionDurationSeconds || 0), 0);
 
   // Formata tempo de permanência
   const formatDuration = (seconds: number) => {
@@ -326,7 +314,7 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
       }
 
       // Filtro de Status
-      if (filterStatus === 'ONLINE' && !d.isOnline) return false;
+      if (filterStatus === 'ONLINE' && !isDeviceOnline(d)) return false;
       if (filterStatus === 'LIBERADO' && d.status !== 'LIBERADO') return false;
       if (filterStatus === 'BLOQUEADO' && d.status !== 'BLOQUEADO') return false;
 
@@ -348,29 +336,29 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
     <div className="space-y-5 animate-fade-in pb-12">
       {/* Top Banner & Header */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-white rounded-2xl p-5 sm:p-6 shadow-xl border border-slate-700/50 relative overflow-hidden">
-        <div className="absolute right-0 top-0 translate-x-10 -translate-y-8 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute left-1/3 bottom-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute right-0 top-0 translate-x-10 -translate-y-8 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute left-1/3 bottom-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 relative z-10">
           <div className="flex items-start sm:items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0 shadow-inner">
-              <Smartphone className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center shrink-0 shadow-inner">
+              <Radio className="w-6 h-6 animate-pulse" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  MÓDULO DE SEGURANÇA & AUDITORIA
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  PRESENÇA REAL EM TEMPO REAL (FIREBASE CLOUD)
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-400 font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  {onlineDevices} Dispositivos Online
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-300 font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  {onlineDevices} Conectado(s) Agora
                 </span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white mt-1">
                 Aparelhos Conectados ao Sistema & Portal
               </h1>
               <p className="text-xs sm:text-sm text-slate-300 max-w-3xl mt-0.5">
-                Controle em tempo real de smartphones, coletores e computadores das 16 filiais. Visualize endereço IP, MAC de rede, histórico de acessos, tempo de permanência e bloqueie ou libere o acesso com 1 clique.
+                Monitoramento <strong>100% REAL</strong> e sem dados simulados. A contagem e listagem refletem exclusivamente os navegadores, smartphones e estações conectados via Firebase Firestore.
               </p>
             </div>
           </div>
@@ -383,17 +371,17 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 transition active:scale-95 shadow-sm"
               title="Atualizar conexões e ping com as filiais"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-amber-400' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`} />
               <span>{isRefreshing ? 'Atualizando...' : 'Atualizar Status'}</span>
             </button>
 
             <button
-              onClick={() => setIsSimulationModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition active:scale-95 shadow-sm"
-              title="Simular conexão de um novo smartphone de loja"
+              onClick={handleClearOffline}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition active:scale-95 shadow-sm"
+              title="Limpar aparelhos desconectados/inativos do histórico"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Simular Conexão</span>
+              <Trash2 className="w-3.5 h-3.5 text-slate-400" />
+              <span>Limpar Inativos</span>
             </button>
 
             <button
@@ -402,7 +390,7 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
               title="Exportar planilha de auditoria completa em CSV"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Exportar Relatório</span>
+              <span>Exportar CSV</span>
             </button>
 
             <div className="h-6 w-px bg-slate-700 mx-1 hidden sm:block" />
@@ -429,82 +417,56 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-emerald-500/10 dark:bg-emerald-950/30 border border-emerald-500/30 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-300 text-xs font-extrabold">
+            <span>Conectados Agora (Online)</span>
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+          </div>
+          <div className="text-3xl font-black text-emerald-900 dark:text-emerald-200 mt-1">
+            {onlineDevices}
+          </div>
+          <div className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 mt-0.5 font-medium">
+            Heartbeat ativo nos últimos 60 segundos
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-medium">
-            <span>Total Aparelhos</span>
+            <span>Total de Aparelhos</span>
             <Smartphone className="w-4 h-4 text-slate-400" />
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+          <div className="text-3xl font-black text-slate-900 dark:text-white mt-1">
             {totalDevices}
           </div>
           <div className="text-[10px] text-slate-400 mt-0.5">
-            Cadastrados na rede
+            Registrados na base de dados
           </div>
         </div>
 
-        <div className="bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/30 rounded-2xl p-3.5 shadow-sm">
-          <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
-            <span>Online Agora</span>
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-          </div>
-          <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-1">
-            {onlineDevices}
-          </div>
-          <div className="text-[10px] text-emerald-600/80 dark:text-emerald-500/80 mt-0.5">
-            Atividade nos últ. 3 min
-          </div>
-        </div>
-
-        <div className="bg-blue-500/5 dark:bg-blue-950/20 border border-blue-500/30 rounded-2xl p-3.5 shadow-sm">
+        <div className="bg-blue-500/5 dark:bg-blue-950/20 border border-blue-500/30 rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between text-blue-700 dark:text-blue-400 text-xs font-semibold">
-            <span>Acessos Liberados</span>
+            <span>Acesso Liberado</span>
             <ShieldCheck className="w-4 h-4 text-blue-500" />
           </div>
-          <div className="text-2xl font-black text-blue-700 dark:text-blue-400 mt-1">
+          <div className="text-3xl font-black text-blue-900 dark:text-blue-200 mt-1">
             {authorizedDevices}
           </div>
-          <div className="text-[10px] text-blue-600/80 dark:text-blue-500/80 mt-0.5">
-            Autorizados a lançar
+          <div className="text-[10px] text-blue-600/80 dark:text-blue-400/80 mt-0.5">
+            Aparelhos autorizados
           </div>
         </div>
 
-        <div className="bg-rose-500/5 dark:bg-rose-950/20 border border-rose-500/30 rounded-2xl p-3.5 shadow-sm">
+        <div className="bg-rose-500/5 dark:bg-rose-950/20 border border-rose-500/30 rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between text-rose-700 dark:text-rose-400 text-xs font-semibold">
-            <span>Bloqueados</span>
+            <span>Acesso Bloqueado</span>
             <ShieldAlert className="w-4 h-4 text-rose-500" />
           </div>
-          <div className="text-2xl font-black text-rose-700 dark:text-rose-400 mt-1">
+          <div className="text-3xl font-black text-rose-900 dark:text-rose-200 mt-1">
             {blockedDevices}
           </div>
-          <div className="text-[10px] text-rose-600/80 dark:text-rose-500/80 mt-0.5">
+          <div className="text-[10px] text-rose-600/80 dark:text-rose-400/80 mt-0.5">
             Acesso suspenso
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-medium">
-            <span>Tempo Médio</span>
-            <Clock className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-            {totalDevices > 0 ? formatDuration(Math.round(totalDurationSeconds / totalDevices)) : '0m'}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-0.5">
-            Por sessão ativa
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-medium">
-            <span>Total Conexões</span>
-            <Activity className="w-4 h-4 text-indigo-500" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-            {totalAccessEvents}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-0.5">
-            Eventos registrados
           </div>
         </div>
       </div>
@@ -519,8 +481,8 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por Operador, Filial, IP (187.58...), Endereço MAC ou Modelo de celular..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 transition placeholder:text-slate-400"
+              placeholder="Buscar por Operador, Filial, IP, Endereço MAC ou Modelo..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition placeholder:text-slate-400"
             />
             {searchQuery && (
               <button
@@ -539,7 +501,7 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
               <select
                 value={filterStore}
                 onChange={(e) => setFilterStore(e.target.value)}
-                className="appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/40 cursor-pointer"
+                className="appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 cursor-pointer"
               >
                 <option value="ALL">Todas as Filiais ({stores.length})</option>
                 {stores.map(s => (
@@ -555,7 +517,7 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                className="appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/40 cursor-pointer"
+                className="appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 cursor-pointer"
               >
                 <option value="ALL">Todos os Tipos</option>
                 <option value="MOBILE_PORTAL">📱 Smartphones (Portal)</option>
@@ -630,14 +592,14 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
             <Smartphone className="w-8 h-8" />
           </div>
           <h3 className="text-base font-bold text-slate-900 dark:text-white">
-            Nenhum aparelho encontrado com estes filtros
+            Nenhum aparelho encontrado
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
-            Experimente limpar a busca ou selecionar outro status de filtro para visualizar as conexões registradas.
+            Assim que outros operadores ou gerentes acessarem o ERP ou o Portal Mobile, as conexões reais aparecerão automaticamente aqui.
           </p>
           <button
             onClick={() => { setSearchQuery(''); setFilterStatus('ALL'); setFilterStore('ALL'); setFilterType('ALL'); }}
-            className="mt-4 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 hover:bg-amber-400 transition"
+            className="mt-4 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 transition"
           >
             Limpar Todos os Filtros
           </button>
@@ -662,11 +624,14 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                 {filteredDevices.map((dev) => {
                   const isBlocked = dev.status === 'BLOQUEADO';
+                  const isOnline = isDeviceOnline(dev);
+                  const isCurrent = dev.deviceId === currentDeviceId || dev.id === currentDeviceId;
+
                   return (
                     <tr 
                       key={dev.id || dev.deviceId}
                       className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors ${
-                        isBlocked ? 'bg-rose-50/40 dark:bg-rose-950/15' : dev.isOnline ? 'bg-emerald-50/20 dark:bg-emerald-950/10' : ''
+                        isBlocked ? 'bg-rose-50/40 dark:bg-rose-950/15' : isOnline ? 'bg-emerald-50/20 dark:bg-emerald-950/10' : ''
                       }`}
                     >
                       {/* Status & Presença */}
@@ -677,10 +642,10 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
                               <Lock className="w-3 h-3" />
                               BLOQUEADO
                             </span>
-                          ) : dev.isOnline ? (
+                          ) : isOnline ? (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                              ONLINE
+                              ONLINE (AO VIVO)
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
@@ -693,11 +658,18 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
 
                       {/* Usuário & Filial */}
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-slate-900 dark:text-white text-xs">
-                          {dev.operatorName || 'Operador Conectado'}
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-slate-900 dark:text-white text-xs">
+                            {dev.operatorName || 'Operador Conectado'}
+                          </span>
+                          {isCurrent && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-blue-500/15 text-blue-600 dark:text-blue-300 border border-blue-500/30">
+                              Você
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                          <Building2 className="w-3 h-3 text-amber-500 shrink-0" />
+                          <Building2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
                           <span className="font-semibold text-slate-700 dark:text-slate-300">
                             {dev.storeName || 'MATRIZ / DIRETORIA'}
                           </span>
@@ -742,7 +714,7 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
                           </button>
                         </div>
                         <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                          <span className="text-[9px] uppercase font-bold text-amber-600 dark:text-amber-400">MAC:</span>
+                          <span className="text-[9px] uppercase font-bold text-emerald-600 dark:text-emerald-400">MAC:</span>
                           <span>{dev.macAddress}</span>
                           <button
                             onClick={() => handleCopyText(dev.macAddress, `mac-${dev.id}`)}
@@ -762,21 +734,18 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
                       </td>
 
                       {/* Tempo de Permanência */}
-                      <td className="py-3.5 px-3">
-                        <div className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
-                          <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <td className="py-3.5 px-3 whitespace-nowrap font-medium text-slate-600 dark:text-slate-300">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                           <span>{formatDuration(dev.sessionDurationSeconds || 60)}</span>
                         </div>
                       </td>
 
                       {/* Última Atividade */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="text-slate-700 dark:text-slate-300 font-medium">
+                        <span className="text-slate-600 dark:text-slate-400 font-medium">
                           {formatLastSeen(dev.lastSeenAt)}
-                        </div>
-                        <div className="text-[10px] text-slate-400">
-                          Início: {new Date(dev.firstConnectedAt).toLocaleDateString('pt-BR')}
-                        </div>
+                        </span>
                       </td>
 
                       {/* Ações */}
@@ -785,37 +754,37 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
                           {isBlocked ? (
                             <button
                               onClick={() => handleUnlockDevice(dev)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition active:scale-95 shadow-sm"
-                              title="Liberar acesso deste aparelho ao portal"
+                              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition active:scale-95 shadow-xs flex items-center gap-1"
+                              title="Liberar acesso deste aparelho"
                             >
-                              <Unlock className="w-3.5 h-3.5" />
+                              <Unlock className="w-3 h-3" />
                               <span>Liberar</span>
                             </button>
                           ) : (
                             <button
                               onClick={() => handleOpenBlockModal(dev)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600/10 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-500/30 hover:border-transparent transition active:scale-95"
-                              title="Bloquear imediatamente o acesso deste aparelho"
+                              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-500/15 hover:bg-rose-500 text-rose-600 hover:text-white dark:text-rose-400 border border-rose-500/30 transition active:scale-95 flex items-center gap-1"
+                              title="Bloquear acesso deste aparelho"
                             >
-                              <Lock className="w-3.5 h-3.5" />
+                              <Lock className="w-3 h-3" />
                               <span>Bloquear</span>
                             </button>
                           )}
 
                           <button
                             onClick={() => setSelectedDeviceDetails(dev)}
-                            className="p-1.5 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                            title="Ver Ficha Técnica & Histórico"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                            title="Ver ficha técnica completa"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-3.5 h-3.5" />
                           </button>
 
                           <button
-                            onClick={() => handleDeleteDevice(dev.id || dev.deviceId)}
-                            className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
-                            title="Remover do histórico"
+                            onClick={() => handleDeleteDevice(dev.deviceId || dev.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+                            title="Excluir do histórico"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
@@ -827,25 +796,28 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
           </div>
         </div>
       ) : (
-        /* CARDS GRID VIEW */
+        /* CARDS VIEW */
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredDevices.map((dev) => {
             const isBlocked = dev.status === 'BLOQUEADO';
+            const isOnline = isDeviceOnline(dev);
+            const isCurrent = dev.deviceId === currentDeviceId || dev.id === currentDeviceId;
+
             return (
-              <div
+              <div 
                 key={dev.id || dev.deviceId}
-                className={`bg-white dark:bg-slate-900 rounded-2xl p-4 border transition-all shadow-sm ${
+                className={`bg-white dark:bg-slate-900 rounded-2xl border p-4 shadow-sm transition hover:shadow-md ${
                   isBlocked
-                    ? 'border-rose-400/50 dark:border-rose-900/60 bg-gradient-to-br from-white via-white to-rose-50/30 dark:from-slate-900 dark:to-rose-950/20'
-                    : dev.isOnline
-                    ? 'border-emerald-500/40 dark:border-emerald-500/30 shadow-md shadow-emerald-500/5'
+                    ? 'border-rose-300 dark:border-rose-900/60 bg-rose-50/20'
+                    : isOnline
+                    ? 'border-emerald-500/40 dark:border-emerald-800/60 bg-emerald-50/10'
                     : 'border-slate-200 dark:border-slate-800'
                 }`}
               >
-                {/* Header do Card */}
-                <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                {/* Header Card */}
+                <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
                   <div className="flex items-center gap-2.5">
-                    <div className={`p-2 rounded-xl shrink-0 ${
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                       dev.connectionType === 'DESKTOP_ERP'
                         ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
                         : isBlocked
@@ -859,10 +831,17 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
                       )}
                     </div>
                     <div>
-                      <div className="font-bold text-slate-900 dark:text-white text-sm leading-tight">
-                        {dev.operatorName || 'Operador Conectado'}
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-slate-900 dark:text-white text-sm leading-tight">
+                          {dev.operatorName || 'Operador Conectado'}
+                        </span>
+                        {isCurrent && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-blue-500/15 text-blue-600 dark:text-blue-300 border border-blue-500/30">
+                            Você
+                          </span>
+                        )}
                       </div>
-                      <div className="text-xs text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1 mt-0.5">
+                      <div className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
                         <Building2 className="w-3 h-3" />
                         <span>{dev.storeName || 'MATRIZ / DIRETORIA'}</span>
                       </div>
@@ -876,7 +855,7 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
                         <Lock className="w-3 h-3" />
                         BLOQUEADO
                       </span>
-                    ) : dev.isOnline ? (
+                    ) : isOnline ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                         ONLINE
@@ -923,7 +902,7 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
 
                     <div className="bg-slate-50 dark:bg-slate-850 p-2 rounded-xl">
                       <span className="text-[10px] text-slate-400 block">Permanência</span>
-                      <span className="text-sm font-black text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                      <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5" />
                         {formatDuration(dev.sessionDurationSeconds || 60)}
                       </span>
@@ -948,7 +927,7 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
                     {isBlocked ? (
                       <button
                         onClick={() => handleUnlockDevice(dev)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition active:scale-95 shadow-sm"
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition active:scale-95 shadow-xs flex items-center gap-1"
                       >
                         <Unlock className="w-3.5 h-3.5" />
                         <span>Liberar</span>
@@ -956,7 +935,7 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
                     ) : (
                       <button
                         onClick={() => handleOpenBlockModal(dev)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 transition active:scale-95 shadow-sm"
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/15 hover:bg-rose-500 text-rose-600 hover:text-white dark:text-rose-400 border border-rose-500/30 transition active:scale-95 flex items-center gap-1"
                       >
                         <Lock className="w-3.5 h-3.5" />
                         <span>Bloquear</span>
@@ -966,7 +945,7 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
                     <button
                       onClick={() => setSelectedDeviceDetails(dev)}
                       className="p-1.5 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                      title="Ver Ficha Técnica"
+                      title="Ver detalhes"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
@@ -979,426 +958,169 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
       )}
 
       {/* ======================================================== */}
-      {/* MODAL 1: CONFIRMAÇÃO DE BLOQUEIO COM MOTIVO */}
+      {/* MODAL 1: BLOQUEIO DE APARELHO INDIVIDUAL */}
       {/* ======================================================== */}
       {deviceToBlock && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden animate-scale-up">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-rose-500/10">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-rose-500 text-white shadow-md">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden animate-scale-in">
+            <div className="bg-gradient-to-r from-rose-600 to-rose-700 text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-white/10">
                   <Lock className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 block">
-                    SEGURANÇA & RESTRIÇÃO
-                  </span>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Bloquear Acesso do Aparelho
-                  </h3>
+                  <h3 className="text-base font-black">Bloquear Acesso do Aparelho</h3>
+                  <p className="text-xs text-rose-100">Suspensão imediata de lançamentos</p>
                 </div>
               </div>
-              <button
+              <button 
                 onClick={() => setDeviceToBlock(null)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                className="p-1.5 rounded-xl hover:bg-white/10 text-white/80 hover:text-white transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-5 space-y-4 text-xs">
-              <div className="bg-slate-50 dark:bg-slate-850 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1.5">
-                <div className="font-bold text-slate-900 dark:text-white text-sm">
-                  {deviceToBlock.operatorName || 'Operador'}
+            <div className="p-5 space-y-4">
+              <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-2xl p-3.5 text-xs text-rose-800 dark:text-rose-300">
+                <div className="font-bold flex items-center gap-1.5 mb-1">
+                  <AlertCircle className="w-4 h-4" />
+                  <span>Atenção:</span>
                 </div>
-                <div className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-amber-500" />
-                  <span>{deviceToBlock.storeName}</span>
-                </div>
-                <div className="font-mono text-[11px] text-slate-600 dark:text-slate-300 pt-1 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
-                  <span>IP: {deviceToBlock.ip}</span>
-                  <span>MAC: {deviceToBlock.macAddress}</span>
-                </div>
+                <span>
+                  O aparelho <strong>{deviceToBlock.deviceModel}</strong> ({deviceToBlock.operatorName}) será impedido imediatamente de enviar contagens ou acessar o portal.
+                </span>
               </div>
 
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">
-                  Selecione ou digite o motivo do bloqueio:
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Motivo do Bloqueio:
                 </label>
-                <div className="grid grid-cols-1 gap-1.5 mb-2">
-                  {[
-                    'Uso fora do horário comercial',
-                    'Dispositivo pessoal não autorizado pela gerência',
-                    'Troca de encarregado / funcionário desligado',
-                    'Suspeita de lançamento divergente ou fraudulento',
-                    'Solicitação direta da Diretoria Executiva'
-                  ].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => setBlockReason(preset)}
-                      className={`text-left px-3 py-1.5 rounded-xl border text-[11px] font-medium transition ${
-                        blockReason === preset
-                          ? 'bg-rose-500/15 border-rose-500 text-rose-700 dark:text-rose-300 font-bold'
-                          : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-750'
-                      }`}
-                    >
-                      {preset}
-                    </button>
-                  ))}
-                </div>
-
                 <input
                   type="text"
                   value={blockReason}
                   onChange={(e) => setBlockReason(e.target.value)}
-                  placeholder="Ou digite um motivo personalizado..."
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500/40 focus:outline-none"
+                  placeholder="Ex: Fora do horário, suspeita de extravio, etc."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500/40 focus:outline-none"
                 />
-              </div>
-
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 text-amber-800 dark:text-amber-300 text-[11px] flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-                <span>
-                  Assim que bloqueado, caso este usuário tente acessar o portal no celular, ele receberá uma tela vermelha informando que o aparelho está suspenso e não conseguirá enviar dados.
-                </span>
-              </div>
-            </div>
-
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setDeviceToBlock(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmBlock}
-                className="px-5 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white transition active:scale-95 shadow-md shadow-rose-600/20"
-              >
-                Confirmar Bloqueio Imediato
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ======================================================== */}
-      {/* MODAL 2: FICHA TÉCNICA E DETALHES COMPLETOS DO APARELHO */}
-      {/* ======================================================== */}
-      {selectedDeviceDetails && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-amber-500/10 via-slate-50 to-transparent dark:from-amber-500/10 dark:via-slate-900 dark:to-transparent">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-amber-500 text-slate-950 shadow-md">
-                  <Smartphone className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
-                    AUDITORIA FORENSE DE CONEXÃO
-                  </span>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Ficha Técnica do Dispositivo
-                  </h3>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedDeviceDetails(null)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-5 space-y-4 overflow-y-auto text-xs">
-              {/* Usuário e Loja */}
-              <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
-                <div className="text-[10px] text-slate-400 uppercase font-bold">Identificação do Usuário:</div>
-                <div className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
-                  {selectedDeviceDetails.operatorName || 'Operador Conectado'}
-                </div>
-                <div className="text-xs font-semibold text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5" />
-                  <span>{selectedDeviceDetails.storeName || 'MATRIZ / DIRETORIA'}</span>
-                </div>
-                {selectedDeviceDetails.locationHint && (
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
-                    <Globe className="w-3 h-3 text-slate-400" />
-                    <span>Localização: {selectedDeviceDetails.locationHint}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Informações de Hardware & Rede */}
-              <div className="space-y-2">
-                <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">
-                  Especificações do Aparelho & Conexão
-                </h4>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800">
-                    <span className="text-[10px] text-slate-400 block">Endereço IP</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-xs">
-                      {selectedDeviceDetails.ip}
-                    </span>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800">
-                    <span className="text-[10px] text-slate-400 block">Endereço MAC (Placa)</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-xs">
-                      {selectedDeviceDetails.macAddress}
-                    </span>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800">
-                    <span className="text-[10px] text-slate-400 block">Modelo do Celular</span>
-                    <span className="font-semibold text-slate-900 dark:text-white text-xs">
-                      {selectedDeviceDetails.deviceModel}
-                    </span>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800">
-                    <span className="text-[10px] text-slate-400 block">Sistema Operacional</span>
-                    <span className="font-semibold text-slate-900 dark:text-white text-xs">
-                      {selectedDeviceDetails.os}
-                    </span>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800">
-                    <span className="text-[10px] text-slate-400 block">Navegador Web</span>
-                    <span className="font-semibold text-slate-900 dark:text-white text-xs">
-                      {selectedDeviceDetails.browser}
-                    </span>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800">
-                    <span className="text-[10px] text-slate-400 block">Tipo de Plataforma</span>
-                    <span className="font-semibold text-slate-900 dark:text-white text-xs">
-                      {selectedDeviceDetails.connectionType}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Estatísticas de Acesso */}
-              <div className="space-y-2">
-                <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">
-                  Métricas de Sessão & Tempo
-                </h4>
-
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-center">
-                    <span className="text-[10px] text-slate-400 block">Acessos</span>
-                    <span className="font-black text-slate-900 dark:text-white text-base">
-                      {selectedDeviceDetails.accessCount || 1}x
-                    </span>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-center">
-                    <span className="text-[10px] text-slate-400 block">Permanência</span>
-                    <span className="font-black text-amber-600 dark:text-amber-400 text-base">
-                      {formatDuration(selectedDeviceDetails.sessionDurationSeconds || 60)}
-                    </span>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-center">
-                    <span className="text-[10px] text-slate-400 block">Status Atual</span>
-                    <span className={`font-black text-xs block mt-1 ${
-                      selectedDeviceDetails.status === 'BLOQUEADO' ? 'text-rose-500' : 'text-emerald-500'
-                    }`}>
-                      {selectedDeviceDetails.status}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-1">
-                  <div className="flex justify-between text-slate-500">
-                    <span>Primeiro Acesso Registrado:</span>
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">
-                      {new Date(selectedDeviceDetails.firstConnectedAt).toLocaleString('pt-BR')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-slate-500">
-                    <span>Última Atividade (Heartbeat):</span>
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">
-                      {new Date(selectedDeviceDetails.lastSeenAt).toLocaleString('pt-BR')}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Detalhes de Bloqueio se aplicável */}
-              {selectedDeviceDetails.status === 'BLOQUEADO' && (
-                <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-3.5 space-y-1 text-rose-800 dark:text-rose-300">
-                  <div className="font-bold uppercase text-[10px] tracking-wider">Histórico de Bloqueio:</div>
-                  <div>Motivo: {selectedDeviceDetails.blockedReason || 'Suspenso pela administração'}</div>
-                  {selectedDeviceDetails.blockedAt && (
-                    <div className="text-[11px] text-rose-600 dark:text-rose-400">
-                      Bloqueado em: {new Date(selectedDeviceDetails.blockedAt).toLocaleString('pt-BR')}
-                    </div>
-                  )}
-                  {selectedDeviceDetails.blockedBy && (
-                    <div className="text-[11px] text-rose-600 dark:text-rose-400">
-                      Responsável: {selectedDeviceDetails.blockedBy}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex items-center justify-between">
-              <button
-                onClick={() => {
-                  if (selectedDeviceDetails.status === 'BLOQUEADO') {
-                    handleUnlockDevice(selectedDeviceDetails);
-                  } else {
-                    handleOpenBlockModal(selectedDeviceDetails);
-                  }
-                  setSelectedDeviceDetails(null);
-                }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold text-white transition shadow-sm ${
-                  selectedDeviceDetails.status === 'BLOQUEADO' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-rose-600 hover:bg-rose-500'
-                }`}
-              >
-                {selectedDeviceDetails.status === 'BLOQUEADO' ? 'Liberar Acesso Agora' : 'Bloquear Este Aparelho'}
-              </button>
-
-              <button
-                onClick={() => setSelectedDeviceDetails(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ======================================================== */}
-      {/* MODAL 3: SIMULAR CONEXÃO DE DISPOSITIVO DE LOJA */}
-      {/* ======================================================== */}
-      {isSimulationModalOpen && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-amber-500/10">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-amber-500 text-slate-950 shadow-md">
-                  <Radio className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
-                    AMBIENTE DE TESTE & AUDITORIA
-                  </span>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Simular Nova Conexão de Aparelho
-                  </h3>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsSimulationModalOpen(false)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSimulateConnection} className="p-5 space-y-3.5 text-xs">
-              <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
-                  Filial (Loja Conectada):
-                </label>
-                <select
-                  value={simStoreId}
-                  onChange={(e) => setSimStoreId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-amber-500/40 focus:outline-none"
-                >
-                  {stores.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.code} - {s.name} ({s.city})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
-                  Nome do Operador / Encarregado:
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={simOperatorName}
-                  onChange={(e) => setSimOperatorName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-amber-500/40 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
-                  Modelo do Smartphone:
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={simDeviceModel}
-                  onChange={(e) => setSimDeviceModel(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-amber-500/40 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
-                    Sistema Operacional:
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={simOs}
-                    onChange={(e) => setSimOs(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-amber-500/40 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
-                    Navegador:
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={simBrowser}
-                    onChange={(e) => setSimBrowser(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-amber-500/40 focus:outline-none"
-                  />
-                </div>
               </div>
 
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setIsSimulationModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  onClick={() => setDeviceToBlock(null)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                 >
                   Cancelar
                 </button>
                 <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition active:scale-95 shadow-md shadow-amber-500/20"
+                  type="button"
+                  onClick={handleConfirmBlock}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white transition active:scale-95 shadow-md shadow-rose-600/20"
                 >
-                  Registrar Conexão
+                  Confirmar Bloqueio
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
 
       {/* ======================================================== */}
-      {/* MODAL 4: CONFIRMAÇÃO DE BLOQUEIO EM MASSA */}
+      {/* MODAL 2: DETALHES TÉCNICOS DO APARELHO */}
+      {/* ======================================================== */}
+      {selectedDeviceDetails && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden animate-scale-in">
+            <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                  <Smartphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black">Ficha de Auditoria do Aparelho</h3>
+                  <p className="text-xs text-slate-300">Auditoria técnica e telemetria de rede</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedDeviceDetails(null)}
+                className="p-1.5 rounded-xl hover:bg-white/10 text-white/80 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                  <span className="text-[10px] text-slate-400 block font-bold uppercase">Operador Responsável</span>
+                  <span className="font-extrabold text-slate-900 dark:text-white text-sm">
+                    {selectedDeviceDetails.operatorName || 'Operador'}
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                  <span className="text-[10px] text-slate-400 block font-bold uppercase">Filial Conectada</span>
+                  <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
+                    {selectedDeviceDetails.storeName || 'Matriz'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-xs font-mono bg-slate-50 dark:bg-slate-850 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <div className="flex justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-1.5">
+                  <span className="text-slate-400 font-sans">ID do Aparelho:</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{selectedDeviceDetails.deviceId}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-1.5">
+                  <span className="text-slate-400 font-sans">Endereço IP:</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">{selectedDeviceDetails.ip}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-1.5">
+                  <span className="text-slate-400 font-sans">Endereço MAC Físico:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{selectedDeviceDetails.macAddress}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-1.5">
+                  <span className="text-slate-400 font-sans">Modelo de Dispositivo:</span>
+                  <span className="font-sans font-bold text-slate-900 dark:text-white">{selectedDeviceDetails.deviceModel}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-1.5">
+                  <span className="text-slate-400 font-sans">Sistema Operacional:</span>
+                  <span className="font-sans font-medium text-slate-700 dark:text-slate-300">{selectedDeviceDetails.os}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-1.5">
+                  <span className="text-slate-400 font-sans">Navegador Utilizado:</span>
+                  <span className="font-sans font-medium text-slate-700 dark:text-slate-300">{selectedDeviceDetails.browser}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-1.5">
+                  <span className="text-slate-400 font-sans">Localização / Provedor:</span>
+                  <span className="font-sans font-medium text-slate-700 dark:text-slate-300">{selectedDeviceDetails.locationHint || 'Rio de Janeiro, RJ'}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-1.5">
+                  <span className="text-slate-400 font-sans">Primeiro Acesso:</span>
+                  <span className="font-sans text-slate-600 dark:text-slate-400">{new Date(selectedDeviceDetails.firstConnectedAt).toLocaleString('pt-BR')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400 font-sans">Última Atividade:</span>
+                  <span className="font-sans text-slate-600 dark:text-slate-400">{new Date(selectedDeviceDetails.lastSeenAt).toLocaleString('pt-BR')}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end pt-2">
+                <button
+                  onClick={() => setSelectedDeviceDetails(null)}
+                  className="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs shadow-md transition"
+                >
+                  Fechar Ficha
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL 3: CONFIRMAÇÃO DE BLOQUEIO EM MASSA */}
       {/* ======================================================== */}
       {isConfirmBlockAllModalOpen && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
@@ -1411,7 +1133,7 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
                 Bloquear Todos os Celulares?
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
-                Esta ação suspenderá imediatamente o acesso ao Portal Mobile em todos os smartphones e coletores de todas as filiais. Apenas esta estação Desktop permanecerá liberada.
+                Esta ação suspenderá imediatamente o acesso ao Portal Mobile em todos os smartphones e coletores das filiais.
               </p>
             </div>
             <div className="flex items-center justify-center gap-2 pt-2">
@@ -1433,7 +1155,7 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
       )}
 
       {/* ======================================================== */}
-      {/* MODAL 5: CONFIRMAÇÃO DE LIBERAÇÃO EM MASSA */}
+      {/* MODAL 4: CONFIRMAÇÃO DE LIBERAÇÃO EM MASSA */}
       {/* ======================================================== */}
       {isConfirmUnlockAllModalOpen && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
@@ -1446,7 +1168,7 @@ export const DevicesTab: React.FC<DevicesTabProps> = ({
                 Liberar Todos os Dispositivos?
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
-                Esta ação autorizará imediatamente o acesso e os lançamentos para todos os celulares e estações de todas as 16 lojas da rede.
+                Esta ação autorizará imediatamente o acesso e os lançamentos para todos os celulares e estações da rede.
               </p>
             </div>
             <div className="flex items-center justify-center gap-2 pt-2">

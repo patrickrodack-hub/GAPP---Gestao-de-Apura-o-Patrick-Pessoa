@@ -310,7 +310,7 @@ export interface SystemUser {
   email?: string;
   avatar?: string;
   active: boolean;          // Ativo / Inativo
-  allowedModules: string[]; // IDs dos módulos permitidos: 'dashboard', 'sheet', 'yield', 'results', 'inventory', 'purchases', 'waste', 'parameters', 'users'
+  allowedModules: string[]; // IDs dos módulos permitidos: 'dashboard', 'sheet', 'quotes', 'yield', 'results', 'inventory', 'purchases', 'waste', 'devices', 'parameters', 'backup', 'users', 'portal'
   createdAt: number;
   lastLoginAt?: number;
 }

@@ -38,6 +38,7 @@ import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
 import { requestPortalFullscreen } from './utils/fullscreen';
 import { Minus, Square, X, Beef, FileSpreadsheet, RefreshCw } from 'lucide-react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import { startRealDeviceHeartbeat, stopRealDeviceHeartbeat } from './services/devicePresenceService';
 
 export default function App() {
   const { theme, isSolidcon, toggleTheme } = useTheme();
@@ -356,8 +357,17 @@ export default function App() {
       console.warn('Ouvinte de usuários não iniciado:', e);
     }
 
+    // 5. Inicia o registro e o heartbeat do dispositivo real
+    startRealDeviceHeartbeat({
+      storeId: 'matriz',
+      storeName: 'Diretoria / Matriz GAPP',
+      operatorName: currentUser ? `${currentUser.name} (${currentUser.role})` : 'Patrick Pessoa (Gestor)',
+      connectionType: 'DESKTOP_ERP'
+    });
+
     return () => {
       isMounted = false;
+      stopRealDeviceHeartbeat();
       if (unsubscribeRows) unsubscribeRows();
       if (unsubscribeLock) unsubscribeLock();
       if (unsubscribeUsers) unsubscribeUsers();
@@ -365,7 +375,7 @@ export default function App() {
       if (unsubscribeWaste) unsubscribeWaste();
       if (unsubscribeSuppliers) unsubscribeSuppliers();
     };
-  }, []);
+  }, [currentUser]);
 
   const handleSavePortalLockConfig = (config: PortalLockConfig) => {
     StorageService.savePortalLockConfig(config);
