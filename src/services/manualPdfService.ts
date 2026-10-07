@@ -401,7 +401,6 @@ export class ManualPdfService {
         ['F2 ou Alt+2', 'Planilha Matriz da Direção', 'Abre a planilha oficial de compra das 16 lojas'],
         ['F3 ou Alt+1', 'Painel Geral (Dashboard)', 'Exibe gráficos de faturamento, margens e estoque'],
         ['F4 ou Alt+3', 'Desossa & Rendimento', 'Abre a calculadora de custo limpo e cortes bovinos'],
-        ['F5', 'Restaurar Matriz Oficial', 'Restaura a base padrão de compras da Direção'],
         ['Alt + 4', 'DRE & Margens', 'Demonstrativo de Resultado do Exercício'],
         ['Alt + 5', 'Estoque & Câmaras Frias', 'Lançamentos de balcão e estoque das 16 filiais'],
         ['Alt + 6', 'Compras & Lotes de Gado', 'Módulo de lançamento de NF e frigoríficos'],

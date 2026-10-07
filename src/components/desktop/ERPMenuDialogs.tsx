@@ -144,11 +144,6 @@ export const ERPMenuDialogs: React.FC<ERPMenuDialogsProps> = ({
                     <td className="py-1.5 px-3 text-slate-500">Utilidades</td>
                   </tr>
                   <tr>
-                    <td className="py-1.5 px-3 font-mono font-bold text-blue-700">F5</td>
-                    <td className="py-1.5 px-3">Restaurar Matriz Oficial v10.6</td>
-                    <td className="py-1.5 px-3 text-slate-500">Sistema</td>
-                  </tr>
-                  <tr>
                     <td className="py-1.5 px-3 font-mono font-bold text-blue-700">Ctrl + N</td>
                     <td className="py-1.5 px-3">Novo Lote de Compra de Gado</td>
                     <td className="py-1.5 px-3 text-slate-500">Suprimentos</td>
