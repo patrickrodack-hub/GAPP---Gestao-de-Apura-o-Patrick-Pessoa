@@ -21,7 +21,9 @@ import {
   Minimize2,
   FileText,
   Download,
-  BookOpen
+  BookOpen,
+  Globe,
+  ExternalLink
 } from 'lucide-react';
 import { PortalTheme } from './MobileStockPortal';
 import { requestPortalFullscreen } from '../../utils/fullscreen';
@@ -107,6 +109,19 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Link para o site oficial GIPP */}
+          <a
+            href="https://gipp-site.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-xs font-bold shadow-2xs active:scale-95 transition-all cursor-pointer"
+            title="Acessar nosso site oficial: https://gipp-site.vercel.app/"
+          >
+            <Globe className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Nosso Site</span>
+            <ExternalLink className="w-3 h-3 opacity-70" />
+          </a>
+
           {/* Botão de Instalar App no Celular (apenas quando não estiver instalado ou standalone) */}
           {!isStandalone && onOpenInstallModal && (
             <button
@@ -380,6 +395,19 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
               <span>Baixar Manual do Usuário (PDF)</span>
               <Download className="w-3 h-3 text-emerald-600 dark:text-emerald-400 ml-0.5" />
             </button>
+
+            {/* Link para o Site Oficial GIPP */}
+            <a
+              href="https://gipp-site.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white text-xs font-bold shadow-sm active:scale-98 transition-all cursor-pointer"
+              title="Acessar nosso site oficial: https://gipp-site.vercel.app/"
+            >
+              <Globe className="w-4 h-4 text-emerald-200" />
+              <span>Acessar Nosso Site (gipp-site.vercel.app)</span>
+              <ExternalLink className="w-3.5 h-3.5 text-emerald-200" />
+            </a>
           </div>
 
           {/* Badge de Dispositivo Conectado & Auditado */}
@@ -399,8 +427,20 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
       </div>
 
       {/* Footer Info */}
-      <div className="text-center text-[11px] text-slate-500 dark:text-slate-500 py-2">
-        <span>Sistema de Apuração do Boi • Matriz Oficial v10.4 (Patrick Pessoa)</span>
+      <div className="text-center text-[11px] text-slate-500 dark:text-slate-400 py-2 space-y-1">
+        <div>Sistema de Apuração do Boi • Matriz Oficial v10.4 (Patrick Pessoa)</div>
+        <div>
+          Conheça o nosso site:{' '}
+          <a
+            href="https://gipp-site.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline inline-flex items-center gap-0.5"
+          >
+            https://gipp-site.vercel.app/
+            <ExternalLink className="w-2.5 h-2.5" />
+          </a>
+        </div>
       </div>
     </div>
   );

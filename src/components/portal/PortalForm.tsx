@@ -36,7 +36,9 @@ import {
   Maximize2,
   Minimize2,
   BookOpen,
-  Download
+  Download,
+  Globe,
+  ExternalLink
 } from 'lucide-react';
 import { PortalLaunchHistory } from './PortalLaunchHistory';
 import { PortalTheme } from './MobileStockPortal';
@@ -444,6 +446,19 @@ export const PortalForm: React.FC<PortalFormProps> = ({
             <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span className="hidden sm:inline text-xs font-bold">Manual</span>
           </button>
+
+          {/* Link para o site oficial GIPP */}
+          <a
+            href="https://gipp-site.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 rounded-xl bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/50 dark:hover:bg-teal-900/60 text-teal-700 dark:text-teal-300 border border-teal-300 dark:border-teal-800/80 transition cursor-pointer flex items-center gap-1 shadow-2xs"
+            title="Acessar nosso site oficial: https://gipp-site.vercel.app/"
+          >
+            <Globe className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <span className="hidden sm:inline text-xs font-bold">Site</span>
+            <ExternalLink className="w-3 h-3 opacity-70" />
+          </a>
 
           {/* Theme Switcher Toggle (Claro / Escuro) */}
           <button
@@ -993,6 +1008,21 @@ export const PortalForm: React.FC<PortalFormProps> = ({
             rows={2}
             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white dark:focus:bg-slate-900"
           />
+        </div>
+
+        {/* Link para o site oficial GIPP */}
+        <div className="pt-2 text-center">
+          <a
+            href="https://gipp-site.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-2xl bg-slate-100 hover:bg-teal-50 hover:text-teal-800 dark:bg-slate-900 dark:hover:bg-teal-950/40 dark:hover:text-teal-300 border border-slate-200 dark:border-slate-800 hover:border-teal-300 dark:hover:border-teal-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition active:scale-98 cursor-pointer shadow-2xs"
+            title="Acessar nosso site oficial: https://gipp-site.vercel.app/"
+          >
+            <Globe className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+            <span>Acesse nosso site oficial: <strong className="text-teal-600 dark:text-teal-400 underline decoration-teal-400/50">gipp-site.vercel.app</strong></span>
+            <ExternalLink className="w-3 h-3 opacity-60" />
+          </a>
         </div>
       </main>
 

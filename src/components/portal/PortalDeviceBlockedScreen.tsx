@@ -9,7 +9,9 @@ import {
   ArrowLeft, 
   AlertTriangle,
   Building2,
-  Clock
+  Clock,
+  Globe,
+  ExternalLink
 } from 'lucide-react';
 import { ConnectedDevice } from '../../types/erp';
 import { DeviceInfo } from '../../utils/deviceInfo';
@@ -145,6 +147,18 @@ export const PortalDeviceBlockedScreen: React.FC<PortalDeviceBlockedScreenProps>
               <MessageCircle className="w-4 h-4" />
               <span>Solicitar Liberação com o Gestor</span>
             </button>
+
+            {/* Link para o site oficial */}
+            <a
+              href="https://gipp-site.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-2 px-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition"
+            >
+              <Globe className="w-3.5 h-3.5 text-teal-400" />
+              <span>Visite nosso site: gipp-site.vercel.app</span>
+              <ExternalLink className="w-3 h-3 opacity-60" />
+            </a>
           </div>
         </div>
       </div>
