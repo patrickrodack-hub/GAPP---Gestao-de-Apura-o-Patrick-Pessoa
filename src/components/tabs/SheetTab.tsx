@@ -686,14 +686,14 @@ export const SheetTab: React.FC<SheetTabProps> = ({
             <span className="hidden sm:inline">Recalcular</span>
           </button>
 
-          {/* Botão de Limpar Dados / Zerar Planilha */}
+          {/* Botão de Limpar Informações de Todas as Lojas / Zerar Planilha */}
           <button
             onClick={() => setIsClearModalOpen(true)}
-            className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
-            title="Limpar ou zerar dados da planilha para iniciar novo ciclo de compras da semana"
+            className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95 cursor-pointer"
+            title="Limpar as informações de todas as lojas para iniciar um novo ciclo e liberar as abas com a cor do sistema"
           >
             <Eraser className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-            <span>Limpar Dados</span>
+            <span>Limpar Todas as Lojas</span>
           </button>
         </div>
       </div>

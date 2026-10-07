@@ -233,18 +233,18 @@ export const StorageService = {
     } catch {}
   },
 
-  getYieldParams(): { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; breakagePercent?: number; costFormationMode?: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR'; basis: 'carcass' | 'piece' } {
+  getYieldParams(): { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; breakagePercent?: number; costFormationMode?: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR'; basis: 'carcass' | 'piece'; recoverGraxaria?: boolean } {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.YIELD_PARAMS);
       return data 
-        ? { breakagePercent: 25.0, costFormationMode: 'VAREJO_PADRAO', ...JSON.parse(data) } 
-        : { carcassWeight: 240, costPerKg: 26.00, fatPriceKg: 4.85, bonePriceKg: 0.90, targetMargin: 28, breakagePercent: 25.0, costFormationMode: 'VAREJO_PADRAO', basis: 'carcass' };
+        ? { breakagePercent: 25.0, costFormationMode: 'VAREJO_PADRAO', recoverGraxaria: true, ...JSON.parse(data) } 
+        : { carcassWeight: 240, costPerKg: 26.00, fatPriceKg: 4.85, bonePriceKg: 0.90, targetMargin: 28, breakagePercent: 25.0, costFormationMode: 'VAREJO_PADRAO', basis: 'carcass', recoverGraxaria: true };
     } catch {
-      return { carcassWeight: 240, costPerKg: 26.00, fatPriceKg: 4.85, bonePriceKg: 0.90, targetMargin: 28, breakagePercent: 25.0, costFormationMode: 'VAREJO_PADRAO', basis: 'carcass' };
+      return { carcassWeight: 240, costPerKg: 26.00, fatPriceKg: 4.85, bonePriceKg: 0.90, targetMargin: 28, breakagePercent: 25.0, costFormationMode: 'VAREJO_PADRAO', basis: 'carcass', recoverGraxaria: true };
     }
   },
 
-  saveYieldParams(params: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; breakagePercent?: number; costFormationMode?: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR'; basis: 'carcass' | 'piece' }) {
+  saveYieldParams(params: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; breakagePercent?: number; costFormationMode?: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR'; basis: 'carcass' | 'piece'; recoverGraxaria?: boolean }) {
     localStorage.setItem(STORAGE_KEYS.YIELD_PARAMS, JSON.stringify(params));
     FirebaseService.saveYieldParams(params).catch(() => {});
   },
@@ -426,6 +426,16 @@ export const StorageService = {
       console.warn('Erro ao salvar lançamento no Firestore:', err);
     });
     return updated;
+  },
+
+  clearAllStockLaunchRecords() {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.STOCK_LAUNCHES);
+      localStorage.removeItem('gapp_stock_launched_stores');
+      window.dispatchEvent(new CustomEvent('gapp_stock_launches_cleared'));
+    } catch (e) {
+      console.warn('Erro ao limpar histórico de lançamentos de estoque:', e);
+    }
   },
 
   // ==========================================

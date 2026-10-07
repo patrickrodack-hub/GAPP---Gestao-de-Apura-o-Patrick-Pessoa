@@ -172,6 +172,7 @@ export interface YieldParams {
   breakagePercent?: number; // % de quebra total padrão (default 25.0%, faixa 20% a 30%)
   costFormationMode?: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR'; // Padrão de formação de custo
   basis: 'carcass' | 'piece';
+  recoverGraxaria?: boolean;
 }
 
 export interface YieldAnalysisCuts {

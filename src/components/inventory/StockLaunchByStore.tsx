@@ -23,8 +23,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Check,
-  X
+  X,
+  Trash2,
+  Eraser
 } from 'lucide-react';
+import { ClearAllStoresConfirmModal } from '../modals/ClearAllStoresConfirmModal';
+import { INITIAL_SHEET_ROWS } from '../../data/initialData';
 
 interface StockLaunchByStoreProps {
   rows: SheetRowData[];
@@ -44,6 +48,7 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
   const [selectedStoreId, setSelectedStoreId] = useState<string>(stores[0]?.id || '1');
   const [draftRow, setDraftRow] = useState<SheetRowData | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isClearAllModalOpen, setIsClearAllModalOpen] = useState(false);
 
   // Armazena e persiste quais filiais já tiveram estoque lançado
   const [launchedStoreIds, setLaunchedStoreIds] = useState<Set<string>>(() => {
@@ -57,6 +62,17 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
       return new Set<string>();
     }
   });
+
+  // Ouve eventos de limpeza disparados pelo sistema ou pela Planilha de Compras
+  useEffect(() => {
+    const handleLaunchesCleared = () => {
+      setLaunchedStoreIds(new Set<string>());
+    };
+    window.addEventListener('gapp_stock_launches_cleared', handleLaunchesCleared);
+    return () => {
+      window.removeEventListener('gapp_stock_launches_cleared', handleLaunchesCleared);
+    };
+  }, []);
 
   const yieldParams = StorageService.getYieldParams();
   const currentWeights: CutYieldWeights = yieldParams.basis === 'piece' 
@@ -239,6 +255,120 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
     }
   };
 
+  // Limpa os dados de lançamento de TODAS as lojas e reseta as abas para a cor do sistema
+  const handleClearAllStores = (resetOption: 'all_zero' | 'restore_initial') => {
+    // 1. Limpa registros e marcas de filiais lançadas
+    StorageService.clearAllStockLaunchRecords();
+    setLaunchedStoreIds(new Set<string>());
+
+    let updatedRows: SheetRowData[] = [];
+
+    if (resetOption === 'restore_initial') {
+      // Restaura dados de referência inicial da matriz
+      updatedRows = INITIAL_SHEET_ROWS.map(r => recalculateRowOrderFormulas(r, currentWeights));
+    } else {
+      // Zera estoque e pedidos de todas as lojas para iniciar novo ciclo limpo
+      updatedRows = rows.map(r => {
+        const emptyRow: SheetRowData = {
+          ...r,
+          // PEDIDOS
+          pedidoDianteiro: 0,
+          pedidoTraseiro: 0,
+          pedidoCoxao: 0,
+          pedidoAlcatrao: 0,
+          pedidoCostelaGaucha: 0,
+          venda: 0,
+          boiAVenda: 0,
+          pedidoFinal: 0,
+          pTransito: 0,
+
+          // CÂMARA FRIA
+          camaraDianteiro: 0,
+          camaraTraseiro: 0,
+          camaraCoxao: 0,
+          camaraAlcatrao: 0,
+          somaDoTraseiro: 0,
+          camaraCostelaGaucha: 0,
+
+          // NOBRES
+          alcatra: 0,
+          alcatraPecas: 0,
+          alcatraKg: 0,
+          contraFile: 0,
+          contraFilePecas: 0,
+          contraFileKg: 0,
+          picanha: 0,
+          picanhaPecas: 0,
+          picanhaKg: 0,
+          fileMignon: 0,
+          fileMignonPecas: 0,
+          fileMignonKg: 0,
+          costelaCong: 0,
+          totalAlcatrao: 0,
+
+          // DIANTEIRO
+          totalDianteiro: 0,
+          paletaKg: 0,
+          paletaPecas: 0,
+          acemKg: 0,
+          acemPecas: 0,
+          peitoKg: 0,
+          peitoPecas: 0,
+          musculoKg: 0,
+          musculoPecas: 0,
+
+          // COXÃO / TRASEIRO
+          totalCoxao: 0,
+          chaKg: 0,
+          chaPecas: 0,
+          patinhoKg: 0,
+          patinhoPecas: 0,
+          lagartoRedondoKg: 0,
+          lagartoRedondoPecas: 0,
+          lagartoPlanoKg: 0,
+          lagartoPlanoPecas: 0,
+
+          // SUÍNO / BANDA
+          bandaKg: 0,
+          bandaPecas: 0,
+          bandaVenda: 0,
+          vendaSuino: 0,
+          bandaSugestao: 0,
+          bandaPedido: 0,
+          pedidoSuino: 0,
+          costelaSuinaPecas: 0,
+          pernilPecas: 0,
+          recebeuBoiHoje: undefined
+        };
+        return recalculateRowOrderFormulas(emptyRow, currentWeights);
+      });
+    }
+
+    // 2. Atualiza matriz no estado pai e no localStorage/banco de dados
+    if (onUpdateMultiple) {
+      onUpdateMultiple(updatedRows);
+    } else {
+      updatedRows.forEach(r => onUpdateRow(r));
+    }
+    StorageService.saveSheetRows(updatedRows);
+
+    // 3. Atualiza o rascunho da loja atualmente em visualização
+    const currentDraft = updatedRows.find(r => r.storeId === selectedStoreId);
+    if (currentDraft) {
+      setDraftRow(currentDraft);
+    }
+
+    // 4. Salva registro de ciclo zerado no histórico para auditoria
+    const clearSnapshot = StorageService.createSnapshotFromRows(
+      updatedRows,
+      'Novo Ciclo: Lojas Zeradas',
+      'Direção / Gerência',
+      'INVENTORY_TAB',
+      `Informações de todas as ${stores.length} lojas limpas com sucesso para início de novo ciclo de lançamentos.`
+    );
+    StorageService.addSheetSnapshot(clearSnapshot);
+  };
+
   const handlePrevStore = () => {
     if (currentStoreIndex > 0) {
       if (draftRow) onUpdateRow(draftRow);
@@ -384,9 +514,18 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
             </button>
 
             <button
+              onClick={() => setIsClearAllModalOpen(true)}
+              className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer active:scale-95"
+              title="Limpar informações de lançamento de todas as lojas para iniciar novo ciclo semanal"
+            >
+              <Eraser className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+              <span>Limpar Todas as Lojas</span>
+            </button>
+
+            <button
               onClick={handleResetStore}
               className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-slate-700 transition"
-              title="Zerar dados de estoque desta loja"
+              title="Zerar dados de estoque apenas desta loja selecionada"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
@@ -1089,6 +1228,15 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Modal de Confirmação para Limpar Informações de Todas as Lojas */}
+      <ClearAllStoresConfirmModal
+        isOpen={isClearAllModalOpen}
+        onClose={() => setIsClearAllModalOpen(false)}
+        onConfirm={handleClearAllStores}
+        stores={stores}
+        launchedCount={launchedStoreIds.size}
+      />
     </div>
   );
 };

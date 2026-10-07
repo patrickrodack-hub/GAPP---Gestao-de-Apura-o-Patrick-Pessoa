@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SheetRowData } from '../../types/erp';
 import { recalculateRowOrderFormulas, CutYieldWeights } from '../../services/calculationService';
 import { INITIAL_SHEET_ROWS } from '../../data/initialData';
+import { StorageService } from '../../services/storageService';
 import { 
   Eraser, 
   Trash2, 
@@ -61,6 +62,7 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({
   const handleExecuteClear = () => {
     if (selectedMode === 'restore') {
       // Restore initial demo data
+      StorageService.clearAllStockLaunchRecords();
       const restored = INITIAL_SHEET_ROWS.map(r => recalculateRowOrderFormulas(r, currentCutWeights));
       onUpdateMultiple(restored);
       onClose();
@@ -68,7 +70,8 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({
     }
 
     if (selectedMode === 'all') {
-      // Clear all editable fields for all rows
+      // Clear all editable fields for all rows and reset store tabs to system neutral color
+      StorageService.clearAllStockLaunchRecords();
       const cleared = rows.map(row => {
         const emptyRow: SheetRowData = {
           storeId: row.storeId,
