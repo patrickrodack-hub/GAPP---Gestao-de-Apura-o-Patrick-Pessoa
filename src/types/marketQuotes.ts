@@ -4,7 +4,7 @@ export interface MarketIndicator {
   id: string;
   code: string;
   name: string;
-  category: 'bovino_gordo' | 'bovino_especial' | 'reposicao' | 'cambio' | 'carcaca' | 'varejo_rj';
+  category: 'bovino_gordo' | 'bovino_especial' | 'reposicao' | 'cambio' | 'carcaca' | 'varejo_rj' | 'suino';
   price: number;
   unit: string;
   changeDay: number; // Percentual diário (ex: +0.85%)

@@ -30,7 +30,7 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({
   onUpdateMultiple,
   currentCutWeights,
 }) => {
-  const [selectedMode, setSelectedMode] = useState<'all' | 'custom' | 'restore'>('all');
+  const [selectedMode, setSelectedMode] = useState<'all' | 'custom'>('all');
   
   // Custom section selectors
   const [clearSections, setClearSections] = useState({
@@ -60,15 +60,6 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({
   };
 
   const handleExecuteClear = () => {
-    if (selectedMode === 'restore') {
-      // Restore initial demo data
-      StorageService.clearAllStockLaunchRecords();
-      const restored = INITIAL_SHEET_ROWS.map(r => recalculateRowOrderFormulas(r, currentCutWeights));
-      onUpdateMultiple(restored);
-      onClose();
-      return;
-    }
-
     if (selectedMode === 'all') {
       // Clear all editable fields for all rows and reset store tabs to system neutral color
       StorageService.clearAllStockLaunchRecords();
@@ -266,7 +257,7 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({
         {/* Body */}
         <div className="p-5 overflow-y-auto space-y-4 text-sm">
           {/* Mode Selector */}
-          <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
             <button
               onClick={() => setSelectedMode('all')}
               className={`py-2 px-3 rounded-lg font-semibold text-xs transition flex flex-col items-center gap-1 ${
@@ -289,18 +280,6 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({
             >
               <CheckSquare className="w-4 h-4" />
               <span>Personalizado</span>
-            </button>
-
-            <button
-              onClick={() => setSelectedMode('restore')}
-              className={`py-2 px-3 rounded-lg font-semibold text-xs transition flex flex-col items-center gap-1 ${
-                selectedMode === 'restore'
-                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200 dark:border-slate-700'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span>Restaurar Padrão</span>
             </button>
           </div>
 
@@ -497,23 +476,6 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({
               </div>
             </div>
           )}
-
-          {/* Mode 3: Restaurar Padrão */}
-          {selectedMode === 'restore' && (
-            <div className="p-4 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 space-y-3 animate-fade-in">
-              <div className="flex items-start gap-3">
-                <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <h4 className="font-bold text-emerald-900 dark:text-emerald-200">
-                    Restaurar Dados Padrão da Planilha v10.6
-                  </h4>
-                  <p className="text-xs text-emerald-700 dark:text-emerald-300 leading-relaxed">
-                    Restaura todos os lançamentos originais de referência da planilha oficial (pedidos, estoque de câmara, desossa e suíno de todas as 16 lojas).
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Footer Actions */}
@@ -530,9 +492,7 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({
             className={`px-4 py-2 rounded-xl text-white font-bold text-xs flex items-center gap-2 shadow-md transition active:scale-95 ${
               selectedMode === 'all'
                 ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20'
-                : selectedMode === 'custom'
-                ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/20'
-                : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20'
+                : 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/20'
             }`}
           >
             {selectedMode === 'all' ? (
@@ -540,15 +500,10 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({
                 <Trash2 className="w-4 h-4" />
                 <span>Confirmar e Zerar Planilha</span>
               </>
-            ) : selectedMode === 'custom' ? (
+            ) : (
               <>
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Limpar Seções Selecionadas</span>
-              </>
-            ) : (
-              <>
-                <RotateCcw className="w-4 h-4" />
-                <span>Restaurar Dados Padrão</span>
               </>
             )}
           </button>

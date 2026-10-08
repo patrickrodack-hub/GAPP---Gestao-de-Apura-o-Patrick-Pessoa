@@ -13,7 +13,10 @@ import {
   writeBatch,
   query,
   orderBy,
-  limit
+  limit,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { SheetRowData, SheetSnapshotRecord, StockLaunchRecord, Store, Supplier, Product, PortalLockConfig, SystemUser, PurchaseBatch, WasteRecord, StandardPurchaseOrder, ConnectedDevice } from '../types/erp';
@@ -21,7 +24,20 @@ import { SheetRowData, SheetSnapshotRecord, StockLaunchRecord, Store, Supplier, 
 // Initialize Firebase App
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId); /* CRITICAL: The app will break without this line */
+
+// Inicializa Firestore com Cache Persistente em IndexedDB para múltiplos navegadores/abas
+// Isso impede que perda de conexão ou limite de cota apague ou redefina dados locais!
+let firestoreInstance;
+try {
+  firestoreInstance = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  }, firebaseConfig.firestoreDatabaseId);
+} catch {
+  firestoreInstance = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+}
+export const db = firestoreInstance; /* CRITICAL: The app will break without this line */
 
 export enum OperationType {
   CREATE = 'create',
@@ -174,7 +190,7 @@ export const FirebaseService = {
           callback(rows);
         }
       }, (error) => {
-        handleFirestoreError(error, OperationType.GET, path);
+        console.warn('Erro ao escutar sheet_rows do Firestore:', error);
       });
     } catch {
       return () => {};

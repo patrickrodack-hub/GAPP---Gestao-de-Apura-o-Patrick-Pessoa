@@ -166,6 +166,44 @@ export const INITIAL_MARKET_INDICATORS: MarketIndicator[] = [
     lastUpdated: 'Hoje, 16:00',
     description: 'Taxa de câmbio de referência que baliza a paridade de exportação dos frigoríficos.',
     benchmarkPrice: 5.60
+  },
+  {
+    id: 'ind-suino-carcaca',
+    code: 'SUI-CARCACA-BANDA',
+    name: 'Carcaça Suína Especial / Banda Suína (Atacado SP/SC/RJ)',
+    category: 'suino',
+    price: 13.80,
+    unit: 'R$/kg',
+    changeDay: 0.45,
+    changeDayValue: 0.06,
+    changeWeek: 0.85,
+    changeMonth: 1.90,
+    trend: 'stable',
+    min30d: 13.10,
+    max30d: 14.20,
+    source: 'CEPEA / Scot / Indústria Suinícola RJ',
+    lastUpdated: 'Hoje, 16:30',
+    description: 'Preço médio da carcaça suína resfriada (meia carcaça com toucinho e osso) no atacado para os mercados SP e RJ.',
+    benchmarkPrice: 13.60
+  },
+  {
+    id: 'ind-suino-vivo',
+    code: 'SUI-VIVO-CEPEA',
+    name: 'Suíno Vivo (Kg Vivo ao Produtor - CEPEA/ASEMG)',
+    category: 'suino',
+    price: 7.85,
+    unit: 'R$/kg vivo',
+    changeDay: 0.65,
+    changeDayValue: 0.05,
+    changeWeek: 1.20,
+    changeMonth: 2.80,
+    trend: 'up',
+    min30d: 7.30,
+    max30d: 8.10,
+    source: 'CEPEA/ESALQ & ASEMG (Bolsa de Suínos)',
+    lastUpdated: 'Hoje, 16:20',
+    description: 'Cotação média do suíno vivo ao produtor em MG, SP, SC e PR (Rendimento de carcaça zootécnico padrão de 74,0%).',
+    benchmarkPrice: 7.70
   }
 ];
 
@@ -474,6 +512,20 @@ export const INITIAL_CARCASS_QUOTES: WholesaleCarcassQuote[] = [
     yieldPercentStandard: 100.0,
     source: 'Indústria Suinícola SC/PR/MG para Mercado RJ',
     notes: 'Carcaça suína inteira resfriada (peso médio 36kg por meia banda).'
+  },
+  {
+    id: 'carc-suino-vivo',
+    name: 'Suíno Vivo Terminado Especial (Base Kg Vivo Produtor)',
+    type: 'suino',
+    priceKg: 7.85,
+    equivalentArrobaPrice: 117.75,
+    changeWeek: 0.65,
+    trend: 'up',
+    suggestedRetailPriceKg: 10.90,
+    rjRetailPriceKg: 11.50,
+    yieldPercentStandard: 74.0,
+    source: 'CEPEA/ESALQ • ASEMG • Scot Consultoria',
+    notes: 'Preço base do animal vivo na granja/porteira (lotes 110 a 125 kg com rendimento de carcaça padrão de 74,0%).'
   }
 ];
 
@@ -865,6 +917,48 @@ export const INITIAL_CUT_QUOTES: WholesaleCutQuote[] = [
 
   // --- SUÍNO ---
   {
+    id: 'cut-banda-suina',
+    name: 'Carcaça Suína Especial (Banda Suína com Osso/Toucinho)',
+    category: 'suino',
+    productCode: 'SUI-BANDA',
+    minPriceKg: 13.20,
+    maxPriceKg: 14.80,
+    avgPriceKg: 13.80,
+    changeWeek: 0.50,
+    trend: 'stable',
+    suggestedRetailPriceKg: 19.90,
+    rjRetailPriceKg: 20.90,
+    rjRetailMarginPercent: 33.97,
+    scantecGiroRating: 'ALTO',
+    nielsenSharePercent: 12.5,
+    idealMarginPercent: 34.0,
+    standardYieldPercent: 100.0,
+    source: 'Indústria Suinícola SC/PR/MG • Atacado RJ/SP',
+    packers: 'Seara / JBS, Aurora Coop, BRF / Sadia, Frimesa, Saudali',
+    description: 'Carcaça/meia carcaça suína resfriada com toucinho e osso para desossa e fatiamento em loja (peso médio de 35kg a 42kg por meia banda).'
+  },
+  {
+    id: 'cut-suino-vivo',
+    name: 'Suíno Vivo Terminado (Kg Vivo ao Produtor / Frigorífico)',
+    category: 'suino',
+    productCode: 'SUI-VIVO',
+    minPriceKg: 7.40,
+    maxPriceKg: 8.40,
+    avgPriceKg: 7.85,
+    changeWeek: 0.65,
+    trend: 'up',
+    suggestedRetailPriceKg: 11.20,
+    rjRetailPriceKg: 11.90,
+    rjRetailMarginPercent: 34.03,
+    scantecGiroRating: 'ALTO',
+    nielsenSharePercent: 0,
+    idealMarginPercent: 35.0,
+    standardYieldPercent: 74.0,
+    source: 'CEPEA/ESALQ • ASEMG (MG) • ACRISMAT • Scot Consultoria',
+    packers: 'Produtores Independentes & Integrados (SC, PR, RS, MG, SP, RJ)',
+    description: 'Cotação média do kg vivo de suíno terminado posto frigorífico/granja (lotes de 110-125kg, rendimento padrão zootécnico de 74,0% de carcaça).'
+  },
+  {
     id: 'cut-costela-suina',
     name: 'Costela Suína Fresca Resfriada',
     category: 'suino',
@@ -1173,7 +1267,52 @@ export class MarketQuotesService {
     try {
       const saved = localStorage.getItem(QUOTES_STORAGE_KEY);
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        let needsSave = false;
+
+        // Garante que cortes novos (Banda Suína, Suíno Vivo, etc.) estejam presentes
+        if (parsed.cutQuotes && Array.isArray(parsed.cutQuotes)) {
+          for (const initCut of INITIAL_CUT_QUOTES) {
+            if (!parsed.cutQuotes.some((c: any) => c.id === initCut.id)) {
+              parsed.cutQuotes.push(initCut);
+              needsSave = true;
+            }
+          }
+        } else {
+          parsed.cutQuotes = INITIAL_CUT_QUOTES;
+          needsSave = true;
+        }
+
+        // Garante que indicadores de Suíno e novos indicadores estejam presentes
+        if (parsed.indicators && Array.isArray(parsed.indicators)) {
+          for (const initInd of INITIAL_MARKET_INDICATORS) {
+            if (!parsed.indicators.some((i: any) => i.id === initInd.id)) {
+              parsed.indicators.push(initInd);
+              needsSave = true;
+            }
+          }
+        } else {
+          parsed.indicators = INITIAL_MARKET_INDICATORS;
+          needsSave = true;
+        }
+
+        // Garante que carcaças novas (Suíno Vivo, Banda) estejam presentes
+        if (parsed.carcassQuotes && Array.isArray(parsed.carcassQuotes)) {
+          for (const initCarc of INITIAL_CARCASS_QUOTES) {
+            if (!parsed.carcassQuotes.some((c: any) => c.id === initCarc.id)) {
+              parsed.carcassQuotes.push(initCarc);
+              needsSave = true;
+            }
+          }
+        } else {
+          parsed.carcassQuotes = INITIAL_CARCASS_QUOTES;
+          needsSave = true;
+        }
+
+        if (needsSave) {
+          localStorage.setItem(QUOTES_STORAGE_KEY, JSON.stringify(parsed));
+        }
+        return parsed;
       }
     } catch {}
 
@@ -1465,6 +1604,10 @@ export class MarketQuotesService {
     const contra = snapshot.cutQuotes.find(c => c.id === 'cut-contra-file');
     const acem = snapshot.cutQuotes.find(c => c.id === 'cut-acem');
     const cha = snapshot.cutQuotes.find(c => c.id === 'cut-cha-de-dentro');
+    const bandaSuina = snapshot.cutQuotes.find(c => c.id === 'cut-banda-suina') || { avgPriceKg: 13.80, rjRetailPriceKg: 20.90 };
+    const suinoVivo = snapshot.cutQuotes.find(c => c.id === 'cut-suino-vivo') || { avgPriceKg: 7.85, rjRetailPriceKg: 11.90 };
+    const costelaSuina = snapshot.cutQuotes.find(c => c.id === 'cut-costela-suina');
+    const pernilSuino = snapshot.cutQuotes.find(c => c.id === 'cut-pernil-suino');
 
     const lines = [
       `📈 *GRUPO GAPP SISTEMAS • BOLETIM DE COTAÇÃO EM TEMPO REAL*`,
@@ -1476,7 +1619,13 @@ export class MarketQuotesService {
       `• *Boi Entrada Rio de Janeiro:* R$ ${boiRJ?.price.toFixed(2)}/@`,
       `• *Boi Padrão China (SP):* R$ ${boiChina?.price.toFixed(2)}/@ (Premiação R$ 7,50/@)`,
       ``,
-      `🥩 *CORTES NO ATACADO vs VAREJO RIO DE JANEIRO (Scantec/Nielsen):*`,
+      `🐷 *COTAÇÃO SUINÍCOLA (CARCAÇA / BANDA & SUÍNO VIVO):*`,
+      `• *Carcaça Suína (Banda Atacado):* R$ ${bandaSuina.avgPriceKg.toFixed(2)}/kg (~R$ ${(bandaSuina.avgPriceKg * 15).toFixed(2)}/@) | Balcão RJ: R$ ${bandaSuina.rjRetailPriceKg.toFixed(2)}/kg`,
+      `• *Suíno Vivo (Kg Vivo Produtor):* R$ ${suinoVivo.avgPriceKg.toFixed(2)}/kg vivo (~R$ ${(suinoVivo.avgPriceKg * 15).toFixed(2)}/@ viva - CEPEA/ASEMG)`,
+      `• *Costela Suína:* Atacado R$ ${costelaSuina?.avgPriceKg.toFixed(2)}/kg | Balcão RJ: R$ ${costelaSuina?.rjRetailPriceKg.toFixed(2)}/kg`,
+      `• *Pernil Suíno:* Atacado R$ ${pernilSuino?.avgPriceKg.toFixed(2)}/kg | Balcão RJ: R$ ${pernilSuino?.rjRetailPriceKg.toFixed(2)}/kg`,
+      ``,
+      `🥩 *CORTES BOVINOS NO ATACADO vs VAREJO RIO DE JANEIRO (Scantec/Nielsen):*`,
       `• *Picanha:* Atacado R$ ${picanha?.avgPriceKg.toFixed(2)}/kg | Balcão RJ: R$ ${picanha?.rjRetailPriceKg.toFixed(2)}/kg`,
       `• *Contra Filé:* Atacado R$ ${contra?.avgPriceKg.toFixed(2)}/kg | Balcão RJ: R$ ${contra?.rjRetailPriceKg.toFixed(2)}/kg`,
       `• *Coxão Mole (Chã):* Atacado R$ ${cha?.avgPriceKg.toFixed(2)}/kg | Balcão RJ: R$ ${cha?.rjRetailPriceKg.toFixed(2)}/kg`,

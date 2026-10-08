@@ -307,6 +307,7 @@ export interface SystemUser {
   password: string;         // Senha de acesso (ex: "190996")
   role: UserRole;           // Cargo/Perfil no sistema
   roleTitle?: string;       // Título exibido (ex: "Desenvolvedor do Software")
+  storeId?: string;         // Filial vinculada ao usuário (ou 'matriz')
   email?: string;
   avatar?: string;
   active: boolean;          // Ativo / Inativo

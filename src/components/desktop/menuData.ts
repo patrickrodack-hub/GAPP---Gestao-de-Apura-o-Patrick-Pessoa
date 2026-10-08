@@ -207,17 +207,6 @@ export const getERPMenuCategories = (
         targetTab: 'devices'
       },
       {
-        id: 'arq-restaurar',
-        name: 'Restaurar Matriz Oficial v10.6',
-        division: 'Administração do Sistema',
-        code: 'SYS-01',
-        badge: 'Oficial',
-        description: 'Restaura a base padrão de compra oficial da direção',
-        icon: RotateCcw,
-        actionType: 'action',
-        actionId: 'reset'
-      },
-      {
         id: 'arq-sair',
         name: 'Sair do Sistema e Fechar Navegador',
         division: 'Sistema & Segurança',

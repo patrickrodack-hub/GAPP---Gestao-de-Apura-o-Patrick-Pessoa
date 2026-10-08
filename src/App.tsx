@@ -22,6 +22,7 @@ import { PortalControlModal } from './components/modals/PortalControlModal';
 import { UserManagementModal } from './components/modals/UserManagementModal';
 import { ChangePasswordModal } from './components/modals/ChangePasswordModal';
 import { ExitSystemModal } from './components/modals/ExitSystemModal';
+import { ResetSystemConfirmModal } from './components/modals/ResetSystemConfirmModal';
 import { UserManualsModal } from './components/modals/UserManualsModal';
 import { ManagementLogin } from './components/auth/ManagementLogin';
 import { SystemClosedScreen } from './components/auth/SystemClosedScreen';
@@ -121,6 +122,7 @@ export default function App() {
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isSystemClosed, setIsSystemClosed] = useState(false);
 
   // Limpeza de qualquer credencial residual para impedir login automático no recarregamento da janela
@@ -579,18 +581,24 @@ export default function App() {
     showToast('Registro de coleta de graxaria excluído com sucesso.');
   };
 
-  // Reset to original data
+  // Reset to original data (Protegido por confirmação estrita via Modal em tela)
   const handleReset = () => {
-    if (window.confirm('Deseja restaurar todos os dados originais da Planilha de Compra da Direção v10.6? Quaisquer edições manuais serão redefinidas.')) {
-      const defaults = StorageService.resetAllToDefaults();
-      setProducts(defaults.products);
-      setStores(defaults.stores);
-      setSheetRows(defaults.sheetRows);
-      setBatches(defaults.batches);
-      setWasteRecords(defaults.waste);
-      setSuppliers(defaults.suppliers);
-      showToast('Dados oficiais da Planilha v10.6 restaurados!');
+    if (currentUser && currentUser.role !== 'DESENVOLVEDOR' && currentUser.role !== 'DIRETOR') {
+      showToast('Ação restrita: Somente Desenvolvedor ou Diretor pode redefinir o sistema para valores de fábrica.');
+      return;
     }
+    setIsResetConfirmOpen(true);
+  };
+
+  const handleConfirmFactoryReset = () => {
+    const defaults = StorageService.resetAllToDefaults();
+    setProducts(defaults.products);
+    setStores(defaults.stores);
+    setSheetRows(defaults.sheetRows);
+    setBatches(defaults.batches);
+    setWasteRecords(defaults.waste);
+    setSuppliers(defaults.suppliers);
+    showToast('Dados oficiais de fábrica restaurados mediante confirmação explícita.');
   };
 
   // Export CSV
@@ -1145,6 +1153,12 @@ export default function App() {
           userName={currentUser?.name}
         />
 
+        <ResetSystemConfirmModal
+          isOpen={isResetConfirmOpen}
+          onClose={() => setIsResetConfirmOpen(false)}
+          onConfirm={handleConfirmFactoryReset}
+        />
+
         {/* Modal da Central de Backup Online no Tema GAPP Classic */}
         {isBackupModalOpen && (
           <div className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
@@ -1453,6 +1467,12 @@ export default function App() {
         onExitAndCloseBrowser={handleExitAndCloseBrowser}
         onLogoutOnly={handleLogoutOnly}
         userName={currentUser?.name}
+      />
+
+      <ResetSystemConfirmModal
+        isOpen={isResetConfirmOpen}
+        onClose={() => setIsResetConfirmOpen(false)}
+        onConfirm={handleConfirmFactoryReset}
       />
 
       <UserManualsModal

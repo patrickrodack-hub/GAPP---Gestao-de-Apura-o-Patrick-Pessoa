@@ -124,10 +124,10 @@ export const MobileStockPortal: React.FC<MobileStockPortalProps> = ({
   useEffect(() => {
     if (!deviceInfo || isDeviceBlocked) return;
 
-    // Atualiza heartbeat a cada 25 segundos
+    // Atualiza heartbeat a cada 3 minutos (180 segundos) para preservar a cota do Firestore
     heartbeatTimerRef.current = setInterval(() => {
-      StorageService.updateDeviceHeartbeat(deviceInfo.deviceId, 25);
-    }, 25000);
+      StorageService.updateDeviceHeartbeat(deviceInfo.deviceId, 180);
+    }, 180000);
 
     return () => {
       if (heartbeatTimerRef.current) clearInterval(heartbeatTimerRef.current);

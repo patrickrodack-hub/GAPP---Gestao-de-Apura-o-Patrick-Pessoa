@@ -22,13 +22,13 @@ const BACKUP_SCHEDULE_STORAGE_KEY = 'gapp_backup_schedule_config';
 const LOCAL_BACKUPS_CACHE_KEY = 'gapp_cloud_backups_cache';
 
 const DEFAULT_SCHEDULE_CONFIG: BackupScheduleConfig = {
-  enabled: true,
+  enabled: false, // Desativado por padrão para evitar operações em segundo plano não solicitadas
   periodicity: 'DIARIO',
   scheduledTime: '23:00',
   intervalHours: 4,
   selectedDaysOfWeek: [0, 1, 2, 3, 4, 5, 6], // Todos os dias
   retentionDays: 30,
-  autoNotify: true,
+  autoNotify: false,
   lastBackupTimestamp: undefined,
   lastBackupStatus: undefined,
   nextScheduledTimestamp: undefined,

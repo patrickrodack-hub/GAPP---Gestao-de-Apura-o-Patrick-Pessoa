@@ -765,15 +765,6 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
                 </button>
               )}
 
-              {/* Restaurar v10.6 */}
-              <button
-                onClick={onReset}
-                className="h-7.5 w-7.5 flex items-center justify-center rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800"
-                title="Restaurar Planilha Oficial da Direção v10.6"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
-              </button>
-
               {/* Instalação do Aplicativo Mobile / Desktop */}
               <PWAInstallButton />
 

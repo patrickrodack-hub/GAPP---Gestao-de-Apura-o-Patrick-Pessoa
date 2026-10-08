@@ -317,14 +317,6 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               )}
 
-              <button
-                onClick={onReset}
-                className="h-7.5 w-7.5 flex items-center justify-center rounded-lg hover:bg-red-100 dark:hover:bg-red-950/40 text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 transition cursor-pointer"
-                title="Restaurar Planilha Oficial da Direção v10.6"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-
               <PWAInstallButton />
 
               {/* Seletor de Tema Compacto */}

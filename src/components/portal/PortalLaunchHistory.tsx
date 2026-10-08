@@ -304,12 +304,14 @@ export const PortalLaunchHistory: React.FC<PortalLaunchHistoryProps> = ({
                         <button
                           type="button"
                           onClick={() => {
-                            const currentStore = stores.find(s => s.id === item.storeId) || {
+                            const currentStore: Store = stores.find(s => s.id === item.storeId) || {
                               id: item.storeId,
                               code: 'FILIAL',
                               name: item.storeName,
                               city: 'Rio de Janeiro',
-                              initialOrders: { dianteiro: 0, traseiro: 0, costelaGaucha: 0 }
+                              manager: item.operatorName || 'Encarregado',
+                              chamberCapacityPieces: 100,
+                              active: true
                             };
                             PortalLaunchPdfService.shareLaunchViaWhatsApp({
                               record: item,
@@ -328,12 +330,14 @@ export const PortalLaunchHistory: React.FC<PortalLaunchHistoryProps> = ({
                         <button
                           type="button"
                           onClick={() => {
-                            const currentStore = stores.find(s => s.id === item.storeId) || {
+                            const currentStore: Store = stores.find(s => s.id === item.storeId) || {
                               id: item.storeId,
                               code: 'FILIAL',
                               name: item.storeName,
                               city: 'Rio de Janeiro',
-                              initialOrders: { dianteiro: 0, traseiro: 0, costelaGaucha: 0 }
+                              manager: item.operatorName || 'Encarregado',
+                              chamberCapacityPieces: 100,
+                              active: true
                             };
                             PortalLaunchPdfService.downloadLaunchPdf({
                               record: item,

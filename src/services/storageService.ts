@@ -561,20 +561,12 @@ export const StorageService = {
       if (cloudRows && cloudRows.length > 0) {
         localStorage.setItem(STORAGE_KEYS.SHEET_ROWS, JSON.stringify(cloudRows));
         result.rows = cloudRows;
-      } else {
-        // Se nuvem estiver vazia na 1a inicialização, faz o seed das 16 lojas
-        const localRows = this.getSheetRows();
-        FirebaseService.saveAllSheetRows(localRows).catch(() => {});
       }
+      // CRÍTICO: Nunca sobrescrever a nuvem com dados padrão se a busca falhar ou estiver vazia!
 
       if (cloudSnapshots && cloudSnapshots.length > 0) {
         localStorage.setItem(STORAGE_KEYS.SHEET_SNAPSHOTS, JSON.stringify(cloudSnapshots));
         result.snapshots = cloudSnapshots;
-      } else {
-        const localSnapshots = this.getSheetSnapshots();
-        if (localSnapshots.length > 0) {
-          FirebaseService.addSheetSnapshot(localSnapshots[0]).catch(() => {});
-        }
       }
 
       if (cloudLaunches && cloudLaunches.length > 0) {
@@ -585,54 +577,29 @@ export const StorageService = {
       if (cloudStores && cloudStores.length > 0) {
         localStorage.setItem(STORAGE_KEYS.STORES, JSON.stringify(cloudStores));
         result.stores = cloudStores;
-      } else {
-        const localStores = this.getStores();
-        if (localStores.length > 0) {
-          FirebaseService.saveStores(localStores).catch(() => {});
-        }
       }
 
       if (cloudSuppliers && cloudSuppliers.length > 0) {
         localStorage.setItem(STORAGE_KEYS.SUPPLIERS, JSON.stringify(cloudSuppliers));
         result.suppliers = cloudSuppliers;
-      } else {
-        const localSuppliers = this.getSuppliers();
-        if (localSuppliers.length > 0) {
-          FirebaseService.saveAllSuppliers(localSuppliers).catch(() => {});
-        }
       }
 
       if (cloudBatches && cloudBatches.length > 0) {
         localStorage.setItem(STORAGE_KEYS.BATCHES, JSON.stringify(cloudBatches));
         result.batches = cloudBatches;
-      } else {
-        const localBatches = this.getBatches();
-        if (localBatches.length > 0) {
-          FirebaseService.saveAllBatches(localBatches).catch(() => {});
-        }
       }
 
       if (cloudWaste && cloudWaste.length > 0) {
         localStorage.setItem(STORAGE_KEYS.WASTE, JSON.stringify(cloudWaste));
         result.waste = cloudWaste;
-      } else {
-        const localWaste = this.getWasteRecords();
-        if (localWaste.length > 0) {
-          FirebaseService.saveAllWasteRecords(localWaste).catch(() => {});
-        }
       }
 
       if (cloudProducts && cloudProducts.length > 0) {
         localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(cloudProducts));
         result.products = cloudProducts;
-      } else {
-        const localProducts = this.getProducts();
-        if (localProducts.length > 0) {
-          FirebaseService.saveAllProducts(localProducts).catch(() => {});
-        }
       }
 
-      // Sincronização e persistência permanente de Usuários no Firestore
+      // Sincronização segura de Usuários no Firestore sem sobrescrita não autorizada
       if (cloudUsers && cloudUsers.length > 0) {
         const localUsers = this.getUsers();
         const map = new Map<string, SystemUser>();
@@ -640,25 +607,16 @@ export const StorageService = {
         localUsers.forEach(u => {
           if (!map.has(u.id)) {
             map.set(u.id, u);
-            FirebaseService.saveUser(u).catch(() => {});
           }
         });
         const mergedUsers = Array.from(map.values());
         localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(mergedUsers));
         result.users = mergedUsers;
-      } else {
-        const localUsers = this.getUsers();
-        if (localUsers.length > 0) {
-          FirebaseService.saveAllUsers(localUsers).catch(() => {});
-        }
       }
 
       if (cloudYieldParams && cloudYieldParams.costPerKg > 0) {
         localStorage.setItem(STORAGE_KEYS.YIELD_PARAMS, JSON.stringify(cloudYieldParams));
         result.yieldParams = cloudYieldParams;
-      } else {
-        const localParams = this.getYieldParams();
-        FirebaseService.saveYieldParams(localParams).catch(() => {});
       }
 
       return result;
@@ -843,7 +801,9 @@ export const StorageService = {
       const hasDev = users.some(u => u.username.toLowerCase() === 'desenvolvedor' || u.role === 'DESENVOLVEDOR');
       if (!hasDev) {
         users = [INITIAL_USERS[0], ...users];
-        this.saveUsers(users);
+        try {
+          localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+        } catch {}
       } else {
         // Assegura que o desenvolvedor tenha senha e acesso 100% íntegros
         const devIdx = users.findIndex(u => u.username.toLowerCase() === 'desenvolvedor' || u.role === 'DESENVOLVEDOR');
@@ -968,12 +928,8 @@ export const StorageService = {
         localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(merged));
         return merged;
       } else {
-        // Nuvem vazia: faz o primeiro seed de todos os usuários atuais para o Firestore
-        const local = this.getUsers();
-        if (local.length > 0) {
-          await FirebaseService.saveAllUsers(local);
-        }
-        return local;
+        // Se a nuvem não retornou usuários (offline, erro ou cota), mantém a base local sem tentar sobrescrever o Firestore
+        return this.getUsers();
       }
     } catch (e) {
       console.warn('Erro ao sincronizar usuários com a nuvem Firestore:', e);
@@ -1275,7 +1231,6 @@ export const StorageService = {
           const key = l.deviceId || l.id;
           if (!map.has(key)) {
             map.set(key, l);
-            FirebaseService.saveConnectedDevice(l).catch(() => {});
           }
         });
         const merged = Array.from(map.values());

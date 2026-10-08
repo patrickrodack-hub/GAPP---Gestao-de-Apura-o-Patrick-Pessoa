@@ -60,8 +60,9 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
   const [snapshot, setSnapshot] = useState<MarketQuotesSnapshot>(() => MarketQuotesService.getQuotesSnapshot());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeSection, setActiveSection] = useState<
-    'indicadores' | 'pracas' | 'carcacas' | 'cortes' | 'varejo_rj' | 'graxaria' | 'calculadora_rj' | 'arbitragem'
+    'cortes' | 'suino' | 'varejo_rj' | 'carcacas' | 'pracas' | 'graxaria' | 'indicadores' | 'calculadora_rj' | 'arbitragem'
   >('cortes');
+  const [simSuinoLiveWeight, setSimSuinoLiveWeight] = useState<number>(115);
   const [cutSearchQuery, setCutSearchQuery] = useState('');
   const [selectedCutCategory, setSelectedCutCategory] = useState<'all' | 'nobres' | 'traseiro' | 'coxao' | 'alcatrao' | 'dianteiro' | 'suino' | 'graxaria'>('all');
   const [isApplyingQuote, setIsApplyingQuote] = useState(false);
@@ -149,6 +150,322 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
       return matchesSearch && matchesCategory;
     });
   }, [snapshot.cutQuotes, cutSearchQuery, selectedCutCategory]);
+
+  // Card unificado de Corte / Carcaça
+  const renderCutCard = (cut: WholesaleCutQuote) => (
+    <div 
+      key={cut.id}
+      className={`bg-white dark:bg-slate-900 border ${
+        cut.id === 'cut-banda-suina' || cut.id === 'cut-suino-vivo'
+          ? 'border-rose-400 dark:border-rose-600/70 shadow-sm ring-1 ring-rose-400/20'
+          : 'border-slate-200 dark:border-slate-800'
+      } rounded-2xl p-4 shadow-sm hover:border-emerald-500/50 hover:shadow-md transition flex flex-col justify-between`}
+    >
+      <div>
+        {/* Top Category Badge & Weekly Change */}
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+          <span className={`text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+            cut.category === 'nobres' ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300' :
+            cut.category === 'coxao' ? 'bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300' :
+            cut.category === 'dianteiro' ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300' :
+            cut.category === 'alcatrao' ? 'bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300' :
+            cut.category === 'suino' ? 'bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-300 font-extrabold' :
+            'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-300'
+          }`}>
+            {cut.category === 'suino' ? '🐖 SUÍNO' : cut.category.toUpperCase()} • {cut.standardYieldPercent.toFixed(1)}% REND.
+          </span>
+
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[10px] font-bold font-mono px-1.5 py-0.2 rounded ${
+              cut.scantecGiroRating === 'ALTO' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
+              cut.scantecGiroRating === 'MÉDIO' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' :
+              'bg-slate-100 text-slate-700'
+            }`}>
+              Giro Scantec: {cut.scantecGiroRating}
+            </span>
+          </div>
+        </div>
+
+        {/* Cut Name */}
+        <h3 className="font-extrabold text-slate-900 dark:text-white text-base mt-2.5 leading-tight flex items-start justify-between">
+          <span>{cut.name}</span>
+          {cut.productCode && (
+            <span className="text-[10px] font-mono font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded ml-2 shrink-0">
+              {cut.productCode}
+            </span>
+          )}
+        </h3>
+
+        {/* Preços: Custo Entrada Atacado vs Venda Balcão RJ */}
+        <div className="mt-3 grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+          <div>
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">
+              {cut.id === 'cut-suino-vivo' ? 'Kg Vivo Produtor' : 'Custo Entrada Atacado'}
+            </span>
+            <div className="text-xl font-black font-mono text-slate-900 dark:text-white mt-0.5">
+              R$ {cut.avgPriceKg.toFixed(2)}
+              <span className="text-[10px] text-slate-400 font-normal">/kg</span>
+            </div>
+            <span className="text-[10px] text-slate-400 font-mono block">
+              Faixa: {cut.minPriceKg.toFixed(2)} - {cut.maxPriceKg.toFixed(2)}
+            </span>
+          </div>
+
+          <div className="border-l border-slate-200 dark:border-slate-800 pl-3">
+            <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
+              {cut.id === 'cut-suino-vivo' ? 'Equivalente Balcão' : 'Média Varejo RJ (Nielsen)'}
+            </span>
+            <div className="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400 mt-0.5">
+              R$ {cut.rjRetailPriceKg.toFixed(2)}
+              <span className="text-[10px] text-slate-400 font-normal">/kg</span>
+            </div>
+            <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold block">
+              Margem RJ: {cut.rjRetailMarginPercent.toFixed(1)}%
+            </span>
+          </div>
+        </div>
+
+        {/* Sugestão GAPP e Share de Vendas */}
+        <div className="mt-2.5 flex items-center justify-between text-xs px-1 text-slate-600 dark:text-slate-400">
+          <span>
+            Sugestão Balcão GAPP: <strong className="text-slate-900 dark:text-white font-mono">R$ {cut.suggestedRetailPriceKg.toFixed(2)}/kg</strong>
+          </span>
+          {cut.nielsenSharePercent > 0 && (
+            <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 font-mono">
+              Share RJ: {cut.nielsenSharePercent.toFixed(1)}%
+            </span>
+          )}
+        </div>
+
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 leading-relaxed">
+          {cut.description}
+        </p>
+      </div>
+
+      {/* Frigoríficos e Fontes de Cotação */}
+      <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 flex flex-col gap-1">
+        <div className="flex items-center justify-between">
+          <span className="truncate max-w-[200px]" title={cut.packers}>
+            Frigoríficos: <strong>{cut.packers}</strong>
+          </span>
+          <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+            +{cut.changeWeek.toFixed(2)}% sem.
+          </span>
+        </div>
+        <span className="text-[10px] text-slate-400 truncate">
+          {cut.source}
+        </span>
+      </div>
+    </div>
+  );
+
+  // Painel de Destaque Executivo de Suíno (Carcaça / Banda Suína & Suíno Vivo)
+  const renderSuinoDashboard = () => (
+    <div className="bg-gradient-to-r from-rose-950 via-slate-900 to-amber-950 border border-rose-500/30 rounded-2xl p-4 sm:p-5 text-white shadow-lg space-y-4">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-rose-500/20 pb-3">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl p-2 bg-rose-500/20 rounded-2xl border border-rose-500/30">
+            🐖
+          </span>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-rose-500/30 text-rose-300 px-2.5 py-0.5 rounded-full border border-rose-400/40">
+                CADEIA SUINÍCOLA OFICIAL • SC / PR / MG / SP / RJ
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">CEPEA/ESALQ • ASEMG • SCOT CONSULTORIA</span>
+            </div>
+            <h3 className="text-lg sm:text-xl font-black text-white tracking-tight mt-0.5">
+              Cotação Oficial de Suínos: Carcaça (Banda Suína) & Suíno Vivo
+            </h3>
+            <p className="text-xs text-rose-200/80 mt-0.5">
+              Preços de referência da carcaça/banda suína resfriada posta no atacado e do animal terminado vivo ao produtor independente e integrado.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleShareWhatsApp}
+            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition cursor-pointer"
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            <span>Compartilhar Boletim Suíno</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3 CARDS DE DESTAQUE: BANDA SUÍNA, SUÍNO VIVO E DESOSSA */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        
+        {/* Card 1: Carcaça Suína / Banda Suína */}
+        <div className="bg-slate-900/90 border border-rose-500/40 rounded-xl p-3.5 flex flex-col justify-between shadow-sm">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold text-rose-300 uppercase tracking-wider">
+                CARCAÇA • BANDA SUÍNA
+              </span>
+              <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700/50">
+                Atacado Estável
+              </span>
+            </div>
+            <h4 className="font-extrabold text-white text-sm mt-1">
+              Carcaça Suína Especial (Banda Fria)
+            </h4>
+            <div className="mt-2 flex items-baseline gap-1.5">
+              <span className="text-2xl font-black font-mono text-rose-400">
+                R$ 13,80
+              </span>
+              <span className="text-xs text-slate-400 font-mono">/kg atacado</span>
+              <span className="text-[11px] text-slate-300 font-mono ml-auto">
+                (~R$ 207,00/@)
+              </span>
+            </div>
+            <div className="mt-2.5 pt-2 border-t border-slate-800 text-[11px] space-y-1">
+              <div className="flex justify-between text-slate-300">
+                <span>Varejo Médio Balcão RJ:</span>
+                <strong className="text-emerald-400 font-mono">R$ 20,90/kg</strong>
+              </div>
+              <div className="flex justify-between text-slate-300">
+                <span>Margem Bruta Estimada:</span>
+                <strong className="text-emerald-300 font-mono">33,97%</strong>
+              </div>
+              <div className="flex justify-between text-slate-400 text-[10px]">
+                <span>Peso Médio Meia Banda:</span>
+                <span className="font-mono text-slate-200">35 a 42 kg / peça</span>
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 pt-2 border-t border-slate-800 text-[10px] text-slate-400">
+            Frigoríficos: <strong>Seara, Aurora, Sadia, Saudali, Frimesa</strong>
+          </div>
+        </div>
+
+        {/* Card 2: Suíno Vivo */}
+        <div className="bg-slate-900/90 border border-amber-500/40 rounded-xl p-3.5 flex flex-col justify-between shadow-sm">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold text-amber-300 uppercase tracking-wider">
+                PRODUTOR • GRANJA / INDÚSTRIA
+              </span>
+              <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700/50">
+                +0.65% Sem.
+              </span>
+            </div>
+            <h4 className="font-extrabold text-white text-sm mt-1">
+              Suíno Vivo Terminado (Kg Vivo)
+            </h4>
+            <div className="mt-2 flex items-baseline gap-1.5">
+              <span className="text-2xl font-black font-mono text-amber-400">
+                R$ 7,85
+              </span>
+              <span className="text-xs text-slate-400 font-mono">/kg vivo</span>
+              <span className="text-[11px] text-slate-300 font-mono ml-auto">
+                (~R$ 117,75/@ viva)
+              </span>
+            </div>
+            <div className="mt-2.5 pt-2 border-t border-slate-800 text-[11px] space-y-1">
+              <div className="flex justify-between text-slate-300">
+                <span>Rendimento Carcaça (RC):</span>
+                <strong className="text-amber-300 font-mono">74,0%</strong>
+              </div>
+              <div className="flex justify-between text-slate-300">
+                <span>Paridade Carcaça / Vivo:</span>
+                <strong className="text-slate-200 font-mono">1,76x (R$ 13,80 ÷ 7,85)</strong>
+              </div>
+              <div className="flex justify-between text-slate-400 text-[10px]">
+                <span>Faixa ao Produtor:</span>
+                <span className="font-mono text-slate-200">R$ 7,40 a R$ 8,40/kg vivo</span>
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 pt-2 border-t border-slate-800 text-[10px] text-slate-400">
+            Fontes: <strong>CEPEA/ESALQ • ASEMG (Bolsa de MG) • Scot</strong>
+          </div>
+        </div>
+
+        {/* Card 3: Paridade e Desossa da Banda */}
+        <div className="bg-slate-900/90 border border-emerald-500/40 rounded-xl p-3.5 flex flex-col justify-between shadow-sm">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold text-emerald-300 uppercase tracking-wider">
+                ZOOTECNIA • DESOSSA EM LOJA
+              </span>
+              <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700/50">
+                Margem 35.8%
+              </span>
+            </div>
+            <h4 className="font-extrabold text-white text-sm mt-1">
+              Rendimento Padrão da Banda Suína
+            </h4>
+            <div className="mt-2 text-xs text-slate-300 space-y-1">
+              <div className="flex justify-between">
+                <span>• Pernil c/ Osso (25%):</span>
+                <span className="font-mono text-white">R$ 18,90/kg balcão</span>
+              </div>
+              <div className="flex justify-between">
+                <span>• Paleta c/ Osso (18%):</span>
+                <span className="font-mono text-white">R$ 17,90/kg balcão</span>
+              </div>
+              <div className="flex justify-between">
+                <span>• Costela Suína (8,5%):</span>
+                <span className="font-mono text-emerald-400 font-bold">R$ 28,90/kg balcão</span>
+              </div>
+              <div className="flex justify-between">
+                <span>• Lombo Limpo (10%):</span>
+                <span className="font-mono text-white">R$ 23,90/kg balcão</span>
+              </div>
+              <div className="flex justify-between">
+                <span>• Toucinho / Papada (14%):</span>
+                <span className="font-mono text-slate-400">R$ 9,50/kg</span>
+              </div>
+            </div>
+          </div>
+          <div className="mt-2 pt-2 border-t border-slate-800 text-[10px] text-emerald-300">
+            Dica GAPP: Compra em banda inteira garante custo 28% menor que cortes embalados.
+          </div>
+        </div>
+
+      </div>
+
+      {/* SIMULADOR RÁPIDO: CONVERSÃO VIVO X CARCAÇA / BANDA */}
+      <div className="bg-slate-950/80 rounded-xl p-3 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2">
+          <Calculator className="w-4 h-4 text-rose-400 shrink-0" />
+          <span className="font-bold text-slate-200">
+            Simulador de Conversão Zootécnica (Vivo ⇄ Banda):
+          </span>
+          <span className="text-slate-400 hidden lg:inline">
+            Digite o peso vivo do animal para calcular o rendimento estimado de carcaça e meias bandas:
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-end flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-slate-400">Peso Vivo:</span>
+            <input
+              type="number"
+              min="80"
+              max="180"
+              step="1"
+              value={simSuinoLiveWeight}
+              onChange={(e) => setSimSuinoLiveWeight(Number(e.target.value) || 115)}
+              className="w-16 px-2 py-1 rounded bg-slate-800 border border-slate-700 text-white font-mono text-xs font-bold text-center focus:outline-rose-400"
+            />
+            <span className="text-slate-400 font-mono">kg</span>
+          </div>
+
+          <div className="bg-slate-800 px-2.5 py-1 rounded border border-slate-700 font-mono text-[11px] text-slate-200">
+            Carcaça (74%): <strong className="text-amber-400">{(simSuinoLiveWeight * 0.74).toFixed(1)} kg</strong>
+          </div>
+
+          <div className="bg-slate-800 px-2.5 py-1 rounded border border-slate-700 font-mono text-[11px] text-slate-200">
+            Meia Banda: <strong className="text-rose-400">{(simSuinoLiveWeight * 0.37).toFixed(1)} kg</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-4 font-sans pb-10">
@@ -357,13 +674,14 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
       <div className="flex space-x-1 border-b border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar pb-1">
         {[
           { id: 'cortes', label: '1. Cotação Real dos Cortes', count: snapshot.cutQuotes.length, badge: 'RJ & BR' },
-          { id: 'varejo_rj', label: '2. Varejo RJ (NielsenIQ & Scantec)', count: snapshot.rjRetailBenchmarks.length, badge: 'Supermercados RJ' },
-          { id: 'carcacas', label: '3. Carcaças & Quartos Atacado', count: snapshot.carcassQuotes.length },
-          { id: 'pracas', label: '4. Praças Pecuárias & Frigoríficos', count: snapshot.regionalQuotes.length },
-          { id: 'graxaria', label: '5. Subprodutos & Graxaria (Sebo/Osso)', count: 3, badge: 'Custo Real' },
-          { id: 'indicadores', label: '6. Indicadores Oficiais & B3', count: snapshot.indicators.length },
-          { id: 'calculadora_rj', label: '7. Simulador de Margem Varejo RJ', badge: 'Simulador' },
-          { id: 'arbitragem', label: '8. Oportunidades & Arbitragem', badge: 'GAPP' }
+          { id: 'suino', label: '2. Suíno (Carcaça, Vivo & Cortes)', count: snapshot.cutQuotes.filter(c => c.category === 'suino').length, badge: 'Banda & Vivo' },
+          { id: 'varejo_rj', label: '3. Varejo RJ (NielsenIQ & Scantec)', count: snapshot.rjRetailBenchmarks.length, badge: 'Supermercados RJ' },
+          { id: 'carcacas', label: '4. Carcaças & Quartos Atacado', count: snapshot.carcassQuotes.length },
+          { id: 'pracas', label: '5. Praças Pecuárias & Frigoríficos', count: snapshot.regionalQuotes.length },
+          { id: 'graxaria', label: '6. Subprodutos & Graxaria (Sebo/Osso)', count: 3, badge: 'Custo Real' },
+          { id: 'indicadores', label: '7. Indicadores Oficiais & B3', count: snapshot.indicators.length },
+          { id: 'calculadora_rj', label: '8. Simulador de Margem Varejo RJ', badge: 'Simulador' },
+          { id: 'arbitragem', label: '9. Oportunidades & Arbitragem', badge: 'GAPP' }
         ].map(tab => (
           <button
             key={tab.id}
@@ -420,7 +738,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                 { id: 'nobres', label: 'Traseiro Nobre' },
                 { id: 'coxao', label: 'Coxão' },
                 { id: 'alcatrao', label: 'Alcatrão' },
-                { id: 'suino', label: 'Suíno' },
+                { id: 'suino', label: 'Suíno (Banda, Vivo & Cortes)' },
                 { id: 'graxaria', label: 'Graxaria / Subprodutos' }
               ].map(cat => (
                 <button
@@ -439,110 +757,35 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
             </div>
           </div>
 
+          {/* BANNER ESPECIAL DE SUÍNO QUANDO FILTRO SUÍNO ESTIVER ATIVO */}
+          {selectedCutCategory === 'suino' && renderSuinoDashboard()}
+
           {/* Grid de Cards de Alta Fidelidade */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredCuts.map((cut) => (
-              <div 
-                key={cut.id}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm hover:border-emerald-500/50 hover:shadow-md transition flex flex-col justify-between"
-              >
-                <div>
-                  {/* Top Category Badge & Weekly Change */}
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                    <span className={`text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                      cut.category === 'nobres' ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300' :
-                      cut.category === 'coxao' ? 'bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300' :
-                      cut.category === 'dianteiro' ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300' :
-                      cut.category === 'alcatrao' ? 'bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300' :
-                      cut.category === 'suino' ? 'bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-300' :
-                      'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-300'
-                    }`}>
-                      {cut.category.toUpperCase()} • {cut.standardYieldPercent.toFixed(1)}% REND.
-                    </span>
+            {filteredCuts.map((cut) => renderCutCard(cut))}
+          </div>
+        </div>
+      )}
 
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-[10px] font-bold font-mono px-1.5 py-0.2 rounded ${
-                        cut.scantecGiroRating === 'ALTO' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
-                        cut.scantecGiroRating === 'MÉDIO' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' :
-                        'bg-slate-100 text-slate-700'
-                      }`}>
-                        Giro Scantec: {cut.scantecGiroRating}
-                      </span>
-                    </div>
-                  </div>
+      {/* SEÇÃO 2 DEDICADA: COTAÇÃO SUÍNA COMPLETA (CARCAÇA / BANDA, SUÍNO VIVO & CORTES) */}
+      {activeSection === 'suino' && (
+        <div className="space-y-4">
+          {renderSuinoDashboard()}
 
-                  {/* Cut Name */}
-                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base mt-2.5 leading-tight flex items-start justify-between">
-                    <span>{cut.name}</span>
-                    {cut.productCode && (
-                      <span className="text-[10px] font-mono font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded ml-2 shrink-0">
-                        {cut.productCode}
-                      </span>
-                    )}
-                  </h3>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
+                Lista Completa de Itens Suínos (Atacado, Produtor & Balcão Supermercadista RJ):
+              </span>
+            </div>
+            <span className="text-xs font-mono font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/80 px-2.5 py-1 rounded-lg border border-rose-200 dark:border-rose-900">
+              {snapshot.cutQuotes.filter(c => c.category === 'suino').length} Cotações Oficiais
+            </span>
+          </div>
 
-                  {/* Preços: Custo Entrada Atacado vs Venda Balcão RJ */}
-                  <div className="mt-3 grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
-                    <div>
-                      <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">
-                        Custo Entrada Atacado
-                      </span>
-                      <div className="text-xl font-black font-mono text-slate-900 dark:text-white mt-0.5">
-                        R$ {cut.avgPriceKg.toFixed(2)}
-                        <span className="text-[10px] text-slate-400 font-normal">/kg</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 font-mono block">
-                        Faixa: {cut.minPriceKg.toFixed(2)} - {cut.maxPriceKg.toFixed(2)}
-                      </span>
-                    </div>
-
-                    <div className="border-l border-slate-200 dark:border-slate-800 pl-3">
-                      <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
-                        Média Varejo RJ (Nielsen)
-                      </span>
-                      <div className="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400 mt-0.5">
-                        R$ {cut.rjRetailPriceKg.toFixed(2)}
-                        <span className="text-[10px] text-slate-400 font-normal">/kg</span>
-                      </div>
-                      <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold block">
-                        Margem RJ: {cut.rjRetailMarginPercent.toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Sugestão GAPP e Share de Vendas */}
-                  <div className="mt-2.5 flex items-center justify-between text-xs px-1 text-slate-600 dark:text-slate-400">
-                    <span>
-                      Sugestão Balcão GAPP: <strong className="text-slate-900 dark:text-white font-mono">R$ {cut.suggestedRetailPriceKg.toFixed(2)}/kg</strong>
-                    </span>
-                    {cut.nielsenSharePercent > 0 && (
-                      <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 font-mono">
-                        Share RJ: {cut.nielsenSharePercent.toFixed(1)}%
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 leading-relaxed">
-                    {cut.description}
-                  </p>
-                </div>
-
-                {/* Frigoríficos e Fontes de Cotação */}
-                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 flex flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <span className="truncate max-w-[200px]" title={cut.packers}>
-                      Frigoríficos: <strong>{cut.packers}</strong>
-                    </span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                      +{cut.changeWeek.toFixed(2)}% sem.
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 truncate">
-                    {cut.source}
-                  </span>
-                </div>
-              </div>
-            ))}
+          {/* Cards Suínos */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {snapshot.cutQuotes.filter(c => c.category === 'suino').map((cut) => renderCutCard(cut))}
           </div>
         </div>
       )}
@@ -650,8 +893,10 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
             >
               <div>
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">
-                    {carc.type.toUpperCase()} • {carc.yieldPercentStandard}% DA CARCAÇA
+                  <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${
+                    carc.type === 'suino' ? 'text-rose-600 dark:text-rose-400 font-extrabold' : 'text-slate-500'
+                  }`}>
+                    {carc.type === 'suino' ? '🐖 SUÍNO • ' : ''}{carc.type.toUpperCase()} • {carc.yieldPercentStandard}% DA CARCAÇA
                   </span>
                   <span className="text-[10px] font-bold font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded-full">
                     +{carc.changeWeek.toFixed(2)}% Sem.
@@ -877,8 +1122,10 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
               >
                 <div>
                   <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">
-                      {ind.code}
+                    <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${
+                      ind.category === 'suino' ? 'text-rose-600 dark:text-rose-400 font-extrabold' : 'text-slate-500'
+                    }`}>
+                      {ind.category === 'suino' ? '🐖 SUÍNO • ' : ''}{ind.code}
                     </span>
                     <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded-full ${
                       ind.changeDay > 0 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :

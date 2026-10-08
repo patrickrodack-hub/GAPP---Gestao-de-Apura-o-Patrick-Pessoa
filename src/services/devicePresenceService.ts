@@ -223,24 +223,19 @@ export function startRealDeviceHeartbeat(params?: {
     clearInterval(heartbeatIntervalId);
   }
 
-  // Heartbeat a cada 20 segundos
+  // Heartbeat a cada 3 minutos (180 segundos) para preservar a cota diária do Firestore
   heartbeatIntervalId = setInterval(() => {
-    StorageService.updateDeviceHeartbeat(deviceId, 20);
-  }, 20000);
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      StorageService.updateDeviceHeartbeat(deviceId, 180);
+    }
+  }, 180000);
 
-  // Listeners de visibilidade e encerramento
+  // Listeners de encerramento
   if (typeof window !== 'undefined') {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        StorageService.updateDeviceHeartbeat(deviceId, 5);
-      }
-    };
-
     const handleBeforeUnload = () => {
       StorageService.markDeviceOffline(deviceId);
     };
 
-    window.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('beforeunload', handleBeforeUnload);
   }
 }
