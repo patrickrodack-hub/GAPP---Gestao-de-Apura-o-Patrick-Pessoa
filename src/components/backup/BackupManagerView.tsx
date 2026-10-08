@@ -50,6 +50,7 @@ export const BackupManagerView: React.FC<BackupManagerViewProps> = ({
   const [inspectBackup, setInspectBackup] = useState<CloudBackupItem | null>(null);
   const [activeTab, setActiveTab] = useState<'backups' | 'schedule'>('backups');
   const [backupTitleInput, setBackupTitleInput] = useState('');
+  const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
 
   // Carrega lista de backups
   const loadBackups = async () => {
@@ -58,6 +59,7 @@ export const BackupManagerView: React.FC<BackupManagerViewProps> = ({
       await CloudBackupService.syncScheduleFromCloud();
       const list = await CloudBackupService.getBackups();
       setBackups(list);
+      setIsQuotaExceeded(CloudBackupService.isLastQuotaExceeded());
       setScheduleConfig(CloudBackupService.getScheduleConfig());
     } catch (e) {
       console.error('Erro ao carregar backups:', e);
@@ -409,6 +411,26 @@ export const BackupManagerView: React.FC<BackupManagerViewProps> = ({
               </button>
             </div>
 
+            {/* Aviso de Cota Diária do Firestore */}
+            {isQuotaExceeded && (
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <div className="text-xs space-y-1">
+                  <div className="font-bold flex items-center gap-2">
+                    <span>Cota Diária de Leituras do Firestore Atingida (50.000 requisições/dia)</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 font-mono">Plano Gratuito</span>
+                  </div>
+                  <p className="leading-relaxed">
+                    O banco de dados na nuvem excedeu o limite gratuito diário de leituras. Por este motivo, backups remotos não puderam ser listados do servidor neste instante.
+                  </p>
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                    • <strong>Reinício da cota:</strong> A cota é zerada diariamente pelo Google Cloud às 00:00 PST (~04:00 BRT).<br />
+                    • <strong>Restauração manual:</strong> Você pode usar a ferramenta <strong>"Importar Backup (.json)"</strong> abaixo para restaurar arquivos salvos previamente no seu computador.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Tabela de Monitoramento */}
             {isLoading ? (
               <div className="p-12 text-center text-slate-500 space-y-2">
@@ -419,18 +441,32 @@ export const BackupManagerView: React.FC<BackupManagerViewProps> = ({
               <div className="p-12 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl space-y-3">
                 <HardDrive className="w-10 h-10 mx-auto text-slate-400" />
                 <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                  Nenhum backup online registrado ainda
+                  {isQuotaExceeded ? 'Backups em nuvem temporariamente indisponíveis (Cota Excedida)' : 'Nenhum backup online registrado ainda'}
                 </h4>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Clique no botão "Gerar Backup Agora" para criar uma cópia completa de segurança no banco Firestore ou ative o agendamento automático.
+                  {isQuotaExceeded 
+                    ? 'A lista de backups da nuvem reaparecerá automaticamente assim que a cota diária for restabelecida pelo Google Cloud. Caso possua um arquivo .json exportado, clique em "Importar Arquivo" abaixo.' 
+                    : 'Clique no botão "Gerar Backup Agora" para criar uma cópia completa de segurança no banco Firestore ou ative o agendamento automático.'}
                 </p>
-                <button
-                  onClick={handleCreateManualBackup}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow inline-flex items-center gap-2"
-                >
-                  <CloudUpload className="w-4 h-4" />
-                  <span>Criar Primeiro Backup Online</span>
-                </button>
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    onClick={handleCreateManualBackup}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow inline-flex items-center gap-2"
+                  >
+                    <CloudUpload className="w-4 h-4" />
+                    <span>Criar Backup Agora</span>
+                  </button>
+                  <label className="px-4 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl shadow inline-flex items-center gap-2 cursor-pointer transition">
+                    <Upload className="w-4 h-4" />
+                    <span>Importar Arquivo (.json)</span>
+                    <input 
+                      type="file" 
+                      accept=".json" 
+                      className="hidden" 
+                      onChange={handleImportFile}
+                    />
+                  </label>
+                </div>
               </div>
             ) : (
               <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xs">

@@ -1640,7 +1640,7 @@ export class MarketQuotesService {
       `• MT (Norte/Sinop): R$ 308,00/@`,
       ``,
       `📊 *Fontes Oficiais:* CEPEA/ESALQ • B3 • Scot • IMEA • NielsenIQ RJ • Scantec RJ`,
-      `🔒 _ERP Gestão Apuração do Boi v10.6 • Patrick Pessoa_`
+      `🔒 _ERP Gestão Apuração do Boi v10.7 • Patrick Pessoa_`
     ];
 
     const messageText = lines.join('\n');

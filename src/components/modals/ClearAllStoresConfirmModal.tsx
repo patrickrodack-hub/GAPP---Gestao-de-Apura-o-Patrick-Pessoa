@@ -166,7 +166,7 @@ export const ClearAllStoresConfirmModal: React.FC<ClearAllStoresConfirmModalProp
                   </span>
                   <div>
                     <div className="font-bold text-slate-900 dark:text-white text-xs">
-                      Restaurar Valores Padrão da Planilha v10.6
+                      Restaurar Valores Padrão da Planilha v10.7
                     </div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                       Recarrega a grade com os dados modelo oficiais de referência de cada filial.

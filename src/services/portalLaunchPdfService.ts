@@ -332,7 +332,7 @@ export class PortalLaunchPdfService {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6);
     doc.setTextColor(148, 163, 184);
-    doc.text(`Grupo GAPP Sistemas • ERP Apuração do Boi v10.6 • Extrato Digital Autenticado: ${record.id} • Portal: https://gipp-site.vercel.app/`, margin, pageHeight - 5);
+    doc.text(`Grupo GAPP Sistemas • ERP Apuração do Boi v10.7 • Extrato Digital Autenticado: ${record.id} • Portal: https://gipp-site.vercel.app/`, margin, pageHeight - 5);
 
     // Gera arquivo e blob
     const dateFileStr = emissionDate.toISOString().slice(0, 10);
@@ -415,7 +415,7 @@ export class PortalLaunchPdfService {
       notes.trim() ? `📝 *Observações:* ${notes.trim()}\n` : '',
       `📄 _O Extrato Oficial em PDF foi gerado pelo sistema com todos os detalhes._`,
       `🌐 _Portal Oficial:_ https://gipp-site.vercel.app/`,
-      `🔒 _Autenticação Grupo GAPP • v10.6_`
+      `🔒 _Autenticação Grupo GAPP • v10.7_`
     ].filter(Boolean);
 
     const messageText = messageLines.join('\n');

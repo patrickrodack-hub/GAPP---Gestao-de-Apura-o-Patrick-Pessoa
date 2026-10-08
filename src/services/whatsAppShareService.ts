@@ -81,7 +81,7 @@ export class WhatsAppShareService {
       ``,
       totalBandas > 0 ? `🐖 *SUÍNO (CÂMARA / BALCÃO):* ${totalBandas} bandas (${(totalBandas * 36).toLocaleString('pt-BR')} kg)\n` : '',
       `📄 _O arquivo PDF completo em formato A4 Paisagem foi gerado para anexo._`,
-      `🔒 _Autenticação Oficial Grupo GAPP • v10.6_`
+      `🔒 _Autenticação Oficial Grupo GAPP • v10.7_`
     ].filter(Boolean);
 
     const messageText = messageLines.join('\n');

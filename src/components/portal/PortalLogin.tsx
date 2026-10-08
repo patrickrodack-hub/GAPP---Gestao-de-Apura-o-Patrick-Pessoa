@@ -136,7 +136,7 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
                 Portal de Estoque Mobile
               </h1>
               <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 font-mono text-[10px] font-extrabold border border-emerald-300 dark:border-emerald-800">
-                v10.6
+                v10.7
               </span>
             </div>
           </div>
@@ -462,7 +462,7 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
 
       {/* Footer Info */}
       <div className="text-center text-[11px] text-slate-500 dark:text-slate-400 py-2 space-y-1">
-        <div>Sistema de Apuração do Boi • Matriz Oficial v10.6 (Patrick Pessoa)</div>
+        <div>Sistema de Apuração do Boi • Matriz Oficial v10.7 (Patrick Pessoa)</div>
         <div>
           Conheça o nosso site:{' '}
           <a

@@ -311,7 +311,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
 
   const getActiveTabTitle = () => {
     switch (activeTab) {
-      case 'sheet': return 'Planilha de Compra da Direção da Empresa v10.6 - Matriz 16 Filiais';
+      case 'sheet': return 'Planilha de Compra da Direção da Empresa v10.7 - Matriz 16 Filiais';
       case 'dashboard': return 'Painel Executivo Geral - Apuração do Boi';
       case 'yield': return 'Análise Técnica de Rendimento, Desossa e Cortes';
       case 'results': return 'DRE Gerencial, Margens de Compra e Venda (Markup)';
@@ -422,7 +422,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
 
                       {/* Footer hint */}
                       <div className="px-3 pt-1.5 pb-0.5 border-t border-slate-100 flex items-center justify-between text-[9px] text-slate-400">
-                        <span>Grupo GAPP Sistemas v10.6</span>
+                        <span>Grupo GAPP Sistemas v10.7</span>
                         <span>[ESC] para fechar</span>
                       </div>
                     </div>
@@ -550,7 +550,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
                 <span className="hidden xl:inline">Novo Lote</span>
               </button>
 
-              {/* Planilha Matriz v10.6 */}
+              {/* Planilha Matriz v10.7 */}
               <button
                 onClick={() => onTabChange('sheet')}
                 className={`h-7.5 px-2.5 flex items-center gap-1.5 rounded text-[11px] font-semibold transition cursor-pointer border shadow-xs active:scale-95 ${
@@ -558,10 +558,10 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
                     ? 'bg-[#0078d7] text-white border-[#005a9e] shadow-sm'
                     : 'bg-gradient-to-b from-white to-[#edf2f7] hover:from-white hover:to-[#e2e8f0] border-[#9ca3af] text-slate-800'
                 }`}
-                title="Planilha Matriz da Direção v10.6 (F2)"
+                title="Planilha Matriz da Direção v10.7 (F2)"
               >
                 <FileSpreadsheet className={`w-3.5 h-3.5 ${activeTab === 'sheet' && !isDesktopView ? 'text-white' : 'text-blue-700'}`} />
-                <span>Matriz v10.6</span>
+                <span>Matriz v10.7</span>
               </button>
 
               {/* Salvar / Gravar */}

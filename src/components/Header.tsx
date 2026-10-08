@@ -113,7 +113,7 @@ export const Header: React.FC<HeaderProps> = ({
                   Gestão Apuração do Boi
                 </h1>
                 <span className="text-[10px] px-1.5 py-0.2 rounded font-black bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/40 uppercase">
-                  v10.6
+                  v10.7
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">

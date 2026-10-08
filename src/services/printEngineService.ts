@@ -671,7 +671,7 @@ export class PrintEngineService {
   </div>
 
   <div style="margin-top: 10px; font-size: 6pt; color: #94a3b8; display: flex; justify-content: space-between; border-top: 1px solid #e2e8f0; padding-top: 3px;">
-    <span>Grupo GAPP Sistemas • ERP Apuração do Boi v10.6 • Portal: https://gipp-site.vercel.app/</span>
+    <span>Grupo GAPP Sistemas • ERP Apuração do Boi v10.7 • Portal: https://gipp-site.vercel.app/</span>
     <span>Emissão Oficial em ${new Date().toLocaleDateString('pt-BR')} • Página 1 de 1</span>
   </div>
 </body>
@@ -863,7 +863,7 @@ export class PrintEngineService {
         <div class="sub-brand">GRUPO GAPP SISTEMAS • PATRICK PESSOA</div>
         <div class="title-main">${title}</div>
         <div style="font-size: 6pt; color: #475569;">
-          Matriz Oficial Consolidada de 16 Filiais • v10.6 • Validação de Compra & Apuração
+          Matriz Oficial Consolidada de 16 Filiais • v10.7 • Validação de Compra & Apuração
         </div>
       </div>
     </div>
@@ -1049,7 +1049,7 @@ export class PrintEngineService {
   </div>
 
   <div class="footer-bar">
-    <span>Grupo GAPP Sistemas • ERP Apuração do Boi v10.6 • Planilha de Compras Oficial • Patrick Pessoa</span>
+    <span>Grupo GAPP Sistemas • ERP Apuração do Boi v10.7 • Planilha de Compras Oficial • Patrick Pessoa</span>
     <span>Emissão Oficial em ${new Date().toLocaleDateString('pt-BR')} • Documento Gerencial A4 Paisagem</span>
   </div>
 </body>

@@ -24,7 +24,7 @@ export const SolidconDesktopWallpaper: React.FC<SolidconDesktopWallpaperProps> =
   onOpenQuickCalc,
 }) => {
   const desktopShortcuts = [
-    { id: 'sheet', label: 'Planilha Direção v10.6', icon: FileSpreadsheet, color: 'bg-emerald-600 text-white' },
+    { id: 'sheet', label: 'Planilha Direção v10.7', icon: FileSpreadsheet, color: 'bg-emerald-600 text-white' },
     { id: 'dashboard', label: 'Painel Geral de Gestão', icon: LayoutDashboard, color: 'bg-blue-600 text-white' },
     { id: 'quotes', label: 'Cotação em Tempo Real', icon: Activity, color: 'bg-emerald-700 text-white' },
     { id: 'yield', label: 'Rendimento & Desossa', icon: Scissors, color: 'bg-amber-600 text-white' },
@@ -185,11 +185,11 @@ export const SolidconDesktopWallpaper: React.FC<SolidconDesktopWallpaperProps> =
             Gestão Operacional de Compra, Desossa, Rendimento e Câmaras Frias por <strong>Patrick Pessoa</strong>
           </p>
           <div className="mt-2 text-[10px] text-slate-600 font-mono flex items-center justify-center gap-3">
-            <span>Matriz Oficial: <strong>v10.6</strong></span>
+            <span>Matriz Oficial: <strong>v10.7</strong></span>
             <span>•</span>
             <span>16 Lojas Interligadas</span>
             <span>•</span>
-            <span>Build 1.6.0106</span>
+            <span>Build 1.7.0107</span>
           </div>
         </div>
 
@@ -200,7 +200,7 @@ export const SolidconDesktopWallpaper: React.FC<SolidconDesktopWallpaperProps> =
             className="px-5 py-2.5 rounded-lg bg-gradient-to-b from-[#0078d7] to-[#005a9e] hover:from-[#0086f0] hover:to-[#0067b8] text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-blue-900/30 border border-blue-400 active:scale-95 transition"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>Abrir Planilha de Compra da Direção v10.6</span>
+            <span>Abrir Planilha de Compra da Direção v10.7</span>
           </button>
 
           <button
@@ -216,7 +216,7 @@ export const SolidconDesktopWallpaper: React.FC<SolidconDesktopWallpaperProps> =
 
       {/* Watermark in corner */}
       <div className="absolute bottom-3 right-4 z-10 text-[10px] font-mono text-slate-700/80">
-        Grupo GAPP Sistemas • Gestão Apuração do Boi v10.6 (Build Oficial 1.6.0106)
+        Grupo GAPP Sistemas • Gestão Apuração do Boi v10.7 (Build Oficial 1.7.0107)
       </div>
     </div>
   );

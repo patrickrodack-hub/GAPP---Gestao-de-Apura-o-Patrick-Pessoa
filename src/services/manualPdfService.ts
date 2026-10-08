@@ -50,7 +50,7 @@ export class ManualPdfService {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8);
       doc.setTextColor(245, 158, 11); // Amber 500
-      doc.text('GRUPO GAPP SISTEMAS • ERP GESTÃO APURAÇÃO DO BOI v10.6', margin + 18, 8);
+      doc.text('GRUPO GAPP SISTEMAS • ERP GESTÃO APURAÇÃO DO BOI v10.7', margin + 18, 8);
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
@@ -128,7 +128,7 @@ export class ManualPdfService {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(241, 245, 249);
-    doc.text('• Versão do Sistema: v10.6 (Build Oficial 1.6.0106)', margin + 15, 137);
+    doc.text('• Versão do Sistema: v10.7 (Build Oficial 1.7.0107)', margin + 15, 137);
     doc.text('• Arquitetura: Solidcon Clássico ERP Engine + MDI Desktop Integrado', margin + 15, 143);
     doc.text('• Abrangência da Rede: Matriz Consolidada de 16 Filiais', margin + 15, 149);
     doc.text('• Banco de Dados & Nuvem: PostgreSQL / Firestore Cloud Backup', margin + 15, 155);

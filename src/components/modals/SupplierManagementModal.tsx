@@ -295,7 +295,7 @@ export const SupplierManagementModal: React.FC<SupplierManagementModalProps> = (
               </table>
 
               <div className="pt-6 border-t border-slate-300 flex justify-between text-xs text-slate-500">
-                <span>Relatório gerado pelo ERP Grupo GAPP Sistemas v10.6</span>
+                <span>Relatório gerado pelo ERP Grupo GAPP Sistemas v10.7</span>
                 <span>Responsável: Patrick Pessoa (Direção)</span>
               </div>
             </div>

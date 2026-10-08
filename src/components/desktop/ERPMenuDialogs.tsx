@@ -75,7 +75,7 @@ export const ERPMenuDialogs: React.FC<ERPMenuDialogsProps> = ({
               </div>
               <div className="flex justify-between border-b border-slate-100 pb-1">
                 <span className="text-slate-500">Arquitetura de Banco:</span>
-                <span className="font-mono text-slate-700">PostgreSQL / Storage v10.6</span>
+                <span className="font-mono text-slate-700">PostgreSQL / Storage v10.7</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Ambiente de Execução:</span>
@@ -130,7 +130,7 @@ export const ERPMenuDialogs: React.FC<ERPMenuDialogsProps> = ({
                 <tbody className="divide-y divide-slate-100">
                   <tr>
                     <td className="py-1.5 px-3 font-mono font-bold text-blue-700">F2</td>
-                    <td className="py-1.5 px-3">Planilha Matriz da Direção v10.6</td>
+                    <td className="py-1.5 px-3">Planilha Matriz da Direção v10.7</td>
                     <td className="py-1.5 px-3 text-slate-500">Diretoria</td>
                   </tr>
                   <tr>
@@ -222,7 +222,7 @@ export const ERPMenuDialogs: React.FC<ERPMenuDialogsProps> = ({
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-600">Versão da Matriz da Direção:</span>
-                <span className="font-mono font-bold text-blue-700">v10.6 Oficial</span>
+                <span className="font-mono font-bold text-blue-700">v10.7 Oficial</span>
               </div>
             </div>
 

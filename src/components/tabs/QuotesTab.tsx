@@ -544,7 +544,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                   MÓDULO OFICIAL • COTAÇÃO EM TEMPO REAL & VAREJO RJ
                 </span>
                 <span className="text-[10px] text-slate-500 font-mono">
-                  v10.6 GAPP
+                  v10.7 GAPP
                 </span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5">

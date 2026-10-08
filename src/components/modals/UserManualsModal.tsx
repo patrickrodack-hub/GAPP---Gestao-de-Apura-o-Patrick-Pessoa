@@ -104,7 +104,7 @@ export const UserManualsModal: React.FC<UserManualsModalProps> = ({
                     <Monitor className="w-5 h-5" />
                   </div>
                   <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300">
-                    v10.6 • 4 Páginas
+                    v10.7 • 4 Páginas
                   </span>
                 </div>
 

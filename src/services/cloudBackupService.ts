@@ -3,6 +3,8 @@ import {
   doc, 
   getDoc, 
   getDocs, 
+  getDocFromCache,
+  getDocsFromCache,
   setDoc, 
   deleteDoc, 
   query, 
@@ -35,6 +37,12 @@ const DEFAULT_SCHEDULE_CONFIG: BackupScheduleConfig = {
 };
 
 export class CloudBackupService {
+  private static quotaExceeded = false;
+
+  public static isLastQuotaExceeded(): boolean {
+    return this.quotaExceeded;
+  }
+
   /**
    * Obtém as configurações do agendador de backups
    */
@@ -198,8 +206,19 @@ export class CloudBackupService {
       batches.length +
       wasteRecords.length;
 
-    const payloadString = JSON.stringify(payload);
-    const sizeBytes = new Blob([payloadString]).size;
+    // Trunca snapshots históricos caso o payload fique perto do limite de 1MB do Firestore
+    let safePayload = payload;
+    let payloadString = JSON.stringify(safePayload);
+    let sizeBytes = new Blob([payloadString]).size;
+
+    if (sizeBytes > 850000 && safePayload.sheetSnapshots.length > 5) {
+      safePayload = {
+        ...safePayload,
+        sheetSnapshots: safePayload.sheetSnapshots.slice(0, 5)
+      };
+      payloadString = JSON.stringify(safePayload);
+      sizeBytes = new Blob([payloadString]).size;
+    }
 
     // Gerador de ID Único e Semelhante a Sistemas ERP
     const dateCode = now.toISOString().replace(/[-:T]/g, '').slice(0, 14);
@@ -313,33 +332,53 @@ export class CloudBackupService {
 
     try {
       const q = query(collection(db, 'cloud_backups'), orderBy('timestamp', 'desc'), limit(50));
-      const querySnap = await getDocs(q);
+      let querySnap: any;
 
-      querySnap.forEach((docSnap) => {
-        const data = docSnap.data();
-        let payload: BackupDataPayload | undefined;
-        if (data.payloadJson) {
+      try {
+        querySnap = await getDocs(q);
+        this.quotaExceeded = false;
+      } catch (fetchErr: any) {
+        const errMsg = fetchErr?.message || String(fetchErr);
+        if (errMsg.includes('Quota limit exceeded') || errMsg.includes('quota') || errMsg.includes('Free daily read units')) {
+          this.quotaExceeded = true;
+          console.warn('Cota diária de leitura do Firestore excedida ao listar backups. Buscando do cache persistente...');
           try {
-            payload = JSON.parse(data.payloadJson);
-          } catch {}
+            querySnap = await getDocsFromCache(q);
+          } catch {
+            // cache persistente pode não ter registros ainda
+          }
+        } else {
+          throw fetchErr;
         }
+      }
 
-        cloudBackups.push({
-          id: docSnap.id,
-          title: data.title || docSnap.id,
-          timestamp: data.timestamp || Date.now(),
-          dateFormatted: data.dateFormatted || new Date(data.timestamp || Date.now()).toLocaleString('pt-BR'),
-          triggerType: data.triggerType || 'MANUAL',
-          status: data.status || 'SUCCESS',
-          author: data.author || 'Sistema GAPP',
-          recordsCount: data.recordsCount || 0,
-          sizeBytes: data.sizeBytes || 0,
-          checksum: data.checksum || 'N/A',
-          storageTarget: 'FIRESTORE_NUVEM',
-          payload,
-          notes: data.notes
+      if (querySnap) {
+        querySnap.forEach((docSnap: any) => {
+          const data = docSnap.data();
+          let payload: BackupDataPayload | undefined;
+          if (data.payloadJson) {
+            try {
+              payload = JSON.parse(data.payloadJson);
+            } catch {}
+          }
+
+          cloudBackups.push({
+            id: docSnap.id,
+            title: data.title || docSnap.id,
+            timestamp: data.timestamp || Date.now(),
+            dateFormatted: data.dateFormatted || new Date(data.timestamp || Date.now()).toLocaleString('pt-BR'),
+            triggerType: data.triggerType || 'MANUAL',
+            status: data.status || 'SUCCESS',
+            author: data.author || 'Sistema GAPP',
+            recordsCount: data.recordsCount || 0,
+            sizeBytes: data.sizeBytes || 0,
+            checksum: data.checksum || 'N/A',
+            storageTarget: 'FIRESTORE_NUVEM',
+            payload,
+            notes: data.notes
+          });
         });
-      });
+      }
     } catch (e) {
       console.warn('Erro ao listar backups do Firestore, utilizando lista local:', e);
     }
@@ -384,8 +423,22 @@ export class CloudBackupService {
 
     // Tenta obter do Firestore
     try {
-      const snap = await getDoc(doc(db, 'cloud_backups', backupId));
-      if (snap.exists()) {
+      let snap: any;
+      try {
+        snap = await getDoc(doc(db, 'cloud_backups', backupId));
+      } catch (getErr: any) {
+        const errMsg = getErr?.message || String(getErr);
+        if (errMsg.includes('Quota limit exceeded') || errMsg.includes('quota')) {
+          this.quotaExceeded = true;
+          try {
+            snap = await getDocFromCache(doc(db, 'cloud_backups', backupId));
+          } catch {}
+        } else {
+          throw getErr;
+        }
+      }
+
+      if (snap && snap.exists()) {
         const data = snap.data();
         let payload: BackupDataPayload | undefined;
         if (data.payloadJson) {

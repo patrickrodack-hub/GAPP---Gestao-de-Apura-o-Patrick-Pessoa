@@ -173,7 +173,7 @@ export const PortalDeviceBlockedScreen: React.FC<PortalDeviceBlockedScreenProps>
             Voltar ao Sistema de Gestão (Direção)
           </button>
         )}
-        <span>Sistema de Apuração do Boi v10.6 • Segurança Corporativa • Conexão Monitorada e Auditada</span>
+        <span>Sistema de Apuração do Boi v10.7 • Segurança Corporativa • Conexão Monitorada e Auditada</span>
       </div>
     </div>
   );
