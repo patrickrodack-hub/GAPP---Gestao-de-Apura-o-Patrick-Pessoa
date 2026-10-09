@@ -20,6 +20,9 @@ export interface GeneratePurchaseOrderPdfOptions {
   deliveryDateStr?: string;
   arrobaPrice: number;
   pricePerKg: number;
+  alcatraoCostKg?: number;
+  costelaCostKg?: number;
+  bandaCostKg?: number;
   carcassWeightPerBoiKg?: number;
   notes?: string;
   orderItems: {
@@ -29,7 +32,9 @@ export interface GeneratePurchaseOrderPdfOptions {
     traseiro: number;
     coxao: number;
     alcatrao: number;
+    pedidoAlcatraoReal?: number;
     costela: number;
+    pedidoCostelaReal?: number;
     boi: number;
     venda: number;
     sugestao: number;
@@ -434,10 +439,18 @@ export class PdfReportService {
     doc.text(`Matriz Oficial Consolidada de 16 Filiais • v10.7 • Validação de Compra & Apuração • Emissão: ${emissionDateFormatted} às ${emissionTimeFormatted}`, headerLeftX, margin + 13);
 
     // Meta Direita
+    const yieldParams = StorageService.getYieldParams();
+    const alcatraoCost = yieldParams.alcatraoCostKg || 29.00;
+    const costelaCost = yieldParams.costelaCostKg || 25.50;
+    const bandaCost = yieldParams.bandaCostKg || 26.00;
+    const boiCost = yieldParams.costPerKg || 26.00;
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6);
     doc.setTextColor(100, 116, 139);
     doc.text(`Operador: ${currentUser}  |  Auth: ${hashAuth}`, pageWidth - margin, margin + 5, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Custos Base: Alcatrão R$ ${alcatraoCost.toFixed(2)}/kg | Costela G. R$ ${costelaCost.toFixed(2)}/kg | Banda Suína R$ ${bandaCost.toFixed(2)}/kg | Boi R$ ${boiCost.toFixed(2)}/kg`, pageWidth - margin, margin + 9.5, { align: 'right' });
 
     // Linha divisória topo
     doc.setDrawColor(4, 120, 87);
@@ -448,7 +461,7 @@ export class PdfReportService {
     const head: any[] = [
       [
         { content: 'FILIAL (16)', rowSpan: 2, styles: { fillColor: [226, 232, 240], textColor: [30, 41, 59], fontStyle: 'bold', halign: 'left' } },
-        { content: 'DADOS PARA GERAÇÃO DE PEDIDO', colSpan: 10, styles: { fillColor: [219, 234, 254], textColor: [30, 64, 175], fontStyle: 'bold', halign: 'center' } },
+        { content: 'DADOS PARA GERAÇÃO DE PEDIDO', colSpan: 12, styles: { fillColor: [219, 234, 254], textColor: [30, 64, 175], fontStyle: 'bold', halign: 'center' } },
         { content: 'PEÇA INTEIRA CÂMARA', colSpan: 5, styles: { fillColor: [254, 243, 199], textColor: [146, 64, 14], fontStyle: 'bold', halign: 'center' } },
         { content: 'BALCÃO / CÂMARA / DESOSSA (NOBRES)', colSpan: 5, styles: { fillColor: [209, 250, 229], textColor: [6, 95, 70], fontStyle: 'bold', halign: 'center' } },
         { content: 'BALCÃO DESOSSA (DIANTEIRO)', colSpan: 4, styles: { fillColor: [243, 232, 255], textColor: [107, 33, 168], fontStyle: 'bold', halign: 'center' } },
@@ -460,8 +473,10 @@ export class PdfReportService {
         { content: 'Diant', styles: { fillColor: [239, 246, 255] } },
         { content: 'Tras', styles: { fillColor: [239, 246, 255] } },
         { content: 'Cox', styles: { fillColor: [239, 246, 255] } },
-        { content: 'Alc', styles: { fillColor: [239, 246, 255] } },
+        { content: 'Alc.Est', styles: { fillColor: [239, 246, 255] } },
+        { content: 'Ped.Alc', styles: { fillColor: [224, 231, 255], textColor: [49, 46, 129], fontStyle: 'bold' } },
         { content: 'Cost.G', styles: { fillColor: [239, 246, 255] } },
+        { content: 'Ped.Cost', styles: { fillColor: [224, 231, 255], textColor: [49, 46, 129], fontStyle: 'bold' } },
         { content: 'Boi', styles: { fillColor: [191, 219, 254], fontStyle: 'bold' } },
         { content: 'Venda', styles: { fillColor: [239, 246, 255] } },
         { content: 'Sugest', styles: { fillColor: [239, 246, 255] } },
@@ -509,12 +524,14 @@ export class PdfReportService {
       const sugStr = (r.sugestaoPedido || 0) > 0 ? `+${r.sugestaoPedido}` : `${r.sugestaoPedido || 0}`;
       return [
         r.storeName,
-        // Pedido (10)
+        // Pedido (12)
         r.pedidoDianteiro || 0,
         r.pedidoTraseiro || 0,
         r.pedidoCoxao || 0,
         r.pedidoAlcatrao || 0,
+        r.pedidoAlcatraoReal || 0,
         r.pedidoCostelaGaucha || 0,
+        r.pedidoCostelaReal || 0,
         r.boi || 0,
         r.venda || r.boiAVenda || 0,
         sugStr,
@@ -561,7 +578,10 @@ export class PdfReportService {
     const foot: any[] = [
       [
         { content: 'TOTAL PEÇAS', styles: { fontStyle: 'bold', halign: 'left', fillColor: [241, 245, 249] } },
-        totals.pedidoDianteiro, totals.pedidoTraseiro, totals.pedidoCoxao, totals.pedidoAlcatrao, totals.pedidoCostelaGaucha,
+        totals.pedidoDianteiro, totals.pedidoTraseiro, totals.pedidoCoxao, totals.pedidoAlcatrao,
+        { content: totals.pedidoAlcatraoReal || 0, styles: { fontStyle: 'bold', textColor: [49, 46, 129] } },
+        totals.pedidoCostelaGaucha,
+        { content: totals.pedidoCostelaReal || 0, styles: { fontStyle: 'bold', textColor: [49, 46, 129] } },
         totals.boi, totals.venda, Math.round(totals.sugestaoPedido),
         { content: totals.pedidoFinal, styles: { fontStyle: 'bold', textColor: [49, 46, 129] } },
         totals.pTransito,
@@ -576,7 +596,8 @@ export class PdfReportService {
       ],
       [
         { content: 'TOTAL EM KG', styles: { fontStyle: 'bold', halign: 'left', fillColor: [248, 250, 252] } },
-        '5.775', '2.975', '1.881', '1.820', '1.848',
+        '5.775', '2.975', '1.881', '1.820', `${Math.round((totals.pedidoAlcatraoReal || 0) * 22)}`,
+        '1.848', `${Math.round((totals.pedidoCostelaReal || 0) * 20)}`,
         (totals.boi * 260).toFixed(0), (totals.venda * 260).toFixed(0), (totals.sugestaoPedido * 260).toFixed(0),
         (totals.pedidoFinal * 260).toFixed(0), '4.675',
         '182', '1.035', '7.535', '1.848', '400',
@@ -587,7 +608,7 @@ export class PdfReportService {
       ],
       [
         { content: 'TOTAL GERAL R$', styles: { fontStyle: 'bold', halign: 'left', fillColor: [167, 243, 208], textColor: [6, 95, 70] } },
-        { content: 'Validação Contábil Conforme Planilha da Direção: R$ 376.311,95 (Lote de Compra Consolidado das 16 Lojas)', colSpan: 34, styles: { halign: 'right', fontStyle: 'bold', fillColor: [209, 250, 229], textColor: [6, 95, 70] } }
+        { content: 'Validação Contábil Conforme Planilha da Direção: R$ 376.311,95 (Lote de Compra Consolidado das 16 Lojas)', colSpan: 36, styles: { halign: 'right', fontStyle: 'bold', fillColor: [209, 250, 229], textColor: [6, 95, 70] } }
       ]
     ];
 
@@ -877,6 +898,9 @@ export class PdfReportService {
       deliveryDateStr = new Date().toLocaleDateString('pt-BR'),
       arrobaPrice,
       pricePerKg,
+      alcatraoCostKg = 29.00,
+      costelaCostKg = 25.50,
+      bandaCostKg = 26.00,
       carcassWeightPerBoiKg = 240,
       notes = '',
       orderItems,
@@ -921,14 +945,14 @@ export class PdfReportService {
     // Meta Box Right
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(pageWidth - margin - 75, margin, 75, 16, 2, 2, 'FD');
+    doc.roundedRect(pageWidth - margin - 88, margin, 88, 16, 2, 2, 'FD');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(15, 23, 42);
-    doc.text(`Cotação da @: R$ ${arrobaPrice.toFixed(2)} (@ 15kg)`, pageWidth - margin - 72, margin + 5);
-    doc.text(`Custo Médio Quarto: R$ ${pricePerKg.toFixed(2)}/kg`, pageWidth - margin - 72, margin + 9.5);
-    doc.text(`Responsável: ${currentUser}`, pageWidth - margin - 72, margin + 14);
+    doc.text(`Cotação da @: R$ ${arrobaPrice.toFixed(2)} (@ 15kg)  |  Custo Boi: R$ ${pricePerKg.toFixed(2)}/kg`, pageWidth - margin - 85, margin + 4.5);
+    doc.text(`Custos: Alcatrão: R$ ${alcatraoCostKg.toFixed(2)}/kg | Costela G: R$ ${costelaCostKg.toFixed(2)}/kg | Banda: R$ ${bandaCostKg.toFixed(2)}/kg`, pageWidth - margin - 85, margin + 8.5);
+    doc.text(`Responsável: ${currentUser}`, pageWidth - margin - 85, margin + 13);
 
     // Linha divisória
     doc.setDrawColor(0, 75, 135);
@@ -943,7 +967,9 @@ export class PdfReportService {
         { content: 'TRAS.', styles: { fillColor: [0, 75, 135], textColor: [255, 255, 255], fontStyle: 'bold' } },
         { content: 'COXÃO', styles: { fillColor: [0, 75, 135], textColor: [255, 255, 255], fontStyle: 'bold' } },
         { content: 'ALCATRÃO', styles: { fillColor: [0, 75, 135], textColor: [255, 255, 255], fontStyle: 'bold' } },
+        { content: 'PED. ALCAT.', styles: { fillColor: [49, 46, 129], textColor: [255, 255, 255], fontStyle: 'bold' } },
         { content: 'COST. G.', styles: { fillColor: [0, 75, 135], textColor: [255, 255, 255], fontStyle: 'bold' } },
+        { content: 'PED. COST.', styles: { fillColor: [49, 46, 129], textColor: [255, 255, 255], fontStyle: 'bold' } },
         { content: 'BOIS EQ.', styles: { fillColor: [219, 234, 254], textColor: [30, 64, 175], fontStyle: 'bold' } },
         { content: 'PEDIDO (BOIS)', styles: { fillColor: [254, 240, 138], textColor: [113, 63, 18], fontStyle: 'bold' } },
         { content: 'PESO EST. (KG)', styles: { fillColor: [209, 250, 229], textColor: [6, 95, 70], fontStyle: 'bold' } },
@@ -960,7 +986,9 @@ export class PdfReportService {
       item.traseiro,
       item.coxao,
       item.alcatrao,
+      item.pedidoAlcatraoReal || 0,
       item.costela,
+      item.pedidoCostelaReal || 0,
       item.boi,
       item.pedido,
       `${Math.round(item.estimatedWeightKg).toLocaleString('pt-BR')} kg`,
@@ -975,7 +1003,9 @@ export class PdfReportService {
     const totalTras = orderItems.reduce((acc, i) => acc + i.traseiro, 0);
     const totalCox = orderItems.reduce((acc, i) => acc + i.coxao, 0);
     const totalAlc = orderItems.reduce((acc, i) => acc + i.alcatrao, 0);
+    const totalPedAlc = orderItems.reduce((acc, i) => acc + (i.pedidoAlcatraoReal || 0), 0);
     const totalCost = orderItems.reduce((acc, i) => acc + i.costela, 0);
+    const totalPedCost = orderItems.reduce((acc, i) => acc + (i.pedidoCostelaReal || 0), 0);
     const totalBoiEq = orderItems.reduce((acc, i) => acc + i.boi, 0);
     const totalKg = orderItems.reduce((acc, i) => acc + i.estimatedWeightKg, 0);
     const totalR$ = orderItems.reduce((acc, i) => acc + i.estimatedTotalR$, 0);
@@ -990,7 +1020,9 @@ export class PdfReportService {
         totalTras,
         totalCox,
         totalAlc,
+        totalPedAlc,
         totalCost,
+        totalPedCost,
         totalBoiEq,
         totalBois,
         `${Math.round(totalKg).toLocaleString('pt-BR')} kg`,
@@ -1008,8 +1040,8 @@ export class PdfReportService {
       startY: margin + 20,
       margin: { left: margin, right: margin, bottom: 20 },
       styles: {
-        fontSize: 6.5,
-        cellPadding: 1.2,
+        fontSize: 6.2,
+        cellPadding: 1.1,
         halign: 'center',
         valign: 'middle',
         lineColor: [203, 213, 225],
@@ -1017,17 +1049,19 @@ export class PdfReportService {
         textColor: [15, 23, 42]
       },
       columnStyles: {
-        0: { cellWidth: 38, halign: 'left', fontStyle: 'bold' },
-        7: { fontStyle: 'bold', textColor: [113, 63, 18], fillColor: [254, 249, 195] },
-        8: { halign: 'right', fontStyle: 'bold', textColor: [6, 95, 70] },
-        9: { halign: 'right', fontStyle: 'bold', textColor: [6, 95, 70] }
+        0: { cellWidth: 32, halign: 'left', fontStyle: 'bold' },
+        5: { fontStyle: 'bold', textColor: [49, 46, 129], fillColor: [238, 242, 255] },
+        7: { fontStyle: 'bold', textColor: [49, 46, 129], fillColor: [238, 242, 255] },
+        9: { fontStyle: 'bold', textColor: [113, 63, 18], fillColor: [254, 249, 195] },
+        10: { halign: 'right', fontStyle: 'bold', textColor: [6, 95, 70] },
+        11: { halign: 'right', fontStyle: 'bold', textColor: [6, 95, 70] }
       },
       headStyles: {
-        fontSize: 6.5,
+        fontSize: 6.2,
         fontStyle: 'bold'
       },
       footStyles: {
-        fontSize: 7,
+        fontSize: 6.5,
         fontStyle: 'bold',
         fillColor: [15, 23, 42],
         textColor: [255, 255, 255]
@@ -1048,13 +1082,19 @@ export class PdfReportService {
           doc.text(`Observações: ${notes}`, margin, footerY + 4);
         }
 
+        // Resumo analítico com os custos de compra
+        const resumoCustos = `Valores e Custos: Cotação @ R$ ${arrobaPrice.toFixed(2)} (R$ ${pricePerKg.toFixed(2)}/kg) | Alcatrão R$ ${alcatraoCostKg.toFixed(2)}/kg (${totalPedAlc} pç) | Costela G. R$ ${costelaCostKg.toFixed(2)}/kg (${totalPedCost} pç) | Banda Suína R$ ${bandaCostKg.toFixed(2)}/kg (${totalBandas} pç)`;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(6);
+        doc.setTextColor(100, 116, 139);
+        doc.text(resumoCustos, margin, footerY + 7.5);
+
+        doc.setFontSize(6);
         doc.setTextColor(148, 163, 184);
-        doc.text('Grupo GAPP Sistemas • Documento de Compra de Gado • Patrick Pessoa • Validação Oficial', margin, footerY + 10);
+        doc.text('Grupo GAPP Sistemas • Documento de Compra de Gado • Patrick Pessoa • Validação Oficial', margin, footerY + 11);
 
         const pageStr = `Página ${data.pageNumber} de ${doc.getNumberOfPages()}`;
-        doc.text(pageStr, pageWidth - margin, footerY + 10, { align: 'right' });
+        doc.text(pageStr, pageWidth - margin, footerY + 11, { align: 'right' });
       }
     });
 

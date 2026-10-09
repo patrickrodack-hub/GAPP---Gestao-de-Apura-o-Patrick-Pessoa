@@ -1,5 +1,6 @@
 import { SheetRowData, Store, Supplier, PurchaseBatch } from '../types/erp';
 import { formatCurrencyBRL, formatNumberBR, calculateSheetTotals } from './calculationService';
+import { StorageService } from './storageService';
 
 export interface PrintEngineOptions {
   documentTitle: string;
@@ -78,6 +79,9 @@ export class PrintEngineService {
     deliveryDateStr: string;
     arrobaPrice: number;
     pricePerKg: number;
+    alcatraoCostKg?: number;
+    costelaCostKg?: number;
+    bandaCostKg?: number;
     carcassWeightPerBoiKg: number;
     notes: string;
     orderItems: {
@@ -87,7 +91,9 @@ export class PrintEngineService {
       traseiro: number;
       coxao: number;
       alcatrao: number;
+      pedidoAlcatraoReal?: number;
       costela: number;
+      pedidoCostelaReal?: number;
       boi: number;
       venda: number;
       sugestao: number;
@@ -111,6 +117,9 @@ export class PrintEngineService {
       deliveryDateStr,
       arrobaPrice,
       pricePerKg,
+      alcatraoCostKg = 29.00,
+      costelaCostKg = 25.50,
+      bandaCostKg = 26.00,
       carcassWeightPerBoiKg,
       notes,
       orderItems,
@@ -122,7 +131,9 @@ export class PrintEngineService {
     const totalTraseiro = orderItems.reduce((acc, i) => acc + i.traseiro, 0);
     const totalCoxao = orderItems.reduce((acc, i) => acc + i.coxao, 0);
     const totalAlcatrao = orderItems.reduce((acc, i) => acc + i.alcatrao, 0);
+    const totalPedAlcatrao = orderItems.reduce((acc, i) => acc + (i.pedidoAlcatraoReal || 0), 0);
     const totalCostela = orderItems.reduce((acc, i) => acc + i.costela, 0);
+    const totalPedCostela = orderItems.reduce((acc, i) => acc + (i.pedidoCostelaReal || 0), 0);
     const totalBoiEquivalente = orderItems.reduce((acc, i) => acc + i.boi, 0);
     const totalVenda = orderItems.reduce((acc, i) => acc + i.venda, 0);
     const totalSugestao = orderItems.reduce((acc, i) => acc + i.sugestao, 0);
@@ -321,7 +332,7 @@ export class PrintEngineService {
   </table>
 
   <!-- Fornecedor & Condições -->
-  <div class="card-grid">
+  <div class="card-grid" style="grid-template-columns: repeat(6, 1fr);">
     <div class="card-box" style="grid-column: span 2;">
       <span class="card-label">Frigorífico / Fornecedor</span>
       <span class="card-value highlight" style="font-size: 8.5pt;">${supplierName}</span>
@@ -332,24 +343,28 @@ export class PrintEngineService {
       </div>
     </div>
     <div class="card-box">
-      <span class="card-label">Preço da Arroba (@)</span>
+      <span class="card-label">Preço @ / Custo Boi</span>
       <span class="card-value highlight" style="color: #dc2626; font-weight: 900;">${formatCurrencyBRL(arrobaPrice)}</span>
+      <div style="font-size: 6.5pt; color: #64748b;">${formatCurrencyBRL(pricePerKg)}/kg</div>
     </div>
     <div class="card-box">
-      <span class="card-label">Custo Base / Kg</span>
-      <span class="card-value">${formatCurrencyBRL(pricePerKg)}/kg</span>
+      <span class="card-label">Custo Alcatrão / Costela</span>
+      <span class="card-value highlight" style="color: #4338ca;">${formatCurrencyBRL(alcatraoCostKg)}/kg</span>
+      <div style="font-size: 6.5pt; color: #64748b;">Costela: ${formatCurrencyBRL(costelaCostKg)}/kg</div>
     </div>
     <div class="card-box">
-      <span class="card-label">Total Bois Pedidos</span>
-      <span class="card-value highlight" style="color: #1e40af;">${totalBoisPedidos} bois</span>
+      <span class="card-label">Custo Banda Suína</span>
+      <span class="card-value highlight" style="color: #0f766e;">${formatCurrencyBRL(bandaCostKg)}/kg</span>
+      <div style="font-size: 6.5pt; color: #64748b;">36kg por banda</div>
     </div>
     <div class="card-box">
       <span class="card-label">Valor Total Previsto</span>
       <span class="card-value highlight" style="color: #166534;">${formatCurrencyBRL(totalCostR$)}</span>
+      <div style="font-size: 6.5pt; color: #64748b;">${totalBoisPedidos} bois • ${totalBandasPedidas} bandas</div>
     </div>
   </div>
 
-  <!-- Tabela Oficial de Distribuição das Lojas (5 Colunas Padrão) -->
+  <!-- Tabela Oficial de Distribuição das Lojas (com Pedido Alcatrão e Costela) -->
   <div style="margin-bottom: 6px; border: 1px solid #cbd5e1; border-radius: 4px; overflow: hidden;">
     <div style="background: #f1f5f9; padding: 4px 8px; font-weight: 800; font-size: 7.5pt; text-transform: uppercase; color: #1e293b; display: flex; justify-content: space-between; border-bottom: 1px solid #cbd5e1;">
       <span>AJUSTAR QUANTIDADES PEDIDAS POR FILIAL</span>
@@ -358,11 +373,13 @@ export class PrintEngineService {
     <table class="data-table" style="margin-bottom: 0;">
       <thead>
         <tr>
-          <th style="width: 28%; text-align: left; padding: 4px 6px;">LOJA</th>
-          <th style="width: 18%; background: #e0e7ff; color: #312e81; font-weight: 800;">BOI (QTD PEDIDA)</th>
-          <th style="width: 18%; background: #ccfbf1; color: #115e59; font-weight: 800;">SUÍNO / BANDA (QTD)</th>
-          <th style="width: 18%; text-align: right; padding-right: 6px;">PESO ESTIMADO (KG)</th>
-          <th style="width: 18%; text-align: right; padding-right: 6px; background: #dcfce7; color: #14532d;">VALOR ESTIMADO (R$)</th>
+          <th style="width: 22%; text-align: left; padding: 4px 6px;">LOJA</th>
+          <th style="width: 13%; background: #e0e7ff; color: #312e81; font-weight: 800;">BOI (PEDIDO)</th>
+          <th style="width: 13%; background: #ede9fe; color: #4338ca; font-weight: 800;">PED. ALCATRÃO</th>
+          <th style="width: 13%; background: #ede9fe; color: #4338ca; font-weight: 800;">PED. COSTELA</th>
+          <th style="width: 13%; background: #ccfbf1; color: #115e59; font-weight: 800;">SUÍNO / BANDA</th>
+          <th style="width: 13%; text-align: right; padding-right: 6px;">PESO ESTIMADO</th>
+          <th style="width: 13%; text-align: right; padding-right: 6px; background: #dcfce7; color: #14532d;">VALOR ESTIMADO</th>
         </tr>
       </thead>
       <tbody class="font-mono">
@@ -370,6 +387,8 @@ export class PrintEngineService {
           <tr style="background: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
             <td class="store-name" style="padding: 3.5px 6px; font-size: 7.8pt;">${item.storeName}</td>
             <td style="background: #eef2ff; font-weight: 900; color: #1e40af; font-size: 8.5pt;">${item.pedido}</td>
+            <td style="background: #f5f3ff; font-weight: 900; color: #4338ca; font-size: 8.5pt;">${item.pedidoAlcatraoReal || 0}</td>
+            <td style="background: #f5f3ff; font-weight: 900; color: #4338ca; font-size: 8.5pt;">${item.pedidoCostelaReal || 0}</td>
             <td style="background: #f0fdfa; font-weight: 900; color: #0f766e; font-size: 8.5pt;">${item.bandaPedido || 0}</td>
             <td style="text-align: right; padding-right: 6px; font-weight: 700; color: #334155;">${formatNumberBR(item.estimatedWeightKg, 0)} kg</td>
             <td style="text-align: right; padding-right: 6px; font-weight: 900; color: #15803d;">${formatCurrencyBRL(item.estimatedTotalR$)}</td>
@@ -380,6 +399,8 @@ export class PrintEngineService {
         <tr class="total-row font-mono">
           <td style="text-align: left; font-family: sans-serif; font-size: 8pt; font-weight: 900; padding: 4px 6px;">TOTAL GERAL (${orderItems.length} LOJAS)</td>
           <td style="background: #c7d2fe; color: #1e1b4b; font-size: 9pt; font-weight: 900;">${totalBoisPedidos}</td>
+          <td style="background: #ddd6fe; color: #2e1065; font-size: 9pt; font-weight: 900;">${totalPedAlcatrao}</td>
+          <td style="background: #ddd6fe; color: #2e1065; font-size: 9pt; font-weight: 900;">${totalPedCostela}</td>
           <td style="background: #99f6e4; color: #042f2e; font-size: 9pt; font-weight: 900;">${totalBandasPedidas}</td>
           <td style="text-align: right; padding-right: 6px; font-size: 8.5pt; font-weight: 900; color: #0f172a;">${formatNumberBR(totalWeightKg, 0)} kg</td>
           <td style="text-align: right; padding-right: 6px; font-size: 9pt; font-weight: 900; color: #14532d; background: #bbf7d0;">${formatCurrencyBRL(totalCostR$)}</td>
@@ -690,6 +711,11 @@ export class PrintEngineService {
   }): string {
     const { rows, stores, title = 'PLANILHA OFICIAL DE COMPRAS E APURAÇÃO DO BOI', currentUser = 'Patrick Pessoa (Direção de Carnes)' } = params;
     const totals = calculateSheetTotals(rows);
+    const yieldParams = StorageService.getYieldParams();
+    const alcatraoCost = yieldParams.alcatraoCostKg || 29.00;
+    const costelaCost = yieldParams.costelaCostKg || 25.50;
+    const bandaCost = yieldParams.bandaCostKg || 26.00;
+    const boiCost = yieldParams.costPerKg || 26.00;
 
     const now = new Date();
     const emissionDateFormatted = now.toLocaleDateString('pt-BR', {
@@ -879,7 +905,7 @@ export class PrintEngineService {
       <!-- Tier 1: Group Headers -->
       <tr>
         <th rowspan="2" style="width: 110px; background: #e2e8f0; color: #1e293b;">FILIAL (16)</th>
-        <th colspan="10" class="group-pedido">DADOS PARA A GERAÇÃO DE PEDIDO</th>
+        <th colspan="12" class="group-pedido">DADOS PARA A GERAÇÃO DE PEDIDO</th>
         <th colspan="5" class="group-camara">PEÇA INTEIRA CÂMARA</th>
         <th colspan="5" class="group-nobres">BALCÃO / CÂMARA / DESOSSA (NOBRES)</th>
         <th colspan="4" class="group-diant">BALCÃO DE DESOSSA (DIANTEIRO)</th>
@@ -893,7 +919,9 @@ export class PrintEngineService {
         <th class="sub-th-pedido">Tras</th>
         <th class="sub-th-pedido">Coxão</th>
         <th class="sub-th-pedido">Alcat</th>
+        <th class="sub-th-pedido" style="background:#e0e7ff; color:#312e81; font-weight:800;">Ped.Alc</th>
         <th class="sub-th-pedido">Cost.G</th>
+        <th class="sub-th-pedido" style="background:#e0e7ff; color:#312e81; font-weight:800;">Ped.Cost</th>
         <th class="sub-th-pedido" style="background:#bfdbfe;">Boi</th>
         <th class="sub-th-pedido">Venda</th>
         <th class="sub-th-pedido">Sugest</th>
@@ -937,12 +965,12 @@ export class PrintEngineService {
       <!-- Preço Referência -->
       <tr class="row-ref">
         <td class="store-col">PREÇO BASE R$</td>
-        <td>26,00</td><td>26,00</td><td>26,00</td><td>26,00</td><td>26,00</td><td>-</td><td>-</td><td>-</td><td style="font-weight:bold;color:#1e3a8a;">26,00</td><td>-</td>
+        <td>26,00</td><td>26,00</td><td>26,00</td><td>29,00</td><td style="font-weight:bold;color:#312e81;">${alcatraoCost.toFixed(2).replace('.', ',')}</td><td>25,50</td><td style="font-weight:bold;color:#312e81;">${costelaCost.toFixed(2).replace('.', ',')}</td><td>-</td><td>-</td><td>-</td><td style="font-weight:bold;color:#1e3a8a;">${boiCost.toFixed(2).replace('.', ',')}</td><td>-</td>
         <td>26,00</td><td>26,00</td><td>26,00</td><td>29,00</td><td>25,50</td>
         <td>39,90</td><td>39,90</td><td>39,90</td><td>39,90</td><td>25,00</td>
         <td>26,00</td><td>26,00</td><td>25,00</td><td>26,00</td>
         <td>31,50</td><td>31,50</td><td>31,50</td><td>31,50</td>
-        <td>-</td><td>-</td><td>-</td><td style="font-weight:bold;color:#115e59;">26,00</td><td>35,00</td><td>9,00</td>
+        <td>-</td><td>-</td><td>-</td><td style="font-weight:bold;color:#115e59;">${bandaCost.toFixed(2).replace('.', ',')}</td><td>35,00</td><td>9,00</td>
       </tr>
     </thead>
     <tbody>
@@ -954,7 +982,9 @@ export class PrintEngineService {
           <td>${r.pedidoTraseiro || 0}</td>
           <td>${r.pedidoCoxao || 0}</td>
           <td>${r.pedidoAlcatrao || 0}</td>
+          <td style="font-weight:bold; background:#e0e7ff; color:#312e81;">${r.pedidoAlcatraoReal || 0}</td>
           <td>${r.pedidoCostelaGaucha || 0}</td>
+          <td style="font-weight:bold; background:#e0e7ff; color:#312e81;">${r.pedidoCostelaReal || 0}</td>
           <td style="font-weight:bold; color:#1e40af;">${r.boi || 0}</td>
           <td>${r.venda || r.boiAVenda || 0}</td>
           <td style="font-weight:bold; color:${(r.sugestaoPedido || 0) < 0 ? '#b91c1c' : '#047857'};">${(r.sugestaoPedido || 0) > 0 ? `+${r.sugestaoPedido}` : (r.sugestaoPedido || 0)}</td>
@@ -1001,7 +1031,7 @@ export class PrintEngineService {
       <!-- Totais em Peças -->
       <tr class="row-tot1">
         <td class="store-col">TOTAL PEÇAS</td>
-        <td>${totals.pedidoDianteiro}</td><td>${totals.pedidoTraseiro}</td><td>${totals.pedidoCoxao}</td><td>${totals.pedidoAlcatrao}</td><td>${totals.pedidoCostelaGaucha}</td>
+        <td>${totals.pedidoDianteiro}</td><td>${totals.pedidoTraseiro}</td><td>${totals.pedidoCoxao}</td><td>${totals.pedidoAlcatrao}</td><td style="color:#312e81; font-weight:900;">${totals.pedidoAlcatraoReal || 0}</td><td>${totals.pedidoCostelaGaucha}</td><td style="color:#312e81; font-weight:900;">${totals.pedidoCostelaReal || 0}</td>
         <td style="color:#1e40af;">${totals.boi}</td><td>${totals.venda}</td><td>${Math.round(totals.sugestaoPedido)}</td>
         <td style="color:#312e81; font-weight:900;">${totals.pedidoFinal}</td>
         <td>${totals.pTransito}</td>
@@ -1016,7 +1046,7 @@ export class PrintEngineService {
       <!-- Totais em KG -->
       <tr class="row-tot2">
         <td class="store-col">TOTAL EM KG</td>
-        <td>5.775</td><td>2.975</td><td>1.881</td><td>1.820</td><td>1.848</td>
+        <td>5.775</td><td>2.975</td><td>1.881</td><td>1.820</td><td>${Math.round((totals.pedidoAlcatraoReal || 0) * 22)}</td><td>1.848</td><td>${Math.round((totals.pedidoCostelaReal || 0) * 20)}</td>
         <td style="color:#1e40af;">${(totals.boi * 260).toFixed(0)}</td><td>${(totals.venda * 260).toFixed(0)}</td><td>${(totals.sugestaoPedido * 260).toFixed(0)}</td>
         <td style="color:#312e81; font-weight:900;">${(totals.pedidoFinal * 260).toFixed(0)}</td>
         <td>4.675</td>
@@ -1029,7 +1059,7 @@ export class PrintEngineService {
       <!-- Total Geral R$ -->
       <tr class="row-grand">
         <td class="store-col" style="background:#a7f3d0; color:#065f46; font-size:7pt;">TOTAL GERAL R$</td>
-        <td colspan="34" style="text-align: right; padding-right: 8px;">
+        <td colspan="36" style="text-align: right; padding-right: 8px;">
           Validação Contábil Conforme Planilha da Direção: <strong>R$ 376.311,95</strong> (Lote de Compra Consolidado das 16 Lojas)
         </td>
       </tr>

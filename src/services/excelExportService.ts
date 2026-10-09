@@ -61,49 +61,49 @@ export const ExcelExportService = {
     ws1.getCell('A3').font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
     ws1.getCell('A3').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
 
-    // Group 1: DADOS PARA A GERAÇÃO DE PEDIDO (B3:K3 - 10 colunas)
-    ws1.mergeCells('B3:K3');
+    // Group 1: DADOS PARA A GERAÇÃO DE PEDIDO (B3:M3 - 12 colunas)
+    ws1.mergeCells('B3:M3');
     const g1 = ws1.getCell('B3');
     g1.value = 'DADOS PARA A GERAÇÃO DE PEDIDO';
     g1.alignment = { horizontal: 'center', vertical: 'middle' };
     g1.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
     g1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E40AF' } }; // Blue
 
-    // Group 2: PEÇA INTEIRA CÂMARA (L3:Q3)
-    ws1.mergeCells('L3:Q3');
-    const g2 = ws1.getCell('L3');
+    // Group 2: PEÇA INTEIRA CÂMARA (N3:S3)
+    ws1.mergeCells('N3:S3');
+    const g2 = ws1.getCell('N3');
     g2.value = 'PEÇA INTEIRA CÂMARA';
     g2.alignment = { horizontal: 'center', vertical: 'middle' };
     g2.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
     g2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB45309' } }; // Amber
 
-    // Group 3: BALCÃO / CÂMARA / DESOSSA (R3:AA3 - 10 colunas)
-    ws1.mergeCells('R3:AA3');
-    const g3 = ws1.getCell('R3');
+    // Group 3: BALCÃO / CÂMARA / DESOSSA (T3:AC3 - 10 colunas)
+    ws1.mergeCells('T3:AC3');
+    const g3 = ws1.getCell('T3');
     g3.value = 'BALCÃO / CÂMARA / DESOSSA';
     g3.alignment = { horizontal: 'center', vertical: 'middle' };
     g3.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
     g3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF047857' } }; // Emerald
 
-    // Group 4: BALCÃO E DESOSSA - DIANTEIRO (AB3:AJ3 - 9 colunas)
-    ws1.mergeCells('AB3:AJ3');
-    const g4 = ws1.getCell('AB3');
+    // Group 4: BALCÃO E DESOSSA - DIANTEIRO (AD3:AL3 - 9 colunas)
+    ws1.mergeCells('AD3:AL3');
+    const g4 = ws1.getCell('AD3');
     g4.value = 'BALCÃO E DESOSSA (DIANTEIRO)';
     g4.alignment = { horizontal: 'center', vertical: 'middle' };
     g4.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
     g4.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6D28D9' } }; // Purple
 
-    // Group 5: BALCÃO E DESOSSA - COXÃO (AK3:AS3 - 9 colunas)
-    ws1.mergeCells('AK3:AS3');
-    const g5 = ws1.getCell('AK3');
+    // Group 5: BALCÃO E DESOSSA - COXÃO (AM3:AU3 - 9 colunas)
+    ws1.mergeCells('AM3:AU3');
+    const g5 = ws1.getCell('AM3');
     g5.value = 'BALCÃO E DESOSSA (COXÃO)';
     g5.alignment = { horizontal: 'center', vertical: 'middle' };
     g5.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
     g5.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBE123C' } }; // Rose
 
-    // Group 6: CÂMARA / BALCÃO E DESOSSA - SUÍNO (AT3:AY3 - 6 colunas)
-    ws1.mergeCells('AT3:AY3');
-    const g6 = ws1.getCell('AT3');
+    // Group 6: CÂMARA / BALCÃO E DESOSSA - SUÍNO (AV3:BA3 - 6 colunas)
+    ws1.mergeCells('AV3:BA3');
+    const g6 = ws1.getCell('AV3');
     g6.value = 'CÂMARA / BALCÃO E DESOSSA (SUÍNO)';
     g6.alignment = { horizontal: 'center', vertical: 'middle' };
     g6.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -114,7 +114,7 @@ export const ExcelExportService = {
     const colNames = [
       'Filial',
       // Pedido
-      'Ped. Dianteiro', 'Ped. Traseiro', 'Ped. Coxão', 'Ped. Alcatrão', 'Ped. Costela G.', 'Boi Calc. (D+T+C+A)/2', 'Venda', 'Sugestão', 'Pedido (Qtd)', 'P. Trânsito',
+      'Ped. Dianteiro', 'Ped. Traseiro', 'Ped. Coxão', 'Alcatrão Estoque', 'PEDIDO ALCATRÃO', 'Costela G. Estoque', 'PEDIDO COSTELA', 'Boi Calc. (D+T+C+A)/2', 'Venda', 'Sugestão', 'Pedido (Qtd)', 'P. Trânsito',
       // Câmara
       'Câm. Dianteiro', 'Câm. Traseiro', 'Câm. Coxão', 'Câm. Alcatrão', 'Soma Traseiro', 'Câm. Costela G.',
       // Balcão / Câmara / Desossa
@@ -146,7 +146,7 @@ export const ExcelExportService = {
     ws1.getRow(5).height = 18;
     const refPrices = [
       'Preço Base (R$/kg)',
-      26.00, 26.00, 26.00, 29.00, 25.50, '', '', '', 26.00, '',
+      26.00, 26.00, 26.00, 29.00, 29.00, 25.50, 25.50, '', '', '', 26.00, '',
       26.00, 26.00, 26.00, 29.00, 26.00, 25.50,
       '', 39.90, '', 39.90, '', 39.90, '', 39.90, '', 25.00,
       26.00, 26.00, '', 26.00, '', 25.00, '', 26.00, '',
@@ -181,7 +181,7 @@ export const ExcelExportService = {
       const rowValues = [
         row.storeName,
         // Pedido
-        row.pedidoDianteiro, row.pedidoTraseiro, row.pedidoCoxao, row.pedidoAlcatrao, row.pedidoCostelaGaucha, row.boi, row.venda ?? row.boiAVenda, row.sugestaoPedido, row.pedidoFinal, row.pTransito,
+        row.pedidoDianteiro, row.pedidoTraseiro, row.pedidoCoxao, row.pedidoAlcatrao, row.pedidoAlcatraoReal || 0, row.pedidoCostelaGaucha, row.pedidoCostelaReal || 0, row.boi, row.venda ?? row.boiAVenda, row.sugestaoPedido, row.pedidoFinal, row.pTransito,
         // Câmara
         row.camaraDianteiro, row.camaraTraseiro, row.camaraCoxao, row.camaraAlcatrao, row.somaDoTraseiro, row.camaraCostelaGaucha,
         // Balcão / Câmara / Desossa
@@ -216,8 +216,20 @@ export const ExcelExportService = {
           }
         }
 
-        // Sugestão pedido highlight (colIdx === 8)
+        // PEDIDO ALCATRÃO (colIdx === 5) & PEDIDO COSTELA (colIdx === 7)
+        if ((colIdx === 5 || colIdx === 7) && typeof val === 'number') {
+          cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF3730A3' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEF2FF' } };
+        }
+
+        // Boi Calculado (colIdx === 8)
         if (colIdx === 8 && typeof val === 'number') {
+          cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF1D4ED8' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
+        }
+
+        // Sugestão pedido highlight (colIdx === 10)
+        if (colIdx === 10 && typeof val === 'number') {
           if (val < 0) {
             cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFDC2626' } };
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
@@ -227,14 +239,8 @@ export const ExcelExportService = {
           }
         }
 
-        // Boi Calculado (colIdx === 6)
-        if (colIdx === 6 && typeof val === 'number') {
-          cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF1D4ED8' } };
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
-        }
-
-        // Pedido Final (colIdx === 9)
-        if (colIdx === 9 && typeof val === 'number') {
+        // Pedido Final (colIdx === 11)
+        if (colIdx === 11 && typeof val === 'number') {
           cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF4338CA' } };
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } };
         }
@@ -278,7 +284,7 @@ export const ExcelExportService = {
     tgCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF065F46' } }; // Dark Emerald
     tgCell.alignment = { horizontal: 'left', vertical: 'middle' };
 
-    ws1.mergeCells(`G${totalGeralRow}:AY${totalGeralRow}`);
+    ws1.mergeCells(`G${totalGeralRow}:BA${totalGeralRow}`);
     const tgNote = ws1.getCell(`G${totalGeralRow}`);
     tgNote.value = 'Validação Contábil Oficial da Direção Conforme Matriz v10.7 • 16 Filiais Consolidadas • Custo Médio Quarto: R$ 26,00/kg (@ R$ 390,00)';
     tgNote.font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FFFFFFFF' } };

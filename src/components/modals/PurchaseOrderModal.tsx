@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SheetRowData, Store, PurchaseBatch, Supplier } from '../../types/erp';
+import { SheetRowData, Store, PurchaseBatch, Supplier, YieldParams } from '../../types/erp';
 import { formatCurrencyBRL, formatNumberBR, recalculateRowOrderFormulas } from '../../services/calculationService';
 import { StorageService } from '../../services/storageService';
 import { PrintPurchaseOrderModal } from './PrintPurchaseOrderModal';
@@ -33,7 +33,7 @@ interface PurchaseOrderModalProps {
   rows: SheetRowData[];
   stores: Store[];
   suppliers?: Supplier[];
-  yieldParams?: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; basis: 'carcass' | 'piece' };
+  yieldParams?: YieldParams | any;
   latestBatch?: PurchaseBatch;
   onOpenSupplierManager?: () => void;
   onSaveBatch?: (batch: PurchaseBatch) => void;
@@ -86,6 +86,21 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
     if (p && p.carcassWeight > 0) return p.carcassWeight;
     return 240;
   });
+  const [alcatraoCostKg, setAlcatraoCostKg] = useState<number>(() => {
+    if (yieldParams && yieldParams.alcatraoCostKg && yieldParams.alcatraoCostKg > 0) return yieldParams.alcatraoCostKg;
+    const p = StorageService.getYieldParams();
+    return p.alcatraoCostKg || 29.00;
+  });
+  const [costelaCostKg, setCostelaCostKg] = useState<number>(() => {
+    if (yieldParams && yieldParams.costelaCostKg && yieldParams.costelaCostKg > 0) return yieldParams.costelaCostKg;
+    const p = StorageService.getYieldParams();
+    return p.costelaCostKg || 25.50;
+  });
+  const [bandaCostKg, setBandaCostKg] = useState<number>(() => {
+    if (yieldParams && yieldParams.bandaCostKg && yieldParams.bandaCostKg > 0) return yieldParams.bandaCostKg;
+    const p = StorageService.getYieldParams();
+    return p.bandaCostKg || 26.00;
+  });
   const [notes, setNotes] = useState('Pedido emitido conforme apuração oficial da Matriz Direção v10.7. Entrega programada nas câmaras frigoríficas.');
   const [copiedToast, setCopiedToast] = useState(false);
   const [savedBatchSuccess, setSavedBatchSuccess] = useState(false);
@@ -93,6 +108,8 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
   const [whatsappPdfSuccess, setWhatsappPdfSuccess] = useState(false);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [quantitiesSuino, setQuantitiesSuino] = useState<Record<string, number>>({});
+  const [quantitiesAlcatrao, setQuantitiesAlcatrao] = useState<Record<string, number>>({});
+  const [quantitiesCostela, setQuantitiesCostela] = useState<Record<string, number>>({});
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
 
   // Carrega e sincroniza estritamente com a quantidade real lançada pelo usuário nas colunas Pedido (Boi e Banda)
@@ -101,13 +118,19 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
     if (isOpen) {
       const qMap: Record<string, number> = {};
       const qSuinoMap: Record<string, number> = {};
+      const qAlcMap: Record<string, number> = {};
+      const qCostMap: Record<string, number> = {};
       rows.forEach(r => {
         // Assume estritamente a quantidade real lançada na planilha
         qMap[r.storeId] = Number(r.pedidoFinal !== undefined ? r.pedidoFinal : 0);
         qSuinoMap[r.storeId] = Number(r.bandaPedido !== undefined ? r.bandaPedido : (r.pedidoSuino !== undefined ? r.pedidoSuino : 0));
+        qAlcMap[r.storeId] = Number(r.pedidoAlcatraoReal !== undefined ? r.pedidoAlcatraoReal : 0);
+        qCostMap[r.storeId] = Number(r.pedidoCostelaReal !== undefined ? r.pedidoCostelaReal : 0);
       });
       setQuantities(qMap);
       setQuantitiesSuino(qSuinoMap);
+      setQuantitiesAlcatrao(qAlcMap);
+      setQuantitiesCostela(qCostMap);
 
       // Sempre importa e vincula do módulo de análise técnica de rendimento e desossa do boi
       const masterWeight = (yieldParams && yieldParams.carcassWeight > 0)
@@ -120,6 +143,10 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
       } else if (latestBatch && latestBatch.arrobaPrice > 0) {
         setArrobaPrice(latestBatch.arrobaPrice);
       }
+
+      if (yieldParams?.alcatraoCostKg) setAlcatraoCostKg(yieldParams.alcatraoCostKg);
+      if (yieldParams?.costelaCostKg) setCostelaCostKg(yieldParams.costelaCostKg);
+      if (yieldParams?.bandaCostKg) setBandaCostKg(yieldParams.bandaCostKg);
     }
   }, [isOpen, rows, yieldParams, latestBatch]);
 
@@ -156,6 +183,56 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
         });
       }
     }
+  };
+
+  const handleAlcatraoQuantityChange = (storeId: string, valStr: string) => {
+    const parsed = parseFloat(valStr);
+    const val = isNaN(parsed) || parsed < 0 ? 0 : parsed;
+    setQuantitiesAlcatrao(prev => ({ ...prev, [storeId]: val }));
+
+    if (onUpdateRow) {
+      const targetRow = rows.find(r => r.storeId === storeId);
+      if (targetRow) {
+        onUpdateRow({
+          ...targetRow,
+          pedidoAlcatraoReal: val
+        });
+      }
+    }
+  };
+
+  const handleCostelaQuantityChange = (storeId: string, valStr: string) => {
+    const parsed = parseFloat(valStr);
+    const val = isNaN(parsed) || parsed < 0 ? 0 : parsed;
+    setQuantitiesCostela(prev => ({ ...prev, [storeId]: val }));
+
+    if (onUpdateRow) {
+      const targetRow = rows.find(r => r.storeId === storeId);
+      if (targetRow) {
+        onUpdateRow({
+          ...targetRow,
+          pedidoCostelaReal: val
+        });
+      }
+    }
+  };
+
+  const handleUpdateAlcatraoCost = (val: number) => {
+    setAlcatraoCostKg(val);
+    const curr = StorageService.getYieldParams();
+    StorageService.saveYieldParams({ ...curr, alcatraoCostKg: val });
+  };
+
+  const handleUpdateCostelaCost = (val: number) => {
+    setCostelaCostKg(val);
+    const curr = StorageService.getYieldParams();
+    StorageService.saveYieldParams({ ...curr, costelaCostKg: val });
+  };
+
+  const handleUpdateBandaCost = (val: number) => {
+    setBandaCostKg(val);
+    const curr = StorageService.getYieldParams();
+    StorageService.saveYieldParams({ ...curr, bandaCostKg: val });
   };
 
   const handleApplySuggestions = () => {
@@ -195,18 +272,26 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
   const handleZeroQuantities = () => {
     const updatedMap: Record<string, number> = {};
     const updatedSuinoMap: Record<string, number> = {};
+    const updatedAlcMap: Record<string, number> = {};
+    const updatedCostMap: Record<string, number> = {};
     const updatedRows = rows.map(r => {
       updatedMap[r.storeId] = 0;
       updatedSuinoMap[r.storeId] = 0;
+      updatedAlcMap[r.storeId] = 0;
+      updatedCostMap[r.storeId] = 0;
       return { 
         ...r, 
         pedidoFinal: 0,
         bandaPedido: 0,
-        pedidoSuino: 0
+        pedidoSuino: 0,
+        pedidoAlcatraoReal: 0,
+        pedidoCostelaReal: 0
       };
     });
     setQuantities(updatedMap);
     setQuantitiesSuino(updatedSuinoMap);
+    setQuantitiesAlcatrao(updatedAlcMap);
+    setQuantitiesCostela(updatedCostMap);
     if (onUpdateMultiple) {
       onUpdateMultiple(updatedRows);
     }
@@ -253,6 +338,13 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
     const costelaSuina = Math.round(Number(r.costelaSuinaPecas) || 0);
     const pernil = Math.round(Number(r.pernilPecas) || 0);
 
+    const pedidoAlcatraoReal = quantitiesAlcatrao[r.storeId] !== undefined
+      ? quantitiesAlcatrao[r.storeId]
+      : Number(r.pedidoAlcatraoReal !== undefined ? r.pedidoAlcatraoReal : 0);
+    const pedidoCostelaReal = quantitiesCostela[r.storeId] !== undefined
+      ? quantitiesCostela[r.storeId]
+      : Number(r.pedidoCostelaReal !== undefined ? r.pedidoCostelaReal : 0);
+
     return {
       storeId: r.storeId,
       storeName: r.storeName,
@@ -260,7 +352,9 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
       traseiro,
       coxao,
       alcatrao,
+      pedidoAlcatraoReal,
       costela,
+      pedidoCostelaReal,
       boi,
       venda,
       sugestao,
@@ -284,7 +378,9 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
   const totalTraseiro = orderItems.reduce((acc, i) => acc + i.traseiro, 0);
   const totalCoxao = orderItems.reduce((acc, i) => acc + i.coxao, 0);
   const totalAlcatrao = orderItems.reduce((acc, i) => acc + i.alcatrao, 0);
+  const totalPedAlcatrao = orderItems.reduce((acc, i) => acc + (i.pedidoAlcatraoReal || 0), 0);
   const totalCostela = orderItems.reduce((acc, i) => acc + i.costela, 0);
+  const totalPedCostela = orderItems.reduce((acc, i) => acc + (i.pedidoCostelaReal || 0), 0);
   const totalBoiEquivalente = orderItems.reduce((acc, i) => acc + i.boi, 0);
   const totalVenda = orderItems.reduce((acc, i) => acc + i.venda, 0);
   const totalSugestao = orderItems.reduce((acc, i) => acc + i.sugestao, 0);
@@ -300,6 +396,14 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
   const totalCostelaSuina = orderItems.reduce((acc, i) => acc + i.costelaSuina, 0);
   const totalPernil = orderItems.reduce((acc, i) => acc + i.pernil, 0);
   const totalBandaEstimatedWeightKg = totalBandasPedidas * 36;
+
+  // Cálculos financeiros específicos para os custos de cortes solicitados
+  const totalWeightAlcatraoKg = totalPedAlcatrao * 24;
+  const totalCostAlcatraoR$ = totalWeightAlcatraoKg * alcatraoCostKg;
+  const totalWeightCostelaKg = totalPedCostela * 20;
+  const totalCostCostelaR$ = totalWeightCostelaKg * costelaCostKg;
+  const totalCostBandaR$ = totalBandaEstimatedWeightKg * bandaCostKg;
+  const totalGeralCompraR$ = totalCostR$ + totalCostAlcatraoR$ + totalCostCostelaR$ + totalCostBandaR$;
 
   const selectedSupplierName = customSupplier.trim() ? customSupplier : supplier;
   const selectedSupplierObj = suppliers.find(s => 
@@ -407,14 +511,17 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
     text += `• Total de Bois Pedidos: ${totalBoisPedidos} cabeças\n`;
     text += `• Peso Total Estimado Bovino: ${formatNumberBR(totalWeightKg, 1)} kg\n`;
     text += `• Valor Total Bovino: ${formatCurrencyBRL(totalCostR$)}\n\n`;
-    text += `*2. CONSOLIDAÇÃO GERAL - CÂMARA / BALCÃO E DESOSSA (SUÍNO):*\n`;
-    text += `• Total de Bandas Pedidas: ${totalBandasPedidas} peças (${formatNumberBR(totalBandaEstimatedWeightKg, 1)} kg)\n`;
-    text += `• Costela Suína Total: ${totalCostelaSuina} peças | Pernil Total: ${totalPernil} peças\n\n`;
+    text += `*2. CORTES ESPECIAIS & CÂMARA / BALCÃO:*\n`;
+    text += `• Alcatrão Negociado: ${totalPedAlcatrao} peças (~${totalWeightAlcatraoKg} kg | R$ ${alcatraoCostKg.toFixed(2)}/kg = ${formatCurrencyBRL(totalCostAlcatraoR$)})\n`;
+    text += `• Costela Gaúcha Negociada: ${totalPedCostela} peças (~${totalWeightCostelaKg} kg | R$ ${costelaCostKg.toFixed(2)}/kg = ${formatCurrencyBRL(totalCostCostelaR$)})\n`;
+    text += `• Banda Suína: ${totalBandasPedidas} peças (~${totalBandaEstimatedWeightKg} kg | R$ ${bandaCostKg.toFixed(2)}/kg = ${formatCurrencyBRL(totalCostBandaR$)})\n`;
+    text += `• Costela Suína Total: ${totalCostelaSuina} peças | Pernil Total: ${totalPernil} peças\n`;
+    text += `• *VALOR TOTAL GERAL DE COMPRA: ${formatCurrencyBRL(totalGeralCompraR$)}*\n\n`;
     text += `*DISTRIBUIÇÃO DETALHADA POR LOJA (16 FILIAIS):*\n`;
 
     orderItems.forEach((item, idx) => {
       text += `${idx + 1}. *${item.storeName}*:\n`;
-      text += `   • BOI: Pedido: ${item.pedido} bois (${item.estimatedWeightKg.toFixed(0)} kg | ${formatCurrencyBRL(item.estimatedTotalR$)}) [Diant: ${item.dianteiro}, Tras: ${item.traseiro}, Coxão: ${item.coxao}, Alcat: ${item.alcatrao}, Boi Calc: ${item.boi}, Venda: ${item.venda}, Sug: ${item.sugestao}]\n`;
+      text += `   • BOI: Pedido: ${item.pedido} bois (${item.estimatedWeightKg.toFixed(0)} kg | ${formatCurrencyBRL(item.estimatedTotalR$)}) [Diant: ${item.dianteiro}, Tras: ${item.traseiro}, Coxão: ${item.coxao}, Alcat: ${item.alcatrao}, Ped. Alcat: ${item.pedidoAlcatraoReal || 0}, Cost: ${item.costela}, Ped. Cost: ${item.pedidoCostelaReal || 0}, Boi Calc: ${item.boi}, Venda: ${item.venda}, Sug: ${item.sugestao}]\n`;
       text += `   • SUÍNO/BANDA: Pedido: ${item.bandaPedido} pç (${item.bandaPedido * 36} kg) [Banda Kg: ${item.bandaKg}, Banda Pç: ${item.bandaPecas}, Venda: ${item.bandaVenda}, Sug: ${item.bandaSugestao}, Cost. Suína: ${item.costelaSuina}, Pernil: ${item.pernil}]\n`;
     });
 
@@ -465,7 +572,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
     workbook.creator = 'Grupo GAPP Sistemas - Patrick Pessoa';
     const ws = workbook.addWorksheet('Pedido de Compra Padrão');
 
-    ws.mergeCells('A1:S1');
+    ws.mergeCells('A1:U1');
     const titleCell = ws.getCell('A1');
     titleCell.value = 'GRUPO GAPP SISTEMAS • PEDIDO DE COMPRA PADRÃO (BOVINO & SUÍNO)';
     titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -473,24 +580,24 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     ws.getRow(1).height = 30;
 
-    ws.mergeCells('A2:S2');
+    ws.mergeCells('A2:U2');
     const subCell = ws.getCell('A2');
-    subCell.value = `Pedido: ${orderNumber} • Emissão: ${todayStr} • Previsão: ${deliveryDateStr} • Fornecedor: ${selectedSupplierName} • Responsável: Patrick Pessoa`;
+    subCell.value = `Pedido: ${orderNumber} • Emissão: ${todayStr} • Previsão: ${deliveryDateStr} • Fornecedor: ${selectedSupplierName} • Responsável: Patrick Pessoa • Custo Alcatrão: R$ ${alcatraoCostKg.toFixed(2)}/kg • Custo Costela: R$ ${costelaCostKg.toFixed(2)}/kg • Custo Banda: R$ ${bandaCostKg.toFixed(2)}/kg`;
     subCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF334155' } };
     subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
     subCell.alignment = { horizontal: 'center', vertical: 'middle' };
     ws.getRow(2).height = 20;
 
     // Header Tier 1: Group Names
-    ws.mergeCells('B3:L3');
+    ws.mergeCells('B3:N3');
     const gBov = ws.getCell('B3');
     gBov.value = 'DADOS PARA A GERAÇÃO DE PEDIDO (BOVINO)';
     gBov.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
     gBov.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D4ED8' } };
     gBov.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    ws.mergeCells('M3:S3');
-    const gSuin = ws.getCell('M3');
+    ws.mergeCells('O3:U3');
+    const gSuin = ws.getCell('O3');
     gSuin.value = 'CÂMARA / BALCÃO E DESOSSA (SUÍNO / BANDA)';
     gSuin.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
     gSuin.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F766E' } };
@@ -503,7 +610,9 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
       'Traseiro (Pç)',
       'Coxão (Pç)',
       'Alcatrão (Pç)',
-      'Costela Gaúcha',
+      'PEDIDO ALCATRÃO (Pç)',
+      'Costela Gaúcha (Pç)',
+      'PEDIDO COSTELA (Pç)',
       'Boi Calc. (D+T+C+A)/2',
       'Venda (Boi)',
       'Sugestão (Boi)',
@@ -525,7 +634,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
       const cell = ws.getCell(4, i + 1);
       cell.value = h;
       cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i >= 12 ? 'FF0F766E' : 'FF1E293B' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i >= 14 ? 'FF0F766E' : (i === 5 || i === 7 ? 'FF4338CA' : 'FF1E293B') } };
       cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     });
 
@@ -541,7 +650,9 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
         item.traseiro,
         item.coxao,
         item.alcatrao,
+        item.pedidoAlcatraoReal || 0,
         item.costela,
+        item.pedidoCostelaReal || 0,
         item.boi,
         item.venda,
         item.sugestao,
@@ -561,7 +672,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
       rowVals.forEach((val, cIdx) => {
         const cell = ws.getCell(rowNum, cIdx + 1);
         cell.value = val;
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgHex } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: (cIdx === 5 || cIdx === 7) ? 'FFF5F3FF' : bgHex } };
         cell.border = {
           top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
           bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
@@ -572,13 +683,17 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
         if (cIdx === 0) {
           cell.alignment = { horizontal: 'left', vertical: 'middle' };
           cell.font = { name: 'Arial', size: 9, bold: true };
-        } else if (cIdx === 11) {
+        } else if (cIdx === 13) {
           cell.alignment = { horizontal: 'right', vertical: 'middle' };
           cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF065F46' } };
           cell.numFmt = '"R$ "#,##0.00';
-        } else if (cIdx === 10) {
+        } else if (cIdx === 12) {
           cell.alignment = { horizontal: 'right', vertical: 'middle' };
           cell.numFmt = '#,##0.0';
+        } else if (cIdx === 5 || cIdx === 7) {
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF4338CA' } };
+          cell.numFmt = '#,##0';
         } else {
           cell.alignment = { horizontal: 'right', vertical: 'middle' };
           cell.numFmt = typeof val === 'number' && !Number.isInteger(val) ? '#,##0.0' : '#,##0';
@@ -594,7 +709,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
     ws.getCell(totRow, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF065F46' } };
 
     const totalsValues = [
-      totalDianteiro, totalTraseiro, totalCoxao, totalAlcatrao, totalCostela,
+      totalDianteiro, totalTraseiro, totalCoxao, totalAlcatrao, totalPedAlcatrao, totalCostela, totalPedCostela,
       totalBoiEquivalente, totalVenda, totalSugestao, totalBoisPedidos, totalWeightKg, totalCostR$,
       // Suíno totals
       totalBandaKg, totalBandaPecas, totalBandaVenda, totalBandaSugestao, totalBandasPedidas, totalCostelaSuina, totalPernil
@@ -879,6 +994,107 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Parâmetros de Custos Negociados dos Cortes (Alcatrão, Costela G e Banda Suína) */}
+            <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-purple-600 inline-block animate-pulse"></span>
+                  Custos Negociados de Compra (R$/kg) • Alcatrão, Costela G e Banda Suína
+                </span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                  Valores integrados ao Pedido de Compra e PDF
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-purple-50/70 dark:bg-purple-950/30 p-2.5 rounded-lg border border-purple-200 dark:border-purple-800/80">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-purple-900 dark:text-purple-200">
+                      Custo Alcatrão:
+                    </label>
+                    <span className="text-[10px] text-purple-700 dark:text-purple-300 font-mono font-semibold">
+                      ~24kg/pç
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-purple-700 dark:text-purple-300 font-bold">R$</span>
+                    <input
+                      type="number"
+                      step="0.10"
+                      min="0"
+                      value={alcatraoCostKg}
+                      onChange={(e) => handleUpdateAlcatraoCost(Number(e.target.value) || 0)}
+                      className="w-full bg-white dark:bg-slate-900 border border-purple-300 dark:border-purple-700 rounded-lg p-1.5 text-xs text-slate-800 dark:text-slate-200 font-mono font-bold focus:outline-none focus:border-purple-500"
+                    />
+                    <span className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold whitespace-nowrap">
+                      /kg
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-[9px] text-purple-800 dark:text-purple-300">
+                    <span>{totalPedAlcatrao} pçs pedidas</span>
+                    <span className="font-bold">{formatCurrencyBRL(totalCostAlcatraoR$)}</span>
+                  </div>
+                </div>
+
+                <div className="bg-purple-50/70 dark:bg-purple-950/30 p-2.5 rounded-lg border border-purple-200 dark:border-purple-800/80">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-purple-900 dark:text-purple-200">
+                      Custo Costela Gaúcha:
+                    </label>
+                    <span className="text-[10px] text-purple-700 dark:text-purple-300 font-mono font-semibold">
+                      ~20kg/pç
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-purple-700 dark:text-purple-300 font-bold">R$</span>
+                    <input
+                      type="number"
+                      step="0.10"
+                      min="0"
+                      value={costelaCostKg}
+                      onChange={(e) => handleUpdateCostelaCost(Number(e.target.value) || 0)}
+                      className="w-full bg-white dark:bg-slate-900 border border-purple-300 dark:border-purple-700 rounded-lg p-1.5 text-xs text-slate-800 dark:text-slate-200 font-mono font-bold focus:outline-none focus:border-purple-500"
+                    />
+                    <span className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold whitespace-nowrap">
+                      /kg
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-[9px] text-purple-800 dark:text-purple-300">
+                    <span>{totalPedCostela} pçs pedidas</span>
+                    <span className="font-bold">{formatCurrencyBRL(totalCostCostelaR$)}</span>
+                  </div>
+                </div>
+
+                <div className="bg-teal-50/70 dark:bg-teal-950/30 p-2.5 rounded-lg border border-teal-200 dark:border-teal-800/80">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-teal-900 dark:text-teal-200">
+                      Custo Banda Suína:
+                    </label>
+                    <span className="text-[10px] text-teal-700 dark:text-teal-300 font-mono font-semibold">
+                      ~36kg/banda
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-teal-700 dark:text-teal-300 font-bold">R$</span>
+                    <input
+                      type="number"
+                      step="0.10"
+                      min="0"
+                      value={bandaCostKg}
+                      onChange={(e) => handleUpdateBandaCost(Number(e.target.value) || 0)}
+                      className="w-full bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 rounded-lg p-1.5 text-xs text-slate-800 dark:text-slate-200 font-mono font-bold focus:outline-none focus:border-teal-500"
+                    />
+                    <span className="text-[10px] text-teal-700 dark:text-teal-300 font-semibold whitespace-nowrap">
+                      /kg
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-[9px] text-teal-800 dark:text-teal-300">
+                    <span>{totalBandasPedidas} bandas</span>
+                    <span className="font-bold">{formatCurrencyBRL(totalCostBandaR$)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Consolidated KPI Cards */}
@@ -933,13 +1149,13 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
 
             <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 rounded-xl">
               <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400 tracking-wider block">
-                Valor Total Bovino
+                Valor Total Compra
               </span>
               <span className="text-lg font-bold font-mono text-emerald-900 dark:text-emerald-300">
-                {formatCurrencyBRL(totalCostR$)}
+                {formatCurrencyBRL(totalGeralCompraR$)}
               </span>
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block mt-0.5">
-                Validação oficial
+                Boi: {formatCurrencyBRL(totalCostR$)} • Cortes + Banda
               </span>
             </div>
           </div>
@@ -980,7 +1196,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
                   {/* Tier 1 Header */}
                   <tr className="border-b border-slate-200 dark:border-slate-800">
                     <th rowSpan={2} className="px-3 py-2 border-r border-slate-200 dark:border-slate-800 sticky left-0 z-10 bg-slate-100 dark:bg-slate-900">Filial</th>
-                    <th colSpan={11} className="px-3 py-1.5 text-center bg-blue-100/70 dark:bg-blue-950/50 text-blue-900 dark:text-blue-200 border-r border-slate-200 dark:border-slate-800 font-bold">
+                    <th colSpan={13} className="px-3 py-1.5 text-center bg-blue-100/70 dark:bg-blue-950/50 text-blue-900 dark:text-blue-200 border-r border-slate-200 dark:border-slate-800 font-bold">
                       DADOS PARA A GERAÇÃO DE PEDIDO (BOVINO)
                     </th>
                     <th colSpan={6} className="px-3 py-1.5 text-center bg-teal-100/70 dark:bg-teal-950/50 text-teal-900 dark:text-teal-200 font-bold">
@@ -994,7 +1210,13 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
                     <th className="px-1.5 py-1.5 text-center border-r border-slate-200 dark:border-slate-800">Tras</th>
                     <th className="px-1.5 py-1.5 text-center border-r border-slate-200 dark:border-slate-800">Coxão</th>
                     <th className="px-1.5 py-1.5 text-center border-r border-slate-200 dark:border-slate-800">Alcat</th>
+                    <th className="px-1.5 py-1.5 text-center border-r border-slate-200 dark:border-slate-800 bg-purple-100/80 dark:bg-purple-950/60 text-purple-900 dark:text-purple-200 font-extrabold whitespace-nowrap" title="PEDIDO ALCATRÃO (Peças Lançadas)">
+                      PEDIDO ALCATRAO
+                    </th>
                     <th className="px-1.5 py-1.5 text-center border-r border-slate-200 dark:border-slate-800">Cost. G</th>
+                    <th className="px-1.5 py-1.5 text-center border-r border-slate-200 dark:border-slate-800 bg-purple-100/80 dark:bg-purple-950/60 text-purple-900 dark:text-purple-200 font-extrabold whitespace-nowrap" title="PEDIDO COSTELA GAÚCHA (Peças Lançadas)">
+                      PEDIDO COSTELA
+                    </th>
                     <th className="px-1.5 py-1.5 text-center border-r border-slate-200 dark:border-slate-800 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-bold" title="(Dianteiro + Traseiro + Coxão + Alcatrão) / 2">
                       Boi Calc
                     </th>
@@ -1029,7 +1251,39 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
                       <td className="px-1.5 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">{item.traseiro}</td>
                       <td className="px-1.5 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">{item.coxao}</td>
                       <td className="px-1.5 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">{item.alcatrao}</td>
+                      <td className="px-1 py-1 text-center border-r border-slate-200 dark:border-slate-800 bg-purple-50/60 dark:bg-purple-950/40">
+                        <div className="flex items-center justify-center print:hidden">
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={item.pedidoAlcatraoReal || 0}
+                            onChange={(e) => handleAlcatraoQuantityChange(item.storeId, e.target.value)}
+                            className="w-12 text-center py-1 px-1 rounded-md border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-900 font-bold font-mono text-purple-900 dark:text-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-xs text-xs"
+                            title="Quantidade de Alcatrão lançada para esta filial."
+                          />
+                        </div>
+                        <span className="hidden print:inline font-bold font-mono text-purple-900">
+                          {item.pedidoAlcatraoReal || 0}
+                        </span>
+                      </td>
                       <td className="px-1.5 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">{item.costela}</td>
+                      <td className="px-1 py-1 text-center border-r border-slate-200 dark:border-slate-800 bg-purple-50/60 dark:bg-purple-950/40">
+                        <div className="flex items-center justify-center print:hidden">
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={item.pedidoCostelaReal || 0}
+                            onChange={(e) => handleCostelaQuantityChange(item.storeId, e.target.value)}
+                            className="w-12 text-center py-1 px-1 rounded-md border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-900 font-bold font-mono text-purple-900 dark:text-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-xs text-xs"
+                            title="Quantidade de Costela Gaúcha lançada para esta filial."
+                          />
+                        </div>
+                        <span className="hidden print:inline font-bold font-mono text-purple-900">
+                          {item.pedidoCostelaReal || 0}
+                        </span>
+                      </td>
                       <td className="px-1.5 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-blue-700 dark:text-blue-300 bg-blue-50/30 dark:bg-blue-950/20">
                         {item.boi % 1 !== 0 ? item.boi.toFixed(1) : item.boi}
                       </td>
@@ -1103,7 +1357,13 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
                     <td className="px-1.5 py-2 text-center border-r border-slate-300 dark:border-slate-700">{totalTraseiro}</td>
                     <td className="px-1.5 py-2 text-center border-r border-slate-300 dark:border-slate-700">{totalCoxao}</td>
                     <td className="px-1.5 py-2 text-center border-r border-slate-300 dark:border-slate-700">{totalAlcatrao}</td>
+                    <td className="px-1.5 py-2 text-center border-r border-slate-300 dark:border-slate-700 text-purple-900 dark:text-purple-200 bg-purple-100/70 dark:bg-purple-950/60 font-black">
+                      {totalPedAlcatrao}
+                    </td>
                     <td className="px-1.5 py-2 text-center border-r border-slate-300 dark:border-slate-700">{totalCostela}</td>
+                    <td className="px-1.5 py-2 text-center border-r border-slate-300 dark:border-slate-700 text-purple-900 dark:text-purple-200 bg-purple-100/70 dark:bg-purple-950/60 font-black">
+                      {totalPedCostela}
+                    </td>
                     <td className="px-1.5 py-2 text-center border-r border-slate-300 dark:border-slate-700 text-blue-700 dark:text-blue-300 bg-blue-100/50 dark:bg-blue-950/50">
                       {Math.round(totalBoiEquivalente)}
                     </td>

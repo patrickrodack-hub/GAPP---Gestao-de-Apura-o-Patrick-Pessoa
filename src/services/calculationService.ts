@@ -6,7 +6,9 @@ export interface ColumnTotals {
   pedidoTraseiro: number;
   pedidoCoxao: number;
   pedidoAlcatrao: number;
+  pedidoAlcatraoReal: number;
   pedidoCostelaGaucha: number;
+  pedidoCostelaReal: number;
   venda: number;
   boiAVenda: number;
   boi: number;
@@ -75,7 +77,9 @@ export function calculateSheetTotals(rows: SheetRowData[]): ColumnTotals {
     pedidoTraseiro: 0,
     pedidoCoxao: 0,
     pedidoAlcatrao: 0,
+    pedidoAlcatraoReal: 0,
     pedidoCostelaGaucha: 0,
+    pedidoCostelaReal: 0,
     venda: 0,
     boiAVenda: 0,
     boi: 0,
@@ -378,7 +382,9 @@ export function recalculateRowOrderFormulas(
     pedidoTraseiro,
     pedidoCoxao,
     pedidoAlcatrao,
+    pedidoAlcatraoReal: Math.round(Number(row.pedidoAlcatraoReal || 0)),
     pedidoCostelaGaucha,
+    pedidoCostelaReal: Math.round(Number(row.pedidoCostelaReal || 0)),
     venda,
     boiAVenda: venda,
     boi,

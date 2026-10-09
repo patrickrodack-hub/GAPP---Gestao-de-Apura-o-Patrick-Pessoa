@@ -1,5 +1,5 @@
 import React from 'react';
-import { PurchaseBatch, Supplier, Store } from '../../types/erp';
+import { PurchaseBatch, PurchaseBatchItem, Supplier, Store } from '../../types/erp';
 import { formatCurrencyBRL, formatNumberBR } from '../../services/calculationService';
 import { 
   X, 
@@ -49,7 +49,7 @@ export const ViewPurchaseBatchModal: React.FC<ViewPurchaseBatchModalProps> = ({
   const isPedidoPadrao = batch.invoiceNumber.startsWith('PC-') || !!batch.items;
 
   // Fallback or actual items
-  const items = batch.items || stores.map((s, idx) => {
+  const items: PurchaseBatchItem[] = batch.items || stores.map((s, idx) => {
     const defaultBois = Math.round(batch.headsCount / (stores.length || 1));
     const estimatedWeightKg = Math.round(batch.totalGrossWeightKg / (stores.length || 1));
     const estimatedTotalR$ = estimatedWeightKg * (batch.costPerKg || batch.arrobaPrice / 15);
@@ -60,7 +60,9 @@ export const ViewPurchaseBatchModal: React.FC<ViewPurchaseBatchModalProps> = ({
       traseiro: Math.round(defaultBois * 0.2),
       coxao: Math.round(defaultBois * 0.2),
       alcatrao: Math.round(defaultBois * 0.2),
+      pedidoAlcatraoReal: 0,
       costela: Math.round(defaultBois * 0.1),
+      pedidoCostelaReal: 0,
       boi: defaultBois,
       venda: defaultBois + 2,
       sugestao: defaultBois,
@@ -82,7 +84,9 @@ export const ViewPurchaseBatchModal: React.FC<ViewPurchaseBatchModalProps> = ({
   const totalTraseiro = items.reduce((acc, i) => acc + (i.traseiro || 0), 0);
   const totalCoxao = items.reduce((acc, i) => acc + (i.coxao || 0), 0);
   const totalAlcatrao = items.reduce((acc, i) => acc + (i.alcatrao || 0), 0);
+  const totalPedAlcatrao = items.reduce((acc, i) => acc + (i.pedidoAlcatraoReal || 0), 0);
   const totalCostela = items.reduce((acc, i) => acc + (i.costela || 0), 0);
+  const totalPedCostela = items.reduce((acc, i) => acc + (i.pedidoCostelaReal || 0), 0);
   const totalBoiEquivalente = items.reduce((acc, i) => acc + (i.boi || 0), 0);
   const totalVenda = items.reduce((acc, i) => acc + (i.venda || 0), 0);
   const totalSugestao = items.reduce((acc, i) => acc + (i.sugestao || 0), 0);
@@ -307,7 +311,7 @@ export const ViewPurchaseBatchModal: React.FC<ViewPurchaseBatchModalProps> = ({
                 <thead className="bg-slate-50 dark:bg-slate-950/80 text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
                   <tr className="border-b border-slate-200 dark:border-slate-800">
                     <th rowSpan={2} className="px-3 py-2 border-r border-slate-200 dark:border-slate-800 sticky left-0 z-10 bg-slate-100 dark:bg-slate-900">Filial</th>
-                    <th colSpan={11} className="px-3 py-1.5 text-center bg-blue-100/70 dark:bg-blue-950/50 text-blue-900 dark:text-blue-200 border-r border-slate-200 dark:border-slate-800 font-bold">
+                    <th colSpan={13} className="px-3 py-1.5 text-center bg-blue-100/70 dark:bg-blue-950/50 text-blue-900 dark:text-blue-200 border-r border-slate-200 dark:border-slate-800 font-bold">
                       DADOS PARA A GERAÇÃO DE PEDIDO (BOVINO)
                     </th>
                     <th colSpan={6} className="px-3 py-1.5 text-center bg-teal-100/70 dark:bg-teal-950/50 text-teal-900 dark:text-teal-200 font-bold">
@@ -320,7 +324,13 @@ export const ViewPurchaseBatchModal: React.FC<ViewPurchaseBatchModalProps> = ({
                     <th className="px-1.5 py-1 text-center border-r border-slate-200 dark:border-slate-800">Tras</th>
                     <th className="px-1.5 py-1 text-center border-r border-slate-200 dark:border-slate-800">Coxão</th>
                     <th className="px-1.5 py-1 text-center border-r border-slate-200 dark:border-slate-800">Alcat</th>
+                    <th className="px-1.5 py-1 text-center border-r border-slate-200 dark:border-slate-800 bg-purple-100/80 dark:bg-purple-950/60 text-purple-900 dark:text-purple-200 font-extrabold whitespace-nowrap">
+                      Ped. Alcat
+                    </th>
                     <th className="px-1.5 py-1 text-center border-r border-slate-200 dark:border-slate-800">Cost. G</th>
+                    <th className="px-1.5 py-1 text-center border-r border-slate-200 dark:border-slate-800 bg-purple-100/80 dark:bg-purple-950/60 text-purple-900 dark:text-purple-200 font-extrabold whitespace-nowrap">
+                      Ped. Cost
+                    </th>
                     <th className="px-1.5 py-1 text-center border-r border-slate-200 dark:border-slate-800 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-bold">Boi</th>
                     <th className="px-1.5 py-1 text-center border-r border-slate-200 dark:border-slate-800 text-amber-700 dark:text-amber-400">Venda</th>
                     <th className="px-1.5 py-1 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-rose-700 dark:text-rose-400">Sug.</th>
@@ -353,7 +363,13 @@ export const ViewPurchaseBatchModal: React.FC<ViewPurchaseBatchModalProps> = ({
                       <td className="px-1.5 py-1.5 text-center border-r border-slate-200 dark:border-slate-800">{item.traseiro}</td>
                       <td className="px-1.5 py-1.5 text-center border-r border-slate-200 dark:border-slate-800">{item.coxao}</td>
                       <td className="px-1.5 py-1.5 text-center border-r border-slate-200 dark:border-slate-800">{item.alcatrao}</td>
+                      <td className="px-1.5 py-1.5 text-center border-r border-slate-200 dark:border-slate-800 bg-purple-50/60 dark:bg-purple-950/40 font-bold text-purple-900 dark:text-purple-200">
+                        {item.pedidoAlcatraoReal || 0}
+                      </td>
                       <td className="px-1.5 py-1.5 text-center border-r border-slate-200 dark:border-slate-800">{item.costela}</td>
+                      <td className="px-1.5 py-1.5 text-center border-r border-slate-200 dark:border-slate-800 bg-purple-50/60 dark:bg-purple-950/40 font-bold text-purple-900 dark:text-purple-200">
+                        {item.pedidoCostelaReal || 0}
+                      </td>
                       <td className="px-1.5 py-1.5 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-blue-700 dark:text-blue-300 bg-blue-50/30">
                         {item.boi}
                       </td>
@@ -396,7 +412,13 @@ export const ViewPurchaseBatchModal: React.FC<ViewPurchaseBatchModalProps> = ({
                     <td className="px-1.5 py-2 text-center border-r border-slate-300 dark:border-slate-700">{totalTraseiro}</td>
                     <td className="px-1.5 py-2 text-center border-r border-slate-300 dark:border-slate-700">{totalCoxao}</td>
                     <td className="px-1.5 py-2 text-center border-r border-slate-300 dark:border-slate-700">{totalAlcatrao}</td>
+                    <td className="px-1.5 py-2 text-center border-r border-slate-300 dark:border-slate-700 text-purple-900 dark:text-purple-200 bg-purple-100/70 dark:bg-purple-950/60 font-black">
+                      {totalPedAlcatrao}
+                    </td>
                     <td className="px-1.5 py-2 text-center border-r border-slate-300 dark:border-slate-700">{totalCostela}</td>
+                    <td className="px-1.5 py-2 text-center border-r border-slate-300 dark:border-slate-700 text-purple-900 dark:text-purple-200 bg-purple-100/70 dark:bg-purple-950/60 font-black">
+                      {totalPedCostela}
+                    </td>
                     <td className="px-1.5 py-2 text-center border-r border-slate-300 dark:border-slate-700 text-blue-700 dark:text-blue-300 bg-blue-100/50 dark:bg-blue-950/50">
                       {Math.round(totalBoiEquivalente)}
                     </td>

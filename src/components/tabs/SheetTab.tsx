@@ -44,12 +44,12 @@ import { FormulaAuditModal } from '../modals/FormulaAuditModal';
 import { SaveSheetModal } from '../modals/SaveSheetModal';
 import { SheetHistoryModal } from '../modals/SheetHistoryModal';
 import { PrintSpreadsheetModal } from '../modals/PrintSpreadsheetModal';
-import { SheetSnapshotRecord, Store } from '../../types/erp';
+import { SheetSnapshotRecord, Store, YieldParams } from '../../types/erp';
 
 interface SheetTabProps {
   rows: SheetRowData[];
   stores?: Store[];
-  yieldParams?: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; basis: 'carcass' | 'piece' };
+  yieldParams?: YieldParams | any;
   onUpdateRow: (updatedRow: SheetRowData) => void;
   onUpdateMultiple: (rows: SheetRowData[]) => void;
   onExportXLSX?: () => void;
@@ -68,8 +68,10 @@ export const EDITABLE_COLUMNS: { field: keyof SheetRowData; label: string; group
   { field: 'pedidoDianteiro', label: 'Ped. Dianteiro', group: 'Pedido' },
   { field: 'pedidoTraseiro', label: 'Ped. Traseiro', group: 'Pedido' },
   { field: 'pedidoCoxao', label: 'Ped. Coxão', group: 'Pedido' },
-  { field: 'pedidoAlcatrao', label: 'Ped. Alcatrão', group: 'Pedido' },
-  { field: 'pedidoCostelaGaucha', label: 'Ped. Costela Gaúcha', group: 'Pedido' },
+  { field: 'pedidoAlcatrao', label: 'Alcatrão Estoque', group: 'Pedido' },
+  { field: 'pedidoAlcatraoReal', label: 'PEDIDO ALCATRÃO', group: 'Pedido' },
+  { field: 'pedidoCostelaGaucha', label: 'Costela G. Estoque', group: 'Pedido' },
+  { field: 'pedidoCostelaReal', label: 'PEDIDO COSTELA', group: 'Pedido' },
   { field: 'venda', label: 'Venda (Giro)', group: 'Pedido' },
   { field: 'pedidoFinal', label: 'Pedido (Qtd Real)', group: 'Pedido' },
   { field: 'pTransito', label: 'Peça Trânsito', group: 'Pedido' },
@@ -231,6 +233,28 @@ export const SheetTab: React.FC<SheetTabProps> = ({
       onUpdateMultiple(updated);
     }
   }, [technicalCarcassWeight, yieldBasis]);
+
+  // Custos Negociados de Compra (Alcatrão, Costela G, Banda Suína e Boi Quarto)
+  const [alcatraoCost, setAlcatraoCost] = useState<number>(() => {
+    return yieldParams?.alcatraoCostKg || StorageService.getYieldParams()?.alcatraoCostKg || 29.00;
+  });
+  const [costelaCost, setCostelaCost] = useState<number>(() => {
+    return yieldParams?.costelaCostKg || StorageService.getYieldParams()?.costelaCostKg || 25.50;
+  });
+  const [bandaCost, setBandaCost] = useState<number>(() => {
+    return yieldParams?.bandaCostKg || StorageService.getYieldParams()?.bandaCostKg || 26.00;
+  });
+  const [boiCost, setBoiCost] = useState<number>(() => {
+    return yieldParams?.costPerKg || StorageService.getYieldParams()?.costPerKg || 26.00;
+  });
+  useEffect(() => {
+    if (yieldParams) {
+      if (yieldParams.alcatraoCostKg) setAlcatraoCost(yieldParams.alcatraoCostKg);
+      if (yieldParams.costelaCostKg) setCostelaCost(yieldParams.costelaCostKg);
+      if (yieldParams.bandaCostKg) setBandaCost(yieldParams.bandaCostKg);
+      if (yieldParams.costPerKg) setBoiCost(yieldParams.costPerKg);
+    }
+  }, [yieldParams]);
 
   const totals = calculateSheetTotals(rows);
 
@@ -716,11 +740,11 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 </th>
                 
                 {/* DADOS PARA A GERAÇÃO DE PEDIDO */}
-                <th colSpan={11} className="px-3 py-2 text-center bg-blue-100 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border-r border-slate-200 dark:border-slate-800 border-b border-blue-200 dark:border-blue-900/50">
+                <th colSpan={13} className="px-3 py-2 text-center bg-blue-100 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border-r border-slate-200 dark:border-slate-800 border-b border-blue-200 dark:border-blue-900/50">
                   <div className="flex items-center justify-center gap-1.5">
                     <span>DADOS PARA A GERAÇÃO DE PEDIDO</span>
                     <span className="text-[9px] font-normal text-blue-700 dark:text-blue-400 bg-blue-200/60 dark:bg-blue-900/60 px-1.5 py-0.2 rounded" title="Dianteiro = Câm. Diant + Tot. Diant • Coxão = Câm. Coxão + Tot. Coxão • Alcatrão = Câm. Alcatrão + Tot. Alcatrão • Boi = Σ/2 • Sugestão = Venda - Boi">
-                      Soma (Câmara + Desossa) • Boi = Σ/2
+                      Soma (Câmara + Desossa) • Pedidos Individuais • Boi = Σ/2
                     </span>
                   </div>
                 </th>
@@ -778,7 +802,21 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-blue-900 dark:text-blue-200 font-bold bg-blue-50/50 dark:bg-blue-950/30" title="Traseiro = Câmara Traseiro">Traseiro</th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-blue-900 dark:text-blue-200 font-bold bg-blue-50/50 dark:bg-blue-950/30" title="Coxão = Câmara Coxão + Tot. Coxão da Desossa">Coxão</th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-blue-900 dark:text-blue-200 font-bold bg-blue-50/50 dark:bg-blue-950/30" title="Alcatrão = Câmara Alcatrão + Tot. Alcatrão da Desossa">Alcatrão</th>
-                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-blue-900 dark:text-blue-200 font-bold bg-blue-50/50 dark:bg-blue-950/30" title="Costela G. = Câmara Costela Gaúcha">Costela G.</th>
+                <th 
+                  className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 bg-indigo-50/90 dark:bg-indigo-950/60 text-indigo-900 dark:text-indigo-200 font-bold whitespace-nowrap" 
+                  title="PEDIDO ALCATRAO: Quantidade pedida de Alcatrão pela filial para compra direta"
+                >
+                  <span className="block leading-tight text-indigo-950 dark:text-indigo-100 font-black">PEDIDO</span>
+                  <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 block tracking-tight leading-none">ALCATRAO</span>
+                </th>
+                <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-blue-900 dark:text-blue-200 font-bold bg-blue-50/50 dark:bg-blue-950/30" title="Costela G. = Câmara Costela Gaúcha">Cost. G</th>
+                <th 
+                  className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 bg-indigo-50/90 dark:bg-indigo-950/60 text-indigo-900 dark:text-indigo-200 font-bold whitespace-nowrap" 
+                  title="PEDIDO COSTELA: Quantidade pedida de Costela Gaúcha pela filial para compra direta"
+                >
+                  <span className="block leading-tight text-indigo-950 dark:text-indigo-100 font-black">PEDIDO</span>
+                  <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 block tracking-tight leading-none">COSTELA</span>
+                </th>
                 <th className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 bg-blue-100/70 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 font-bold" title="Boi = (Dianteiro + Traseiro + Coxão + Alcatrão) / 2">
                   Boi (Calc)
                 </th>
@@ -860,11 +898,14 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">26,00</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">26,00</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">29,00</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/30" title="Custo de Compra Alcatrão">{alcatraoCost.toFixed(2).replace('.', ',')}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">25,50</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/30" title="Custo de Compra Costela G.">{costelaCost.toFixed(2).replace('.', ',')}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 font-bold text-indigo-700 dark:text-indigo-300">26,00</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 font-bold text-indigo-700 dark:text-indigo-300" title="Custo Boi / Carcaça">{boiCost.toFixed(2).replace('.', ',')}</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
 
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">26,00</td>
@@ -893,7 +934,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500">-</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 font-bold text-indigo-700 dark:text-indigo-300">26,00</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 font-bold text-indigo-700 dark:text-indigo-300" title="Custo Banda Suína">{bandaCost.toFixed(2).replace('.', ',')}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">35,00</td>
                 <td className="text-center py-1">9,00</td>
               </tr>
@@ -957,9 +998,23 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                     {renderCell(
                       row,
                       idx, 
+                      'pedidoAlcatraoReal', 
+                      'font-bold text-indigo-800 dark:text-indigo-200 bg-indigo-50/80 dark:bg-indigo-950/50 font-mono', 
+                      `PEDIDO ALCATRAO da Filial: ${row.pedidoAlcatraoReal || 0} pç`
+                    )}
+                    {renderCell(
+                      row,
+                      idx, 
                       'pedidoCostelaGaucha', 
                       'font-bold text-blue-900 dark:text-blue-200 bg-blue-50/40 font-mono', 
                       `Costela G. = Câmara Costela G. (${row.camaraCostelaGaucha || 0}) = ${row.pedidoCostelaGaucha}`
+                    )}
+                    {renderCell(
+                      row,
+                      idx, 
+                      'pedidoCostelaReal', 
+                      'font-bold text-indigo-800 dark:text-indigo-200 bg-indigo-50/80 dark:bg-indigo-950/50 font-mono', 
+                      `PEDIDO COSTELA da Filial: ${row.pedidoCostelaReal || 0} pç`
                     )}
                     
                     {/* Boi = (Dianteiro + Traseiro + Coxão + Alcatrão) / 2 */}
@@ -1086,7 +1141,9 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.pedidoTraseiro}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.pedidoCoxao}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.pedidoAlcatrao}</td>
+                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 text-indigo-800 dark:text-indigo-300 font-bold bg-indigo-100/60 dark:bg-indigo-950/60 font-mono">{totals.pedidoAlcatraoReal || 0}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800">{totals.pedidoCostelaGaucha}</td>
+                <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 text-indigo-800 dark:text-indigo-300 font-bold bg-indigo-100/60 dark:bg-indigo-950/60 font-mono">{totals.pedidoCostelaReal || 0}</td>
                 <td className="text-center py-2 border-r border-slate-200 dark:border-slate-800 text-blue-700 dark:text-blue-300 font-bold bg-blue-100/50 dark:bg-blue-950/50 font-mono">
                   {Math.round(totals.boi)}
                 </td>
@@ -1139,7 +1196,9 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">2.975</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">1.881</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">1.820</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-indigo-700 dark:text-indigo-300 font-mono font-bold">{Math.round((totals.pedidoAlcatraoReal || 0) * 22)}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">1.848</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-indigo-700 dark:text-indigo-300 font-mono font-bold">{Math.round((totals.pedidoCostelaReal || 0) * 20)}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-blue-600 dark:text-blue-400 font-mono">{(totals.boi * 260).toFixed(0)}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-400 font-mono">{(totals.venda * 260).toFixed(0)}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-500 font-mono">{(totals.sugestaoPedido * 260).toFixed(0)}</td>
@@ -1183,7 +1242,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                   <span>TOTAL GERAL</span>
                   <span className="text-xs font-mono text-emerald-900 dark:text-emerald-300">R$ 376.311,95</span>
                 </td>
-                <td colSpan={35} className="px-4 py-2 text-right text-emerald-900 dark:text-emerald-300 font-sans text-xs">
+                <td colSpan={37} className="px-4 py-2 text-right text-emerald-900 dark:text-emerald-300 font-sans text-xs">
                   Validação Contábil Conforme Planilha da Direção: <strong className="font-mono text-slate-900 dark:text-white text-sm">R$ 376.311,95</strong> (Lote de Compra Consolidado das 16 Lojas)
                 </td>
               </tr>

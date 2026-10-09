@@ -30,6 +30,9 @@ interface PrintPurchaseOrderModalProps {
   deliveryDateStr: string;
   arrobaPrice: number;
   pricePerKg: number;
+  alcatraoCostKg?: number;
+  costelaCostKg?: number;
+  bandaCostKg?: number;
   carcassWeightPerBoiKg: number;
   notes: string;
   orderItems: {
@@ -39,7 +42,9 @@ interface PrintPurchaseOrderModalProps {
     traseiro: number;
     coxao: number;
     alcatrao: number;
+    pedidoAlcatraoReal?: number;
     costela: number;
+    pedidoCostelaReal?: number;
     boi: number;
     venda: number;
     sugestao: number;
@@ -66,6 +71,9 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
   deliveryDateStr,
   arrobaPrice,
   pricePerKg,
+  alcatraoCostKg = 29.00,
+  costelaCostKg = 25.50,
+  bandaCostKg = 26.00,
   carcassWeightPerBoiKg,
   notes,
   orderItems,
@@ -83,7 +91,9 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
   const totalTraseiro = orderItems.reduce((acc, i) => acc + i.traseiro, 0);
   const totalCoxao = orderItems.reduce((acc, i) => acc + i.coxao, 0);
   const totalAlcatrao = orderItems.reduce((acc, i) => acc + i.alcatrao, 0);
+  const totalPedAlcatrao = orderItems.reduce((acc, i) => acc + (i.pedidoAlcatraoReal || 0), 0);
   const totalCostela = orderItems.reduce((acc, i) => acc + i.costela, 0);
+  const totalPedCostela = orderItems.reduce((acc, i) => acc + (i.pedidoCostelaReal || 0), 0);
   const totalBoiEquivalente = orderItems.reduce((acc, i) => acc + i.boi, 0);
   const totalVenda = orderItems.reduce((acc, i) => acc + i.venda, 0);
   const totalSugestao = orderItems.reduce((acc, i) => acc + i.sugestao, 0);
@@ -109,6 +119,9 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
       deliveryDateStr,
       arrobaPrice,
       pricePerKg,
+      alcatraoCostKg,
+      costelaCostKg,
+      bandaCostKg,
       carcassWeightPerBoiKg,
       notes,
       orderItems,
@@ -132,6 +145,9 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
         deliveryDateStr,
         arrobaPrice,
         pricePerKg,
+        alcatraoCostKg,
+        costelaCostKg,
+        bandaCostKg,
         carcassWeightPerBoiKg,
         notes,
         orderItems,
@@ -342,13 +358,17 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
                     <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold block">(= R$ {pricePerKg.toFixed(2)}/kg)</span>
                   </div>
                   <div>
-                    <span className="text-slate-500 block">Peso Médio Estimado:</span>
-                    <strong className="text-slate-900 font-mono text-xs">{carcassWeightPerBoiKg} kg/boi</strong>
-                    <span className="text-[10px] text-slate-500 block">Carcaça resfriada</span>
+                    <span className="text-slate-500 block">Custos Cortes Negociados:</span>
+                    <div className="text-[10px] text-slate-700 font-mono space-y-0.5">
+                      <div>Alcatrão: <strong className="text-indigo-700">R$ {alcatraoCostKg.toFixed(2)}/kg</strong></div>
+                      <div>Costela G: <strong className="text-indigo-700">R$ {costelaCostKg.toFixed(2)}/kg</strong></div>
+                      <div>Banda Suína: <strong className="text-teal-700">R$ {bandaCostKg.toFixed(2)}/kg</strong></div>
+                    </div>
                   </div>
                   <div className="col-span-2 border-t border-slate-200 pt-1 mt-1">
                     <span className="text-slate-500">Prazo de Pagamento: </span>
                     <strong className="text-slate-800">{supplierDetails?.paymentTerms || '14 dias / Boleto Frigorífico'}</strong>
+                    <span className="text-slate-500 ml-2">• Base Carcaça: <strong>{carcassWeightPerBoiKg} kg</strong></span>
                   </div>
                 </div>
               </div>
@@ -391,16 +411,22 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
                       <th className="px-4 py-2.5 border-r border-slate-200 bg-slate-100 font-extrabold">
                         LOJA
                       </th>
-                      <th className="px-3 py-2.5 text-center border-r border-slate-200 bg-indigo-50/70 text-indigo-900 font-extrabold">
-                        BOI (QTD PEDIDA)
+                      <th className="px-2.5 py-2.5 text-center border-r border-slate-200 bg-indigo-50/70 text-indigo-900 font-extrabold">
+                        BOI (PEDIDO)
                       </th>
-                      <th className="px-3 py-2.5 text-center border-r border-slate-200 bg-teal-50/70 text-teal-900 font-extrabold">
-                        SUÍNO / BANDA (QTD)
+                      <th className="px-2.5 py-2.5 text-center border-r border-slate-200 bg-purple-50/70 text-purple-900 font-extrabold">
+                        PED. ALCATRÃO
                       </th>
-                      <th className="px-4 py-2.5 text-right border-r border-slate-200 bg-slate-50 text-slate-800 font-extrabold">
+                      <th className="px-2.5 py-2.5 text-center border-r border-slate-200 bg-purple-50/70 text-purple-900 font-extrabold">
+                        PED. COSTELA
+                      </th>
+                      <th className="px-2.5 py-2.5 text-center border-r border-slate-200 bg-teal-50/70 text-teal-900 font-extrabold">
+                        SUÍNO / BANDA
+                      </th>
+                      <th className="px-3 py-2.5 text-right border-r border-slate-200 bg-slate-50 text-slate-800 font-extrabold">
                         PESO ESTIMADO (KG)
                       </th>
-                      <th className="px-4 py-2.5 text-right bg-emerald-50/70 text-emerald-900 font-extrabold">
+                      <th className="px-3 py-2.5 text-right bg-emerald-50/70 text-emerald-900 font-extrabold">
                         VALOR ESTIMADO (R$)
                       </th>
                     </tr>
@@ -412,16 +438,22 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
                         <td className="px-4 py-2 font-sans font-bold text-slate-800 border-r border-slate-200">
                           {item.storeName}
                         </td>
-                        <td className="px-3 py-2 text-center border-r border-slate-200 font-black text-indigo-900 bg-indigo-50/40 text-sm">
+                        <td className="px-2.5 py-2 text-center border-r border-slate-200 font-black text-indigo-900 bg-indigo-50/40 text-sm">
                           {item.pedido}
                         </td>
-                        <td className="px-3 py-2 text-center border-r border-slate-200 font-black text-teal-900 bg-teal-50/40 text-sm">
+                        <td className="px-2.5 py-2 text-center border-r border-slate-200 font-black text-purple-900 bg-purple-50/40 text-sm">
+                          {item.pedidoAlcatraoReal || 0}
+                        </td>
+                        <td className="px-2.5 py-2 text-center border-r border-slate-200 font-black text-purple-900 bg-purple-50/40 text-sm">
+                          {item.pedidoCostelaReal || 0}
+                        </td>
+                        <td className="px-2.5 py-2 text-center border-r border-slate-200 font-black text-teal-900 bg-teal-50/40 text-sm">
                           {item.bandaPedido || 0}
                         </td>
-                        <td className="px-4 py-2 text-right border-r border-slate-200 font-semibold text-slate-700">
+                        <td className="px-3 py-2 text-right border-r border-slate-200 font-semibold text-slate-700">
                           {formatNumberBR(item.estimatedWeightKg, 0)} kg
                         </td>
-                        <td className="px-4 py-2 text-right font-black text-emerald-700">
+                        <td className="px-3 py-2 text-right font-black text-emerald-700">
                           {formatCurrencyBRL(item.estimatedTotalR$)}
                         </td>
                       </tr>
@@ -434,16 +466,22 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
                       <td className="px-4 py-2.5 font-sans font-extrabold border-r border-slate-300">
                         TOTAL GERAL ({orderItems.length} LOJAS)
                       </td>
-                      <td className="px-3 py-2.5 text-center border-r border-slate-300 bg-indigo-100/80 text-indigo-950 font-black text-sm">
+                      <td className="px-2.5 py-2.5 text-center border-r border-slate-300 bg-indigo-100/80 text-indigo-950 font-black text-sm">
                         {totalBoisPedidos}
                       </td>
-                      <td className="px-3 py-2.5 text-center border-r border-slate-300 bg-teal-100/80 text-teal-950 font-black text-sm">
+                      <td className="px-2.5 py-2.5 text-center border-r border-slate-300 bg-purple-100/80 text-purple-950 font-black text-sm">
+                        {totalPedAlcatrao}
+                      </td>
+                      <td className="px-2.5 py-2.5 text-center border-r border-slate-300 bg-purple-100/80 text-purple-950 font-black text-sm">
+                        {totalPedCostela}
+                      </td>
+                      <td className="px-2.5 py-2.5 text-center border-r border-slate-300 bg-teal-100/80 text-teal-950 font-black text-sm">
                         {totalBandasPedidas}
                       </td>
-                      <td className="px-4 py-2.5 text-right border-r border-slate-300 font-black text-slate-900">
+                      <td className="px-3 py-2.5 text-right border-r border-slate-300 font-black text-slate-900">
                         {formatNumberBR(totalWeightKg, 0)} kg
                       </td>
-                      <td className="px-4 py-2.5 text-right font-black text-emerald-800 text-sm">
+                      <td className="px-3 py-2.5 text-right font-black text-emerald-800 text-sm">
                         {formatCurrencyBRL(totalCostR$)}
                       </td>
                     </tr>

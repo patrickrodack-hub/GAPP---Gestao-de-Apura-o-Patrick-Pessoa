@@ -235,18 +235,18 @@ export const StorageService = {
     } catch {}
   },
 
-  getYieldParams(): { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; breakagePercent?: number; costFormationMode?: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR'; basis: 'carcass' | 'piece'; recoverGraxaria?: boolean } {
+  getYieldParams(): { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; breakagePercent?: number; costFormationMode?: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR'; basis: 'carcass' | 'piece'; recoverGraxaria?: boolean; alcatraoCostKg?: number; costelaCostKg?: number; bandaCostKg?: number } {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.YIELD_PARAMS);
       return data 
-        ? { breakagePercent: 25.0, costFormationMode: 'VAREJO_PADRAO', recoverGraxaria: true, ...JSON.parse(data) } 
-        : { carcassWeight: 240, costPerKg: 26.00, fatPriceKg: 4.85, bonePriceKg: 0.90, targetMargin: 28, breakagePercent: 25.0, costFormationMode: 'VAREJO_PADRAO', basis: 'carcass', recoverGraxaria: true };
+        ? { breakagePercent: 25.0, costFormationMode: 'VAREJO_PADRAO', recoverGraxaria: true, alcatraoCostKg: 29.00, costelaCostKg: 25.50, bandaCostKg: 26.00, ...JSON.parse(data) } 
+        : { carcassWeight: 240, costPerKg: 26.00, fatPriceKg: 4.85, bonePriceKg: 0.90, targetMargin: 28, breakagePercent: 25.0, costFormationMode: 'VAREJO_PADRAO', basis: 'carcass', recoverGraxaria: true, alcatraoCostKg: 29.00, costelaCostKg: 25.50, bandaCostKg: 26.00 };
     } catch {
-      return { carcassWeight: 240, costPerKg: 26.00, fatPriceKg: 4.85, bonePriceKg: 0.90, targetMargin: 28, breakagePercent: 25.0, costFormationMode: 'VAREJO_PADRAO', basis: 'carcass', recoverGraxaria: true };
+      return { carcassWeight: 240, costPerKg: 26.00, fatPriceKg: 4.85, bonePriceKg: 0.90, targetMargin: 28, breakagePercent: 25.0, costFormationMode: 'VAREJO_PADRAO', basis: 'carcass', recoverGraxaria: true, alcatraoCostKg: 29.00, costelaCostKg: 25.50, bandaCostKg: 26.00 };
     }
   },
 
-  saveYieldParams(params: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; breakagePercent?: number; costFormationMode?: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR'; basis: 'carcass' | 'piece'; recoverGraxaria?: boolean }) {
+  saveYieldParams(params: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; breakagePercent?: number; costFormationMode?: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR'; basis: 'carcass' | 'piece'; recoverGraxaria?: boolean; alcatraoCostKg?: number; costelaCostKg?: number; bandaCostKg?: number }) {
     localStorage.setItem(STORAGE_KEYS.YIELD_PARAMS, JSON.stringify(params));
     FirebaseService.saveYieldParams(params).catch(() => {});
   },
@@ -261,6 +261,8 @@ export const StorageService = {
       storeId: string;
       pedido?: number;
       bandaPedido?: number;
+      pedidoAlcatraoReal?: number;
+      pedidoCostelaReal?: number;
     }>,
     options?: { updateTransit?: boolean }
   ): SheetRowData[] {
@@ -270,6 +272,8 @@ export const StorageService = {
       if (!item) return row;
       const boiPedido = Number(item.pedido !== undefined ? item.pedido : row.pedidoFinal || 0);
       const bandaPedido = Number(item.bandaPedido !== undefined ? item.bandaPedido : row.bandaPedido || 0);
+      const alcatraoPedido = Number(item.pedidoAlcatraoReal !== undefined ? item.pedidoAlcatraoReal : row.pedidoAlcatraoReal || 0);
+      const costelaPedido = Number(item.pedidoCostelaReal !== undefined ? item.pedidoCostelaReal : row.pedidoCostelaReal || 0);
       const transitVal = options?.updateTransit !== false ? boiPedido : Number(row.pTransito || 0);
       
       const draft = {
@@ -277,6 +281,8 @@ export const StorageService = {
         pedidoFinal: boiPedido,
         bandaPedido: bandaPedido,
         pedidoSuino: bandaPedido,
+        pedidoAlcatraoReal: alcatraoPedido,
+        pedidoCostelaReal: costelaPedido,
         pTransito: transitVal
       };
       return recalculateRowOrderFormulas(draft);

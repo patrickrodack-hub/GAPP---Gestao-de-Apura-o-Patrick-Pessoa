@@ -55,8 +55,10 @@ export interface SheetRowData {
   pedidoDianteiro: number;
   pedidoTraseiro: number;
   pedidoCoxao: number;
-  pedidoAlcatrao: number;
-  pedidoCostelaGaucha: number;
+  pedidoAlcatrao: number;          // Alcatrão Estoque / Soma (Câmara + Desossa)
+  pedidoAlcatraoReal?: number;     // PEDIDO ALCATRAO (Quantidade pedida pela filial)
+  pedidoCostelaGaucha: number;     // Costela G. Estoque / Câmara
+  pedidoCostelaReal?: number;      // PEDIDO COSTELA (Quantidade pedida pela filial)
   venda?: number;              // Venda projetada / giro da filial (alias de boiAVenda)
   boiAVenda: number;           // Mantido para compatibilidade total
   boi?: number;                // Somatório: (dianteiro + traseiro + coxão + alcatrão) / 2
@@ -130,7 +132,9 @@ export interface PurchaseBatchItem {
   traseiro: number;
   coxao: number;
   alcatrao: number;
+  pedidoAlcatraoReal?: number;
   costela: number;
+  pedidoCostelaReal?: number;
   boi: number;
   venda: number;
   sugestao: number;
@@ -173,6 +177,9 @@ export interface YieldParams {
   costFormationMode?: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR'; // Padrão de formação de custo
   basis: 'carcass' | 'piece';
   recoverGraxaria?: boolean;
+  alcatraoCostKg?: number; // Custo de compra Alcatrão (R$/kg)
+  costelaCostKg?: number;  // Custo de compra Costela Gaúcha (R$/kg)
+  bandaCostKg?: number;    // Custo de compra Banda Suína (R$/kg)
 }
 
 export interface YieldAnalysisCuts {
