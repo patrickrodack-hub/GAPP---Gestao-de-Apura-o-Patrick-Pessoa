@@ -106,6 +106,71 @@ export interface HistoricalPricePoint {
   rjVarejoAverageKg?: number;
 }
 
+export interface B3FutureContract {
+  id: string;
+  code: string; // Ex: BGIU26, BGIV26, BGIX26, BGIZ26, BGIF27
+  monthYear: string; // Ex: 'Set/26', 'Out/26', 'Nov/26', 'Dez/26', 'Jan/27'
+  settlementPrice: number; // Preço de Ajuste (R$/@)
+  previousSettlement: number;
+  changeDayPercent: number;
+  openContracts: number;
+  volumeContracts: number;
+  source: string; // 'B3 S.A. - Brasil, Bolsa, Balcão'
+  lastUpdated: string;
+}
+
+export interface ExchangeRatioIndicator {
+  id: string;
+  name: string;
+  ratio: number;
+  unit: string;
+  historicalAvg: number;
+  trend: QuoteTrend;
+  benchmarkEvaluation: 'FAVORÁVEL AO COMPRADOR' | 'EQUILIBRADO' | 'DESFAVORÁVEL';
+  description: string;
+  source: string; // 'CEPEA/ESALQ - USP'
+}
+
+export interface RJInflowLogistics {
+  id: string;
+  originState: string;
+  originRegion: string;
+  baseArrobaPrice: number; // Cotação na praça de origem (R$/@)
+  freightCostArroba: number; // Frete rodoviário até Rio de Janeiro (R$/@)
+  transitHours: number; // Tempo de viagem até câmaras frigoríficas do RJ (h)
+  shrinkageLossPercent: number; // Quebra de transporte / perda de gotejo média (%)
+  effectiveCostArrobaRJ: number; // Custo efetivo posto no RJ (R$/@)
+  effectiveCostKgRJ: number; // Custo efetivo posto no RJ (R$/kg carcaça)
+  spreadVsCeasaRJ: number; // Vantagem ou desvantagem vs compra local Ceasa RJ
+  shareOfRJSupply: number; // % aproximada do volume consumido no RJ vindo desta origem
+  mainOriginPackers: string;
+}
+
+export interface RJWeeklyPromotion {
+  id: string;
+  theme: string; // Ex: 'Terça & Quarta da Carne RJ', 'Sexta & Sábado do Churrasco'
+  retailChains: string[]; // Ex: ['Guanabara', 'Mundial', 'Prezunic', 'Supermarket', 'Rede Economia', 'Dom Atacadista']
+  samplePromotions: {
+    cutName: string;
+    regularPriceKg: number;
+    promotionalPriceKg: number;
+    discountPercent: number;
+    targetChain: string;
+  }[];
+  impactSummary: string;
+  source: string; // 'Monitoramento ASSERJ & Encartes Supermercadistas RJ'
+}
+
+export interface ExportIndicator {
+  id: string;
+  destination: string;
+  volumeSharePercent: number;
+  avgPriceUsdTon: number;
+  equivalentArrobaUsd: number;
+  trend: QuoteTrend;
+  source: string; // 'SECEX / MDIC / ABRAFRIGO'
+}
+
 export interface MarketQuotesSnapshot {
   timestamp: number;
   lastUpdatedDate: string;
@@ -116,4 +181,9 @@ export interface MarketQuotesSnapshot {
   cutQuotes: WholesaleCutQuote[];
   rjRetailBenchmarks: RJRetailBenchmark[];
   historicalSeries: HistoricalPricePoint[];
+  b3FutureContracts?: B3FutureContract[];
+  exchangeRatios?: ExchangeRatioIndicator[];
+  rjLogistics?: RJInflowLogistics[];
+  rjWeeklyPromotions?: RJWeeklyPromotion[];
+  exportIndicators?: ExportIndicator[];
 }

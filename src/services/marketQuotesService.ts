@@ -5,13 +5,18 @@ import {
   WholesaleCutQuote, 
   RJRetailBenchmark,
   HistoricalPricePoint, 
-  MarketQuotesSnapshot 
+  MarketQuotesSnapshot,
+  B3FutureContract,
+  ExchangeRatioIndicator,
+  RJInflowLogistics,
+  RJWeeklyPromotion,
+  ExportIndicator
 } from '../types/marketQuotes';
 import { StorageService } from './storageService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const QUOTES_STORAGE_KEY = 'apuracao_boi_market_quotes_v3';
+const QUOTES_STORAGE_KEY = 'apuracao_boi_market_quotes_v5';
 
 // 1. INDICADORES GERAIS OFICIAIS (CEPEA, B3, SCOT, IMEA, NIELSENIQ RJ)
 export const INITIAL_MARKET_INDICATORS: MarketIndicator[] = [
@@ -29,9 +34,9 @@ export const INITIAL_MARKET_INDICATORS: MarketIndicator[] = [
     trend: 'up',
     min30d: 318.00,
     max30d: 335.00,
-    source: 'CEPEA/ESALQ - USP / B3',
+    source: 'CEPEA/ESALQ - USP / B3 S.A.',
     lastUpdated: 'Hoje, 16:30',
-    description: 'Indicador Oficial do Boi Gordo CEPEA/B3 no estado de São Paulo para liquidação financeira.',
+    description: 'Indicador Oficial do Boi Gordo CEPEA/B3 no estado de São Paulo para liquidação financeira do contrato BGI na B3.',
     benchmarkPrice: 330.00
   },
   {
@@ -48,15 +53,15 @@ export const INITIAL_MARKET_INDICATORS: MarketIndicator[] = [
     trend: 'up',
     min30d: 325.00,
     max30d: 342.00,
-    source: 'Scot Consultoria / Frigoríficos Habilitados',
+    source: 'Scot Consultoria / Frigoríficos Habilitados MAPA',
     lastUpdated: 'Hoje, 16:25',
-    description: 'Bovinos jovens machos até 30 meses (4 dentes) para exportação à China com bonificação padrão de R$ 7,50/@.',
+    description: 'Bovinos jovens machos até 30 meses (máximo 4 dentes) para exportação à China com bonificação padrão de R$ 7,50/@ sobre o comum.',
     benchmarkPrice: 332.50
   },
   {
     id: 'ind-rj-ceasa',
     code: 'BOI-RJ-ENTRADA',
-    name: 'Boi Gordo no Rio de Janeiro (Frigoríficos / Entrada RJ)',
+    name: 'Boi Gordo no Rio de Janeiro (Entrada Frigoríficos / Ceasa RJ)',
     category: 'varejo_rj',
     price: 328.00,
     unit: 'R$/@',
@@ -67,10 +72,29 @@ export const INITIAL_MARKET_INDICATORS: MarketIndicator[] = [
     trend: 'up',
     min30d: 315.00,
     max30d: 330.00,
-    source: 'Mercado Atacadista RJ / Ceasa Irajá / Frigoríficos Locais',
+    source: 'Ceasa Irajá RJ / DITEC / Frigoríficos Locais RJ (Barra Mansa, RioBeef, Silva)',
     lastUpdated: 'Hoje, 16:30',
-    description: 'Preço médio de entrada no estado do Rio de Janeiro (carcaça resfriada e gado em pé para abate local).',
+    description: 'Preço médio ponderado de entrada no estado do Rio de Janeiro (carcaça resfriada e gado para abate local no Grande Rio, Sul e Norte Fluminense).',
     benchmarkPrice: 326.00
+  },
+  {
+    id: 'ind-boi-b3-futuro',
+    code: 'B3-BGI-FUTURO',
+    name: 'Boi Gordo B3 Futuros (Contrato BGI - Primeiro Vencimento)',
+    category: 'bovino_gordo',
+    price: 334.80,
+    unit: 'R$/@',
+    changeDay: 0.58,
+    changeDayValue: 1.95,
+    changeWeek: 1.52,
+    changeMonth: 3.80,
+    trend: 'up',
+    min30d: 320.00,
+    max30d: 337.00,
+    source: 'B3 S.A. - Brasil, Bolsa, Balcão',
+    lastUpdated: 'Hoje, 16:35',
+    description: 'Cotação do contrato futuro financeiro do Boi Gordo na B3 (lote de 330 arrobas líquidas com liquidação pelo índice CEPEA).',
+    benchmarkPrice: 332.00
   },
   {
     id: 'ind-vaca-gorda-sp',
@@ -88,7 +112,7 @@ export const INITIAL_MARKET_INDICATORS: MarketIndicator[] = [
     max30d: 308.00,
     source: 'CEPEA/ESALQ & Scot Consultoria',
     lastUpdated: 'Hoje, 16:15',
-    description: 'Fêmeas terminadas para abate com rendimento de carcaça padrão de 50% a 52%.',
+    description: 'Fêmeas adultas terminadas para abate com rendimento de carcaça padrão de 50% a 52%.',
     benchmarkPrice: 300.00
   },
   {
@@ -107,13 +131,13 @@ export const INITIAL_MARKET_INDICATORS: MarketIndicator[] = [
     max30d: 320.00,
     source: 'Scot Consultoria',
     lastUpdated: 'Hoje, 16:10',
-    description: 'Novilhas jovens precoces para o mercado interno e nicho gourmet.',
+    description: 'Novilhas jovens precoces para o mercado interno, açougues de carnes nobres e nicho gourmet.',
     benchmarkPrice: 315.00
   },
   {
     id: 'ind-bezerro-nelore',
     code: 'BEZERRO-NELORE',
-    name: 'Bezerro Nelore (Mato Grosso do Sul / SP)',
+    name: 'Bezerro Nelore Desmamado (Mato Grosso do Sul / SP)',
     category: 'reposicao',
     price: 2480.00,
     unit: 'R$/cab.',
@@ -124,15 +148,34 @@ export const INITIAL_MARKET_INDICATORS: MarketIndicator[] = [
     trend: 'up',
     min30d: 2390.00,
     max30d: 2500.00,
-    source: 'CEPEA - Reposição',
+    source: 'CEPEA/ESALQ - Reposição Pecuária',
     lastUpdated: 'Hoje, 15:45',
     description: 'Bezerro desmamado 8 a 12 meses (média 190kg). Relação de Troca atual: 2,13 @ de Boi Gordo por Bezerro.',
     benchmarkPrice: 2450.00
   },
   {
+    id: 'ind-milho-campinas',
+    code: 'MILHO-CEPEA-B3',
+    name: 'Milho Grão 60kg (Campinas/SP - Indicador ESALQ/BM&F)',
+    category: 'reposicao',
+    price: 68.50,
+    unit: 'R$/saca 60kg',
+    changeDay: -0.40,
+    changeDayValue: -0.28,
+    changeWeek: -0.90,
+    changeMonth: 1.10,
+    trend: 'down',
+    min30d: 66.00,
+    max30d: 71.00,
+    source: 'CEPEA/ESALQ - USP',
+    lastUpdated: 'Hoje, 16:00',
+    description: 'Insumo essencial de nutrição em confinamento de gado e suinocultura. Relação de troca de 4,85 sacas por @.',
+    benchmarkPrice: 69.00
+  },
+  {
     id: 'ind-boi-gado-vivo',
     code: 'GADO-VIVO-KG',
-    name: 'Média do Gado em Pé (Kg Vivo - Estimado)',
+    name: 'Média do Gado em Pé (Kg Vivo - Estimado Zootécnico)',
     category: 'bovino_gordo',
     price: 11.08,
     unit: 'R$/kg vivo',
@@ -164,8 +207,27 @@ export const INITIAL_MARKET_INDICATORS: MarketIndicator[] = [
     max30d: 5.75,
     source: 'Banco Central do Brasil',
     lastUpdated: 'Hoje, 16:00',
-    description: 'Taxa de câmbio de referência que baliza a paridade de exportação dos frigoríficos.',
+    description: 'Taxa de câmbio de referência que baliza a paridade de exportação dos frigoríficos brasileiros.',
     benchmarkPrice: 5.60
+  },
+  {
+    id: 'ind-carne-export-ton',
+    code: 'CARNE-EXPORT-MDIC',
+    name: 'Carne Bovina In Natura Exportada (Preço Médio FOB)',
+    category: 'cambio',
+    price: 4780.00,
+    unit: 'US$/tonelada',
+    changeDay: 0.65,
+    changeDayValue: 31.00,
+    changeWeek: 1.80,
+    changeMonth: 3.20,
+    trend: 'up',
+    min30d: 4620.00,
+    max30d: 4850.00,
+    source: 'SECEX / MDIC / ABRAFRIGO',
+    lastUpdated: 'Hoje, 15:30',
+    description: 'Preço médio da tonelada exportada in natura. Equivale a R$ 26,86/kg em dólar PTAX.',
+    benchmarkPrice: 4750.00
   },
   {
     id: 'ind-suino-carcaca',
@@ -207,13 +269,14 @@ export const INITIAL_MARKET_INDICATORS: MarketIndicator[] = [
   }
 ];
 
-// 2. PRAÇAS PECUÁRIAS E POLOS FRIGORÍFICOS (RJ, SP, MG, GO, MT, MS, PR, RS, PA, RO, TO)
+// 2. PRAÇAS PECUÁRIAS E POLOS FRIGORÍFICOS (FOCO RIO DE JANEIRO & NÍVEL BRASIL)
 export const INITIAL_REGIONAL_QUOTES: RegionalQuote[] = [
+  // --- FOCO RIO DE JANEIRO (3 PRINCIPAIS POLOS FLUMINENSES) ---
   {
-    id: 'praca-rj-interior',
+    id: 'praca-rj-grande-rio',
     state: 'Rio de Janeiro',
     stateCode: 'RJ',
-    region: 'Grande Rio / Baixada / Norte Fluminense',
+    region: 'Grande Rio / Baixada / Ceasa Irajá',
     cashPriceArroba: 328.00,
     termPriceArroba: 331.00,
     liveWeightPriceKg: 10.93,
@@ -222,11 +285,49 @@ export const INITIAL_REGIONAL_QUOTES: RegionalQuote[] = [
     heiferCashPriceArroba: 312.00,
     spreadVsSP: -4.50,
     trend: 'up',
-    slaughterScaleDays: 6.5,
-    source: 'Ceasa RJ / Frigoríficos RJ (RioBeef, Barra Mansa, Plena)',
-    mainPackers: 'Barra Mansa, RioBeef, Frigorífico Silva RJ, Plena',
+    slaughterScaleDays: 6.0,
+    source: 'Ceasa Irajá RJ / DITEC / Frigoríficos Locais e Centrais de Distribuição',
+    mainPackers: 'RioBeef, Frigorífico Silva RJ, Plena, Barra Mansa Alimentos',
     lastUpdated: 'Hoje, 16:30'
   },
+  {
+    id: 'praca-rj-sul-fluminense',
+    state: 'Rio de Janeiro',
+    stateCode: 'RJ',
+    region: 'Sul Fluminense / Barra Mansa / Resende / Vale',
+    cashPriceArroba: 326.50,
+    termPriceArroba: 329.50,
+    liveWeightPriceKg: 10.88,
+    carcassYieldEstimate: 54.0,
+    cowCashPriceArroba: 298.00,
+    heiferCashPriceArroba: 310.00,
+    spreadVsSP: -6.00,
+    trend: 'up',
+    slaughterScaleDays: 6.5,
+    source: 'Frigorífico Barra Mansa Alimentos / Pecuaristas do Vale do Paraíba RJ',
+    mainPackers: 'Barra Mansa Alimentos, Frigorífico Valença, Abatedouros Regionais',
+    lastUpdated: 'Hoje, 16:25'
+  },
+  {
+    id: 'praca-rj-norte-fluminense',
+    state: 'Rio de Janeiro',
+    stateCode: 'RJ',
+    region: 'Norte & Noroeste Fluminense / Campos / Itaperuna',
+    cashPriceArroba: 325.00,
+    termPriceArroba: 328.00,
+    liveWeightPriceKg: 10.83,
+    carcassYieldEstimate: 54.0,
+    cowCashPriceArroba: 297.00,
+    heiferCashPriceArroba: 309.00,
+    spreadVsSP: -7.50,
+    trend: 'up',
+    slaughterScaleDays: 5.5,
+    source: 'Sindicato Rural de Campos / Frigoríficos Locais / EMATER-RIO',
+    mainPackers: 'Frigorífico Santo Antônio, Abatedouros Campos dos Goytacazes',
+    lastUpdated: 'Hoje, 16:20'
+  },
+
+  // --- NÍVEL BRASIL: SÃO PAULO & SUDESTE ---
   {
     id: 'praca-sp-barretos',
     state: 'São Paulo',
@@ -241,7 +342,7 @@ export const INITIAL_REGIONAL_QUOTES: RegionalQuote[] = [
     spreadVsSP: 0.00,
     trend: 'up',
     slaughterScaleDays: 8.5,
-    source: 'CEPEA / Scot Consultoria',
+    source: 'CEPEA / Scot Consultoria (Referência Nacional Oficial)',
     mainPackers: 'JBS/Friboi, Minerva Foods, Marfrig, Frigol',
     lastUpdated: 'Hoje, 16:30'
   },
@@ -259,10 +360,30 @@ export const INITIAL_REGIONAL_QUOTES: RegionalQuote[] = [
     spreadVsSP: -10.50,
     trend: 'up',
     slaughterScaleDays: 8.5,
-    source: 'Scot Consultoria / FAEMG',
+    source: 'Scot Consultoria / FAEMG (Forte abastecimento para o RJ)',
     mainPackers: 'JBS, Plena Alimentos, Masterboi, Frigol',
     lastUpdated: 'Hoje, 16:20'
   },
+  {
+    id: 'praca-mg-norte',
+    state: 'Minas Gerais',
+    stateCode: 'MG',
+    region: 'Norte de Minas / Montes Claros / Janaúba',
+    cashPriceArroba: 318.00,
+    termPriceArroba: 321.00,
+    liveWeightPriceKg: 10.60,
+    carcassYieldEstimate: 53.5,
+    cowCashPriceArroba: 292.00,
+    heiferCashPriceArroba: 304.00,
+    spreadVsSP: -14.50,
+    trend: 'up',
+    slaughterScaleDays: 7.5,
+    source: 'FAEMG / Scot Consultoria',
+    mainPackers: 'Frigorífico Plena, JBS, Minerva',
+    lastUpdated: 'Hoje, 16:10'
+  },
+
+  // --- NÍVEL BRASIL: CENTRO-OESTE (GRANDE FORNECEDOR DO RJ) ---
   {
     id: 'praca-go-goiania',
     state: 'Goiás',
@@ -278,8 +399,26 @@ export const INITIAL_REGIONAL_QUOTES: RegionalQuote[] = [
     trend: 'up',
     slaughterScaleDays: 8.0,
     source: 'Scot Consultoria / FAEG',
-    mainPackers: 'JBS/Friboi Mozarlândia, Minerva Palmeiras, Marfrig',
+    mainPackers: 'JBS Mozarlândia, Minerva Palmeiras, Marfrig Rio Verde',
     lastUpdated: 'Hoje, 16:15'
+  },
+  {
+    id: 'praca-go-norte',
+    state: 'Goiás',
+    stateCode: 'GO',
+    region: 'Norte Goiano / Mozarlândia / Porangatu',
+    cashPriceArroba: 317.00,
+    termPriceArroba: 320.00,
+    liveWeightPriceKg: 10.57,
+    carcassYieldEstimate: 53.8,
+    cowCashPriceArroba: 290.00,
+    heiferCashPriceArroba: 302.00,
+    spreadVsSP: -15.50,
+    trend: 'up',
+    slaughterScaleDays: 9.0,
+    source: 'FAEG / Scot Consultoria',
+    mainPackers: 'JBS Mozarlândia, Marfrig, Minerva',
+    lastUpdated: 'Hoje, 16:10'
   },
   {
     id: 'praca-ms-campo-grande',
@@ -300,10 +439,28 @@ export const INITIAL_REGIONAL_QUOTES: RegionalQuote[] = [
     lastUpdated: 'Hoje, 16:05'
   },
   {
+    id: 'praca-mt-cuiaba',
+    state: 'Mato Grosso',
+    stateCode: 'MT',
+    region: 'Cuiabá / Várzea Grande / Sudeste MT',
+    cashPriceArroba: 312.00,
+    termPriceArroba: 315.00,
+    liveWeightPriceKg: 10.40,
+    carcassYieldEstimate: 53.8,
+    cowCashPriceArroba: 288.00,
+    heiferCashPriceArroba: 298.00,
+    spreadVsSP: -20.50,
+    trend: 'up',
+    slaughterScaleDays: 9.0,
+    source: 'IMEA / Scot Consultoria',
+    mainPackers: 'JBS Várzea Grande, Marfrig Várzea Grande, Pantanal',
+    lastUpdated: 'Hoje, 16:10'
+  },
+  {
     id: 'praca-mt-norte',
     state: 'Mato Grosso',
     stateCode: 'MT',
-    region: 'Norte (Sinop / Alta Floresta / Juína)',
+    region: 'Norte MT (Sinop / Alta Floresta / Juína)',
     cashPriceArroba: 308.00,
     termPriceArroba: 310.50,
     liveWeightPriceKg: 10.27,
@@ -317,24 +474,8 @@ export const INITIAL_REGIONAL_QUOTES: RegionalQuote[] = [
     mainPackers: 'JBS Diamantino/Colíder, Marfrig Paranatinga',
     lastUpdated: 'Hoje, 16:00'
   },
-  {
-    id: 'praca-mt-cuiaba',
-    state: 'Mato Grosso',
-    stateCode: 'MT',
-    region: 'Cuiabá / Rondonópolis / Sudeste',
-    cashPriceArroba: 312.00,
-    termPriceArroba: 315.00,
-    liveWeightPriceKg: 10.40,
-    carcassYieldEstimate: 53.8,
-    cowCashPriceArroba: 288.00,
-    heiferCashPriceArroba: 298.00,
-    spreadVsSP: -20.50,
-    trend: 'up',
-    slaughterScaleDays: 9.0,
-    source: 'IMEA / Frigoríficos Locais',
-    mainPackers: 'JBS Várzea Grande, Marfrig Várzea Grande',
-    lastUpdated: 'Hoje, 16:10'
-  },
+
+  // --- NÍVEL BRASIL: SUL, NORTE E NORDESTE ---
   {
     id: 'praca-pr-maringa',
     state: 'Paraná',
@@ -352,6 +493,24 @@ export const INITIAL_REGIONAL_QUOTES: RegionalQuote[] = [
     source: 'DERAL/SEAB / FAEP',
     mainPackers: 'Frigorífico Astra, Big Boi, JBS',
     lastUpdated: 'Hoje, 16:20'
+  },
+  {
+    id: 'praca-ba-sul',
+    state: 'Bahia',
+    stateCode: 'BA',
+    region: 'Sul & Extremo Sul (Itapetinga / Eunápolis)',
+    cashPriceArroba: 312.00,
+    termPriceArroba: 315.00,
+    liveWeightPriceKg: 10.40,
+    carcassYieldEstimate: 53.0,
+    cowCashPriceArroba: 286.00,
+    heiferCashPriceArroba: 298.00,
+    spreadVsSP: -20.50,
+    trend: 'stable',
+    slaughterScaleDays: 7.0,
+    source: 'FAEB / Scot Consultoria',
+    mainPackers: 'JBS Itapetinga, Frigorífico Sudoeste, Masterboi',
+    lastUpdated: 'Hoje, 15:55'
   },
   {
     id: 'praca-pa-redencao',
@@ -375,7 +534,7 @@ export const INITIAL_REGIONAL_QUOTES: RegionalQuote[] = [
     id: 'praca-to-araguaina',
     state: 'Tocantins',
     stateCode: 'TO',
-    region: 'Araguaína / Gurupi / Norte',
+    region: 'Araguaína / Gurupi / Norte TO',
     cashPriceArroba: 306.00,
     termPriceArroba: 309.00,
     liveWeightPriceKg: 10.20,
@@ -403,7 +562,7 @@ export const INITIAL_REGIONAL_QUOTES: RegionalQuote[] = [
     spreadVsSP: -32.50,
     trend: 'stable',
     slaughterScaleDays: 11.5,
-    source: 'FAPERON / Scot',
+    source: 'FAPERON / Scot Consultoria',
     mainPackers: 'JBS Vilhena/Pimenta Bueno, Marfrig Chupinguaia',
     lastUpdated: 'Hoje, 15:40'
   },
@@ -914,6 +1073,69 @@ export const INITIAL_CUT_QUOTES: WholesaleCutQuote[] = [
     packers: 'JBS Friboi, Marfrig, Barra Mansa RJ',
     description: 'Costela fatiada ou em tiras em caixas congeladas de 20kg a 25kg.'
   },
+  {
+    id: 'cut-costela-pontadeagulha',
+    name: 'Costela Bovina Ponta de Agulha Fresca Resfriada',
+    category: 'dianteiro',
+    productCode: 'COR-COST-PONTA',
+    minPriceKg: 21.00,
+    maxPriceKg: 23.50,
+    avgPriceKg: 22.40,
+    changeWeek: 0.90,
+    trend: 'up',
+    suggestedRetailPriceKg: 31.90,
+    rjRetailPriceKg: 30.90,
+    rjRetailMarginPercent: 27.5,
+    scantecGiroRating: 'ALTO',
+    nielsenSharePercent: 5.4,
+    idealMarginPercent: 28.0,
+    standardYieldPercent: 6.20,
+    source: 'Frigoríficos MG/GO para Atacado RJ',
+    packers: 'Barra Mansa RJ, RioBeef, JBS, Plena',
+    description: 'Costela inteira com osso e capa macia, muito procurada no RJ para assados lentos de fim de semana.'
+  },
+  {
+    id: 'cut-carne-moida-segunda',
+    name: 'Carne Moída de Segunda Resfriada (Acém / Paleta)',
+    category: 'dianteiro',
+    productCode: 'COR-MOIDA-SEG',
+    minPriceKg: 24.00,
+    maxPriceKg: 26.50,
+    avgPriceKg: 25.20,
+    changeWeek: 0.70,
+    trend: 'up',
+    suggestedRetailPriceKg: 33.90,
+    rjRetailPriceKg: 32.50,
+    rjRetailMarginPercent: 22.5,
+    scantecGiroRating: 'ALTO',
+    nielsenSharePercent: 14.2,
+    idealMarginPercent: 24.5,
+    standardYieldPercent: 12.00,
+    source: 'Balcão Varejo RJ • NielsenIQ Retail Audit RJ',
+    packers: 'Produção Própria em Loja / Frigoríficos Locais',
+    description: 'Item de altíssimo volume diário nos supermercados do Grande Rio e Baixada; carro-chefe das quartas de carne.'
+  },
+  {
+    id: 'cut-bananinha',
+    name: 'Bananinha do Contra Filé Resfriada (Isca de Churrasco)',
+    category: 'nobres',
+    productCode: 'COR-BANANINHA',
+    minPriceKg: 32.00,
+    maxPriceKg: 36.00,
+    avgPriceKg: 34.00,
+    changeWeek: 1.20,
+    trend: 'up',
+    suggestedRetailPriceKg: 46.90,
+    rjRetailPriceKg: 45.90,
+    rjRetailMarginPercent: 25.9,
+    scantecGiroRating: 'ALTO',
+    nielsenSharePercent: 2.1,
+    idealMarginPercent: 26.5,
+    standardYieldPercent: 1.20,
+    source: 'Desossa Frigorífica RJ/SP • Scantec RJ',
+    packers: 'JBS Swift, Marfrig, Barra Mansa RJ',
+    description: 'Carne entremeada entre as vértebras do contra filé com muita gordura e suculência para petiscos de churrasco no RJ.'
+  },
 
   // --- SUÍNO ---
   {
@@ -1231,6 +1453,57 @@ export const INITIAL_RJ_RETAIL_BENCHMARKS: RJRetailBenchmark[] = [
     source: 'Atacarejo Rio de Janeiro'
   },
   {
+    id: 'bench-atacadao-rj',
+    chainName: 'Atacadão (Carrefour RJ)',
+    category: 'atacarejo',
+    sampleCutPrices: {
+      picanha: 86.50,
+      contraFile: 48.50,
+      alcatra: 45.50,
+      coxaoMole: 40.50,
+      patinho: 39.20,
+      acem: 28.50,
+      costela: 26.50,
+      pernilSuino: 15.20
+    },
+    lastSurveyDate: 'Hoje',
+    source: 'Amostragem Atacarejo Grande Rio / Duque de Caxias'
+  },
+  {
+    id: 'bench-princesa-rj',
+    chainName: 'Supermercados Princesa',
+    category: 'supermercado_popular',
+    sampleCutPrices: {
+      picanha: 95.90,
+      contraFile: 55.90,
+      alcatra: 51.90,
+      coxaoMole: 45.90,
+      patinho: 44.90,
+      acem: 33.90,
+      costela: 32.90,
+      pernilSuino: 18.50
+    },
+    lastSurveyDate: 'Hoje',
+    source: 'Monitoramento Balcão Centro & Zona Sul RJ'
+  },
+  {
+    id: 'bench-multi-market',
+    chainName: 'Rede Multi Market RJ',
+    category: 'supermercado_popular',
+    sampleCutPrices: {
+      picanha: 91.50,
+      contraFile: 53.00,
+      alcatra: 49.00,
+      coxaoMole: 43.00,
+      patinho: 42.00,
+      acem: 32.00,
+      costela: 30.00,
+      pernilSuino: 17.00
+    },
+    lastSurveyDate: 'Hoje',
+    source: 'ASSERJ / Encartes Promocionais Multi Market RJ'
+  },
+  {
     id: 'bench-zona-sul',
     chainName: 'Supermercados Zona Sul',
     category: 'supermercado_premium',
@@ -1246,6 +1519,304 @@ export const INITIAL_RJ_RETAIL_BENCHMARKS: RJRetailBenchmark[] = [
     },
     lastSurveyDate: 'Hoje',
     source: 'NielsenIQ Premium Index RJ'
+  },
+  {
+    id: 'bench-natural-da-terra',
+    chainName: 'Hortifruti Natural da Terra / SuperPrix',
+    category: 'supermercado_premium',
+    sampleCutPrices: {
+      picanha: 134.90,
+      contraFile: 82.90,
+      alcatra: 72.90,
+      coxaoMole: 62.90,
+      patinho: 61.90,
+      acem: 46.90,
+      costela: 44.90,
+      pernilSuino: 28.90
+    },
+    lastSurveyDate: 'Hoje',
+    source: 'Auditoria Linha Carnes Nobres & Embalados RJ'
+  }
+];
+
+// 6. CONTRATOS FUTUROS DO BOI GORDO NA B3 (BRASIL, BOLSA, BALCÃO)
+export const INITIAL_B3_FUTURE_CONTRACTS: B3FutureContract[] = [
+  {
+    id: 'b3-bgiu26',
+    code: 'BGIU26',
+    monthYear: 'Set/26',
+    settlementPrice: 333.20,
+    previousSettlement: 331.70,
+    changeDayPercent: 0.45,
+    openContracts: 4250,
+    volumeContracts: 890,
+    source: 'B3 S.A. - Brasil, Bolsa, Balcão',
+    lastUpdated: 'Hoje, 16:35'
+  },
+  {
+    id: 'b3-bgiv26',
+    code: 'BGIV26',
+    monthYear: 'Out/26',
+    settlementPrice: 336.50,
+    previousSettlement: 334.50,
+    changeDayPercent: 0.60,
+    openContracts: 12800,
+    volumeContracts: 2450,
+    source: 'B3 S.A. - Brasil, Bolsa, Balcão',
+    lastUpdated: 'Hoje, 16:35'
+  },
+  {
+    id: 'b3-bgix26',
+    code: 'BGIX26',
+    monthYear: 'Nov/26',
+    settlementPrice: 339.80,
+    previousSettlement: 337.30,
+    changeDayPercent: 0.74,
+    openContracts: 9400,
+    volumeContracts: 1670,
+    source: 'B3 S.A. - Brasil, Bolsa, Balcão',
+    lastUpdated: 'Hoje, 16:35'
+  },
+  {
+    id: 'b3-bgiz26',
+    code: 'BGIZ26',
+    monthYear: 'Dez/26',
+    settlementPrice: 342.00,
+    previousSettlement: 340.30,
+    changeDayPercent: 0.50,
+    openContracts: 6100,
+    volumeContracts: 1120,
+    source: 'B3 S.A. - Brasil, Bolsa, Balcão',
+    lastUpdated: 'Hoje, 16:35'
+  },
+  {
+    id: 'b3-bgif27',
+    code: 'BGIF27',
+    monthYear: 'Jan/27',
+    settlementPrice: 338.00,
+    previousSettlement: 337.30,
+    changeDayPercent: 0.21,
+    openContracts: 2300,
+    volumeContracts: 450,
+    source: 'B3 S.A. - Brasil, Bolsa, Balcão',
+    lastUpdated: 'Hoje, 16:35'
+  }
+];
+
+// 7. RELAÇÕES DE TROCA OFICIAIS (CEPEA / ESALQ - USP)
+export const INITIAL_EXCHANGE_RATIOS: ExchangeRatioIndicator[] = [
+  {
+    id: 'ratio-bezerro',
+    name: 'Boi Gordo / Bezerro Nelore Desmamado (Reposição)',
+    ratio: 2.13,
+    unit: 'arrobas / bezerro',
+    historicalAvg: 2.25,
+    trend: 'down',
+    benchmarkEvaluation: 'FAVORÁVEL AO COMPRADOR',
+    description: 'São necessárias 2,13 @ de boi gordo para comprar um bezerro Nelore de 190kg (média histórica de 2,25 @). Momento favorável para recria e invernagem.',
+    source: 'CEPEA/ESALQ - USP'
+  },
+  {
+    id: 'ratio-milho',
+    name: 'Boi Gordo / Milho Grão 60kg (Campinas/SP)',
+    ratio: 4.85,
+    unit: 'sacas de 60kg / @',
+    historicalAvg: 4.50,
+    trend: 'up',
+    benchmarkEvaluation: 'FAVORÁVEL AO COMPRADOR',
+    description: 'Uma arroba de boi gordo compra 4,85 sacas de milho (60kg). Poder de compra acima da média histórica de 4,50 sc/@, barateando a diária de confinamento.',
+    source: 'CEPEA/ESALQ & BM&F'
+  },
+  {
+    id: 'ratio-suino',
+    name: 'Boi Gordo / Suíno Vivo ao Produtor (Paridade Kg)',
+    ratio: 2.41,
+    unit: 'x paridade kg vivo',
+    historicalAvg: 2.35,
+    trend: 'stable',
+    benchmarkEvaluation: 'EQUILIBRADO',
+    description: 'Relação entre o kg vivo bovino (R$ 11,08) e o suíno vivo (R$ 7,85). Mantém competitividade proteica estável no balcão de supermercados do RJ.',
+    source: 'CEPEA/ESALQ & ASEMG'
+  },
+  {
+    id: 'ratio-frango',
+    name: 'Traseiro Bovino / Frango Resfriado Atacado',
+    ratio: 3.65,
+    unit: 'x paridade kg atacado',
+    historicalAvg: 3.80,
+    trend: 'stable',
+    benchmarkEvaluation: 'EQUILIBRADO',
+    description: 'Paridade de preços de corte nobre com proteína avícola concorrente. Determina o teto de repasse no varejo popular fluminense.',
+    source: 'Scot Consultoria & CEPEA'
+  }
+];
+
+// 8. LOGÍSTICA DE ENTRADA & ABASTECIMENTO DO RIO DE JANEIRO (FRETE, GOTEJO & CUSTO REAL)
+export const INITIAL_RJ_LOGISTICS: RJInflowLogistics[] = [
+  {
+    id: 'log-rj-local',
+    originState: 'Rio de Janeiro',
+    originRegion: 'Norte & Sul Fluminense (Barra Mansa / Campos / Pádua)',
+    baseArrobaPrice: 326.00,
+    freightCostArroba: 4.50,
+    transitHours: 4,
+    shrinkageLossPercent: 1.0,
+    effectiveCostArrobaRJ: 332.50,
+    effectiveCostKgRJ: 22.17,
+    spreadVsCeasaRJ: 4.50,
+    shareOfRJSupply: 12.0,
+    mainOriginPackers: 'Barra Mansa Alimentos, RioBeef, Silva RJ, Abatedouros Locais'
+  },
+  {
+    id: 'log-mg-triangulo',
+    originState: 'Minas Gerais',
+    originRegion: 'Triângulo Mineiro & Zona da Mata (Uberaba / Uberlândia / Juiz de Fora)',
+    baseArrobaPrice: 322.00,
+    freightCostArroba: 9.50,
+    transitHours: 12,
+    shrinkageLossPercent: 1.8,
+    effectiveCostArrobaRJ: 337.40,
+    effectiveCostKgRJ: 22.49,
+    spreadVsCeasaRJ: 9.40,
+    shareOfRJSupply: 28.0,
+    mainOriginPackers: 'JBS, Plena Alimentos, Masterboi, Frigol'
+  },
+  {
+    id: 'log-go-goias',
+    originState: 'Goiás',
+    originRegion: 'Sul Goiano & Goiânia (Goiânia / Rio Verde / Mozarlândia)',
+    baseArrobaPrice: 320.00,
+    freightCostArroba: 12.00,
+    transitHours: 20,
+    shrinkageLossPercent: 2.1,
+    effectiveCostArrobaRJ: 338.70,
+    effectiveCostKgRJ: 22.58,
+    spreadVsCeasaRJ: 10.70,
+    shareOfRJSupply: 22.0,
+    mainOriginPackers: 'JBS Mozarlândia, Minerva Palmeiras, Marfrig Rio Verde'
+  },
+  {
+    id: 'log-sp-barretos',
+    originState: 'São Paulo',
+    originRegion: 'Interior Paulista (Barretos / Araçatuba / Pres. Prudente)',
+    baseArrobaPrice: 332.50,
+    freightCostArroba: 8.50,
+    transitHours: 12,
+    shrinkageLossPercent: 1.6,
+    effectiveCostArrobaRJ: 346.30,
+    effectiveCostKgRJ: 23.09,
+    spreadVsCeasaRJ: 18.30,
+    shareOfRJSupply: 18.0,
+    mainOriginPackers: 'JBS Friboi, Marfrig, Minerva, Frigol'
+  },
+  {
+    id: 'log-ms-campo-grande',
+    originState: 'Mato Grosso do Sul',
+    originRegion: 'Sul-Mato-Grossense (Campo Grande / Três Lagoas / Dourados)',
+    baseArrobaPrice: 318.00,
+    freightCostArroba: 14.50,
+    transitHours: 24,
+    shrinkageLossPercent: 2.4,
+    effectiveCostArrobaRJ: 340.10,
+    effectiveCostKgRJ: 22.67,
+    spreadVsCeasaRJ: 12.10,
+    shareOfRJSupply: 14.0,
+    mainOriginPackers: 'JBS Campo Grande/Naviraí, Marfrig Bataguassu'
+  },
+  {
+    id: 'log-pr-noroeste',
+    originState: 'Paraná',
+    originRegion: 'Noroeste Paranaense (Maringá / Paranavaí / Umuarama)',
+    baseArrobaPrice: 326.00,
+    freightCostArroba: 10.00,
+    transitHours: 16,
+    shrinkageLossPercent: 1.8,
+    effectiveCostArrobaRJ: 341.80,
+    effectiveCostKgRJ: 22.79,
+    spreadVsCeasaRJ: 13.80,
+    shareOfRJSupply: 6.0,
+    mainOriginPackers: 'Frigorífico Astra, Big Boi, JBS'
+  }
+];
+
+// 9. PROMOÇÕES & CALENDÁRIO COMERCIAL DO VAREJO CARIOCA
+export const INITIAL_RJ_WEEKLY_PROMOTIONS: RJWeeklyPromotion[] = [
+  {
+    id: 'promo-terca-quarta',
+    theme: 'Terça & Quarta da Carne RJ (Guanabara, Mundial, Supermarket, Prezunic)',
+    retailChains: ['Guanabara', 'Mundial', 'Supermarket', 'Prezunic', 'Rede Economia', 'Dom Atacadista'],
+    samplePromotions: [
+      { cutName: 'Acém Bovino Resfriado', regularPriceKg: 33.90, promotionalPriceKg: 26.90, discountPercent: 20.6, targetChain: 'Guanabara & Mundial' },
+      { cutName: 'Carne Moída de Segunda (Acém/Paleta)', regularPriceKg: 32.50, promotionalPriceKg: 25.90, discountPercent: 20.3, targetChain: 'Rede Supermarket' },
+      { cutName: 'Chã de Dentro / Coxão Mole', regularPriceKg: 44.90, promotionalPriceKg: 38.90, discountPercent: 13.4, targetChain: 'Prezunic' },
+      { cutName: 'Contra Filé Resfriado', regularPriceKg: 54.90, promotionalPriceKg: 47.90, discountPercent: 12.7, targetChain: 'Guanabara' },
+      { cutName: 'Pernil Suíno com Osso', regularPriceKg: 17.90, promotionalPriceKg: 14.90, discountPercent: 16.8, targetChain: 'Dom Atacadista' }
+    ],
+    impactSummary: 'As terças e quartas da carne concentram 42% do volume semanal de venda de carne bovina no Rio de Janeiro, gerando grande queima de dianteiro e moídos.',
+    source: 'Monitoramento ASSERJ & Encartes Supermercadistas RJ'
+  },
+  {
+    id: 'promo-fds-churrasco',
+    theme: 'Sexta a Domingo do Churrasco Fluminense',
+    retailChains: ['Guanabara', 'Mundial', 'Assaí RJ', 'Dom Atacadista', 'Zona Sul', 'Supermarket'],
+    samplePromotions: [
+      { cutName: 'Picanha Bovina Resfriada Peça', regularPriceKg: 94.90, promotionalPriceKg: 84.90, discountPercent: 10.5, targetChain: 'Mundial & Guanabara' },
+      { cutName: 'Contra Filé / Bife Ancho Grill', regularPriceKg: 56.90, promotionalPriceKg: 49.90, discountPercent: 12.3, targetChain: 'Assaí Atacadista RJ' },
+      { cutName: 'Costela Gaúcha Minga / Ripa', regularPriceKg: 31.90, promotionalPriceKg: 26.90, discountPercent: 15.7, targetChain: 'Rede Economia' },
+      { cutName: 'Fraldinha Resfriada', regularPriceKg: 47.90, promotionalPriceKg: 41.90, discountPercent: 12.5, targetChain: 'Dom Atacadista' },
+      { cutName: 'Costelinha Suína Fresca', regularPriceKg: 28.90, promotionalPriceKg: 23.90, discountPercent: 17.3, targetChain: 'Supermarket' }
+    ],
+    impactSummary: 'Fim de semana impulsiona cortes de grelha (Picanha, Contra Filé, Costela, Fraldinha), respondendo por 65% do faturamento da desossa no RJ.',
+    source: 'Scantec Sell-Out RJ / Associação de Supermercados do RJ (ASSERJ)'
+  }
+];
+
+// 10. EXPORTAÇÃO BRASILEIRA DE CARNE BOVINA (MDIC / SECEX / ABRAFRIGO)
+export const INITIAL_EXPORT_INDICATORS: ExportIndicator[] = [
+  {
+    id: 'exp-china',
+    destination: 'China & Hong Kong',
+    volumeSharePercent: 52.5,
+    avgPriceUsdTon: 4890.00,
+    equivalentArrobaUsd: 73.35,
+    trend: 'up',
+    source: 'SECEX / MDIC / ABRAFRIGO'
+  },
+  {
+    id: 'exp-eua',
+    destination: 'Estados Unidos (In Natura & Térmica)',
+    volumeSharePercent: 11.2,
+    avgPriceUsdTon: 5420.00,
+    equivalentArrobaUsd: 81.30,
+    trend: 'up',
+    source: 'SECEX / MAPA'
+  },
+  {
+    id: 'exp-ue',
+    destination: 'União Europeia (Cota Hilton / Bife Ancho)',
+    volumeSharePercent: 8.5,
+    avgPriceUsdTon: 9150.00,
+    equivalentArrobaUsd: 137.25,
+    trend: 'up',
+    source: 'SECEX / ABIEC'
+  },
+  {
+    id: 'exp-oriente',
+    destination: 'Emirados Árabes & Oriente Médio (Halal)',
+    volumeSharePercent: 9.8,
+    avgPriceUsdTon: 4650.00,
+    equivalentArrobaUsd: 69.75,
+    trend: 'stable',
+    source: 'SECEX / Cdial Halal'
+  },
+  {
+    id: 'exp-chile',
+    destination: 'Chile & Mercosul',
+    volumeSharePercent: 5.4,
+    avgPriceUsdTon: 5100.00,
+    equivalentArrobaUsd: 76.50,
+    trend: 'stable',
+    source: 'SECEX / MDIC'
   }
 ];
 
@@ -1261,7 +1832,7 @@ export const INITIAL_HISTORICAL_SERIES: HistoricalPricePoint[] = [
 
 export class MarketQuotesService {
   /**
-   * Obtém snapshot completo das cotações em tempo real
+   * Obtém snapshot completo das cotações em tempo real com foco no Rio de Janeiro e Brasil
    */
   public static getQuotesSnapshot(): MarketQuotesSnapshot {
     try {
@@ -1270,7 +1841,7 @@ export class MarketQuotesService {
         const parsed = JSON.parse(saved);
         let needsSave = false;
 
-        // Garante que cortes novos (Banda Suína, Suíno Vivo, etc.) estejam presentes
+        // Garante que cortes novos (cortes do RJ, Banda Suína, Suíno Vivo, etc.) estejam presentes
         if (parsed.cutQuotes && Array.isArray(parsed.cutQuotes)) {
           for (const initCut of INITIAL_CUT_QUOTES) {
             if (!parsed.cutQuotes.some((c: any) => c.id === initCut.id)) {
@@ -1283,7 +1854,7 @@ export class MarketQuotesService {
           needsSave = true;
         }
 
-        // Garante que indicadores de Suíno e novos indicadores estejam presentes
+        // Garante indicadores atualizados
         if (parsed.indicators && Array.isArray(parsed.indicators)) {
           for (const initInd of INITIAL_MARKET_INDICATORS) {
             if (!parsed.indicators.some((i: any) => i.id === initInd.id)) {
@@ -1296,7 +1867,20 @@ export class MarketQuotesService {
           needsSave = true;
         }
 
-        // Garante que carcaças novas (Suíno Vivo, Banda) estejam presentes
+        // Garante praças atualizadas com destaque para RJ
+        if (parsed.regionalQuotes && Array.isArray(parsed.regionalQuotes)) {
+          for (const initReg of INITIAL_REGIONAL_QUOTES) {
+            if (!parsed.regionalQuotes.some((r: any) => r.id === initReg.id)) {
+              parsed.regionalQuotes.push(initReg);
+              needsSave = true;
+            }
+          }
+        } else {
+          parsed.regionalQuotes = INITIAL_REGIONAL_QUOTES;
+          needsSave = true;
+        }
+
+        // Garante carcaças completas
         if (parsed.carcassQuotes && Array.isArray(parsed.carcassQuotes)) {
           for (const initCarc of INITIAL_CARCASS_QUOTES) {
             if (!parsed.carcassQuotes.some((c: any) => c.id === initCarc.id)) {
@@ -1306,6 +1890,49 @@ export class MarketQuotesService {
           }
         } else {
           parsed.carcassQuotes = INITIAL_CARCASS_QUOTES;
+          needsSave = true;
+        }
+
+        // Garante benchmarks de supermercados do RJ
+        if (parsed.rjRetailBenchmarks && Array.isArray(parsed.rjRetailBenchmarks)) {
+          for (const initBench of INITIAL_RJ_RETAIL_BENCHMARKS) {
+            if (!parsed.rjRetailBenchmarks.some((b: any) => b.id === initBench.id)) {
+              parsed.rjRetailBenchmarks.push(initBench);
+              needsSave = true;
+            }
+          }
+        } else {
+          parsed.rjRetailBenchmarks = INITIAL_RJ_RETAIL_BENCHMARKS;
+          needsSave = true;
+        }
+
+        // Garante contratos B3 futuros
+        if (!parsed.b3FutureContracts || !Array.isArray(parsed.b3FutureContracts)) {
+          parsed.b3FutureContracts = INITIAL_B3_FUTURE_CONTRACTS;
+          needsSave = true;
+        }
+
+        // Garante relações de troca
+        if (!parsed.exchangeRatios || !Array.isArray(parsed.exchangeRatios)) {
+          parsed.exchangeRatios = INITIAL_EXCHANGE_RATIOS;
+          needsSave = true;
+        }
+
+        // Garante logística de abastecimento do RJ
+        if (!parsed.rjLogistics || !Array.isArray(parsed.rjLogistics)) {
+          parsed.rjLogistics = INITIAL_RJ_LOGISTICS;
+          needsSave = true;
+        }
+
+        // Garante promoções do varejo RJ
+        if (!parsed.rjWeeklyPromotions || !Array.isArray(parsed.rjWeeklyPromotions)) {
+          parsed.rjWeeklyPromotions = INITIAL_RJ_WEEKLY_PROMOTIONS;
+          needsSave = true;
+        }
+
+        // Garante dados de exportação
+        if (!parsed.exportIndicators || !Array.isArray(parsed.exportIndicators)) {
+          parsed.exportIndicators = INITIAL_EXPORT_INDICATORS;
           needsSave = true;
         }
 
@@ -1335,7 +1962,12 @@ export class MarketQuotesService {
       carcassQuotes: INITIAL_CARCASS_QUOTES,
       cutQuotes: INITIAL_CUT_QUOTES,
       rjRetailBenchmarks: INITIAL_RJ_RETAIL_BENCHMARKS,
-      historicalSeries: INITIAL_HISTORICAL_SERIES
+      historicalSeries: INITIAL_HISTORICAL_SERIES,
+      b3FutureContracts: INITIAL_B3_FUTURE_CONTRACTS,
+      exchangeRatios: INITIAL_EXCHANGE_RATIOS,
+      rjLogistics: INITIAL_RJ_LOGISTICS,
+      rjWeeklyPromotions: INITIAL_RJ_WEEKLY_PROMOTIONS,
+      exportIndicators: INITIAL_EXPORT_INDICATORS
     };
   }
 
@@ -1394,12 +2026,27 @@ export class MarketQuotesService {
       };
     });
 
+    const updatedB3 = (current.b3FutureContracts || INITIAL_B3_FUTURE_CONTRACTS).map(contract => {
+      const factor = getRandomFactor();
+      const newSettle = Math.round(contract.settlementPrice * factor * 100) / 100;
+      const diff = newSettle - contract.previousSettlement;
+      const pct = Math.round((diff / contract.previousSettlement) * 10000) / 100;
+
+      return {
+        ...contract,
+        settlementPrice: newSettle,
+        changeDayPercent: pct,
+        lastUpdated: `Hoje, ${pad(now.getHours())}:${pad(now.getMinutes())}`
+      };
+    });
+
     const snapshot: MarketQuotesSnapshot = {
       ...current,
       timestamp: Date.now(),
       lastUpdatedDate: formattedDate,
       indicators: updatedIndicators,
-      regionalQuotes: updatedRegional
+      regionalQuotes: updatedRegional,
+      b3FutureContracts: updatedB3
     };
 
     this.saveQuotesSnapshot(snapshot);
@@ -1442,7 +2089,7 @@ export class MarketQuotesService {
   }
 
   /**
-   * Gera e faz o download do Boletim Oficial de Cotações em PDF com Indicadores RJ
+   * Gera e faz o download do Boletim Oficial de Cotações em PDF com Indicadores RJ e Nível Brasil
    */
   public static async generateAndDownloadQuotesBulletinPdf(): Promise<void> {
     const snapshot = this.getQuotesSnapshot();
@@ -1475,20 +2122,20 @@ export class MarketQuotesService {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
     doc.setTextColor(255, 255, 255);
-    doc.text('MERCADO PECUÁRIO, ATACADO & VAREJO RIO DE JANEIRO', margin + 22, 17);
+    doc.text('MERCADO PECUÁRIO NACIONAL & FOCO RIO DE JANEIRO', margin + 22, 17);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(148, 163, 184);
-    doc.text(`Atualização: ${snapshot.lastUpdatedDate} • Fontes: CEPEA/ESALQ, B3, Scot, IMEA, NielsenIQ RJ, Scantec RJ, ASSERJ`, margin + 22, 22);
+    doc.text(`Atualização: ${snapshot.lastUpdatedDate} • Fontes: CEPEA/ESALQ, B3 S.A., Scot Consultoria, Ceasa Irajá RJ, ASSERJ, Scantec RJ, NielsenIQ`, margin + 22, 22);
 
     let y = 30;
 
-    // 1. INDICADORES GERAIS
+    // 1. INDICADORES GERAIS OFICIAIS & B3 FUTUROS
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(9.5);
     doc.setTextColor(15, 23, 42);
-    doc.text('1. Indicadores Oficiais de Mercado (CEPEA / B3 / Varejo RJ / Exportação)', margin, y);
+    doc.text('1. Indicadores Oficiais de Mercado (CEPEA / B3 / Exportação)', margin, y);
     y += 4;
 
     const indicatorsTable = snapshot.indicators.map(ind => [
@@ -1504,28 +2151,63 @@ export class MarketQuotesService {
       margin: { left: margin, right: margin },
       head: [['Indicador / Categoria', 'Cotação Atual', 'Var. Dia (%)', 'Fonte Oficial', 'Status / Hora']],
       body: indicatorsTable,
-      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
-      bodyStyles: { fontSize: 7, textColor: [30, 41, 59] },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
+      bodyStyles: { fontSize: 6.5, textColor: [30, 41, 59] },
       theme: 'grid'
     });
 
-    y = (doc as any).lastAutoTable.finalY + 8;
+    y = (doc as any).lastAutoTable.finalY + 7;
 
-    // 2. PRAÇAS PECUÁRIAS BRASILEIRAS COM DESTAQUE PARA RJ
+    // 2. PAINEL ESPECIAL RIO DE JANEIRO: LOGÍSTICA DE ABASTECIMENTO & FRETE INTERESTADUAL
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(9.5);
+    doc.setTextColor(6, 95, 70);
+    doc.text('2. Foco Rio de Janeiro: Matriz Logística Interestadual & Custo Efetivo Posto RJ', margin, y);
+    y += 4;
+
+    const logisticsTable = (snapshot.rjLogistics || INITIAL_RJ_LOGISTICS).map(log => [
+      `${log.originRegion} (${log.originState})`,
+      `R$ ${log.baseArrobaPrice.toFixed(2)}`,
+      `R$ ${log.freightCostArroba.toFixed(2)}`,
+      `${log.transitHours}h`,
+      `${log.shrinkageLossPercent.toFixed(1)}%`,
+      `R$ ${log.effectiveCostArrobaRJ.toFixed(2)}`,
+      `R$ ${log.effectiveCostKgRJ.toFixed(2)}`,
+      `${log.shareOfRJSupply.toFixed(0)}%`
+    ]);
+
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [['Origem / Região Produtora', 'Base Origem (@)', 'Frete RJ (@)', 'Trânsito', 'Gotejo', 'Posto RJ (R$/@)', 'Posto RJ (R$/kg)', 'Share RJ']],
+      body: logisticsTable,
+      headStyles: { fillColor: [6, 95, 70], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
+      bodyStyles: { fontSize: 6.5, textColor: [30, 41, 59] },
+      theme: 'striped'
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 7;
+
+    if (y > pageHeight - 65) {
+      doc.addPage();
+      y = 18;
+    }
+
+    // 3. PRAÇAS PECUÁRIAS BRASILEIRAS (SCOT CONSULTORIA & FEDERAÇÕES)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
     doc.setTextColor(15, 23, 42);
-    doc.text('2. Cotações por Praça Pecuária / Estado (Boi Gordo @, Kg Vivo & Frigoríficos)', margin, y);
+    doc.text('3. Cotações por Praça Pecuária / Estado (Boi Gordo @, Kg Vivo, Escala & Frigoríficos)', margin, y);
     y += 4;
 
     const regionalTable = snapshot.regionalQuotes.map(reg => [
-      `${reg.stateCode} - ${reg.region}`,
+      `${reg.stateCode} - ${reg.region.split('(')[0]}`,
       `R$ ${reg.cashPriceArroba.toFixed(2)}`,
       `R$ ${reg.termPriceArroba.toFixed(2)}`,
       `R$ ${reg.liveWeightPriceKg.toFixed(2)}`,
       `R$ ${reg.cowCashPriceArroba.toFixed(2)}`,
       `${reg.spreadVsSP > 0 ? '+' : ''}${reg.spreadVsSP.toFixed(2)}`,
-      `${reg.slaughterScaleDays} dias`,
+      `${reg.slaughterScaleDays} d`,
       reg.mainPackers
     ]);
 
@@ -1534,23 +2216,23 @@ export class MarketQuotesService {
       margin: { left: margin, right: margin },
       head: [['Praça / Polo Frigorífico', 'À Vista (R$/@)', '30 Dias (@)', 'Kg Vivo', 'Vaca @', 'Spread SP', 'Escala', 'Frigoríficos Ofertantes']],
       body: regionalTable,
-      headStyles: { fillColor: [6, 95, 70], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
-      bodyStyles: { fontSize: 6.5, textColor: [30, 41, 59] },
-      theme: 'striped'
+      headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 6.8 },
+      bodyStyles: { fontSize: 6.2, textColor: [30, 41, 59] },
+      theme: 'grid'
     });
 
-    y = (doc as any).lastAutoTable.finalY + 8;
+    y = (doc as any).lastAutoTable.finalY + 7;
 
     if (y > pageHeight - 70) {
       doc.addPage();
-      y = 20;
+      y = 18;
     }
 
-    // 3. CORTES DESOSSADOS & INDICADORES DE VAREJO RJ (NIELSENIQ & SCANTEC)
+    // 4. CORTES DESOSSADOS & INDICADORES DE VAREJO RJ (NIELSENIQ & SCANTEC)
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(9.5);
     doc.setTextColor(15, 23, 42);
-    doc.text('3. Cortes Desossados, Custo Atacado & Indicadores Varejo Supermercados RJ (Nielsen/Scantec)', margin, y);
+    doc.text('4. Cortes Desossados, Custo Atacado & Indicadores Varejo Supermercados RJ (Nielsen/Scantec)', margin, y);
     y += 4;
 
     const cutsTable = snapshot.cutQuotes.map(cut => [
@@ -1568,8 +2250,8 @@ export class MarketQuotesService {
       margin: { left: margin, right: margin },
       head: [['Corte / Subproduto', 'Atacado (R$/kg)', 'Varejo RJ (R$/kg)', 'Margem RJ', 'Giro Scantec', 'Share Nielsen', 'Origem Mercado']],
       body: cutsTable,
-      headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
-      bodyStyles: { fontSize: 6.5, textColor: [30, 41, 59] },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 6.8 },
+      bodyStyles: { fontSize: 6.2, textColor: [30, 41, 59] },
       theme: 'grid'
     });
 
@@ -1589,57 +2271,56 @@ export class MarketQuotesService {
     }
 
     const dateStr = new Date().toISOString().split('T')[0];
-    doc.save(`Boletim_Cotacao_Tempo_Real_GAPP_${dateStr}.pdf`);
+    doc.save(`Boletim_Cotacao_RJ_Brasil_GAPP_${dateStr}.pdf`);
   }
 
   /**
-   * Compartilha o Boletim de Cotação em Tempo Real via WhatsApp com Indicadores RJ
+   * Compartilha o Boletim de Cotação em Tempo Real via WhatsApp com Indicadores RJ e Brasil
    */
   public static shareQuotesBulletinViaWhatsApp(targetPhone?: string): void {
     const snapshot = this.getQuotesSnapshot();
     const cepeaSP = snapshot.indicators.find(i => i.id === 'ind-cepea-sp');
     const boiRJ = snapshot.indicators.find(i => i.id === 'ind-rj-ceasa');
     const boiChina = snapshot.indicators.find(i => i.id === 'ind-boi-china');
+    const b3Futuro = snapshot.indicators.find(i => i.id === 'ind-boi-b3-futuro');
     const picanha = snapshot.cutQuotes.find(c => c.id === 'cut-picanha');
     const contra = snapshot.cutQuotes.find(c => c.id === 'cut-contra-file');
     const acem = snapshot.cutQuotes.find(c => c.id === 'cut-acem');
     const cha = snapshot.cutQuotes.find(c => c.id === 'cut-cha-de-dentro');
+    const moidaSeg = snapshot.cutQuotes.find(c => c.id === 'cut-carne-moida-segunda');
     const bandaSuina = snapshot.cutQuotes.find(c => c.id === 'cut-banda-suina') || { avgPriceKg: 13.80, rjRetailPriceKg: 20.90 };
     const suinoVivo = snapshot.cutQuotes.find(c => c.id === 'cut-suino-vivo') || { avgPriceKg: 7.85, rjRetailPriceKg: 11.90 };
-    const costelaSuina = snapshot.cutQuotes.find(c => c.id === 'cut-costela-suina');
-    const pernilSuino = snapshot.cutQuotes.find(c => c.id === 'cut-pernil-suino');
 
     const lines = [
-      `📈 *GRUPO GAPP SISTEMAS • BOLETIM DE COTAÇÃO EM TEMPO REAL*`,
+      `📈 *GRUPO GAPP SISTEMAS • BOLETIM OFICIAL DE COTAÇÃO*`,
+      `📍 *FOCO: RIO DE JANEIRO & NÍVEL BRASIL*`,
       `📅 *Atualização:* ${snapshot.lastUpdatedDate}`,
-      `🏢 *Status Pregão:* ${snapshot.marketStatus === 'ABERTO' ? '🟢 Pregão Aberto' : '🔴 Mercado Fechado'}`,
+      `🏢 *Status B3:* ${snapshot.marketStatus === 'ABERTO' ? '🟢 Pregão Aberto' : '🔴 Mercado Fechado'}`,
       ``,
-      `🐂 *INDICADORES DE MERCADO & ARROBA (@):*`,
-      `• *Boi Gordo CEPEA/B3 (SP):* R$ ${cepeaSP?.price.toFixed(2)}/@ (${cepeaSP && cepeaSP.changeDay >= 0 ? '+' : ''}${cepeaSP?.changeDay.toFixed(2)}%)`,
-      `• *Boi Entrada Rio de Janeiro:* R$ ${boiRJ?.price.toFixed(2)}/@`,
+      `🐂 *ARROBA BOVINA (@) - RJ & BRASIL:*`,
+      `• *Boi Entrada Rio de Janeiro (Ceasa/Frigoríficos):* R$ ${boiRJ?.price.toFixed(2)}/@`,
+      `• *Boi Gordo CEPEA/B3 (SP - À Vista):* R$ ${cepeaSP?.price.toFixed(2)}/@ (${cepeaSP && cepeaSP.changeDay >= 0 ? '+' : ''}${cepeaSP?.changeDay.toFixed(2)}%)`,
       `• *Boi Padrão China (SP):* R$ ${boiChina?.price.toFixed(2)}/@ (Premiação R$ 7,50/@)`,
+      `• *B3 Futuro (BGI):* R$ ${b3Futuro?.price.toFixed(2)}/@`,
       ``,
-      `🐷 *COTAÇÃO SUINÍCOLA (CARCAÇA / BANDA & SUÍNO VIVO):*`,
-      `• *Carcaça Suína (Banda Atacado):* R$ ${bandaSuina.avgPriceKg.toFixed(2)}/kg (~R$ ${(bandaSuina.avgPriceKg * 15).toFixed(2)}/@) | Balcão RJ: R$ ${bandaSuina.rjRetailPriceKg.toFixed(2)}/kg`,
-      `• *Suíno Vivo (Kg Vivo Produtor):* R$ ${suinoVivo.avgPriceKg.toFixed(2)}/kg vivo (~R$ ${(suinoVivo.avgPriceKg * 15).toFixed(2)}/@ viva - CEPEA/ASEMG)`,
-      `• *Costela Suína:* Atacado R$ ${costelaSuina?.avgPriceKg.toFixed(2)}/kg | Balcão RJ: R$ ${costelaSuina?.rjRetailPriceKg.toFixed(2)}/kg`,
-      `• *Pernil Suíno:* Atacado R$ ${pernilSuino?.avgPriceKg.toFixed(2)}/kg | Balcão RJ: R$ ${pernilSuino?.rjRetailPriceKg.toFixed(2)}/kg`,
+      `🚛 *MATRIZ DE ABASTECIMENTO DO RIO DE JANEIRO:*`,
+      `• *Triângulo Mineiro (MG):* R$ 322,00/@ + Frete R$ 9,50 -> Posto RJ: R$ 337,40/@ (R$ 22,49/kg)`,
+      `• *Sul Goiano (GO):* R$ 320,00/@ + Frete R$ 12,00 -> Posto RJ: R$ 338,70/@ (R$ 22,58/kg)`,
+      `• *Interior SP:* R$ 332,50/@ + Frete R$ 8,50 -> Posto RJ: R$ 346,30/@ (R$ 23,09/kg)`,
+      `• *Abate Local RJ:* R$ 326,00/@ + Frete R$ 4,50 -> Posto RJ: R$ 332,50/@ (R$ 22,17/kg)`,
       ``,
-      `🥩 *CORTES BOVINOS NO ATACADO vs VAREJO RIO DE JANEIRO (Scantec/Nielsen):*`,
-      `• *Picanha:* Atacado R$ ${picanha?.avgPriceKg.toFixed(2)}/kg | Balcão RJ: R$ ${picanha?.rjRetailPriceKg.toFixed(2)}/kg`,
-      `• *Contra Filé:* Atacado R$ ${contra?.avgPriceKg.toFixed(2)}/kg | Balcão RJ: R$ ${contra?.rjRetailPriceKg.toFixed(2)}/kg`,
-      `• *Coxão Mole (Chã):* Atacado R$ ${cha?.avgPriceKg.toFixed(2)}/kg | Balcão RJ: R$ ${cha?.rjRetailPriceKg.toFixed(2)}/kg`,
-      `• *Acém Dianteiro:* Atacado R$ ${acem?.avgPriceKg.toFixed(2)}/kg | Balcão RJ: R$ ${acem?.rjRetailPriceKg.toFixed(2)}/kg`,
+      `🥩 *CORTES ATACADO vs VAREJO SUPERMERCADOS RJ (Scantec/ASSERJ):*`,
+      `• *Picanha:* Atacado R$ ${picanha?.avgPriceKg.toFixed(2)} | Balcão RJ R$ ${picanha?.rjRetailPriceKg.toFixed(2)}/kg`,
+      `• *Contra Filé:* Atacado R$ ${contra?.avgPriceKg.toFixed(2)} | Balcão RJ R$ ${contra?.rjRetailPriceKg.toFixed(2)}/kg`,
+      `• *Chã de Dentro (Coxão):* Atacado R$ ${cha?.avgPriceKg.toFixed(2)} | Balcão RJ R$ ${cha?.rjRetailPriceKg.toFixed(2)}/kg`,
+      `• *Acém Dianteiro:* Atacado R$ ${acem?.avgPriceKg.toFixed(2)} | Balcão RJ R$ ${acem?.rjRetailPriceKg.toFixed(2)}/kg`,
+      `• *Carne Moída 2ª:* Atacado R$ ${moidaSeg?.avgPriceKg.toFixed(2)} | Balcão RJ R$ ${moidaSeg?.rjRetailPriceKg.toFixed(2)}/kg`,
       ``,
-      `📍 *COTAÇÕES POR PRAÇA PECUÁRIA:*`,
-      `• RJ (Grande Rio/Ceasa): R$ 328,00/@`,
-      `• SP (Barretos/Araçatuba): R$ 332,50/@`,
-      `• MG (Triângulo Mineiro): R$ 322,00/@`,
-      `• GO (Goiânia/Rio Verde): R$ 320,00/@`,
-      `• MS (Campo Grande): R$ 318,00/@`,
-      `• MT (Norte/Sinop): R$ 308,00/@`,
+      `🐷 *SUÍNOS (BANDA & VIVO):*`,
+      `• *Banda Suína Atacado:* R$ ${bandaSuina.avgPriceKg.toFixed(2)}/kg | Balcão RJ: R$ ${bandaSuina.rjRetailPriceKg.toFixed(2)}/kg`,
+      `• *Suíno Vivo Produtor:* R$ ${suinoVivo.avgPriceKg.toFixed(2)}/kg vivo (CEPEA/ASEMG)`,
       ``,
-      `📊 *Fontes Oficiais:* CEPEA/ESALQ • B3 • Scot • IMEA • NielsenIQ RJ • Scantec RJ`,
+      `📊 *Fontes Oficiais:* CEPEA/ESALQ • B3 • Scot • IMEA • Ceasa Irajá RJ • ASSERJ • Scantec RJ • NielsenIQ`,
       `🔒 _ERP Gestão Apuração do Boi v10.7 • Patrick Pessoa_`
     ];
 

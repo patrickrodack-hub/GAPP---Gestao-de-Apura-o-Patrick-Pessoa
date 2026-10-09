@@ -18,6 +18,7 @@ import { QuickCalculatorModal } from './components/modals/QuickCalculatorModal';
 import { PrintReportModal } from './components/modals/PrintReportModal';
 import { PurchaseOrderModal } from './components/modals/PurchaseOrderModal';
 import { SupplierManagementModal } from './components/modals/SupplierManagementModal';
+import { ProductManagementModal } from './components/modals/ProductManagementModal';
 import { PortalControlModal } from './components/modals/PortalControlModal';
 import { UserManagementModal } from './components/modals/UserManagementModal';
 import { ChangePasswordModal } from './components/modals/ChangePasswordModal';
@@ -102,6 +103,7 @@ export default function App() {
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isPurchaseOrderOpen, setIsPurchaseOrderOpen] = useState(false);
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+  const [isProductManagerOpen, setIsProductManagerOpen] = useState(false);
   const [isPortalControlOpen, setIsPortalControlOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isUserManualsModalOpen, setIsUserManualsModalOpen] = useState(false);
@@ -431,6 +433,26 @@ export default function App() {
     setSuppliers(prev => prev.filter(s => s.id !== supplierId));
     StorageService.deleteSupplier(supplierId);
     showToast(`Fornecedor ${target ? target.name : ''} excluído com sucesso!`);
+  };
+
+  // Product CRUD handlers
+  const handleAddProduct = (newProduct: Product) => {
+    setProducts(prev => [newProduct, ...prev]);
+    StorageService.saveSingleProduct(newProduct);
+    showToast(`Produto "${newProduct.name}" cadastrado com sucesso!`);
+  };
+
+  const handleUpdateProduct = (updatedProduct: Product) => {
+    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+    StorageService.saveSingleProduct(updatedProduct);
+    showToast(`Produto "${updatedProduct.name}" atualizado com sucesso!`);
+  };
+
+  const handleDeleteProduct = (productId: string) => {
+    const target = products.find(p => p.id === productId);
+    setProducts(prev => prev.filter(p => p.id !== productId));
+    StorageService.deleteProduct(productId);
+    showToast(`Produto "${target ? target.name : ''}" excluído com sucesso!`);
   };
 
   // Row update handlers - gravação garantida e síncrona no banco de dados local
@@ -840,6 +862,7 @@ export default function App() {
             onOpenManuals={() => setIsUserManualsModalOpen(true)}
             onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
             onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+            onOpenProductManager={() => setIsProductManagerOpen(true)}
             onOpenMobilePortal={handleOpenMobilePortal}
             onOpenPortalControl={() => setIsPortalControlOpen(true)}
             onOpenBackup={() => setIsBackupModalOpen(true)}
@@ -1038,6 +1061,7 @@ export default function App() {
                       onUpdateProducts={setProducts}
                       onUpdateStores={setStores}
                       onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+                      onOpenProductManager={() => setIsProductManagerOpen(true)}
                       onOpenUserManagement={handleOpenUserManagement}
                       onOpenChangePassword={() => setIsChangePasswordOpen(true)}
                       currentUser={currentUser}
@@ -1114,6 +1138,15 @@ export default function App() {
           onAddSupplier={handleAddSupplier}
           onUpdateSupplier={handleUpdateSupplier}
           onDeleteSupplier={handleDeleteSupplier}
+        />
+
+        <ProductManagementModal
+          isOpen={isProductManagerOpen}
+          onClose={() => setIsProductManagerOpen(false)}
+          products={products}
+          onAddProduct={handleAddProduct}
+          onUpdateProduct={handleUpdateProduct}
+          onDeleteProduct={handleDeleteProduct}
         />
 
         <KeyboardShortcutsModal
@@ -1336,6 +1369,7 @@ export default function App() {
               onUpdateProducts={setProducts}
               onUpdateStores={setStores}
               onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+              onOpenProductManager={() => setIsProductManagerOpen(true)}
               onOpenUserManagement={handleOpenUserManagement}
               onOpenChangePassword={() => setIsChangePasswordOpen(true)}
               currentUser={currentUser}
@@ -1420,6 +1454,15 @@ export default function App() {
         onAddSupplier={handleAddSupplier}
         onUpdateSupplier={handleUpdateSupplier}
         onDeleteSupplier={handleDeleteSupplier}
+      />
+
+      <ProductManagementModal
+        isOpen={isProductManagerOpen}
+        onClose={() => setIsProductManagerOpen(false)}
+        products={products}
+        onAddProduct={handleAddProduct}
+        onUpdateProduct={handleUpdateProduct}
+        onDeleteProduct={handleDeleteProduct}
       />
 
       <KeyboardShortcutsModal

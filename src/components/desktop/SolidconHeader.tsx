@@ -66,6 +66,7 @@ interface SolidconHeaderProps {
   onOpenManuals?: () => void;
   onOpenPurchaseOrder?: () => void;
   onOpenSupplierManager?: () => void;
+  onOpenProductManager?: () => void;
   onOpenMobilePortal?: () => void;
   onOpenPortalControl?: () => void;
   onOpenBackup?: () => void;
@@ -92,6 +93,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
   onOpenManuals,
   onOpenPurchaseOrder,
   onOpenSupplierManager,
+  onOpenProductManager,
   onOpenMobilePortal,
   onOpenPortalControl,
   onOpenBackup,
@@ -238,6 +240,10 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
           break;
         case 'suppliers':
           if (onOpenSupplierManager) onOpenSupplierManager();
+          break;
+        case 'products':
+          if (onOpenProductManager) onOpenProductManager();
+          else onTabChange('parameters');
           break;
         case 'purchaseOrder':
           if (onOpenPurchaseOrder) onOpenPurchaseOrder();

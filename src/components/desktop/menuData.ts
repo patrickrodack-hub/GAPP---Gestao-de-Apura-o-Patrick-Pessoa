@@ -234,8 +234,8 @@ export const getERPMenuCategories = (
         badge: 'Etapa 4',
         description: 'Cadastro de carnes nobres: Picanha, Alcatra, Contrafilé, Dianteiro',
         icon: Scissors,
-        actionType: 'tab',
-        targetTab: 'parameters'
+        actionType: 'action',
+        actionId: 'products'
       },
       {
         id: 'cad-filiais',
