@@ -462,5 +462,246 @@ export const ExcelExportService = {
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
+  },
+
+  /**
+   * Exporta o Relatório Oficial de Pedido (Bovino & Suíno)
+   * com as 17 colunas selecionadas da Planilha de Compras:
+   * Filial, Dianteiro, Traseiro, Coxão, Alcatrão, Pedido de Alcatrão, Costela G, Pedido de Costela G,
+   * Boi Calc, Venda, Sujestão, Pedido do Boi, Suíno, Pernil, Costela Suína, Venda de Suíno e Pedido de Suíno.
+   */
+  async exportExecutiveReportToXLSX(rows: SheetRowData[], stores: Store[] = []): Promise<void> {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Grupo GAPP Sistemas - Patrick Pessoa';
+    workbook.created = new Date();
+
+    const ws = workbook.addWorksheet('Relatório de Pedido (GAPP)', {
+      views: [{ state: 'frozen', xSplit: 1, ySplit: 4 }],
+      properties: { tabColor: { argb: 'FF1E40AF' } }
+    });
+
+    const totals = calculateSheetTotals(rows);
+    const totalBoisPedidos = rows.reduce((acc, r) => acc + (r.pedidoFinal || 0), 0);
+    const totalPedAlcatrao = totals.pedidoAlcatraoReal || rows.reduce((acc, r) => acc + (r.pedidoAlcatraoReal || 0), 0);
+    const totalPedCostela = totals.pedidoCostelaReal || rows.reduce((acc, r) => acc + (r.pedidoCostelaReal || 0), 0);
+    const totalVendaBoi = totals.venda || totals.boiAVenda || 0;
+    const totalSuinoBanda = totals.bandaPecas || rows.reduce((acc, r) => acc + (r.bandaPecas || 0), 0);
+    const totalPernil = totals.pernilPecas || rows.reduce((acc, r) => acc + (r.pernilPecas || 0), 0);
+    const totalCostelaSuina = totals.costelaSuinaPecas || rows.reduce((acc, r) => acc + (r.costelaSuinaPecas || 0), 0);
+    const totalVendaSuino = totals.bandaVenda || totals.vendaSuino || rows.reduce((acc, r) => acc + (r.bandaVenda || r.vendaSuino || 0), 0);
+    const totalPedidoSuino = totals.bandaPedido || totals.pedidoSuino || rows.reduce((acc, r) => acc + (r.bandaPedido || r.pedidoSuino || 0), 0);
+
+    // Linha 1: Título Geral
+    ws.mergeCells('A1:Q1');
+    const title = ws.getCell('A1');
+    title.value = 'ERP APURAÇÃO DO BOI • RELATÓRIO OFICIAL DE PEDIDOS (BOVINO & SUÍNO)';
+    title.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
+    title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004B87' } };
+    title.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getRow(1).height = 28;
+
+    // Linha 2: Subtítulo
+    ws.mergeCells('A2:Q2');
+    const sub = ws.getCell('A2');
+    sub.value = `Base: Planilha de Compras da Direção • 16 Lojas Consolidadas • Emissão: ${new Date().toLocaleDateString('pt-BR')} • Grupo GAPP Sistemas`;
+    sub.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF334155' } };
+    sub.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+    sub.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getRow(2).height = 18;
+
+    // Linha 3: Cabeçalho Tier 1 (Grupos)
+    ws.mergeCells('A3:A4');
+    const fCell = ws.getCell('A3');
+    fCell.value = 'FILIAL (16)';
+    fCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+    fCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+    fCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // Grupo 1: Bovino Pedido (B3:H3)
+    ws.mergeCells('B3:H3');
+    const g1 = ws.getCell('B3');
+    g1.value = 'DADOS PARA GERAÇÃO DE PEDIDO (BOVINO)';
+    g1.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FFFFFFFF' } };
+    g1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E40AF' } };
+    g1.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // Grupo 2: Apuração Boi (I3:L3)
+    ws.mergeCells('I3:L3');
+    const g2 = ws.getCell('I3');
+    g2.value = 'APURAÇÃO & PEDIDO DO BOI';
+    g2.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FFFFFFFF' } };
+    g2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4338CA' } };
+    g2.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // Grupo 3: Suíno (M3:Q3)
+    ws.mergeCells('M3:Q3');
+    const g3 = ws.getCell('M3');
+    g3.value = 'CÂMARA / BALCÃO & PEDIDO (SUÍNO)';
+    g3.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FFFFFFFF' } };
+    g3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F766E' } };
+    g3.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getRow(3).height = 20;
+
+    // Linha 4: Cabeçalho Tier 2 (Colunas)
+    const colHeaders = [
+      'Filial',
+      'DIANTEIRO', 'TRASEIRO', 'COXAO', 'ALCATRAO', 'PEDIDO DE ALCATRÃO', 'COSTELA G', 'PEDIDO DE COSTELA G',
+      'BOI CALC', 'VENDA', 'SUJESTAO', 'PEDIDO DO BOI',
+      'SUÍNO', 'PERNIL', 'COSTELA SUÍNA', 'VENDA DE SUÍNO', 'PEDIDO DE SUÍNO'
+    ];
+
+    ws.getRow(4).height = 22;
+    colHeaders.forEach((h, i) => {
+      if (i === 0) return; // 'Filial' já mesclada
+      const cell = ws.getCell(4, i + 1);
+      cell.value = h;
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      cell.font = { name: 'Arial', size: 8.5, bold: true, color: { argb: 'FF0F172A' } };
+      
+      // Cores por grupo
+      if (i >= 1 && i <= 7) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: (i === 5 || i === 7) ? 'FFEDE9FE' : 'FFDBEAFE' } };
+      } else if (i >= 8 && i <= 11) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i === 11 ? 'FFD1FAE5' : 'FFE0E7FF' } };
+      } else {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i === 16 ? 'FF99F6E4' : 'FFCCFBF1' } };
+      }
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        bottom: { style: 'medium', color: { argb: 'FF64748B' } },
+        left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+      };
+    });
+
+    // Linhas de dados (16 Filiais)
+    rows.forEach((r, idx) => {
+      const rowNum = 5 + idx;
+      ws.getRow(rowNum).height = 19;
+      const isEven = idx % 2 === 0;
+      const rowBg = isEven ? 'FFFFFFFF' : 'FFF8FAFC';
+
+      const boiCalc = r.boi !== undefined ? r.boi : ((r.pedidoDianteiro + r.pedidoTraseiro + r.pedidoCoxao + r.pedidoAlcatrao) / 2);
+      const vendaVal = r.venda || r.boiAVenda || 0;
+      const sujestaoVal = r.sugestaoPedido !== undefined ? r.sugestaoPedido : (vendaVal - boiCalc);
+      const pedidoBoiVal = r.pedidoFinal !== undefined ? r.pedidoFinal : 0;
+
+      const pedAlcatraoVal = r.pedidoAlcatraoReal || 0;
+      const pedCostelaVal = r.pedidoCostelaReal || 0;
+      const suinoBandaVal = r.bandaPecas || 0;
+      const pernilVal = r.pernilPecas || 0;
+      const costelaSuinaVal = r.costelaSuinaPecas || 0;
+      const vendaSuinoVal = r.bandaVenda || r.vendaSuino || 0;
+      const pedidoSuinoVal = r.bandaPedido || r.pedidoSuino || 0;
+
+      const values = [
+        r.storeName,
+        r.pedidoDianteiro || 0,
+        r.pedidoTraseiro || 0,
+        r.pedidoCoxao || 0,
+        r.pedidoAlcatrao || 0,
+        pedAlcatraoVal,
+        r.pedidoCostelaGaucha || 0,
+        pedCostelaVal,
+        Math.round(boiCalc),
+        vendaVal,
+        Math.round(sujestaoVal),
+        pedidoBoiVal,
+        suinoBandaVal,
+        pernilVal,
+        costelaSuinaVal,
+        vendaSuinoVal,
+        pedidoSuinoVal
+      ];
+
+      values.forEach((v, c) => {
+        const cell = ws.getCell(rowNum, c + 1);
+        cell.value = v;
+        cell.alignment = { horizontal: c === 0 ? 'left' : 'center', vertical: 'middle' };
+        cell.font = { 
+          name: 'Arial', 
+          size: 9, 
+          bold: c === 0 || c === 5 || c === 7 || c === 8 || c === 11 || c === 16,
+          color: { argb: c === 11 ? 'FF065F46' : c === 16 ? 'FF0F766E' : (c === 5 || c === 7) ? 'FF5B21B6' : 'FF0F172A' }
+        };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { 
+            argb: c === 11 ? 'FFECFDF5' 
+                : c === 16 ? 'FFCCFBF1' 
+                : (c === 5 || c === 7) ? 'FFFAF5FF' 
+                : rowBg 
+          }
+        };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+        };
+      });
+    });
+
+    // Linha de Totais Consolidados
+    const totalRowNum = 5 + rows.length;
+    ws.getRow(totalRowNum).height = 22;
+
+    const totalValues = [
+      'TOTAL GERAL CONSOLIDADO',
+      totals.pedidoDianteiro,
+      totals.pedidoTraseiro,
+      totals.pedidoCoxao,
+      totals.pedidoAlcatrao,
+      totalPedAlcatrao,
+      totals.pedidoCostelaGaucha,
+      totalPedCostela,
+      Math.round(totals.boi || 0),
+      totals.venda || totals.boiAVenda || 0,
+      Math.round(totals.sugestaoPedido || 0),
+      totalBoisPedidos,
+      totalSuinoBanda,
+      totalPernil,
+      totalCostelaSuina,
+      totalVendaSuino,
+      totalPedidoSuino
+    ];
+
+    totalValues.forEach((v, c) => {
+      const cell = ws.getCell(totalRowNum, c + 1);
+      cell.value = v;
+      cell.alignment = { horizontal: c === 0 ? 'left' : 'center', vertical: 'middle' };
+      cell.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF0F172A' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+      cell.border = {
+        top: { style: 'medium', color: { argb: 'FF475569' } },
+        bottom: { style: 'double', color: { argb: 'FF0F172A' } },
+        left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+      };
+    });
+
+    // Largura das colunas
+    ws.getColumn(1).width = 22; // Filial
+    for (let c = 2; c <= 17; c++) {
+      ws.getColumn(c).width = (c === 6 || c === 8 || c === 12 || c === 17) ? 16 : 13;
+    }
+
+    // Trigger download
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const dateStr = new Date().toISOString().slice(0, 10);
+    a.download = `Relatorio_Oficial_Pedido_Boi_Suino_${dateStr}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   }
 };
+

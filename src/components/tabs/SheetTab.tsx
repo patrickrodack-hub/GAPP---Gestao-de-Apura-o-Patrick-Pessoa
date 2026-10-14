@@ -37,13 +37,15 @@ import {
   Save,
   History,
   Calendar,
-  Printer
+  Printer,
+  FileText
 } from 'lucide-react';
 import { ClearDataModal } from '../modals/ClearDataModal';
 import { FormulaAuditModal } from '../modals/FormulaAuditModal';
 import { SaveSheetModal } from '../modals/SaveSheetModal';
 import { SheetHistoryModal } from '../modals/SheetHistoryModal';
 import { PrintSpreadsheetModal } from '../modals/PrintSpreadsheetModal';
+import { PrintReportModal } from '../modals/PrintReportModal';
 import { SheetSnapshotRecord, Store, YieldParams } from '../../types/erp';
 
 interface SheetTabProps {
@@ -130,6 +132,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [isFormulaProtected, setIsFormulaProtected] = useState(true);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   
   // Snapshots & History States
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
@@ -699,6 +702,16 @@ export const SheetTab: React.FC<SheetTabProps> = ({
           >
             <Printer className="w-3.5 h-3.5" />
             <span>PDF / Imprimir</span>
+          </button>
+
+          {/* Gerar Relatório com base na Planilha de Compras (Colunas Selecionadas) */}
+          <button
+            onClick={() => setIsReportModalOpen(true)}
+            className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer"
+            title="Gerar Relatório de Pedido com as colunas selecionadas: Dianteiro, Traseiro, Coxão, Alcatrão, Costela G, Boi Calc, Venda, Sujestão e Pedido do Boi"
+          >
+            <FileText className="w-3.5 h-3.5 text-blue-100" />
+            <span>Relatório do Pedido</span>
           </button>
 
           <button
@@ -1313,6 +1326,25 @@ export const SheetTab: React.FC<SheetTabProps> = ({
         <PrintSpreadsheetModal
           isOpen={isPdfModalOpen}
           onClose={() => setIsPdfModalOpen(false)}
+          rows={rows}
+          stores={stores || rows.map(r => ({ 
+            id: r.storeId, 
+            name: r.storeName, 
+            code: r.storeName.replace(/[^0-9]/g, '') || '0', 
+            city: 'RJ', 
+            state: 'RJ',
+            manager: 'Encarregado',
+            chamberCapacityPieces: 100,
+            active: true
+          }))}
+        />
+      )}
+
+      {/* Modal Oficial do Relatório de Pedido (Colunas Selecionadas) */}
+      {isReportModalOpen && (
+        <PrintReportModal
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
           rows={rows}
           stores={stores || rows.map(r => ({ 
             id: r.storeId, 

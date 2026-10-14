@@ -243,15 +243,15 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
       const traseiro = Number(r.pedidoTraseiro) || 0;
       const coxao = Number(r.pedidoCoxao) || 0;
       const alcatrao = Number(r.pedidoAlcatrao) || 0;
-      const boi = Number(((dianteiro + traseiro + coxao + alcatrao) / 2).toFixed(1));
+      const boi = Math.round((dianteiro + traseiro + coxao + alcatrao) / 2);
       const venda = Number(r.venda !== undefined ? r.venda : r.boiAVenda) || 0;
-      const sugestao = Number((venda - boi).toFixed(1));
+      const sugestao = Math.round(venda - boi);
       const q = sugestao > 0 ? Math.ceil(sugestao) : 0;
       updatedMap[r.storeId] = q;
 
       const bandaPecas = Number(r.bandaPecas) || 0;
       const bandaVenda = Number(r.bandaVenda !== undefined ? r.bandaVenda : (r.vendaSuino !== undefined ? r.vendaSuino : 0)) || 0;
-      const bandaSugestao = Number((bandaPecas - bandaVenda).toFixed(1));
+      const bandaSugestao = Math.round(bandaPecas - bandaVenda);
       const qSuino = bandaSugestao > 0 ? Math.ceil(bandaSugestao) : 0;
       updatedSuinoMap[r.storeId] = qSuino;
 
@@ -1285,13 +1285,13 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
                         </span>
                       </td>
                       <td className="px-1.5 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-blue-700 dark:text-blue-300 bg-blue-50/30 dark:bg-blue-950/20">
-                        {item.boi % 1 !== 0 ? item.boi.toFixed(1) : item.boi}
+                        {Math.round(item.boi)}
                       </td>
                       <td className="px-1.5 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-amber-700 dark:text-amber-400">{item.venda}</td>
                       <td className={`px-1.5 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold ${
                         item.sugestao < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
                       }`}>
-                        {item.sugestao > 0 ? `+${item.sugestao}` : item.sugestao}
+                        {Math.round(item.sugestao) > 0 ? `+${Math.round(item.sugestao)}` : Math.round(item.sugestao)}
                       </td>
                       <td className="px-2 py-1 text-center border-r border-slate-200 dark:border-slate-800 bg-indigo-50/50 dark:bg-indigo-950/30">
                         <div className="flex items-center justify-center print:hidden">

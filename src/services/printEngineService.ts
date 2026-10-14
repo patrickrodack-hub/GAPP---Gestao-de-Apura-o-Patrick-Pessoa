@@ -456,10 +456,19 @@ export class PrintEngineService {
     const totalPedTraseiro = rows.reduce((a, b) => a + (b.pedidoTraseiro || 0), 0);
     const totalPedCoxao = rows.reduce((a, b) => a + (b.pedidoCoxao || 0), 0);
     const totalPedAlcatrao = rows.reduce((a, b) => a + (b.pedidoAlcatrao || 0), 0);
-    const totalVenda = rows.reduce((a, b) => a + (b.venda || b.boiAVenda || 0), 0);
+    const totalPedAlcatraoReal = rows.reduce((a, b) => a + (b.pedidoAlcatraoReal || 0), 0);
+    const totalPedCostelaGaucha = rows.reduce((a, b) => a + (b.pedidoCostelaGaucha || 0), 0);
+    const totalPedCostelaReal = rows.reduce((a, b) => a + (b.pedidoCostelaReal || 0), 0);
+    const totalVendaBoi = rows.reduce((a, b) => a + (b.venda || b.boiAVenda || 0), 0);
     const totalBoi = rows.reduce((a, b) => a + (b.boi || 0), 0);
     const totalSugestao = rows.reduce((a, b) => a + (b.sugestaoPedido || 0), 0);
-    const totalCamara = rows.reduce((a, b) => a + (b.camaraDianteiro + b.somaDoTraseiro + b.camaraCostelaGaucha), 0);
+    const totalBoisPedidos = rows.reduce((a, b) => a + (b.pedidoFinal || 0), 0);
+
+    const totalSuinoBanda = rows.reduce((a, b) => a + (b.bandaPecas || 0), 0);
+    const totalPernil = rows.reduce((a, b) => a + (b.pernilPecas || 0), 0);
+    const totalCostelaSuina = rows.reduce((a, b) => a + (b.costelaSuinaPecas || 0), 0);
+    const totalVendaSuino = rows.reduce((a, b) => a + (b.bandaVenda || b.vendaSuino || 0), 0);
+    const totalPedidoSuino = rows.reduce((a, b) => a + (b.bandaPedido || b.pedidoSuino || 0), 0);
 
     const now = new Date();
     const emissionDateFormatted = now.toLocaleDateString('pt-BR', {
@@ -475,19 +484,21 @@ export class PrintEngineService {
     });
     const hashAuth = `GAPP-MATRIZ-${Date.now().toString(36).toUpperCase()}`;
 
-    const totalPecas = totalPedDianteiro + totalPedTraseiro + totalPedCoxao + totalPedAlcatrao;
-    const estimatedWeight = totalBoi * 240;
-    const estimatedTotal = estimatedWeight * 26.0;
+    const totalPecas = totalPedDianteiro + totalPedTraseiro + totalPedCoxao + totalPedAlcatrao + totalPedCostelaGaucha;
+    const estimatedBoiWeight = (totalBoisPedidos > 0 ? totalBoisPedidos : totalBoi) * 240;
+    const estimatedBoiTotal = estimatedBoiWeight * 26.0;
+    const estimatedSuinoTotal = totalPedidoSuino * 36 * 26.0;
+    const estimatedTotal = estimatedBoiTotal + estimatedSuinoTotal;
 
     return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>${title || 'Relatório Gerencial de Apuração do Boi'}</title>
+  <title>${title || 'Relatório Gerencial de Apuração do Boi & Suíno'}</title>
   <style>
     @page {
-      size: A4 portrait;
-      margin: 8mm 10mm;
+      size: A4 landscape;
+      margin: 4mm 6mm;
     }
     * {
       box-sizing: border-box;
@@ -498,18 +509,18 @@ export class PrintEngineService {
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      font-size: 8pt;
+      font-size: 7.5pt;
       color: #0f172a;
       background: #ffffff;
-      padding: 2mm;
+      padding: 1.5mm;
     }
     .header-box {
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 2px solid #004b87;
-      padding-bottom: 6px;
-      margin-bottom: 8px;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
     }
     .brand-section {
       display: flex;
@@ -517,36 +528,36 @@ export class PrintEngineService {
       gap: 10px;
     }
     .brand-logo {
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 40px;
       object-fit: contain;
     }
     .title {
-      font-size: 13pt;
+      font-size: 12pt;
       font-weight: 900;
       color: #004b87;
       letter-spacing: -0.3px;
     }
     .kpi-row {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-      margin-bottom: 8px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
+      margin-bottom: 6px;
     }
     .kpi-card {
       background: #f8fafc;
       border: 1px solid #cbd5e1;
       border-radius: 4px;
-      padding: 4px 6px;
+      padding: 3.5px 5px;
     }
     .kpi-label {
-      font-size: 6.5pt;
+      font-size: 6pt;
       font-weight: 700;
       color: #64748b;
       text-transform: uppercase;
     }
     .kpi-val {
-      font-size: 9.5pt;
+      font-size: 9pt;
       font-weight: 900;
       font-family: monospace;
       color: #0f172a;
@@ -554,12 +565,12 @@ export class PrintEngineService {
     .table-data {
       width: 100%;
       border-collapse: collapse;
-      font-size: 7.5pt;
-      margin-bottom: 8px;
+      font-size: 6.8pt;
+      margin-bottom: 6px;
     }
     .table-data th, .table-data td {
       border: 1px solid #cbd5e1;
-      padding: 3.5px 5px;
+      padding: 2.5px 3px;
       text-align: center;
     }
     .table-data th {
@@ -567,7 +578,26 @@ export class PrintEngineService {
       color: #ffffff;
       font-weight: 800;
       text-transform: uppercase;
-      font-size: 6.8pt;
+      font-size: 6.2pt;
+    }
+    .table-data th.group-head-pedido {
+      background: #1e40af;
+      color: #ffffff;
+      font-size: 6.6pt;
+    }
+    .table-data th.group-head-apuracao {
+      background: #4338ca;
+      color: #ffffff;
+      font-size: 6.6pt;
+    }
+    .table-data th.group-head-suino {
+      background: #0f766e;
+      color: #ffffff;
+      font-size: 6.6pt;
+    }
+    .sub-head th {
+      font-size: 6pt;
+      font-weight: 800;
     }
     .total-row {
       background: #e2e8f0;
@@ -577,22 +607,23 @@ export class PrintEngineService {
       background: #e2e8f0;
       color: #0f172a;
       font-weight: 900;
+      font-size: 6.8pt;
     }
     .signatures {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
-      margin-top: 14px;
-      padding-top: 10px;
+      margin-top: 10px;
+      padding-top: 8px;
       border-top: 1px solid #cbd5e1;
       text-align: center;
-      font-size: 6.8pt;
+      font-size: 6.5pt;
       color: #475569;
     }
     .sig-line {
       border-top: 1px dashed #64748b;
-      margin-top: 20px;
-      padding-top: 3px;
+      margin-top: 16px;
+      padding-top: 2px;
     }
   </style>
 </head>
@@ -601,80 +632,127 @@ export class PrintEngineService {
     <div class="brand-section">
       <img src="/brand-logo.svg" alt="Grupo GAPP" class="brand-logo" onerror="this.src='/patrick-pessoa-brand.png'" />
       <div>
-        <div style="font-size: 7pt; font-weight: 800; color: #b45309; text-transform: uppercase; letter-spacing: 0.5px;">
+        <div style="font-size: 6.8pt; font-weight: 800; color: #b45309; text-transform: uppercase; letter-spacing: 0.5px;">
           Grupo GAPP Sistemas • Por Patrick Pessoa
         </div>
-        <div class="title">ERP APURAÇÃO DO BOI • RELATÓRIO DA PLANILHA MATRIZ</div>
-        <div style="font-size: 7.5pt; color: #475569;">
-          Base de Desossa: <strong>${yieldBasis === 'carcass' ? 'Carcaça Inteira (240kg)' : 'Meia Carcaça (120kg)'}</strong> • 16 Filiais Integradas
+        <div class="title">ERP APURAÇÃO DO BOI • RELATÓRIO DE PEDIDOS (BOVINO & SUÍNO)</div>
+        <div style="font-size: 7pt; color: #475569;">
+          Demonstrativo Oficial com base na Planilha de Compras • 16 Filiais Consolidadas
         </div>
       </div>
     </div>
-    <div style="text-align: right; font-size: 7.2pt; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 8px; border-radius: 4px;">
+    <div style="text-align: right; font-size: 6.8pt; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; padding: 3px 6px; border-radius: 4px;">
       <div><strong>Data de Emissão:</strong> ${emissionDateFormatted} às ${emissionTimeFormatted}</div>
-      <div style="font-family: monospace; font-size: 6.5pt; color: #64748b; margin-top: 1px;">Autenticação: ${hashAuth}</div>
+      <div style="font-family: monospace; font-size: 6pt; color: #64748b; margin-top: 1px;">Autenticação: ${hashAuth}</div>
     </div>
   </div>
 
   <div class="kpi-row">
     <div class="kpi-card">
-      <div class="kpi-label">Valor Estimado do Lote</div>
+      <div class="kpi-label">Pedido do Boi</div>
+      <div class="kpi-val" style="color: #1e40af;">${totalBoisPedidos} cab.</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Pedido de Suíno</div>
+      <div class="kpi-val" style="color: #0f766e;">${totalPedidoSuino} band.</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Pedidos Cortes</div>
+      <div class="kpi-val" style="color: #6b21a8;">${totalPedAlcatraoReal + totalPedCostelaReal} pç</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Venda Projetada</div>
+      <div class="kpi-val" style="color: #b45309;">${totalVendaBoi} bois</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Valor Total Compra</div>
       <div class="kpi-val" style="color: #166534;">${formatCurrencyBRL(estimatedTotal)}</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Volume Total (Kg)</div>
-      <div class="kpi-val" style="color: #1e40af;">${formatNumberBR(estimatedWeight)} kg</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Peças Bovinas Pedidas</div>
-      <div class="kpi-val" style="color: #b45309;">${formatNumberBR(totalPecas)} pç</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Total Estoque Câmaras</div>
-      <div class="kpi-val" style="color: #475569;">${formatNumberBR(totalCamara)} pç</div>
     </div>
   </div>
 
   <table class="table-data">
     <thead>
       <tr>
-        <th style="text-align: left; width: 22%;">Filial / Loja</th>
-        <th>Ped. Diant.</th>
-        <th>Ped. Tras.</th>
-        <th>Ped. Coxão</th>
-        <th>Ped. Alcat.</th>
-        <th>Giro / Venda</th>
-        <th>Boi (Fórmula)</th>
-        <th>Sugestão</th>
-        <th>Estoque Câmara</th>
+        <th rowspan="2" style="text-align: left; width: 14%; background: #004b87;">FILIAL (16)</th>
+        <th colspan="7" class="group-head-pedido">DADOS PARA GERAÇÃO DE PEDIDO (BOVINO)</th>
+        <th colspan="4" class="group-head-apuracao">APURAÇÃO & PEDIDO DO BOI</th>
+        <th colspan="5" class="group-head-suino">CÂMARA / BALCÃO & PEDIDO (SUÍNO)</th>
+      </tr>
+      <tr class="sub-head">
+        <th style="background: #dbeafe; color: #1e3a8a;">DIANT</th>
+        <th style="background: #dbeafe; color: #1e3a8a;">TRAS</th>
+        <th style="background: #dbeafe; color: #1e3a8a;">COXAO</th>
+        <th style="background: #dbeafe; color: #1e3a8a;">ALCAT</th>
+        <th style="background: #ede9fe; color: #5b21b6;">PEDIDO DE<br/>ALCATRÃO</th>
+        <th style="background: #dbeafe; color: #1e3a8a;">COST. G</th>
+        <th style="background: #ede9fe; color: #5b21b6;">PEDIDO DE<br/>COSTELA G</th>
+        <th style="background: #e0e7ff; color: #312e81;">BOI CALC</th>
+        <th style="background: #fef3c7; color: #92400e;">VENDA</th>
+        <th style="background: #ede9fe; color: #5b21b6;">SUJESTAO</th>
+        <th style="background: #d1fae5; color: #065f46;">PEDIDO DO<br/>BOI</th>
+        <th style="background: #ccfbf1; color: #0f766e;">SUÍNO</th>
+        <th style="background: #ccfbf1; color: #0f766e;">PERNIL</th>
+        <th style="background: #ccfbf1; color: #0f766e;">COSTELA<br/>SUÍNA</th>
+        <th style="background: #fef3c7; color: #92400e;">VENDA DE<br/>SUÍNO</th>
+        <th style="background: #99f6e4; color: #115e59;">PEDIDO DE<br/>SUÍNO</th>
       </tr>
     </thead>
     <tbody>
-      ${rows.map((r, i) => `
+      ${rows.map((r, i) => {
+        const boiCalc = Math.round(r.boi !== undefined ? r.boi : ((r.pedidoDianteiro + r.pedidoTraseiro + r.pedidoCoxao + r.pedidoAlcatrao) / 2));
+        const vendaVal = Math.round(r.venda || r.boiAVenda || 0);
+        const sujestaoVal = Math.round(r.sugestaoPedido !== undefined ? r.sugestaoPedido : (vendaVal - boiCalc));
+        const pedidoBoiVal = r.pedidoFinal !== undefined ? r.pedidoFinal : 0;
+
+        const pedAlcatraoVal = r.pedidoAlcatraoReal || 0;
+        const pedCostelaVal = r.pedidoCostelaReal || 0;
+        const suinoBandaVal = r.bandaPecas || 0;
+        const pernilVal = r.pernilPecas || 0;
+        const costelaSuinaVal = r.costelaSuinaPecas || 0;
+        const vendaSuinoVal = r.bandaVenda || r.vendaSuino || 0;
+        const pedidoSuinoVal = r.bandaPedido || r.pedidoSuino || 0;
+
+        return `
         <tr style="background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
-          <td style="text-align: left; font-weight: 700;">${r.storeName}</td>
+          <td style="text-align: left; font-weight: 700; color: #0f172a;">${r.storeName}</td>
           <td>${r.pedidoDianteiro}</td>
           <td>${r.pedidoTraseiro}</td>
           <td>${r.pedidoCoxao}</td>
           <td>${r.pedidoAlcatrao}</td>
-          <td style="color: #b45309; font-weight: bold;">${r.venda || r.boiAVenda || 0}</td>
-          <td style="font-weight: bold;">${r.boi || 0}</td>
-          <td style="font-weight: bold; color: ${(r.sugestaoPedido || 0) < 0 ? '#b91c1c' : '#047857'};">${r.sugestaoPedido || 0}</td>
-          <td style="font-weight: 700;">${r.camaraDianteiro + r.somaDoTraseiro + r.camaraCostelaGaucha}</td>
-        </tr>
-      `).join('')}
+          <td style="font-weight: bold; color: #5b21b6; background: #faf5ff;">${pedAlcatraoVal}</td>
+          <td>${r.pedidoCostelaGaucha}</td>
+          <td style="font-weight: bold; color: #5b21b6; background: #faf5ff;">${pedCostelaVal}</td>
+          <td style="font-weight: bold; color: #1e3a8a; background: #eff6ff;">${boiCalc}</td>
+          <td style="color: #b45309; font-weight: bold; background: #fffbeb;">${vendaVal}</td>
+          <td style="font-weight: bold; color: ${sujestaoVal < 0 ? '#b91c1c' : '#047857'}; background: #faf5ff;">${sujestaoVal}</td>
+          <td style="font-weight: 900; color: #065f46; background: #ecfdf5;">${pedidoBoiVal}</td>
+          <td style="font-weight: bold; color: #0f766e; background: #f0fdfa;">${suinoBandaVal}</td>
+          <td>${pernilVal}</td>
+          <td>${costelaSuinaVal}</td>
+          <td style="color: #b45309; font-weight: bold; background: #fffbeb;">${vendaSuinoVal}</td>
+          <td style="font-weight: 900; color: #115e59; background: #ccfbf1;">${pedidoSuinoVal}</td>
+        </tr>`;
+      }).join('')}
     </tbody>
     <tfoot>
       <tr class="total-row">
-        <td style="text-align: left;">TOTAL CONSOLIDADO (16 LOJAS)</td>
+        <td style="text-align: left;">TOTAL GERAL CONSOLIDADO</td>
         <td>${totalPedDianteiro}</td>
         <td>${totalPedTraseiro}</td>
         <td>${totalPedCoxao}</td>
         <td>${totalPedAlcatrao}</td>
-        <td>${totalVenda}</td>
-        <td>${totalBoi}</td>
-        <td>${totalSugestao}</td>
-        <td>${totalCamara}</td>
+        <td style="color: #5b21b6; background: #ede9fe; font-weight: 900;">${totalPedAlcatraoReal}</td>
+        <td>${totalPedCostelaGaucha}</td>
+        <td style="color: #5b21b6; background: #ede9fe; font-weight: 900;">${totalPedCostelaReal}</td>
+        <td>${Math.round(totalBoi)}</td>
+        <td style="color: #92400e;">${totalVendaBoi}</td>
+        <td style="color: #047857;">${Math.round(totalSugestao)}</td>
+        <td style="font-weight: 900; color: #065f46; background: #a7f3d0;">${totalBoisPedidos}</td>
+        <td style="color: #0f766e; background: #ccfbf1; font-weight: 900;">${totalSuinoBanda}</td>
+        <td>${totalPernil}</td>
+        <td>${totalCostelaSuina}</td>
+        <td style="color: #92400e;">${totalVendaSuino}</td>
+        <td style="font-weight: 900; color: #115e59; background: #5eead4;">${totalPedidoSuino}</td>
       </tr>
     </tfoot>
   </table>

@@ -73,13 +73,13 @@ export class PdfReportService {
   }
 
   /**
-   * Gera e baixa diretamente o Relatório Executivo Oficial em PDF
+   * Constrói e retorna o documento PDF e nome do arquivo do Relatório Executivo
+   * com as colunas oficiais selecionadas: Dianteiro, Traseiro, Coxão, Alcatrão, Costela G, Boi Calc, Venda, Sujestão e Pedido do Boi
    */
-  public static async generateAndDownloadReport(options: GeneratePdfReportOptions): Promise<void> {
+  public static async getExecutiveReportPdfDoc(options: GeneratePdfReportOptions): Promise<{ doc: jsPDF; fileName: string }> {
     const {
       rows,
-      stores,
-      title = 'RELATÓRIO GERENCIAL EXECUTIVO • APURAÇÃO DO BOI',
+      title = 'RELATÓRIO GERENCIAL DE PEDIDO • APURAÇÃO DO BOI',
       emissionDate = new Date(),
       currentUser = 'Patrick Pessoa (Direção de Carnes)'
     } = options;
@@ -88,14 +88,30 @@ export class PdfReportService {
     const yieldParams = StorageService.getYieldParams();
     const yieldBasis = yieldParams.basis === 'carcass' ? 'Carcaça Inteira (240 kg)' : 'Meia Carcaça (120 kg)';
 
-    // Cálculo dinâmico das métricas consolidadas
+    const totalBoisPedidos = rows.reduce((acc, r) => acc + (r.pedidoFinal || 0), 0);
+    const totalBoisCalc = totals.boi || rows.reduce((acc, r) => acc + (r.boi || 0), 0);
     const totalPecasBovino = totals.pedidoDianteiro + totals.pedidoTraseiro + totals.pedidoCoxao + totals.pedidoAlcatrao + totals.pedidoCostelaGaucha;
-    const totalBois = totals.boi || rows.reduce((acc, r) => acc + (r.boi || 0), 0);
-    const estimatedWeightKg = totalBois * (yieldParams.carcassWeight || 240);
-    const estimatedTotalR$ = estimatedWeightKg * (yieldParams.costPerKg || 26.0);
-    const totalCamaraPecas = rows.reduce((acc, r) => acc + (r.camaraDianteiro || 0) + (r.somaDoTraseiro || 0) + (r.camaraCostelaGaucha || 0), 0);
+    const totalPedAlcatrao = totals.pedidoAlcatraoReal || rows.reduce((acc, r) => acc + (r.pedidoAlcatraoReal || 0), 0);
+    const totalPedCostela = totals.pedidoCostelaReal || rows.reduce((acc, r) => acc + (r.pedidoCostelaReal || 0), 0);
+    const totalVendaBoi = totals.venda || totals.boiAVenda || 0;
+    const totalSugestaoBoi = totals.sugestaoPedido || 0;
 
-    // Formatação da Data de Emissão Completa
+    const totalSuinoBanda = totals.bandaPecas || rows.reduce((acc, r) => acc + (r.bandaPecas || 0), 0);
+    const totalPernil = totals.pernilPecas || rows.reduce((acc, r) => acc + (r.pernilPecas || 0), 0);
+    const totalCostelaSuina = totals.costelaSuinaPecas || rows.reduce((acc, r) => acc + (r.costelaSuinaPecas || 0), 0);
+    const totalVendaSuino = totals.bandaVenda || totals.vendaSuino || rows.reduce((acc, r) => acc + (r.bandaVenda || r.vendaSuino || 0), 0);
+    const totalPedidoSuino = totals.bandaPedido || totals.pedidoSuino || rows.reduce((acc, r) => acc + (r.bandaPedido || r.pedidoSuino || 0), 0);
+
+    const boiCarcassWeight = yieldParams.carcassWeight || 240;
+    const boiCostPerKg = yieldParams.costPerKg || 26.0;
+    const estimatedBoiWeightKg = (totalBoisPedidos > 0 ? totalBoisPedidos : totalBoisCalc) * boiCarcassWeight;
+    const estimatedBoiTotalR$ = estimatedBoiWeightKg * boiCostPerKg;
+
+    const bandaCostPerKg = yieldParams.bandaCostKg || 26.0;
+    const estimatedSuinoWeightKg = totalPedidoSuino * 36;
+    const estimatedSuinoTotalR$ = estimatedSuinoWeightKg * bandaCostPerKg;
+    const estimatedGrandTotalR$ = estimatedBoiTotalR$ + estimatedSuinoTotalR$;
+
     const emissionDateFormatted = emissionDate.toLocaleDateString('pt-BR', {
       weekday: 'long',
       year: 'numeric',
@@ -109,7 +125,6 @@ export class PdfReportService {
     });
     const hashAuth = `GAPP-PDF-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // Inicializa o Documento A4 em Orientação Paisagem (Landscape) para layout executivo perfeito
     const doc = new jsPDF({
       orientation: 'landscape',
       unit: 'mm',
@@ -118,46 +133,41 @@ export class PdfReportService {
 
     const pageWidth = doc.internal.pageSize.getWidth(); // 297mm
     const pageHeight = doc.internal.pageSize.getHeight(); // 210mm
-    const margin = 14;
+    const margin = 8;
 
     // 1. Cabeçalho Corporativo com Logo do Grupo GAPP
     const logoBase64 = await this.getLogoBase64();
     if (logoBase64) {
       try {
-        // Insere o logo no canto superior esquerdo
         doc.addImage(logoBase64, 'PNG', margin, margin, 18, 18);
       } catch (e) {
         console.warn('Não foi possível renderizar a imagem do logo no PDF:', e);
       }
     }
 
-    // Textos do Topo
     const headerLeftX = logoBase64 ? margin + 22 : margin;
 
-    // Identificação Grupo GAPP
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(180, 83, 9); // Amber 700
     doc.text('GRUPO GAPP SISTEMAS • GESTÃO AGROINDUSTRIAL INTEGRADA', headerLeftX, margin + 4);
 
-    // Título Principal
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
+    doc.setFontSize(13);
     doc.setTextColor(15, 23, 42); // Slate 900
     doc.text(title, headerLeftX, margin + 10);
 
-    // Subtítulo
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(71, 85, 105); // Slate 600
-    doc.text(`Direção Corporativa • Responsável: ${currentUser} • Matriz 16 Filiais`, headerLeftX, margin + 15);
+    doc.setFontSize(7.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Base: Planilha de Compras da Direção • Responsável: ${currentUser} • 16 Filiais Consolidadas (Bovino & Suíno)`, headerLeftX, margin + 15);
 
     // Caixa de Informações de Emissão (Canto Superior Direito)
-    const rightBoxWidth = 85;
+    const rightBoxWidth = 88;
     const rightBoxX = pageWidth - margin - rightBoxWidth;
 
-    doc.setFillColor(248, 250, 252); // Slate 50
-    doc.setDrawColor(203, 213, 225); // Slate 300
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
     doc.roundedRect(rightBoxX, margin, rightBoxWidth, 18, 2, 2, 'FD');
 
     doc.setFont('helvetica', 'bold');
@@ -175,41 +185,47 @@ export class PdfReportService {
     doc.setTextColor(100, 116, 139);
     doc.text(`Autenticação: ${hashAuth} • Base: ${yieldBasis}`, rightBoxX + 4, margin + 14);
 
-    // Linha divisória corporativa estilizada
-    doc.setDrawColor(0, 75, 135); // Navy GAPP
+    // Linha divisória corporativa
+    doc.setDrawColor(0, 75, 135);
     doc.setLineWidth(0.8);
     doc.line(margin, margin + 22, pageWidth - margin, margin + 22);
 
     // 2. Cards de Destaque / KPIs Resumidos
-    const kpiY = margin + 25;
-    const kpiHeight = 15;
+    const kpiY = margin + 24;
+    const kpiHeight = 14;
     const kpiGap = 4;
-    const kpiWidth = (pageWidth - 2 * margin - 3 * kpiGap) / 4;
+    const kpiWidth = (pageWidth - 2 * margin - 4 * kpiGap) / 5;
 
     const kpis = [
       {
-        label: 'VALOR TOTAL ESTIMADO DO LOTE',
-        val: formatCurrencyBRL(estimatedTotalR$),
-        sub: '16 Filiais Abastecidas',
-        color: [22, 101, 52] // Emerald 800
+        label: 'PEDIDO DO BOI',
+        val: `${totalBoisPedidos} cabeças`,
+        sub: `Boi Calc: ${Math.round(totalBoisCalc)}`,
+        color: [30, 64, 175]
       },
       {
-        label: 'VOLUME PREVISTO CARCAÇA',
-        val: `${formatNumberBR(estimatedWeightKg)} kg`,
-        sub: `Base: ${totalBois} bois calculados`,
-        color: [30, 64, 175] // Blue 800
+        label: 'PEDIDO DE SUÍNO',
+        val: `${totalPedidoSuino} bandas`,
+        sub: `Câmara: ${totalSuinoBanda} pçs`,
+        color: [13, 148, 136]
       },
       {
-        label: 'TOTAL DE PEÇAS PEDIDAS',
-        val: `${formatNumberBR(totalPecasBovino)} peças`,
-        sub: 'Dianteiros + Traseiros + Cortes',
-        color: [180, 83, 9] // Amber 700
+        label: 'PEDIDOS DE CORTES',
+        val: `${totalPedAlcatrao + totalPedCostela} peças`,
+        sub: `Alc: ${totalPedAlcatrao} | Cost: ${totalPedCostela}`,
+        color: [126, 34, 206]
       },
       {
-        label: 'ESTOQUE TOTAL EM CÂMARAS',
-        val: `${formatNumberBR(totalCamaraPecas)} peças`,
-        sub: 'Inventário Físico Lojas',
-        color: [71, 85, 105] // Slate 600
+        label: 'GIRO TOTAL VENDA',
+        val: `${totalVendaBoi} bois`,
+        sub: `Suíno: ${totalVendaSuino} pçs`,
+        color: [180, 83, 9]
+      },
+      {
+        label: 'VALOR TOTAL COMPRA',
+        val: formatCurrencyBRL(estimatedGrandTotalR$),
+        sub: `Boi: ${formatCurrencyBRL(estimatedBoiTotalR$)}`,
+        color: [22, 101, 52]
       }
     ];
 
@@ -220,27 +236,35 @@ export class PdfReportService {
       doc.roundedRect(x, kpiY, kpiWidth, kpiHeight, 1.5, 1.5, 'FD');
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(6.5);
+      doc.setFontSize(6.2);
       doc.setTextColor(100, 116, 139);
-      doc.text(kpi.label, x + 3, kpiY + 4);
+      doc.text(kpi.label, x + 2.5, kpiY + 3.8);
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
+      doc.setFontSize(9);
       doc.setTextColor(kpi.color[0], kpi.color[1], kpi.color[2]);
-      doc.text(kpi.val, x + 3, kpiY + 9.5);
+      doc.text(kpi.val, x + 2.5, kpiY + 8.8);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(6);
+      doc.setFontSize(5.8);
       doc.setTextColor(148, 163, 184);
-      doc.text(kpi.sub, x + 3, kpiY + 13.5);
+      doc.text(kpi.sub, x + 2.5, kpiY + 12.5);
     });
 
-    // 3. Tabela Consolidada das 16 Lojas
+    // 3. Tabela Consolidada com as 17 Colunas Selecionadas
     const tableBody = rows.map((r) => {
-      const camaraTotal = (r.camaraDianteiro || 0) + (r.somaDoTraseiro || 0) + (r.camaraCostelaGaucha || 0);
-      const venda = r.venda || r.boiAVenda || 0;
-      const sugestao = r.sugestaoPedido || 0;
-      const boi = r.boi || 0;
+      const venda = Math.round(r.venda || r.boiAVenda || 0);
+      const boi = Math.round(r.boi !== undefined ? r.boi : ((r.pedidoDianteiro + r.pedidoTraseiro + r.pedidoCoxao + r.pedidoAlcatrao) / 2));
+      const sugestao = Math.round(r.sugestaoPedido !== undefined ? r.sugestaoPedido : (venda - boi));
+      const pedidoBoi = r.pedidoFinal !== undefined ? r.pedidoFinal : 0;
+
+      const pedAlcatrao = r.pedidoAlcatraoReal || 0;
+      const pedCostela = r.pedidoCostelaReal || 0;
+      const suinoBanda = r.bandaPecas || 0;
+      const pernil = r.pernilPecas || 0;
+      const costelaSuina = r.costelaSuinaPecas || 0;
+      const vendaSuino = r.bandaVenda || r.vendaSuino || 0;
+      const pedidoSuino = r.bandaPedido || r.pedidoSuino || 0;
 
       return [
         r.storeName,
@@ -248,86 +272,120 @@ export class PdfReportService {
         r.pedidoTraseiro?.toString() || '0',
         r.pedidoCoxao?.toString() || '0',
         r.pedidoAlcatrao?.toString() || '0',
-        venda.toString(),
+        pedAlcatrao.toString(),
+        r.pedidoCostelaGaucha?.toString() || '0',
+        pedCostela.toString(),
         boi.toString(),
+        venda.toString(),
         sugestao.toString(),
-        camaraTotal.toString()
+        pedidoBoi.toString(),
+        suinoBanda.toString(),
+        pernil.toString(),
+        costelaSuina.toString(),
+        vendaSuino.toString(),
+        pedidoSuino.toString()
       ];
     });
 
-    // Linha de Totais Gerais
     const totalRow = [
-      'TOTAL CONSOLIDADO (16 LOJAS)',
+      'TOTAL GERAL CONSOLIDADO',
       totals.pedidoDianteiro.toString(),
       totals.pedidoTraseiro.toString(),
       totals.pedidoCoxao.toString(),
       totals.pedidoAlcatrao.toString(),
+      totalPedAlcatrao.toString(),
+      totals.pedidoCostelaGaucha.toString(),
+      totalPedCostela.toString(),
+      Math.round(totals.boi || 0).toString(),
       (totals.venda || totals.boiAVenda || 0).toString(),
-      (totals.boi || 0).toString(),
-      (totals.sugestaoPedido || 0).toString(),
-      totalCamaraPecas.toString()
+      Math.round(totals.sugestaoPedido || 0).toString(),
+      totalBoisPedidos.toString(),
+      totalSuinoBanda.toString(),
+      totalPernil.toString(),
+      totalCostelaSuina.toString(),
+      totalVendaSuino.toString(),
+      totalPedidoSuino.toString()
     ];
 
     autoTable(doc, {
-      startY: kpiY + kpiHeight + 4,
-      margin: { left: margin, right: margin, bottom: 26 },
-      head: [[
-        'Filial / Loja',
-        'Ped. Diant.',
-        'Ped. Tras.',
-        'Ped. Coxão',
-        'Ped. Alcat.',
-        'Giro / Venda',
-        'Boi (Fórmula)',
-        'Sugestão',
-        'Estoque Câmara'
-      ]],
+      startY: kpiY + kpiHeight + 3,
+      margin: { left: margin, right: margin, bottom: 24 },
+      head: [
+        [
+          { content: 'FILIAL (16)', rowSpan: 2, styles: { fillColor: [0, 75, 135], textColor: [255, 255, 255], halign: 'left', fontStyle: 'bold' } },
+          { content: 'DADOS PARA GERAÇÃO DE PEDIDO (BOVINO)', colSpan: 7, styles: { fillColor: [30, 64, 175], textColor: [255, 255, 255], halign: 'center', fontStyle: 'bold' } },
+          { content: 'APURAÇÃO & PEDIDO DO BOI', colSpan: 4, styles: { fillColor: [67, 56, 202], textColor: [255, 255, 255], halign: 'center', fontStyle: 'bold' } },
+          { content: 'CÂMARA / BALCÃO & PEDIDO (SUÍNO)', colSpan: 5, styles: { fillColor: [15, 118, 110], textColor: [255, 255, 255], halign: 'center', fontStyle: 'bold' } }
+        ],
+        [
+          { content: 'DIANT.', styles: { fillColor: [219, 234, 254], textColor: [30, 58, 138], fontStyle: 'bold' } },
+          { content: 'TRAS.', styles: { fillColor: [219, 234, 254], textColor: [30, 58, 138], fontStyle: 'bold' } },
+          { content: 'COXAO', styles: { fillColor: [219, 234, 254], textColor: [30, 58, 138], fontStyle: 'bold' } },
+          { content: 'ALCAT.', styles: { fillColor: [219, 234, 254], textColor: [30, 58, 138], fontStyle: 'bold' } },
+          { content: 'PEDIDO DE\nALCATRÃO', styles: { fillColor: [237, 233, 254], textColor: [91, 33, 182], fontStyle: 'bold' } },
+          { content: 'COST. G', styles: { fillColor: [219, 234, 254], textColor: [30, 58, 138], fontStyle: 'bold' } },
+          { content: 'PEDIDO DE\nCOSTELA G', styles: { fillColor: [237, 233, 254], textColor: [91, 33, 182], fontStyle: 'bold' } },
+          { content: 'BOI CALC', styles: { fillColor: [224, 231, 255], textColor: [49, 46, 129], fontStyle: 'bold' } },
+          { content: 'VENDA', styles: { fillColor: [254, 243, 199], textColor: [146, 64, 14], fontStyle: 'bold' } },
+          { content: 'SUJESTAO', styles: { fillColor: [237, 233, 254], textColor: [91, 33, 182], fontStyle: 'bold' } },
+          { content: 'PEDIDO DO\nBOI', styles: { fillColor: [209, 250, 229], textColor: [6, 95, 70], fontStyle: 'bold' } },
+          { content: 'SUÍNO', styles: { fillColor: [204, 251, 241], textColor: [17, 94, 89], fontStyle: 'bold' } },
+          { content: 'PERNIL', styles: { fillColor: [204, 251, 241], textColor: [17, 94, 89], fontStyle: 'bold' } },
+          { content: 'COSTELA\nSUÍNA', styles: { fillColor: [204, 251, 241], textColor: [17, 94, 89], fontStyle: 'bold' } },
+          { content: 'VENDA DE\nSUÍNO', styles: { fillColor: [254, 243, 199], textColor: [146, 64, 14], fontStyle: 'bold' } },
+          { content: 'PEDIDO DE\nSUÍNO', styles: { fillColor: [153, 246, 228], textColor: [17, 94, 89], fontStyle: 'bold' } }
+        ]
+      ],
       body: tableBody,
       foot: [totalRow],
       theme: 'grid',
       styles: {
         font: 'helvetica',
-        fontSize: 7.5,
-        cellPadding: 2,
+        fontSize: 6.8,
+        cellPadding: 1.4,
         textColor: [15, 23, 42],
         lineColor: [203, 213, 225],
-        lineWidth: 0.2,
+        lineWidth: 0.15,
         halign: 'center'
       },
       headStyles: {
-        fillColor: [0, 75, 135], // Azul Corporativo GAPP
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
-        fontSize: 7.5,
+        fontSize: 6.5,
         halign: 'center'
       },
       footStyles: {
-        fillColor: [226, 232, 240], // Slate 200
+        fillColor: [226, 232, 240],
         textColor: [15, 23, 42],
         fontStyle: 'bold',
-        fontSize: 8,
+        fontSize: 6.8,
         halign: 'center'
       },
       columnStyles: {
-        0: { halign: 'left', fontStyle: 'bold', cellWidth: 50 },
-        1: { cellWidth: 26 },
-        2: { cellWidth: 26 },
-        3: { cellWidth: 26 },
-        4: { cellWidth: 26 },
-        5: { cellWidth: 28, textColor: [180, 83, 9], fontStyle: 'bold' },
-        6: { cellWidth: 28, fontStyle: 'bold' },
-        7: { cellWidth: 28, textColor: [22, 101, 52], fontStyle: 'bold' },
-        8: { cellWidth: 31, fontStyle: 'bold' }
+        0: { halign: 'left', fontStyle: 'bold', cellWidth: 38 }, // Filial
+        1: { cellWidth: 14 }, // Dianteiro
+        2: { cellWidth: 14 }, // Traseiro
+        3: { cellWidth: 14 }, // Coxão
+        4: { cellWidth: 14 }, // Alcatrão
+        5: { cellWidth: 16, fontStyle: 'bold', textColor: [91, 33, 182], fillColor: [250, 245, 255] }, // Ped. Alcatrão
+        6: { cellWidth: 14 }, // Costela G
+        7: { cellWidth: 16, fontStyle: 'bold', textColor: [91, 33, 182], fillColor: [250, 245, 255] }, // Ped. Costela G
+        8: { cellWidth: 16, fontStyle: 'bold', textColor: [30, 58, 138], fillColor: [248, 250, 255] }, // Boi Calc
+        9: { cellWidth: 14, fontStyle: 'bold', textColor: [180, 83, 9] }, // Venda
+        10: { cellWidth: 15, fontStyle: 'bold' }, // Sujestão
+        11: { cellWidth: 17, fontStyle: 'bold', textColor: [6, 95, 70], fillColor: [240, 253, 244] }, // Pedido do Boi
+        12: { cellWidth: 14, fontStyle: 'bold', textColor: [17, 94, 89] }, // Suíno
+        13: { cellWidth: 14 }, // Pernil
+        14: { cellWidth: 16 }, // Costela Suína
+        15: { cellWidth: 15, fontStyle: 'bold', textColor: [180, 83, 9] }, // Venda Suíno
+        16: { cellWidth: 17, fontStyle: 'bold', textColor: [17, 94, 89], fillColor: [204, 251, 241] } // Pedido Suíno
       },
       alternateRowStyles: {
-        fillColor: [248, 250, 252] // Slate 50
+        fillColor: [248, 250, 252]
       },
       didDrawPage: (data) => {
         // 4. Rodapé Corporativo e Assinaturas
         const footerY = pageHeight - 18;
 
-        // Linhas de Assinaturas
-        doc.setDrawColor(148, 163, 184); // Slate 400
+        doc.setDrawColor(148, 163, 184);
         doc.setLineWidth(0.4);
 
         const sigWidth = 60;
@@ -359,7 +417,7 @@ export class PdfReportService {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(6.5);
         doc.setTextColor(148, 163, 184);
-        doc.text('Grupo GAPP Sistemas • ERP Apuração do Boi v10.7 • Portal: https://gipp-site.vercel.app/', margin, footerY + 12);
+        doc.text('Grupo GAPP Sistemas • ERP Apuração do Boi v10.7 • Relatório com base na Planilha de Compras', margin, footerY + 12);
 
         const totalPages = doc.getNumberOfPages();
         const pageStr = `Página ${data.pageNumber} de ${totalPages}`;
@@ -367,9 +425,17 @@ export class PdfReportService {
       }
     });
 
-    // Salva e aciona o download nativo do arquivo PDF no dispositivo do usuário
     const dateFileStr = emissionDate.toISOString().split('T')[0];
-    const fileName = `Relatorio_Apuracao_Boi_GrupoGAPP_${dateFileStr}.pdf`;
+    const fileName = `Relatorio_Pedido_Boi_GAPP_${dateFileStr}.pdf`;
+
+    return { doc, fileName };
+  }
+
+  /**
+   * Gera e baixa diretamente o Relatório Executivo Oficial em PDF
+   */
+  public static async generateAndDownloadReport(options: GeneratePdfReportOptions): Promise<void> {
+    const { doc, fileName } = await this.getExecutiveReportPdfDoc(options);
     doc.save(fileName);
   }
 

@@ -234,4 +234,121 @@ export class WhatsAppShareService {
     window.open(whatsappUrl, '_blank');
     return { success: true, sharedViaWebShare: false };
   }
+
+  /**
+   * 3. Compartilha o RELATÓRIO DE PEDIDO DO BOI EM PDF via WhatsApp
+   * com as colunas selecionadas: Dianteiro, Traseiro, Coxão, Alcatrão, Costela G, Boi Calc, Venda, Sujestão e Pedido do Boi
+   */
+  public static async shareExecutiveReportViaWhatsApp(params: {
+    rows: SheetRowData[];
+    stores: Store[];
+    title?: string;
+    emissionDate?: Date;
+    currentUser?: string;
+    targetPhone?: string;
+  }): Promise<{ success: boolean; sharedViaWebShare: boolean }> {
+    const {
+      rows,
+      stores,
+      title = 'Relatório de Geração de Pedido do Boi',
+      emissionDate = new Date(),
+      currentUser = 'Patrick Pessoa (Direção de Carnes)',
+      targetPhone = ''
+    } = params;
+
+    const totals = calculateSheetTotals(rows);
+    const dateFormatted = emissionDate.toLocaleDateString('pt-BR');
+    const timeFormatted = emissionDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    // 1. Gera o documento PDF real em memória
+    const { doc, fileName } = await PdfReportService.getExecutiveReportPdfDoc({
+      rows,
+      stores,
+      title: title.toUpperCase(),
+      emissionDate,
+      currentUser
+    });
+
+    const pdfBlob = doc.output('blob');
+    const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+    // 2. Monta a mensagem de WhatsApp formatada com base nas colunas selecionadas
+    const totalBoisPedidos = rows.reduce((acc, r) => acc + (r.pedidoFinal || 0), 0);
+    const totalBoisCalc = Math.round(totals.boi || rows.reduce((acc, r) => acc + (r.boi || 0), 0));
+    const totalPecasCortes = totals.pedidoDianteiro + totals.pedidoTraseiro + totals.pedidoCoxao + totals.pedidoAlcatrao + totals.pedidoCostelaGaucha;
+    const totalPedAlcatrao = totals.pedidoAlcatraoReal || rows.reduce((acc, r) => acc + (r.pedidoAlcatraoReal || 0), 0);
+    const totalPedCostela = totals.pedidoCostelaReal || rows.reduce((acc, r) => acc + (r.pedidoCostelaReal || 0), 0);
+    const totalVendaBoi = totals.venda || totals.boiAVenda || 0;
+    const totalSugestaoBoi = Math.round(totals.sugestaoPedido || 0);
+
+    const totalSuinoBanda = totals.bandaPecas || rows.reduce((acc, r) => acc + (r.bandaPecas || 0), 0);
+    const totalPernil = totals.pernilPecas || rows.reduce((acc, r) => acc + (r.pernilPecas || 0), 0);
+    const totalCostelaSuina = totals.costelaSuinaPecas || rows.reduce((acc, r) => acc + (r.costelaSuinaPecas || 0), 0);
+    const totalVendaSuino = totals.bandaVenda || totals.vendaSuino || rows.reduce((acc, r) => acc + (r.bandaVenda || r.vendaSuino || 0), 0);
+    const totalPedidoSuino = totals.bandaPedido || totals.pedidoSuino || rows.reduce((acc, r) => acc + (r.bandaPedido || r.pedidoSuino || 0), 0);
+
+    const messageLines = [
+      `📊 *GRUPO GAPP SISTEMAS • RELATÓRIO DE PEDIDO (BOVINO & SUÍNO)*`,
+      `📅 *Emissão:* ${dateFormatted} às ${timeFormatted}`,
+      `👤 *Responsável:* ${currentUser}`,
+      `🏪 *Rede:* 16 Filiais Consolidadas (Planilha de Compras)`,
+      ``,
+      `🐂 *DADOS PARA GERAÇÃO DE PEDIDO (BOVINO):*`,
+      `• *Dianteiro:* ${totals.pedidoDianteiro} peças`,
+      `• *Traseiro:* ${totals.pedidoTraseiro} peças`,
+      `• *Coxão:* ${totals.pedidoCoxao} peças`,
+      `• *Alcatrão Estoque:* ${totals.pedidoAlcatrao} peças`,
+      `• *PEDIDO DE ALCATRÃO:* *${totalPedAlcatrao} peças*`,
+      `• *Costela G Estoque:* ${totals.pedidoCostelaGaucha} peças`,
+      `• *PEDIDO DE COSTELA G:* *${totalPedCostela} peças*`,
+      ``,
+      `📈 *APURAÇÃO & PEDIDO DO BOI:*`,
+      `• *Boi Calc (Fórmula):* ${totalBoisCalc} bois`,
+      `• *Giro / Venda Projetada:* ${totalVendaBoi} bois`,
+      `• *Sujestão Calculada:* ${totalSugestaoBoi} bois`,
+      `• *PEDIDO DO BOI (Total Lançado):* *${totalBoisPedidos} cabeças*`,
+      ``,
+      `🐖 *CÂMARA / BALCÃO & PEDIDO (SUÍNO):*`,
+      `• *Suíno (Banda Câmara):* ${totalSuinoBanda} peças`,
+      `• *Pernil:* ${totalPernil} peças`,
+      `• *Costela Suína:* ${totalCostelaSuina} peças`,
+      `• *Venda de Suíno:* ${totalVendaSuino} peças`,
+      `• *PEDIDO DE SUÍNO (Bandas):* *${totalPedidoSuino} peças*`,
+      ``,
+      `📄 _O relatório executivo em PDF (A4 Paisagem) com a tabela detalhada das 16 filiais está em anexo._`,
+      `🔒 _Autenticação Oficial Grupo GAPP Sistemas • v10.7_`
+    ].filter(Boolean);
+
+    const messageText = messageLines.join('\n');
+    let sharedViaWebShare = false;
+
+    // 3. Tenta compartilhamento nativo com o arquivo PDF anexado via Web Share API
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+      try {
+        await navigator.share({
+          files: [pdfFile],
+          title: `Relatorio_Pedido_Boi_${dateFormatted}`,
+          text: messageText,
+        });
+        sharedViaWebShare = true;
+        return { success: true, sharedViaWebShare: true };
+      } catch (err: any) {
+        if (err?.name === 'AbortError') {
+          return { success: true, sharedViaWebShare: true };
+        }
+        console.warn('Web Share falhou ou cancelado, acionando fallback WhatsApp Web:', err);
+      }
+    }
+
+    // 4. Fallback: Baixa o PDF no dispositivo e abre o WhatsApp com o texto pré-preenchido
+    doc.save(fileName);
+
+    const sanitizedPhone = this.sanitizePhone(targetPhone);
+    const phoneParam = sanitizedPhone ? `phone=${sanitizedPhone}&` : '';
+    const whatsappUrl = `https://api.whatsapp.com/send?${phoneParam}text=${encodeURIComponent(messageText)}`;
+
+    window.open(whatsappUrl, '_blank');
+    return { success: true, sharedViaWebShare: false };
+  }
 }
+
