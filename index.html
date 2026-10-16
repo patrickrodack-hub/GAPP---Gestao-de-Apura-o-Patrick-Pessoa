@@ -22,8 +22,29 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Inicialização instantânea do tema salvo e configurações do usuário antes da renderização -->
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('apuracao_boi_theme');
+          var theme = (saved === 'solidcon' || saved === 'light' || saved === 'dark' || saved === 'gapp-new') ? saved : 'gapp-new';
+          document.documentElement.classList.remove('dark', 'light', 'solidcon', 'gapp-new');
+          document.documentElement.classList.add(theme);
+          if (theme === 'dark') document.documentElement.classList.add('dark');
+          document.documentElement.setAttribute('data-theme', theme);
+
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) {
+            if (theme === 'gapp-new') meta.setAttribute('content', '#113829');
+            else if (theme === 'dark') meta.setAttribute('content', '#07080c');
+            else if (theme === 'solidcon') meta.setAttribute('content', '#1b3252');
+            else meta.setAttribute('content', '#ffffff');
+          }
+        } catch(e) {}
+      })();
+    </script>
   </head>
-  <body class="h-full w-full overflow-hidden bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased font-sans selection:bg-amber-600 selection:text-white transition-colors duration-200">
+  <body class="h-full w-full overflow-hidden antialiased font-sans selection:bg-amber-600 selection:text-white transition-colors duration-200">
     <div id="root" class="h-full w-full overflow-hidden"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

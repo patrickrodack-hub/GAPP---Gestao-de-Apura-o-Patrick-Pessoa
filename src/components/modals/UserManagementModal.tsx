@@ -61,6 +61,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [formAllowedModules, setFormAllowedModules] = useState<string[]>([
     'dashboard', 'sheet', 'inventory'
   ]);
+  const [formPreferredTheme, setFormPreferredTheme] = useState<'solidcon' | 'light' | 'dark' | 'gapp-new'>('gapp-new');
   const [showPassword, setShowPassword] = useState(false);
   const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -87,6 +88,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     setFormEmail('');
     setFormActive(true);
     setFormAllowedModules(['dashboard', 'sheet', 'inventory']);
+    setFormPreferredTheme('gapp-new');
     setIsEditing(true);
   };
 
@@ -104,6 +106,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     setFormEmail(user.email || '');
     setFormActive(user.active);
     setFormAllowedModules(user.allowedModules || []);
+    setFormPreferredTheme(user.preferredTheme || 'gapp-new');
     setIsEditing(true);
   };
 
@@ -197,6 +200,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
           email: formEmail.trim() || undefined,
           active: isTargetDev ? true : formActive,
           allowedModules: isTargetDev ? ALL_SYSTEM_MODULES.map(m => m.id) : formAllowedModules,
+          preferredTheme: formPreferredTheme,
         };
 
         const newUsersList = StorageService.updateUser(updated);
@@ -214,6 +218,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
           email: formEmail.trim() || undefined,
           active: formActive,
           allowedModules: formRole === 'DESENVOLVEDOR' ? ALL_SYSTEM_MODULES.map(m => m.id) : formAllowedModules,
+          preferredTheme: formPreferredTheme,
           createdAt: Date.now()
         };
 
@@ -485,6 +490,35 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                       />
                       <span className="font-bold text-rose-600">Inativo</span>
                     </label>
+                  </div>
+                </div>
+
+                {/* Campo: Tema Visual Padrão ao Iniciar */}
+                <div className="space-y-1.5 sm:col-span-2 pt-1 border-t border-slate-200 dark:border-slate-800">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Tema Visual Padrão ao Iniciar (Gravado no Perfil)
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { id: 'gapp-new', name: 'GAPP-NEW', desc: 'Layout Executivo Pro' },
+                      { id: 'light', name: 'Moderno Claro', desc: 'Interface Clara' },
+                      { id: 'dark', name: 'Moderno Escuro', desc: 'Interface Escura' },
+                      { id: 'solidcon', name: 'GAPP Classic', desc: 'ERP Desktop' },
+                    ].map(t => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setFormPreferredTheme(t.id as any)}
+                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                          formPreferredTheme === t.id
+                            ? 'bg-amber-500/15 border-amber-500 text-amber-900 dark:text-amber-300 font-bold shadow-xs'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="text-xs font-bold">{t.name}</div>
+                        <div className="text-[10px] text-slate-400">{t.desc}</div>
+                      </button>
+                    ))}
                   </div>
                 </div>
 

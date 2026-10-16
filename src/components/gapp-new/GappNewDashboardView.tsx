@@ -59,7 +59,22 @@ export const GappNewDashboardView: React.FC<GappNewDashboardViewProps> = ({
   onOpenPurchaseOrder,
   onPrint
 }) => {
-  const [viewMode, setViewMode] = useState<'executive' | 'charts'>('executive');
+  const [viewMode, setViewMode] = useState<'executive' | 'charts'>(() => {
+    try {
+      const saved = localStorage.getItem('gapp_new_dashboard_view_mode');
+      return saved === 'charts' ? 'charts' : 'executive';
+    } catch {
+      return 'executive';
+    }
+  });
+
+  const handleChangeViewMode = (mode: 'executive' | 'charts') => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('gapp_new_dashboard_view_mode', mode);
+    } catch {}
+  };
+
   const [analyticFilter, setAnalyticFilter] = useState<'all' | 'bovino' | 'suino'>('all');
   const [storeFilter, setStoreFilter] = useState<'all' | 'withOrder' | 'suino'>('all');
 
@@ -283,7 +298,7 @@ export const GappNewDashboardView: React.FC<GappNewDashboardViewProps> = ({
           <div className="flex items-center gap-1 p-1 bg-[#f4f6f4] rounded-full">
             <button
               type="button"
-              onClick={() => setViewMode('executive')}
+              onClick={() => handleChangeViewMode('executive')}
               className="px-3.5 py-1.5 rounded-full text-xs font-bold text-slate-600 hover:text-[#113829] flex items-center gap-1.5 transition cursor-pointer"
             >
               <LayoutGrid className="w-3.5 h-3.5" />
@@ -291,7 +306,7 @@ export const GappNewDashboardView: React.FC<GappNewDashboardViewProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setViewMode('charts')}
+              onClick={() => handleChangeViewMode('charts')}
               className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#113829] text-white shadow-xs flex items-center gap-1.5 transition cursor-pointer"
             >
               <BarChart3 className="w-3.5 h-3.5 text-[#b5e550]" />
@@ -327,7 +342,7 @@ export const GappNewDashboardView: React.FC<GappNewDashboardViewProps> = ({
           <div className="flex items-center gap-1 p-1 bg-white border border-[#e4e9e5] rounded-full shadow-2xs">
             <button
               type="button"
-              onClick={() => setViewMode('executive')}
+              onClick={() => handleChangeViewMode('executive')}
               className="px-3 py-1 rounded-full text-[11px] font-bold bg-[#113829] text-white flex items-center gap-1.5 transition cursor-pointer"
             >
               <LayoutGrid className="w-3 h-3 text-[#b5e550]" />
@@ -335,7 +350,7 @@ export const GappNewDashboardView: React.FC<GappNewDashboardViewProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setViewMode('charts')}
+              onClick={() => handleChangeViewMode('charts')}
               className="px-3 py-1 rounded-full text-[11px] font-bold text-slate-600 hover:text-[#113829] flex items-center gap-1.5 transition cursor-pointer"
             >
               <BarChart3 className="w-3 h-3" />

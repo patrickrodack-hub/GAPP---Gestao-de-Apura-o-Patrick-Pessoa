@@ -18,6 +18,8 @@ const STORAGE_KEYS = {
   USERS: 'apuracao_boi_users_v1',
   SESSION_USER: 'apuracao_boi_session_user_v1',
   CONNECTED_DEVICES: 'gapp_connected_devices_v1',
+  THEME: 'apuracao_boi_theme',
+  ACTIVE_TAB: 'apuracao_boi_active_tab',
 };
 
 export const DEFAULT_PORTAL_LOCK: PortalLockConfig = {
@@ -959,6 +961,39 @@ export const StorageService = {
     try {
       localStorage.removeItem(STORAGE_KEYS.SESSION_USER);
       sessionStorage.removeItem('apuracao_boi_temp_user');
+    } catch {}
+  },
+
+  getSavedTheme(): string {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.THEME);
+      if (saved === 'solidcon' || saved === 'light' || saved === 'dark' || saved === 'gapp-new') {
+        return saved;
+      }
+      return 'gapp-new';
+    } catch {
+      return 'gapp-new';
+    }
+  },
+
+  saveTheme(theme: string) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.THEME, theme);
+    } catch {}
+  },
+
+  getSavedActiveTab(): string {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.ACTIVE_TAB);
+      return saved || 'dashboard';
+    } catch {
+      return 'dashboard';
+    }
+  },
+
+  saveActiveTab(tab: string) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_TAB, tab);
     } catch {}
   },
 

@@ -319,6 +319,7 @@ export interface SystemUser {
   avatar?: string;
   active: boolean;          // Ativo / Inativo
   allowedModules: string[]; // IDs dos módulos permitidos: 'dashboard', 'sheet', 'quotes', 'yield', 'results', 'inventory', 'purchases', 'waste', 'devices', 'parameters', 'backup', 'users', 'portal'
+  preferredTheme?: 'solidcon' | 'light' | 'dark' | 'gapp-new'; // Tema padrão preferido pelo usuário
   createdAt: number;
   lastLoginAt?: number;
 }

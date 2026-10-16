@@ -16,7 +16,8 @@ import {
   Minus,
   Square,
   X,
-  Database
+  Database,
+  LayoutGrid
 } from 'lucide-react';
 
 interface ManagementLoginProps {
@@ -25,7 +26,7 @@ interface ManagementLoginProps {
 }
 
 export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess, onExitSystem }) => {
-  const { theme, setTheme, isDark, isSolidcon, isLight } = useTheme();
+  const { theme, setTheme, isDark, isSolidcon, isLight, isGappNew } = useTheme();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -94,6 +95,12 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
       lastLoginAt: Date.now()
     };
     StorageService.updateUser(updatedUser);
+
+    // Se o usuário possuir um tema preferido gravado, aplica instantaneamente
+    if (updatedUser.preferredTheme) {
+      setTheme(updatedUser.preferredTheme);
+    }
+
     // Sessão estritamente em memória do ciclo de vida da aplicação (sem salvar para auto-login)
     StorageService.clearSessionUser();
 
@@ -106,6 +113,8 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
       className={`min-h-screen w-full flex flex-col justify-between relative overflow-hidden select-none font-sans transition-colors duration-300 ${
         isSolidcon
           ? 'bg-gradient-to-br from-[#1b3252] via-[#24436c] to-[#162740] text-slate-900'
+          : isGappNew
+          ? 'bg-gradient-to-br from-[#eff3f0] via-[#e5ede7] to-[#d6e5da] text-slate-900'
           : isLight
           ? 'bg-gradient-to-br from-slate-100 via-[#f4f7f6] to-[#e6f0eb] text-slate-900'
           : 'bg-[#07080c] text-white'
@@ -117,7 +126,13 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
       {/* ============================================================ */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {/* Glow ambient background orbs */}
-        {isLight ? (
+        {isGappNew ? (
+          <>
+            <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-gradient-to-tr from-[#113829]/15 via-[#b5e550]/15 to-emerald-200/20 rounded-full blur-[130px]" />
+            <div className="absolute -top-20 -right-20 w-[550px] h-[550px] bg-gradient-to-br from-[#113829]/20 via-[#b5e550]/10 to-transparent rounded-full blur-[140px]" />
+            <div className="absolute -bottom-24 -left-24 w-[550px] h-[550px] bg-gradient-to-tr from-[#b5e550]/20 via-emerald-100/30 to-transparent rounded-full blur-[140px]" />
+          </>
+        ) : isLight ? (
           <>
             <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-gradient-to-tr from-emerald-500/15 via-teal-400/10 to-indigo-400/10 rounded-full blur-[130px]" />
             <div className="absolute -top-20 -right-20 w-[550px] h-[550px] bg-gradient-to-br from-indigo-300/15 via-emerald-200/15 to-transparent rounded-full blur-[140px]" />
@@ -209,31 +224,37 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
             className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg transition-colors ${
               isSolidcon
                 ? 'bg-[#0078d7] border border-blue-300/40 text-white shadow-blue-900/30'
+                : isGappNew
+                ? 'bg-[#113829] border border-[#b5e550]/40 text-[#b5e550] shadow-emerald-950/20'
                 : isLight
                 ? 'bg-white border border-slate-200/90 text-slate-900 shadow-slate-900/5'
                 : 'bg-zinc-900/90 border border-emerald-500/30 text-white shadow-emerald-950/40'
             }`}
           >
-            <img 
-              src="/brand-logo.svg" 
-              alt="Patrick Pessoa" 
-              className="w-7 h-7 object-contain drop-shadow"
-              onError={(e) => {
-                e.currentTarget.src = '/patrick-pessoa-brand.png';
-              }}
-            />
+            {isGappNew ? (
+              <span className="font-black text-xl text-[#b5e550] tracking-tighter">G</span>
+            ) : (
+              <img 
+                src="/brand-logo.svg" 
+                alt="Patrick Pessoa" 
+                className="w-7 h-7 object-contain drop-shadow"
+                onError={(e) => {
+                  e.currentTarget.src = '/patrick-pessoa-brand.png';
+                }}
+              />
+            )}
           </div>
           <div>
             <span 
               className={`font-extrabold text-sm tracking-tight block ${
-                isSolidcon ? 'text-white' : isLight ? 'text-slate-900' : 'text-white'
+                isSolidcon ? 'text-white' : isGappNew || isLight ? 'text-slate-900' : 'text-white'
               }`}
             >
               Grupo GAPP Sistemas
             </span>
             <span 
               className={`text-[10px] font-mono block ${
-                isSolidcon ? 'text-blue-200' : isLight ? 'text-slate-500' : 'text-zinc-400'
+                isSolidcon ? 'text-blue-200' : isGappNew ? 'text-[#113829] font-bold' : isLight ? 'text-slate-500' : 'text-zinc-400'
               }`}
             >
               Módulo de Gestão • Gestão Apuração do Boi v10.7
@@ -248,34 +269,59 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
             className={`flex items-center p-1 rounded-2xl shadow-xl text-xs transition-colors backdrop-blur-xl ${
               isSolidcon
                 ? 'bg-[#0d223a]/80 border border-white/20'
+                : isGappNew
+                ? 'bg-white/95 border border-[#c8d6cb] shadow-slate-300/50 text-slate-900'
                 : isLight
                 ? 'bg-white/90 border border-slate-200 shadow-slate-200/50'
                 : 'bg-zinc-900/70 border border-white/10'
             }`}
           >
+            {/* GAPP-NEW */}
+            <button
+              type="button"
+              onClick={() => setTheme('gapp-new')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition cursor-pointer ${
+                isGappNew
+                  ? 'bg-[#113829] text-[#b5e550] shadow-md border border-[#b5e550]/40'
+                  : isLight || isGappNew
+                  ? 'text-slate-600 hover:text-slate-900'
+                  : isSolidcon
+                  ? 'text-blue-200 hover:text-white'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+              title="Tema Padrão: GAPP-NEW"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">GAPP-NEW</span>
+            </button>
+
+            {/* Claro */}
             <button
               type="button"
               onClick={() => setTheme('light')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition cursor-pointer ${
                 isLight
                   ? 'bg-emerald-600 text-white shadow-md'
+                  : isGappNew
+                  ? 'text-slate-600 hover:text-slate-900'
                   : isSolidcon
                   ? 'text-blue-200 hover:text-white'
                   : 'text-zinc-400 hover:text-white'
               }`}
-              title="Tema Padrão: Moderno Claro"
+              title="Tema: Moderno Claro"
             >
               <Sun className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Claro</span>
             </button>
 
+            {/* Escuro */}
             <button
               type="button"
               onClick={() => setTheme('dark')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition cursor-pointer ${
                 isDark
                   ? 'bg-purple-600 text-white shadow-md'
-                  : isLight
+                  : isLight || isGappNew
                   ? 'text-slate-600 hover:text-slate-900'
                   : isSolidcon
                   ? 'text-blue-200 hover:text-white'
@@ -287,13 +333,14 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
               <span className="hidden sm:inline">Escuro</span>
             </button>
 
+            {/* GAPP Classic */}
             <button
               type="button"
               onClick={() => setTheme('solidcon')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition cursor-pointer ${
                 isSolidcon
                   ? 'bg-[#0078d7] text-white shadow-md'
-                  : isLight
+                  : isLight || isGappNew
                   ? 'text-slate-600 hover:text-slate-900'
                   : 'text-zinc-400 hover:text-white'
               }`}
@@ -336,6 +383,8 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
             className={`relative overflow-hidden transition-all duration-300 ${
               isSolidcon
                 ? 'rounded-xl sm:rounded-2xl bg-[#f4f6f8] border-2 border-[#0078d7] shadow-[0_25px_80px_rgba(0,0,0,0.55)] text-slate-900'
+                : isGappNew
+                ? 'rounded-[32px] sm:rounded-[38px] bg-white border border-[#dfe5e0] shadow-[0_25px_80px_rgba(17,56,41,0.12)] text-slate-900'
                 : isLight
                 ? 'rounded-[32px] sm:rounded-[38px] bg-white/95 backdrop-blur-2xl border border-slate-200 shadow-[0_25px_80px_rgba(15,23,42,0.12)] text-slate-900'
                 : 'rounded-[32px] sm:rounded-[38px] bg-zinc-950/75 backdrop-blur-2xl border border-white/15 shadow-[0_25px_80px_rgba(0,0,0,0.85)] text-white'
@@ -675,6 +724,8 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                       className={`w-full sm:w-auto min-w-[160px] py-3 px-8 font-bold text-sm tracking-wide transition cursor-pointer disabled:opacity-75 flex items-center justify-center gap-2 ${
                         isSolidcon
                           ? 'rounded-md bg-gradient-to-b from-[#0078d7] to-[#005a9e] hover:from-[#1084e3] hover:to-[#006bbd] text-white border border-[#004e8c] shadow-md active:translate-y-px'
+                          : isGappNew
+                          ? 'rounded-full bg-[#113829] hover:bg-[#1a4f3b] text-[#b5e550] shadow-lg shadow-[#113829]/25 border border-[#b5e550]/40 active:scale-95'
                           : isLight
                           ? 'rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20 active:scale-95'
                           : 'rounded-full bg-zinc-700/90 hover:bg-zinc-600 text-white shadow-xl shadow-black/50 border border-white/15 active:scale-95'

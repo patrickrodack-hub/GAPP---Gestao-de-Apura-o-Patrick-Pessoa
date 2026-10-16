@@ -46,7 +46,7 @@ import { GappNewTopBar } from './components/gapp-new/GappNewTopBar';
 import { GappNewDashboardView } from './components/gapp-new/GappNewDashboardView';
 
 export default function App() {
-  const { theme, isSolidcon, isGappNew, toggleTheme } = useTheme();
+  const { theme, isSolidcon, isGappNew, toggleTheme, setTheme } = useTheme();
   const [isGappMobileMenuOpen, setIsGappMobileMenuOpen] = useState(false);
 
   // Service Worker Update Detection & Instant Reload logic
@@ -139,6 +139,26 @@ export default function App() {
     } catch {}
   }, []);
 
+  // Sincronização global de preferência de tema salva e confirmação ao usuário
+  useEffect(() => {
+    const handleThemeSaved = (e: any) => {
+      const detail = e.detail;
+      if (detail && detail.name) {
+        showToast(`Tema salvo! A escolha "${detail.name}" será lembrada ao reiniciar.`);
+      }
+      if (currentUser && detail && detail.theme && currentUser.preferredTheme !== detail.theme) {
+        const updatedUser: SystemUser = { ...currentUser, preferredTheme: detail.theme };
+        try {
+          StorageService.updateUser(updatedUser);
+          setCurrentUser(updatedUser);
+        } catch {}
+      }
+    };
+
+    window.addEventListener('gapp-theme-saved', handleThemeSaved);
+    return () => window.removeEventListener('gapp-theme-saved', handleThemeSaved);
+  }, [currentUser]);
+
   const handleOpenUserManagement = () => {
     if (currentUser?.role !== 'DESENVOLVEDOR' && currentUser?.role !== 'DIRETOR') {
       showToast('Acesso restrito: Somente Desenvolvedor e Diretor podem gerenciar usuários.');
@@ -150,10 +170,20 @@ export default function App() {
   const handleLoginSuccess = (user: SystemUser) => {
     setCurrentUser(user);
     showToast(`Bem-vindo(a), ${user.name}!`);
-    // Se o usuário não tem permissão para a aba atual, redireciona para a primeira permitida
-    if (user.role !== 'DESENVOLVEDOR' && !user.allowedModules?.includes(activeTab)) {
+
+    // 1. Se o usuário tem preferência de tema gravada no perfil, aplica e grava imediatamente
+    if (user.preferredTheme) {
+      setTheme(user.preferredTheme);
+    }
+
+    // 2. Lembra a última aba ativa salva ou aplica a primeira autorizada
+    const savedTab = StorageService.getSavedActiveTab() as NavigationTab;
+    if (user.role === 'DESENVOLVEDOR' || user.allowedModules?.includes(savedTab)) {
+      setActiveTab(savedTab);
+    } else if (!user.allowedModules?.includes(activeTab)) {
       const firstAllowed = (user.allowedModules?.[0] as NavigationTab) || 'dashboard';
       setActiveTab(firstAllowed);
+      StorageService.saveActiveTab(firstAllowed);
     }
   };
 
@@ -656,6 +686,7 @@ export default function App() {
       return;
     }
     setActiveTab(tab);
+    StorageService.saveActiveTab(tab);
     setIsDesktopView(false);
   };
 
