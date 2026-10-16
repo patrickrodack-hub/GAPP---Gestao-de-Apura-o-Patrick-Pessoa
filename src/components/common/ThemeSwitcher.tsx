@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTheme, Theme } from '../../context/ThemeContext';
-import { Sun, Moon, Monitor, Check } from 'lucide-react';
+import { Sun, Moon, Monitor, Check, LayoutGrid } from 'lucide-react';
 
 interface ThemeSwitcherProps {
-  variant?: 'compact' | 'full' | 'solidcon-toolbar';
+  variant?: 'compact' | 'full' | 'solidcon-toolbar' | 'gapp-new-pill';
 }
 
 export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ variant = 'full' }) => {
@@ -23,12 +23,12 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ variant = 'full' }
 
   const themes: { id: Theme; name: string; subtitle: string; icon: any; color: string; badge: string }[] = [
     {
-      id: 'solidcon',
-      name: 'GAPP Classic',
-      subtitle: 'Layout Desktop Comercial com fundo metálico e barra azul clássica',
-      icon: Monitor,
-      color: 'bg-blue-600 text-white',
-      badge: 'Classic'
+      id: 'gapp-new',
+      name: 'GAPP-NEW',
+      subtitle: 'Novo layout executivo com barra lateral fixa, visão analítica e cards inteligentes',
+      icon: LayoutGrid,
+      color: 'bg-[#113829] text-[#b5e550]',
+      badge: 'Novo'
     },
     {
       id: 'light',
@@ -45,21 +45,93 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ variant = 'full' }
       icon: Moon,
       color: 'bg-indigo-600 text-white',
       badge: 'Dark'
+    },
+    {
+      id: 'solidcon',
+      name: 'GAPP Classic',
+      subtitle: 'Layout Desktop Comercial com fundo metálico e barra azul clássica',
+      icon: Monitor,
+      color: 'bg-blue-600 text-white',
+      badge: 'Classic'
     }
   ];
 
-  const currentThemeObj = themes.find(t => t.id === theme) || themes[0];
+  const currentThemeObj = themes.find(t => t.id === theme) || themes[1];
   const CurrentIcon = currentThemeObj.icon;
+
+  if (variant === 'gapp-new-pill') {
+    return (
+      <div className="relative inline-block" ref={dropdownRef}>
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="h-10 px-3.5 rounded-full bg-[#f4f6f4] hover:bg-[#e7ece8] border border-[#dfe5e0] text-[#113829] text-xs font-semibold flex items-center gap-2 transition cursor-pointer whitespace-nowrap shrink-0"
+          title="Alternar tema visual (GAPP-NEW, Moderno Claro, Moderno Escuro ou GAPP Classic)"
+        >
+          <span className="w-5 h-5 rounded-full bg-[#113829] text-[#b5e550] flex items-center justify-center shrink-0">
+            <CurrentIcon className="w-3 h-3" />
+          </span>
+          <span className="font-bold">{currentThemeObj.name}</span>
+          <span className="text-[10px] text-slate-400">▼</span>
+        </button>
+
+        {isOpen && (
+          <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 shadow-2xl rounded-2xl z-[9999] p-2 text-xs text-slate-900">
+            <div className="px-3 py-2 border-b border-slate-100 font-bold text-slate-700 text-[11px] flex items-center justify-between">
+              <span>Alternar Tema Visual</span>
+              <span className="text-[10px] text-[#113829] font-bold">ERP v10.7</span>
+            </div>
+
+            <div className="mt-1.5 space-y-1">
+              {themes.map(t => {
+                const Icon = t.icon;
+                const isSelected = theme === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setTheme(t.id);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full flex items-start justify-between p-2.5 rounded-xl text-left transition cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#113829]/8 border border-[#113829]/25 text-slate-900'
+                        : 'hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <span className={`p-1.5 rounded-lg ${t.color} shrink-0 mt-0.5`}>
+                        <Icon className="w-3.5 h-3.5" />
+                      </span>
+                      <div>
+                        <div className="text-xs font-bold flex items-center gap-1.5">
+                          <span>{t.name}</span>
+                          <span className="text-[10px] text-slate-400 font-medium">· {t.badge}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                          {t.subtitle}
+                        </div>
+                      </div>
+                    </div>
+                    {isSelected && <Check className="w-4 h-4 text-[#113829] shrink-0 mt-1" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (variant === 'solidcon-toolbar') {
     return (
       <div className="relative inline-block" ref={dropdownRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-gradient-to-b from-[#f9fafb] to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border border-[#9ca3af] active:border-[#6b7280] shadow-sm text-[11px] font-sans font-medium text-slate-800 transition"
-          title="Alternar Tema do Sistema (GAPP Classic, Claro ou Escuro)"
+          className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-gradient-to-b from-[#f9fafb] to-[#e5e7eb] hover:from-[#ffffff] hover:to-[#d1d5db] border border-[#9ca3af] active:border-[#6b7280] shadow-sm text-[11px] font-sans font-medium text-slate-800 transition cursor-pointer"
+          title="Alternar Tema do Sistema (GAPP-NEW, GAPP Classic, Claro ou Escuro)"
         >
-          <div className="w-3.5 h-3.5 rounded bg-blue-600 flex items-center justify-center text-white text-[9px] font-bold">
+          <div className="w-3.5 h-3.5 rounded bg-[#113829] flex items-center justify-center text-[#b5e550] text-[9px] font-bold">
             G
           </div>
           <span className="font-semibold text-slate-900">Tema:</span>
@@ -84,7 +156,7 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ variant = 'full' }
                       setTheme(t.id);
                       setIsOpen(false);
                     }}
-                    className={`w-full flex items-center justify-between p-2 rounded text-left transition ${
+                    className={`w-full flex items-center justify-between p-2 rounded text-left transition cursor-pointer ${
                       isSelected ? 'bg-blue-50 text-blue-900 font-semibold border border-blue-200' : 'hover:bg-slate-100 text-slate-700'
                     }`}
                   >
@@ -151,8 +223,8 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ variant = 'full' }
                       <div>
                         <div className="text-xs font-bold flex items-center gap-1.5">
                           <span>{t.name}</span>
-                          <span className="text-[9px] px-1.5 py-0.2 rounded font-normal bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                            {t.badge}
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                            · {t.badge}
                           </span>
                         </div>
                         <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
@@ -175,8 +247,8 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ variant = 'full' }
     <div className="relative inline-block" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-semibold flex items-center gap-2 transition shadow-sm"
-        title="Trocar tema da aplicação (GAPP Classic, Claro ou Escuro)"
+        className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-semibold flex items-center gap-2 transition shadow-sm cursor-pointer"
+        title="Trocar tema da aplicação (GAPP-NEW, GAPP Classic, Claro ou Escuro)"
         aria-label="Trocar tema"
       >
         <CurrentIcon className="w-4 h-4 text-amber-500 dark:text-amber-400" />
@@ -203,7 +275,7 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ variant = 'full' }
                     setTheme(t.id);
                     setIsOpen(false);
                   }}
-                  className={`w-full flex items-start justify-between p-2.5 rounded-lg text-left transition ${
+                  className={`w-full flex items-start justify-between p-2.5 rounded-lg text-left transition cursor-pointer ${
                     isSelected
                       ? 'bg-amber-500/15 border border-amber-500/40 text-slate-900 dark:text-white'
                       : 'hover:bg-slate-100 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-300'
@@ -216,8 +288,8 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ variant = 'full' }
                     <div>
                       <div className="text-xs font-bold flex items-center gap-1.5">
                         <span>{t.name}</span>
-                        <span className="text-[9px] px-1.5 py-0.2 rounded font-normal bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                          {t.badge}
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                          · {t.badge}
                         </span>
                       </div>
                       <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">

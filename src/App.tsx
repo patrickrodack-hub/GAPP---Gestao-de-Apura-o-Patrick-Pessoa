@@ -41,9 +41,13 @@ import { requestPortalFullscreen } from './utils/fullscreen';
 import { Minus, Square, X, Beef, FileSpreadsheet, RefreshCw } from 'lucide-react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { startRealDeviceHeartbeat, stopRealDeviceHeartbeat } from './services/devicePresenceService';
+import { GappNewSidebar } from './components/gapp-new/GappNewSidebar';
+import { GappNewTopBar } from './components/gapp-new/GappNewTopBar';
+import { GappNewDashboardView } from './components/gapp-new/GappNewDashboardView';
 
 export default function App() {
-  const { theme, isSolidcon, toggleTheme } = useTheme();
+  const { theme, isSolidcon, isGappNew, toggleTheme } = useTheme();
+  const [isGappMobileMenuOpen, setIsGappMobileMenuOpen] = useState(false);
 
   // Service Worker Update Detection & Instant Reload logic
   const [isUpdatingSW, setIsUpdatingSW] = useState(false);
@@ -1218,206 +1222,414 @@ export default function App() {
   }
 
   // ==========================================
-  // RENDER MODERN THEMES (LIGHT & DARK)
+  // RENDER GAPP-NEW THEME OR MODERN THEMES (LIGHT & DARK)
   // ==========================================
   return (
-    <div className="h-screen h-[100dvh] w-full overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200 select-none">
+    <div
+      className={
+        isGappNew
+          ? 'h-screen h-[100dvh] w-full overflow-hidden bg-[#eff2ef] text-slate-900 flex select-none'
+          : 'h-screen h-[100dvh] w-full overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200 select-none'
+      }
+    >
       {renderSWUpdateBanner()}
       {/* Toast Notification */}
       {feedbackToast && (
-        <div className="fixed bottom-14 right-5 z-[12000] bg-amber-500 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs shadow-2xl flex items-center gap-2 border border-amber-400">
+        <div
+          className={`fixed bottom-14 right-5 z-[12000] px-4 py-2.5 rounded-xl font-bold text-xs shadow-2xl flex items-center gap-2 border ${
+            isGappNew
+              ? 'bg-[#113829] text-[#b5e550] border-[#b5e550]/40'
+              : 'bg-amber-500 text-slate-950 border-amber-400'
+          }`}
+        >
           <span>✓ {feedbackToast}</span>
         </div>
       )}
 
-      {/* Main App Header (FIXED AT TOP WITH HIGHEST Z-INDEX SO DROPDOWNS OVERLAY EVERYTHING) */}
-      <div className="shrink-0 relative z-[100] w-full shadow-sm">
-        <Header
-          totalPurchaseR$={totalPurchaseR$}
-          totalPieces={totalPieces}
-          totalKg={totalKg}
-          storeCount={stores.length}
-          onReset={handleReset}
-          onExportCSV={handleExportCSV}
-          onExportXLSX={handleExportXLSX}
-          onOpenQuickCalc={() => setIsQuickCalcOpen(true)}
-          onPrint={() => setIsPrintModalOpen(true)}
-          onOpenShortcuts={() => setIsShortcutsOpen(true)}
-          onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
-          onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
-          onOpenMobilePortal={handleOpenMobilePortal}
-          onOpenPortalControl={() => setIsPortalControlOpen(true)}
-          onOpenBackup={() => setIsBackupModalOpen(true)}
-          onSaveSheet={() => handleSaveSheetSnapshot()}
-          currentUser={currentUser}
-          onOpenUserManagement={handleOpenUserManagement}
-          onOpenChangePassword={() => setIsChangePasswordOpen(true)}
-          onLogout={handleLogout}
-          onExitSystem={() => setIsExitModalOpen(true)}
-        />
-      </div>
+      {isGappNew ? (
+        <>
+          {/* 1. Fixed Left Sidebar (GAPP-NEW) */}
+          <GappNewSidebar
+            activeTab={activeTab}
+            onTabChange={handleTabSelect}
+            currentUser={currentUser}
+            storeCount={stores.length}
+            onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
+            onPrint={() => setIsPrintModalOpen(true)}
+            onOpenQuickCalc={() => setIsQuickCalcOpen(true)}
+            onOpenManuals={() => setIsUserManualsModalOpen(true)}
+            onOpenMobilePortal={handleOpenMobilePortal}
+            onExitSystem={() => setIsExitModalOpen(true)}
+            isMobileOpen={isGappMobileMenuOpen}
+            onCloseMobile={() => setIsGappMobileMenuOpen(false)}
+          />
 
-      {/* Navigation Tabs (FIXED DIRECTLY BELOW HEADER) */}
-      <div className="shrink-0 relative z-[90] w-full shadow-2xs">
-        <Navigation 
-          activeTab={activeTab} 
-          onTabChange={handleTabSelect} 
-          currentUser={currentUser}
-        />
-      </div>
+          {/* 2. Right Main Column: Executive TopBar + Dynamic Viewport */}
+          <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
+            <div className="shrink-0 relative z-[100] w-full">
+              <GappNewTopBar
+                rows={sheetRows}
+                stores={stores}
+                currentUser={currentUser}
+                isCloudConnected={isCloudConnected}
+                onNavigateTab={handleTabSelect}
+                onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
+                onPrint={() => setIsPrintModalOpen(true)}
+                onExportXLSX={handleExportXLSX}
+                onSaveSheet={() => handleSaveSheetSnapshot()}
+                onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+                onOpenProductManager={() => setIsProductManagerOpen(true)}
+                onOpenPortalControl={() => setIsPortalControlOpen(true)}
+                onOpenMobilePortal={handleOpenMobilePortal}
+                onOpenBackup={() => setIsBackupModalOpen(true)}
+                onOpenShortcuts={() => setIsShortcutsOpen(true)}
+                onOpenUserManagement={handleOpenUserManagement}
+                onOpenChangePassword={() => setIsChangePasswordOpen(true)}
+                onReset={handleReset}
+                onLogout={handleLogout}
+                onExitSystem={() => setIsExitModalOpen(true)}
+                onOpenMobileMenu={() => setIsGappMobileMenuOpen(true)}
+              />
+            </div>
 
-      {/* Content Body (ONLY THIS AREA SCROLLS, AUTO-ADJUSTS TO WINDOW RESIZE) */}
-      <main className="flex-1 min-h-0 overflow-y-auto w-full px-3 sm:px-6 py-4">
-        <div className="max-w-[1920px] mx-auto pb-4">
-          {activeTab === 'dashboard' && (
-            <DashboardTab
-              rows={sheetRows}
-              stores={stores}
-              batches={batches}
-              onNavigate={handleTabSelect}
-              onOpenQuickCalc={() => setIsQuickCalcOpen(true)}
-            />
-          )}
+            <main className="flex-1 min-h-0 overflow-y-auto w-full px-4 sm:px-6 py-5">
+              <div className="max-w-[1920px] mx-auto pb-4">
+                {activeTab === 'dashboard' && (
+                  <GappNewDashboardView
+                    rows={sheetRows}
+                    stores={stores}
+                    batches={batches}
+                    onNavigate={handleTabSelect}
+                    onOpenQuickCalc={() => setIsQuickCalcOpen(true)}
+                    onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
+                    onPrint={() => setIsPrintModalOpen(true)}
+                  />
+                )}
 
-          {activeTab === 'sheet' && (
-            <SheetTab
-              rows={sheetRows}
-              stores={stores}
-              onUpdateRow={handleUpdateRow}
-              onUpdateMultiple={handleUpdateMultipleRows}
+                {activeTab !== 'dashboard' && (
+                  <div className="bg-white rounded-3xl border border-[#e4e9e5] p-4 sm:p-5 shadow-2xs">
+                    {activeTab === 'sheet' && (
+                      <SheetTab
+                        rows={sheetRows}
+                        stores={stores}
+                        onUpdateRow={handleUpdateRow}
+                        onUpdateMultiple={handleUpdateMultipleRows}
+                        onExportXLSX={handleExportXLSX}
+                        onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
+                        sheetSnapshots={sheetSnapshots}
+                        onSaveSheetSnapshot={handleSaveSheetSnapshot}
+                        onRestoreSheetSnapshot={handleRestoreSheetSnapshot}
+                        onDeleteSheetSnapshot={handleDeleteSheetSnapshot}
+                      />
+                    )}
+
+                    {activeTab === 'quotes' && (
+                      <QuotesTab
+                        yieldParams={yieldParams}
+                        onUpdateYieldParams={handleUpdateYieldParams}
+                        showToast={showToast}
+                      />
+                    )}
+
+                    {activeTab === 'yield' && (
+                      <YieldTab
+                        yieldParams={yieldParams}
+                        onSaveYieldParams={handleUpdateYieldParams}
+                        latestBatch={batches[0]}
+                        products={products}
+                        batches={batches}
+                        onUpdateProducts={setProducts}
+                      />
+                    )}
+
+                    {activeTab === 'results' && (
+                      <ResultsTab
+                        rows={sheetRows}
+                        stores={stores}
+                        batches={batches}
+                        wasteRecords={wasteRecords}
+                        products={products}
+                        yieldParams={yieldParams}
+                      />
+                    )}
+
+                    {activeTab === 'inventory' && (
+                      <InventoryTab
+                        rows={sheetRows}
+                        stores={stores}
+                        onUpdateRow={handleUpdateRow}
+                        onUpdateMultiple={handleUpdateMultipleRows}
+                        onNavigateToSheet={() => handleTabSelect('sheet')}
+                      />
+                    )}
+
+                    {activeTab === 'purchases' && (
+                      <PurchasesTab
+                        batches={batches}
+                        suppliers={suppliers}
+                        stores={stores}
+                        sheetRows={sheetRows}
+                        yieldParams={yieldParams}
+                        onAddBatch={handleAddBatch}
+                        onUpdateBatch={handleUpdateBatch}
+                        onDeleteBatch={handleDeleteBatch}
+                        onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+                        onUpdateYieldParams={handleUpdateYieldParams}
+                        onUpdateSheetRows={handleUpdateMultipleRows}
+                      />
+                    )}
+
+                    {activeTab === 'waste' && (
+                      <WasteTab
+                        wasteRecords={wasteRecords}
+                        stores={stores}
+                        onAddWasteRecord={handleAddWasteRecord}
+                        onUpdateWasteRecord={handleUpdateWasteRecord}
+                        onDeleteWasteRecord={handleDeleteWasteRecord}
+                        yieldParams={yieldParams}
+                        onUpdateYieldParams={handleUpdateYieldParams}
+                      />
+                    )}
+
+                    {activeTab === 'parameters' && (
+                      <ParametersTab
+                        products={products}
+                        stores={stores}
+                        sheetRows={sheetRows}
+                        suppliers={suppliers}
+                        onUpdateProducts={setProducts}
+                        onUpdateStores={setStores}
+                        onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+                        onOpenProductManager={() => setIsProductManagerOpen(true)}
+                        onOpenUserManagement={handleOpenUserManagement}
+                        onOpenChangePassword={() => setIsChangePasswordOpen(true)}
+                        currentUser={currentUser}
+                      />
+                    )}
+
+                    {activeTab === 'backup' && (
+                      <BackupManagerView
+                        showToast={showToast}
+                        onRestoreCompleted={() => {
+                          showToast('Backup restaurado com sucesso! Dados atualizados.');
+                          setSheetRows(StorageService.getSheetRows());
+                          setStores(StorageService.getStores());
+                          setBatches(StorageService.getBatches());
+                          setSuppliers(StorageService.getSuppliers());
+                          setProducts(StorageService.getProducts());
+                          setSheetSnapshots(StorageService.getSheetSnapshots());
+                        }}
+                      />
+                    )}
+
+                    {activeTab === 'devices' && (
+                      <DevicesTab
+                        stores={stores}
+                        currentUser={currentUser}
+                        showToast={showToast}
+                        onOpenMobilePortal={() => setIsPortalMode(true)}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </main>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Main App Header (FIXED AT TOP WITH HIGHEST Z-INDEX SO DROPDOWNS OVERLAY EVERYTHING) */}
+          <div className="shrink-0 relative z-[100] w-full shadow-sm">
+            <Header
+              totalPurchaseR$={totalPurchaseR$}
+              totalPieces={totalPieces}
+              totalKg={totalKg}
+              storeCount={stores.length}
+              onReset={handleReset}
+              onExportCSV={handleExportCSV}
               onExportXLSX={handleExportXLSX}
+              onOpenQuickCalc={() => setIsQuickCalcOpen(true)}
+              onPrint={() => setIsPrintModalOpen(true)}
+              onOpenShortcuts={() => setIsShortcutsOpen(true)}
               onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
-              sheetSnapshots={sheetSnapshots}
-              onSaveSheetSnapshot={handleSaveSheetSnapshot}
-              onRestoreSheetSnapshot={handleRestoreSheetSnapshot}
-              onDeleteSheetSnapshot={handleDeleteSheetSnapshot}
-            />
-          )}
-
-          {activeTab === 'quotes' && (
-            <QuotesTab
-              yieldParams={yieldParams}
-              onUpdateYieldParams={handleUpdateYieldParams}
-              showToast={showToast}
-            />
-          )}
-
-          {activeTab === 'yield' && (
-            <YieldTab
-              yieldParams={yieldParams}
-              onSaveYieldParams={handleUpdateYieldParams}
-              latestBatch={batches[0]}
-              products={products}
-              batches={batches}
-              onUpdateProducts={setProducts}
-            />
-          )}
-
-          {activeTab === 'results' && (
-            <ResultsTab 
-              rows={sheetRows} 
-              stores={stores} 
-              batches={batches}
-              wasteRecords={wasteRecords}
-            />
-          )}
-
-          {activeTab === 'inventory' && (
-            <InventoryTab
-              rows={sheetRows}
-              stores={stores}
-              onUpdateRow={handleUpdateRow}
-              onUpdateMultiple={handleUpdateMultipleRows}
-              onNavigateToSheet={() => handleTabSelect('sheet')}
-            />
-          )}
-
-          {activeTab === 'purchases' && (
-            <PurchasesTab
-              batches={batches}
-              suppliers={suppliers}
-              stores={stores}
-              sheetRows={sheetRows}
-              yieldParams={yieldParams}
-              onAddBatch={handleAddBatch}
-              onUpdateBatch={handleUpdateBatch}
-              onDeleteBatch={handleDeleteBatch}
               onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
-              onUpdateYieldParams={handleUpdateYieldParams}
-              onUpdateSheetRows={handleUpdateMultipleRows}
-            />
-          )}
-
-          {activeTab === 'waste' && (
-            <WasteTab
-              wasteRecords={wasteRecords}
-              stores={stores}
-              onAddWasteRecord={handleAddWasteRecord}
-              onUpdateWasteRecord={handleUpdateWasteRecord}
-              onDeleteWasteRecord={handleDeleteWasteRecord}
-              yieldParams={yieldParams}
-              onUpdateYieldParams={handleUpdateYieldParams}
-            />
-          )}
-
-          {activeTab === 'parameters' && (
-            <ParametersTab
-              products={products}
-              stores={stores}
-              sheetRows={sheetRows}
-              suppliers={suppliers}
-              onUpdateProducts={setProducts}
-              onUpdateStores={setStores}
-              onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
-              onOpenProductManager={() => setIsProductManagerOpen(true)}
+              onOpenMobilePortal={handleOpenMobilePortal}
+              onOpenPortalControl={() => setIsPortalControlOpen(true)}
+              onOpenBackup={() => setIsBackupModalOpen(true)}
+              onSaveSheet={() => handleSaveSheetSnapshot()}
+              currentUser={currentUser}
               onOpenUserManagement={handleOpenUserManagement}
               onOpenChangePassword={() => setIsChangePasswordOpen(true)}
+              onLogout={handleLogout}
+              onExitSystem={() => setIsExitModalOpen(true)}
+            />
+          </div>
+
+          {/* Navigation Tabs (FIXED DIRECTLY BELOW HEADER) */}
+          <div className="shrink-0 relative z-[90] w-full shadow-2xs">
+            <Navigation 
+              activeTab={activeTab} 
+              onTabChange={handleTabSelect} 
               currentUser={currentUser}
             />
-          )}
-
-          {activeTab === 'backup' && (
-            <BackupManagerView
-              showToast={showToast}
-              onRestoreCompleted={() => {
-                showToast('Backup restaurado com sucesso! Dados atualizados.');
-                setSheetRows(StorageService.getSheetRows());
-                setStores(StorageService.getStores());
-                setBatches(StorageService.getBatches());
-                setSuppliers(StorageService.getSuppliers());
-                setProducts(StorageService.getProducts());
-                setSheetSnapshots(StorageService.getSheetSnapshots());
-              }}
-            />
-          )}
-
-          {activeTab === 'devices' && (
-            <DevicesTab
-              stores={stores}
-              currentUser={currentUser}
-              showToast={showToast}
-              onOpenMobilePortal={() => setIsPortalMode(true)}
-            />
-          )}
-        </div>
-      </main>
-
-      {/* Footer (FIXED AT BOTTOM) */}
-      <footer className="shrink-0 z-30 w-full py-2 sm:py-2.5 border-t border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur transition-colors">
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-800 dark:text-slate-200">
-              Grupo GAPP Sistemas • Apuração do Boi por Patrick Pessoa
-            </span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
-              GRUPO GAPP
-            </span>
           </div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400">
-            Planilha Matriz Oficial da Direção v10.7 • 16 Filiais Integradas
-          </div>
-        </div>
-      </footer>
+
+          {/* Content Body (ONLY THIS AREA SCROLLS, AUTO-ADJUSTS TO WINDOW RESIZE) */}
+          <main className="flex-1 min-h-0 overflow-y-auto w-full px-3 sm:px-6 py-4">
+            <div className="max-w-[1920px] mx-auto pb-4">
+              {activeTab === 'dashboard' && (
+                <DashboardTab
+                  rows={sheetRows}
+                  stores={stores}
+                  batches={batches}
+                  onNavigate={handleTabSelect}
+                  onOpenQuickCalc={() => setIsQuickCalcOpen(true)}
+                />
+              )}
+
+              {activeTab === 'sheet' && (
+                <SheetTab
+                  rows={sheetRows}
+                  stores={stores}
+                  onUpdateRow={handleUpdateRow}
+                  onUpdateMultiple={handleUpdateMultipleRows}
+                  onExportXLSX={handleExportXLSX}
+                  onOpenPurchaseOrder={() => setIsPurchaseOrderOpen(true)}
+                  sheetSnapshots={sheetSnapshots}
+                  onSaveSheetSnapshot={handleSaveSheetSnapshot}
+                  onRestoreSheetSnapshot={handleRestoreSheetSnapshot}
+                  onDeleteSheetSnapshot={handleDeleteSheetSnapshot}
+                />
+              )}
+
+              {activeTab === 'quotes' && (
+                <QuotesTab
+                  yieldParams={yieldParams}
+                  onUpdateYieldParams={handleUpdateYieldParams}
+                  showToast={showToast}
+                />
+              )}
+
+              {activeTab === 'yield' && (
+                <YieldTab
+                  yieldParams={yieldParams}
+                  onSaveYieldParams={handleUpdateYieldParams}
+                  latestBatch={batches[0]}
+                  products={products}
+                  batches={batches}
+                  onUpdateProducts={setProducts}
+                />
+              )}
+
+              {activeTab === 'results' && (
+                <ResultsTab 
+                  rows={sheetRows} 
+                  stores={stores} 
+                  batches={batches}
+                  wasteRecords={wasteRecords}
+                  products={products}
+                  yieldParams={yieldParams}
+                />
+              )}
+
+              {activeTab === 'inventory' && (
+                <InventoryTab
+                  rows={sheetRows}
+                  stores={stores}
+                  onUpdateRow={handleUpdateRow}
+                  onUpdateMultiple={handleUpdateMultipleRows}
+                  onNavigateToSheet={() => handleTabSelect('sheet')}
+                />
+              )}
+
+              {activeTab === 'purchases' && (
+                <PurchasesTab
+                  batches={batches}
+                  suppliers={suppliers}
+                  stores={stores}
+                  sheetRows={sheetRows}
+                  yieldParams={yieldParams}
+                  onAddBatch={handleAddBatch}
+                  onUpdateBatch={handleUpdateBatch}
+                  onDeleteBatch={handleDeleteBatch}
+                  onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+                  onUpdateYieldParams={handleUpdateYieldParams}
+                  onUpdateSheetRows={handleUpdateMultipleRows}
+                />
+              )}
+
+              {activeTab === 'waste' && (
+                <WasteTab
+                  wasteRecords={wasteRecords}
+                  stores={stores}
+                  onAddWasteRecord={handleAddWasteRecord}
+                  onUpdateWasteRecord={handleUpdateWasteRecord}
+                  onDeleteWasteRecord={handleDeleteWasteRecord}
+                  yieldParams={yieldParams}
+                  onUpdateYieldParams={handleUpdateYieldParams}
+                />
+              )}
+
+              {activeTab === 'parameters' && (
+                <ParametersTab
+                  products={products}
+                  stores={stores}
+                  sheetRows={sheetRows}
+                  suppliers={suppliers}
+                  onUpdateProducts={setProducts}
+                  onUpdateStores={setStores}
+                  onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+                  onOpenProductManager={() => setIsProductManagerOpen(true)}
+                  onOpenUserManagement={handleOpenUserManagement}
+                  onOpenChangePassword={() => setIsChangePasswordOpen(true)}
+                  currentUser={currentUser}
+                />
+              )}
+
+              {activeTab === 'backup' && (
+                <BackupManagerView
+                  showToast={showToast}
+                  onRestoreCompleted={() => {
+                    showToast('Backup restaurado com sucesso! Dados atualizados.');
+                    setSheetRows(StorageService.getSheetRows());
+                    setStores(StorageService.getStores());
+                    setBatches(StorageService.getBatches());
+                    setSuppliers(StorageService.getSuppliers());
+                    setProducts(StorageService.getProducts());
+                    setSheetSnapshots(StorageService.getSheetSnapshots());
+                  }}
+                />
+              )}
+
+              {activeTab === 'devices' && (
+                <DevicesTab
+                  stores={stores}
+                  currentUser={currentUser}
+                  showToast={showToast}
+                  onOpenMobilePortal={() => setIsPortalMode(true)}
+                />
+              )}
+            </div>
+          </main>
+
+          {/* Footer (FIXED AT BOTTOM) */}
+          <footer className="shrink-0 z-30 w-full py-2 sm:py-2.5 border-t border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur transition-colors">
+            <div className="max-w-[1920px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                  Grupo GAPP Sistemas • Apuração do Boi por Patrick Pessoa
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                  GRUPO GAPP
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                Planilha Matriz Oficial da Direção v10.7 • 16 Filiais Integradas
+              </div>
+            </div>
+          </footer>
+        </>
+      )}
 
       {/* Modals */}
       <QuickCalculatorModal
