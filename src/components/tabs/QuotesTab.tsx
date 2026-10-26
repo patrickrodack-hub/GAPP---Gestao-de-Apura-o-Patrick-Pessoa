@@ -44,7 +44,9 @@ import {
   Sliders,
   DollarSign,
   Layers,
-  BarChart3
+  BarChart3,
+  Printer,
+  FileSpreadsheet
 } from 'lucide-react';
 
 interface QuotesTabProps {
@@ -143,6 +145,67 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
       setIsDownloadingPdf(false);
     }
   };
+
+  // Estados e Handlers da Auditoria de Balcão 12 Redes Supermercadistas RJ
+  const [isDownloadingAuditPdf, setIsDownloadingAuditPdf] = useState(false);
+  const [isExportingAuditExcel, setIsExportingAuditExcel] = useState(false);
+
+  const handleDownloadAuditPdf = async () => {
+    try {
+      setIsDownloadingAuditPdf(true);
+      await MarketQuotesService.generateAndDownloadRjRetailAuditPdf();
+      if (showToast) showToast('Relatório em PDF de Auditoria de Balcão das 12 Redes RJ baixado com sucesso!');
+    } catch (err) {
+      console.error('Erro ao gerar relatório de auditoria em PDF:', err);
+      if (showToast) showToast('Erro ao gerar relatório em PDF das 12 Redes RJ.');
+    } finally {
+      setIsDownloadingAuditPdf(false);
+    }
+  };
+
+  const handlePrintAudit = () => {
+    try {
+      MarketQuotesService.printRjRetailAuditReport();
+      if (showToast) showToast('Janela de impressão da Auditoria de Balcão RJ aberta.');
+    } catch (err) {
+      console.error('Erro ao acionar impressão:', err);
+      if (showToast) showToast('Erro ao imprimir relatório.');
+    }
+  };
+
+  const handleExportAuditExcel = async () => {
+    try {
+      setIsExportingAuditExcel(true);
+      await MarketQuotesService.exportRjRetailAuditToExcel();
+      if (showToast) showToast('Planilha Excel (.xlsx) da Auditoria de Balcão baixada com sucesso!');
+    } catch (err) {
+      console.error('Erro ao exportar Excel:', err);
+      if (showToast) showToast('Erro ao exportar para Excel.');
+    } finally {
+      setIsExportingAuditExcel(false);
+    }
+  };
+
+  const handleShareAuditWhatsApp = () => {
+    MarketQuotesService.shareRjRetailAuditViaWhatsApp();
+    if (showToast) showToast('Auditoria de Balcão das 12 Redes preparada para envio no WhatsApp!');
+  };
+
+  // Estatísticas calculadas dinamicamente das 12 Redes RJ
+  const rjBenchmarkStats = useMemo(() => {
+    const list = snapshot.rjRetailBenchmarks || [];
+    if (list.length === 0) return null;
+    const cuts = ['picanha', 'contraFile', 'alcatra', 'coxaoMole', 'patinho', 'acem', 'costela', 'pernilSuino'] as const;
+    const result: Record<string, { avg: number; min: number; max: number; spread: number }> = {};
+    cuts.forEach(c => {
+      const vals = list.map(b => (b.sampleCutPrices as any)[c] || 0).filter(v => v > 0);
+      const avg = vals.length > 0 ? vals.reduce((sum, v) => sum + v, 0) / vals.length : 0;
+      const min = vals.length > 0 ? Math.min(...vals) : 0;
+      const max = vals.length > 0 ? Math.max(...vals) : 0;
+      result[c] = { avg, min, max, spread: max - min };
+    });
+    return result;
+  }, [snapshot.rjRetailBenchmarks]);
 
   // Compartilhamento via WhatsApp
   const handleShareWhatsApp = () => {
@@ -421,7 +484,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
               <span>{isRefreshing ? 'Sincronizando...' : 'Sincronizar Mercado'}</span>
             </button>
 
-            {/* Baixar Boletim PDF */}
+            {/* Baixar Boletim PDF Geral */}
             <button
               type="button"
               onClick={handleDownloadPdf}
@@ -438,6 +501,27 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                 <>
                   <FileDown className="w-4 h-4" />
                   <span>Boletim Oficial (PDF)</span>
+                </>
+              )}
+            </button>
+
+            {/* Baixar Auditoria Balcão 12 Redes RJ (PDF Especializado) */}
+            <button
+              type="button"
+              onClick={handleDownloadAuditPdf}
+              disabled={isDownloadingAuditPdf}
+              className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer disabled:opacity-50"
+              title="Gerar e baixar o Relatório Oficial em PDF da Auditoria de Balcão de 12 Redes Supermercadistas RJ"
+            >
+              {isDownloadingAuditPdf ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Gerando PDF RJ...</span>
+                </>
+              ) : (
+                <>
+                  <FileDown className="w-4 h-4 text-emerald-200" />
+                  <span>Auditoria Balcão RJ (PDF)</span>
                 </>
               )}
             </button>
@@ -1314,10 +1398,10 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
       {activeSection === 'varejo_rj' && (
         <div className="space-y-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 uppercase">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 uppercase tracking-wide">
                     AUDITORIA DE MERCADO RJ
                   </span>
                   <span className="text-xs text-slate-500 font-semibold">
@@ -1331,15 +1415,138 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                   Amostragem comparativa de preços por corte nos supermercados do Grande Rio, Baixada Fluminense, Niterói e Região Metropolitana.
                 </p>
               </div>
+
+              {/* Toolbar Executiva de Exportação e Relatório */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Botão Baixar Relatório PDF */}
+                <button
+                  type="button"
+                  onClick={handleDownloadAuditPdf}
+                  disabled={isDownloadingAuditPdf}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-950/20 transition active:scale-95 cursor-pointer disabled:opacity-50"
+                  title="Gerar e baixar o Relatório Oficial em PDF da Auditoria de Balcão das 12 Redes Supermercadistas RJ"
+                >
+                  {isDownloadingAuditPdf ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Gerando PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileDown className="w-4 h-4 text-emerald-200" />
+                      <span>Baixar Relatório PDF</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Botão Imprimir Relatório */}
+                <button
+                  type="button"
+                  onClick={handlePrintAudit}
+                  className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                  title="Imprimir relatório oficial em alta resolução (A4 Paisagem)"
+                >
+                  <Printer className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                  <span>Imprimir</span>
+                </button>
+
+                {/* Botão Exportar Excel */}
+                <button
+                  type="button"
+                  onClick={handleExportAuditExcel}
+                  disabled={isExportingAuditExcel}
+                  className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer disabled:opacity-50"
+                  title="Exportar planilha Excel (.xlsx) completa com fórmulas"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <span>{isExportingAuditExcel ? 'Exportando...' : 'Excel (.xlsx)'}</span>
+                </button>
+
+                {/* Botão WhatsApp */}
+                <button
+                  type="button"
+                  onClick={handleShareAuditWhatsApp}
+                  className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
+                  title="Compartilhar resumo comparativo das 12 redes no WhatsApp"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>WhatsApp</span>
+                </button>
+              </div>
             </div>
 
+            {/* KPI Summary Cards Consolidados */}
+            {rjBenchmarkStats && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 border-t-4 border-t-[#113829]">
+                  <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Média Picanha RJ</div>
+                  <div className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                    R$ {rjBenchmarkStats.picanha.avg.toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                    Mín R$ {rjBenchmarkStats.picanha.min.toFixed(2)} • Máx R$ {rjBenchmarkStats.picanha.max.toFixed(2)}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 border-t-4 border-t-slate-700">
+                  <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Média Contra Filé</div>
+                  <div className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                    R$ {rjBenchmarkStats.contraFile.avg.toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                    Mín R$ {rjBenchmarkStats.contraFile.min.toFixed(2)} • Máx R$ {rjBenchmarkStats.contraFile.max.toFixed(2)}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 border-t-4 border-t-slate-700">
+                  <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Média Alcatra RJ</div>
+                  <div className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                    R$ {rjBenchmarkStats.alcatra.avg.toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                    Mín R$ {rjBenchmarkStats.alcatra.min.toFixed(2)} • Máx R$ {rjBenchmarkStats.alcatra.max.toFixed(2)}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 border-t-4 border-t-emerald-600">
+                  <div className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400 uppercase">Acém (Dianteiro)</div>
+                  <div className="text-base font-black text-emerald-700 dark:text-emerald-400 mt-0.5">
+                    R$ {rjBenchmarkStats.acem.avg.toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-emerald-600/80 dark:text-emerald-500 mt-0.5 font-semibold">
+                    Destaque Popular RJ
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 border-t-4 border-t-slate-700">
+                  <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Média Costela RJ</div>
+                  <div className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                    R$ {rjBenchmarkStats.costela.avg.toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                    Mín R$ {rjBenchmarkStats.costela.min.toFixed(2)} • Máx R$ {rjBenchmarkStats.costela.max.toFixed(2)}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 border-t-4 border-t-rose-600">
+                  <div className="text-[10px] font-bold text-rose-800 dark:text-rose-400 uppercase">Pernil Suíno (Giro)</div>
+                  <div className="text-base font-black text-rose-700 dark:text-rose-400 mt-0.5">
+                    R$ {rjBenchmarkStats.pernilSuino.avg.toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-rose-600/80 dark:text-rose-500 mt-0.5 font-semibold">
+                    Proteína Suína RJ
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Tabela Comparativa de Redes do RJ */}
-            <div className="overflow-x-auto mt-4">
+            <div className="overflow-x-auto mt-4 rounded-xl border border-slate-200 dark:border-slate-800">
               <table className="w-full text-left text-xs border-collapse font-sans">
-                <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] uppercase font-bold tracking-wider">
+                <thead className="bg-[#113829] text-white text-[11px] uppercase font-bold tracking-wider">
                   <tr>
                     <th className="py-3 px-4">Rede Supermercadista RJ</th>
-                    <th className="py-3 px-3">Perfil</th>
+                    <th className="py-3 px-3 text-center">Perfil</th>
                     <th className="py-3 px-3 text-right">Picanha</th>
                     <th className="py-3 px-3 text-right">Contra Filé</th>
                     <th className="py-3 px-3 text-right">Alcatra</th>
@@ -1358,7 +1565,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                         <Store className="w-4 h-4 text-emerald-600 shrink-0" />
                         <span>{bench.chainName}</span>
                       </td>
-                      <td className="py-3 px-3 font-sans">
+                      <td className="py-3 px-3 font-sans text-center">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                           bench.category === 'supermercado_popular' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
                           bench.category === 'atacarejo' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
@@ -1397,7 +1604,89 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                     </tr>
                   ))}
                 </tbody>
+
+                {/* Linhas de Fechamento Estatístico da Tabela */}
+                {rjBenchmarkStats && (
+                  <tfoot className="bg-slate-100/90 dark:bg-slate-800/90 border-t-2 border-slate-300 dark:border-slate-700 font-mono text-xs">
+                    {/* Linha 1: Média Geral RJ */}
+                    <tr className="font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800">
+                      <td className="py-2.5 px-4 font-sans">MÉDIA GERAL RJ (12 Redes)</td>
+                      <td className="py-2.5 px-3 text-center font-sans text-[10px] text-slate-500">MÉDIA</td>
+                      <td className="py-2.5 px-3 text-right">R$ {rjBenchmarkStats.picanha.avg.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right">R$ {rjBenchmarkStats.contraFile.avg.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right">R$ {rjBenchmarkStats.alcatra.avg.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right">R$ {rjBenchmarkStats.coxaoMole.avg.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right">R$ {rjBenchmarkStats.patinho.avg.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right text-emerald-700 dark:text-emerald-400">R$ {rjBenchmarkStats.acem.avg.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right">R$ {rjBenchmarkStats.costela.avg.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right text-rose-700 dark:text-rose-400">R$ {rjBenchmarkStats.pernilSuino.avg.toFixed(2)}</td>
+                      <td className="py-2.5 px-4 font-sans text-[10px] text-slate-500">Média Geral Ponderada</td>
+                    </tr>
+
+                    {/* Linha 2: Menor Preço (Mínimo) */}
+                    <tr className="text-emerald-800 dark:text-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/20 font-bold">
+                      <td className="py-2 px-4 font-sans text-[11px]">MENOR PREÇO REGISTRADO RJ</td>
+                      <td className="py-2 px-3 text-center font-sans text-[10px]">MÍNIMO</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.picanha.min.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.contraFile.min.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.alcatra.min.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.coxaoMole.min.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.patinho.min.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.acem.min.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.costela.min.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.pernilSuino.min.toFixed(2)}</td>
+                      <td className="py-2 px-4 font-sans text-[10px] text-emerald-700 dark:text-emerald-400">Piso Atacarejo / Popular</td>
+                    </tr>
+
+                    {/* Linha 3: Maior Preço (Máximo) */}
+                    <tr className="text-rose-800 dark:text-rose-300 bg-rose-50/60 dark:bg-rose-950/20 font-bold">
+                      <td className="py-2 px-4 font-sans text-[11px]">MAIOR PREÇO REGISTRADO RJ</td>
+                      <td className="py-2 px-3 text-center font-sans text-[10px]">MÁXIMO</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.picanha.max.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.contraFile.max.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.alcatra.max.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.coxaoMole.max.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.patinho.max.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.acem.max.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.costela.max.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.pernilSuino.max.toFixed(2)}</td>
+                      <td className="py-2 px-4 font-sans text-[10px] text-rose-700 dark:text-rose-400">Teto Redes Premium</td>
+                    </tr>
+
+                    {/* Linha 4: Spread / Amplitude */}
+                    <tr className="text-amber-800 dark:text-amber-300 bg-amber-50/60 dark:bg-amber-950/20 font-bold">
+                      <td className="py-2 px-4 font-sans text-[11px]">SPREAD DE BALCÃO (MÁX - MÍN)</td>
+                      <td className="py-2 px-3 text-center font-sans text-[10px]">SPREAD</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.picanha.spread.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.contraFile.spread.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.alcatra.spread.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.coxaoMole.spread.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.patinho.spread.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.acem.spread.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.costela.spread.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.pernilSuino.spread.toFixed(2)}</td>
+                      <td className="py-2 px-4 font-sans text-[10px] text-amber-700 dark:text-amber-400">Amplitude Praticada no RJ</td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
+            </div>
+
+            {/* Box de Critérios Metodológicos e Auditoria Técnica */}
+            <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 leading-relaxed space-y-1">
+              <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Critérios Metodológicos & Auditoria de Balcão RJ</span>
+              </div>
+              <p className="text-[11px]">
+                • <strong>Coleta de Preços:</strong> Amostragem semanal em lojas físicas, tabloides promocionais e painel sell-out das 12 principais redes varejistas do Estado do Rio de Janeiro.
+              </p>
+              <p className="text-[11px]">
+                • <strong>Fontes de Balizamento:</strong> NielsenIQ Retail Index, Scantec Sell-Out RJ e monitoramento oficial da Associação de Supermercados do Estado do Rio de Janeiro (ASSERJ).
+              </p>
+              <p className="text-[11px]">
+                • <strong>Calibragem de Margem:</strong> Os dados são utilizados pela Direção da Empresa para balizar compras de gado, rendimento de desossa e precificação competitiva no balcão de cada filial.
+              </p>
             </div>
           </div>
         </div>

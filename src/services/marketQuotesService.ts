@@ -15,6 +15,8 @@ import {
 import { StorageService } from './storageService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import ExcelJS from 'exceljs';
+import { PrintEngineService } from './printEngineService';
 
 const QUOTES_STORAGE_KEY = 'apuracao_boi_market_quotes_v5';
 
@@ -2255,6 +2257,43 @@ export class MarketQuotesService {
       theme: 'grid'
     });
 
+    y = (doc as any).lastAutoTable.finalY + 7;
+
+    // 5. AUDITORIA DE MERCADO RJ: PREÇOS NO BALCÃO DE 12 REDES SUPERMERCADISTAS RJ
+    if (y > pageHeight - 85) {
+      doc.addPage();
+      y = 18;
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(17, 56, 41);
+    doc.text('5. Auditoria de Mercado: Preços no Balcão de 12 Redes Supermercadistas RJ (NielsenIQ/Scantec/ASSERJ)', margin, y);
+    y += 4;
+
+    const rjRetailTable = (snapshot.rjRetailBenchmarks || INITIAL_RJ_RETAIL_BENCHMARKS).map(b => [
+      b.chainName,
+      b.category.replace('_', ' ').toUpperCase(),
+      `R$ ${b.sampleCutPrices.picanha.toFixed(2)}`,
+      `R$ ${b.sampleCutPrices.contraFile.toFixed(2)}`,
+      `R$ ${b.sampleCutPrices.alcatra.toFixed(2)}`,
+      `R$ ${b.sampleCutPrices.coxaoMole.toFixed(2)}`,
+      `R$ ${b.sampleCutPrices.patinho.toFixed(2)}`,
+      `R$ ${b.sampleCutPrices.acem.toFixed(2)}`,
+      `R$ ${b.sampleCutPrices.costela.toFixed(2)}`,
+      `R$ ${b.sampleCutPrices.pernilSuino.toFixed(2)}`
+    ]);
+
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [['Rede RJ', 'Perfil', 'Picanha', 'Contra', 'Alcatra', 'Coxão', 'Patinho', 'Acém', 'Costela', 'Suíno']],
+      body: rjRetailTable,
+      headStyles: { fillColor: [17, 56, 41], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 6.8 },
+      bodyStyles: { fontSize: 6.2, textColor: [30, 41, 59] },
+      theme: 'grid'
+    });
+
     // Footer
     const totalPages = (doc.internal as any).getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
@@ -2322,6 +2361,974 @@ export class MarketQuotesService {
       ``,
       `📊 *Fontes Oficiais:* CEPEA/ESALQ • B3 • Scot • IMEA • Ceasa Irajá RJ • ASSERJ • Scantec RJ • NielsenIQ`,
       `🔒 _ERP Gestão Apuração do Boi v10.7 • Patrick Pessoa_`
+    ];
+
+    const messageText = lines.join('\n');
+    const sanitizedPhone = targetPhone ? targetPhone.replace(/\D/g, '') : '';
+    const phoneParam = sanitizedPhone ? `phone=${sanitizedPhone}&` : '';
+    const whatsappUrl = `https://api.whatsapp.com/send?${phoneParam}text=${encodeURIComponent(messageText)}`;
+
+    window.open(whatsappUrl, '_blank');
+  }
+
+  /**
+   * Gera e faz o download do Relatório Oficial de Auditoria de Mercado do RJ em PDF
+   * (Preços Praticados no Balcão de 12 Redes Supermercadistas do Rio de Janeiro)
+   * Formato A4 Paisagem (Landscape), alta resolução gráfica, KPIs consolidados,
+   * tabela completa das 12 redes com destaques visuais e notas metodológicas.
+   */
+  public static async generateAndDownloadRjRetailAuditPdf(): Promise<void> {
+    const snapshot = this.getQuotesSnapshot();
+    const benchmarks = snapshot.rjRetailBenchmarks || INITIAL_RJ_RETAIL_BENCHMARKS;
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4',
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth(); // 297mm
+    const pageHeight = doc.internal.pageSize.getHeight(); // 210mm
+    const margin = 12;
+    const logoBase64 = await this.getLogoBase64();
+
+    // 1. Top Header Banner Corporativo (Verde Floresta / Executivo #113829)
+    doc.setFillColor(17, 56, 41);
+    doc.rect(0, 0, pageWidth, 24, 'F');
+
+    // Accent line inferior no topo (Verde-lima #b5e550)
+    doc.setFillColor(181, 229, 80);
+    doc.rect(0, 23.5, pageWidth, 0.7, 'F');
+
+    if (logoBase64) {
+      try {
+        doc.addImage(logoBase64, 'PNG', margin, 3, 18, 18);
+      } catch {}
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(181, 229, 80);
+    doc.text('GRUPO GAPP SISTEMAS • AUDITORIA OFICIAL DE VAREJO & BENCHMARKING DE BALCÃO', margin + 22, 7.5);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(255, 255, 255);
+    doc.text('PREÇOS PRATICADOS NO BALCÃO DE 12 REDES SUPERMERCADISTAS DO RIO DE JANEIRO', margin + 22, 14.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(226, 232, 240);
+    doc.text('Amostragem comparativa de preços por corte nos supermercados do Grande Rio, Baixada Fluminense, Niterói e Região Metropolitana', margin + 22, 19.8);
+
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const emissionDateStr = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} às ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(203, 213, 225);
+    doc.text('Base: NielsenIQ Retail Index • Scantec Sell-Out RJ • ASSERJ', pageWidth - margin, 7.5, { align: 'right' });
+    doc.text(`Emissão: ${emissionDateStr} • Relatório Dinâmico`, pageWidth - margin, 14.5, { align: 'right' });
+    doc.text('Direção de Carnes: Patrick Pessoa • ERP v10.7', pageWidth - margin, 19.8, { align: 'right' });
+
+    // 2. Cálculos Estatísticos Consolidados das 12 Redes
+    const cuts = [
+      { key: 'picanha', name: 'Picanha' },
+      { key: 'contraFile', name: 'Contra Filé' },
+      { key: 'alcatra', name: 'Alcatra' },
+      { key: 'coxaoMole', name: 'Coxão Mole' },
+      { key: 'patinho', name: 'Patinho' },
+      { key: 'acem', name: 'Acém' },
+      { key: 'costela', name: 'Costela' },
+      { key: 'pernilSuino', name: 'Pernil Suíno' },
+    ] as const;
+
+    const stats: Record<string, { avg: number; min: number; max: number; spread: number }> = {};
+    cuts.forEach(c => {
+      const vals = benchmarks.map(b => (b.sampleCutPrices as any)[c.key] || 0).filter(v => v > 0);
+      const avg = vals.length > 0 ? vals.reduce((sum, v) => sum + v, 0) / vals.length : 0;
+      const min = vals.length > 0 ? Math.min(...vals) : 0;
+      const max = vals.length > 0 ? Math.max(...vals) : 0;
+      stats[c.key] = { avg, min, max, spread: max - min };
+    });
+
+    // 3. Mini KPI Highlight Cards (6 blocos informativos em linha)
+    const kpis = [
+      { label: 'MÉDIA PICANHA RJ', avg: stats.picanha.avg, min: stats.picanha.min, max: stats.picanha.max, color: [17, 56, 41] },
+      { label: 'MÉDIA CONTRA FILÉ', avg: stats.contraFile.avg, min: stats.contraFile.min, max: stats.contraFile.max, color: [30, 41, 59] },
+      { label: 'MÉDIA ALCATRA RJ', avg: stats.alcatra.avg, min: stats.alcatra.min, max: stats.alcatra.max, color: [30, 41, 59] },
+      { label: 'ACÉM (DESTAQUE DIANT.)', avg: stats.acem.avg, min: stats.acem.min, max: stats.acem.max, color: [5, 150, 105] },
+      { label: 'MÉDIA COSTELA RJ', avg: stats.costela.avg, min: stats.costela.min, max: stats.costela.max, color: [30, 41, 59] },
+      { label: 'PERNIL SUÍNO (GIRO)', avg: stats.pernilSuino.avg, min: stats.pernilSuino.min, max: stats.pernilSuino.max, color: [225, 29, 72] },
+    ];
+
+    const kpiY = 27.5;
+    const kpiGap = 3.5;
+    const totalKpiWidth = pageWidth - (margin * 2);
+    const kpiW = (totalKpiWidth - (kpiGap * (kpis.length - 1))) / kpis.length;
+    const kpiH = 13.5;
+
+    kpis.forEach((kpi, idx) => {
+      const kpiX = margin + idx * (kpiW + kpiGap);
+      
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(kpiX, kpiY, kpiW, kpiH, 1.5, 1.5, 'FD');
+
+      // Top mini indicator bar
+      doc.setFillColor(kpi.color[0], kpi.color[1], kpi.color[2]);
+      doc.roundedRect(kpiX, kpiY, kpiW, 1.2, 0.6, 0.6, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(5.8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(kpi.label, kpiX + 2.5, kpiY + 4.2);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(kpi.color[0], kpi.color[1], kpi.color[2]);
+      doc.text(`R$ ${kpi.avg.toFixed(2)}`, kpiX + 2.5, kpiY + 8.8);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.2);
+      doc.setTextColor(148, 163, 184);
+      doc.text(`Mín: R$ ${kpi.min.toFixed(2)} • Máx: R$ ${kpi.max.toFixed(2)}`, kpiX + 2.5, kpiY + 12);
+    });
+
+    // 4. Montagem das Linhas da Tabela
+    const tableBody = benchmarks.map(bench => [
+      bench.chainName,
+      bench.category.replace('_', ' ').toUpperCase(),
+      `R$ ${bench.sampleCutPrices.picanha.toFixed(2)}`,
+      `R$ ${bench.sampleCutPrices.contraFile.toFixed(2)}`,
+      `R$ ${bench.sampleCutPrices.alcatra.toFixed(2)}`,
+      `R$ ${bench.sampleCutPrices.coxaoMole.toFixed(2)}`,
+      `R$ ${bench.sampleCutPrices.patinho.toFixed(2)}`,
+      `R$ ${bench.sampleCutPrices.acem.toFixed(2)}`,
+      `R$ ${bench.sampleCutPrices.costela.toFixed(2)}`,
+      `R$ ${bench.sampleCutPrices.pernilSuino.toFixed(2)}`,
+      bench.source
+    ]);
+
+    const tableFoot = [
+      [
+        'MÉDIA GERAL RJ (12 Redes)',
+        'MÉDIA BALCÃO',
+        `R$ ${stats.picanha.avg.toFixed(2)}`,
+        `R$ ${stats.contraFile.avg.toFixed(2)}`,
+        `R$ ${stats.alcatra.avg.toFixed(2)}`,
+        `R$ ${stats.coxaoMole.avg.toFixed(2)}`,
+        `R$ ${stats.patinho.avg.toFixed(2)}`,
+        `R$ ${stats.acem.avg.toFixed(2)}`,
+        `R$ ${stats.costela.avg.toFixed(2)}`,
+        `R$ ${stats.pernilSuino.avg.toFixed(2)}`,
+        'Média Aritmética de Balcão RJ'
+      ],
+      [
+        'MENOR PREÇO REGISTRADO RJ',
+        'PISO / MÍNIMO',
+        `R$ ${stats.picanha.min.toFixed(2)}`,
+        `R$ ${stats.contraFile.min.toFixed(2)}`,
+        `R$ ${stats.alcatra.min.toFixed(2)}`,
+        `R$ ${stats.coxaoMole.min.toFixed(2)}`,
+        `R$ ${stats.patinho.min.toFixed(2)}`,
+        `R$ ${stats.acem.min.toFixed(2)}`,
+        `R$ ${stats.costela.min.toFixed(2)}`,
+        `R$ ${stats.pernilSuino.min.toFixed(2)}`,
+        'Piso de Preço no Atacarejo/Popular'
+      ],
+      [
+        'MAIOR PREÇO REGISTRADO RJ',
+        'TETO / MÁXIMO',
+        `R$ ${stats.picanha.max.toFixed(2)}`,
+        `R$ ${stats.contraFile.max.toFixed(2)}`,
+        `R$ ${stats.alcatra.max.toFixed(2)}`,
+        `R$ ${stats.coxaoMole.max.toFixed(2)}`,
+        `R$ ${stats.patinho.max.toFixed(2)}`,
+        `R$ ${stats.acem.max.toFixed(2)}`,
+        `R$ ${stats.costela.max.toFixed(2)}`,
+        `R$ ${stats.pernilSuino.max.toFixed(2)}`,
+        'Teto Balcão Redes Premium RJ'
+      ],
+      [
+        'SPREAD / DIFERENÇA (R$)',
+        'AMPLITUDE RJ',
+        `R$ ${stats.picanha.spread.toFixed(2)}`,
+        `R$ ${stats.contraFile.spread.toFixed(2)}`,
+        `R$ ${stats.alcatra.spread.toFixed(2)}`,
+        `R$ ${stats.coxaoMole.spread.toFixed(2)}`,
+        `R$ ${stats.patinho.spread.toFixed(2)}`,
+        `R$ ${stats.acem.spread.toFixed(2)}`,
+        `R$ ${stats.costela.spread.toFixed(2)}`,
+        `R$ ${stats.pernilSuino.spread.toFixed(2)}`,
+        'Dispersão Máx - Mín Praticada'
+      ]
+    ];
+
+    const tableStartY = 43.5;
+
+    autoTable(doc, {
+      startY: tableStartY,
+      margin: { left: margin, right: margin },
+      head: [[
+        'REDE SUPERMERCADISTA RJ',
+        'PERFIL',
+        'PICANHA',
+        'CONTRA FILÉ',
+        'ALCATRA',
+        'COXÃO MOLE',
+        'PATINHO',
+        'ACÉM',
+        'COSTELA',
+        'PERNIL SUÍNO',
+        'FONTE / PESQUISA'
+      ]],
+      body: tableBody,
+      foot: tableFoot,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [17, 56, 41],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 7.2,
+        halign: 'center',
+        valign: 'middle',
+        cellPadding: 2.2
+      },
+      footStyles: {
+        fillColor: [241, 245, 249],
+        textColor: [15, 23, 42],
+        fontStyle: 'bold',
+        fontSize: 6.4,
+        valign: 'middle',
+        cellPadding: 1.8
+      },
+      styles: {
+        fontSize: 6.5,
+        cellPadding: 1.8,
+        lineColor: [226, 232, 240],
+        lineWidth: 0.2,
+        valign: 'middle'
+      },
+      columnStyles: {
+        0: { cellWidth: 44, fontStyle: 'bold', halign: 'left', textColor: [15, 23, 42] },
+        1: { cellWidth: 28, halign: 'center', fontStyle: 'bold', fontSize: 5.8 },
+        2: { cellWidth: 16.5, halign: 'right', fontStyle: 'bold', textColor: [15, 23, 42] },
+        3: { cellWidth: 16.5, halign: 'right', textColor: [30, 41, 59] },
+        4: { cellWidth: 16.5, halign: 'right', textColor: [30, 41, 59] },
+        5: { cellWidth: 16.5, halign: 'right', textColor: [30, 41, 59] },
+        6: { cellWidth: 16.5, halign: 'right', textColor: [30, 41, 59] },
+        7: { cellWidth: 16.5, halign: 'right', fontStyle: 'bold', textColor: [5, 150, 105] },
+        8: { cellWidth: 16.5, halign: 'right', textColor: [30, 41, 59] },
+        9: { cellWidth: 17.5, halign: 'right', fontStyle: 'bold', textColor: [225, 29, 72] },
+        10: { cellWidth: 57.5, halign: 'left', textColor: [100, 116, 139], fontSize: 5.6 }
+      },
+      didParseCell: (data) => {
+        // Formatação de tags de perfil na coluna 1
+        if (data.section === 'body' && data.column.index === 1) {
+          const text = String(data.cell.raw);
+          if (text.includes('POPULAR')) {
+            data.cell.styles.fillColor = [236, 253, 245];
+            data.cell.styles.textColor = [6, 95, 70];
+          } else if (text.includes('ATACAREJO')) {
+            data.cell.styles.fillColor = [254, 243, 199];
+            data.cell.styles.textColor = [146, 64, 14];
+          } else if (text.includes('PREMIUM')) {
+            data.cell.styles.fillColor = [243, 232, 255];
+            data.cell.styles.textColor = [107, 33, 168];
+          }
+        }
+
+        // Formatação de linhas de rodapé
+        if (data.section === 'foot') {
+          if (data.row.index === 0) {
+            data.cell.styles.fillColor = [241, 245, 249];
+            data.cell.styles.textColor = [15, 23, 42];
+          } else if (data.row.index === 1) {
+            data.cell.styles.fillColor = [236, 253, 245];
+            data.cell.styles.textColor = [6, 95, 70];
+          } else if (data.row.index === 2) {
+            data.cell.styles.fillColor = [254, 242, 242];
+            data.cell.styles.textColor = [159, 18, 57];
+          } else if (data.row.index === 3) {
+            data.cell.styles.fillColor = [254, 243, 199];
+            data.cell.styles.textColor = [146, 64, 14];
+          }
+        }
+      }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 4;
+
+    // 5. Bloco de Notas Metodológicas e Auditoria Técnica
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin, finalY, pageWidth - (margin * 2), 17, 1.5, 1.5, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.2);
+    doc.setTextColor(17, 56, 41);
+    doc.text('NOTAS METODOLÓGICAS & CRITÉRIOS DE AUDITORIA DE MERCADO RJ:', margin + 3, finalY + 4.2);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5.6);
+    doc.setTextColor(71, 85, 105);
+    const note1 = '• Coleta de Preços: Levantamento semanal em lojas físicas, tabloides promocionais e sell-out das 12 principais redes supermercadistas e atacarejos do Estado do Rio de Janeiro.';
+    const note2 = '• Fontes de Balizamento: NielsenIQ Retail Index, Scantec Sell-Out RJ e monitoramento oficial da ASSERJ (Associação de Supermercados do Estado do Rio de Janeiro).';
+    const note3 = '• Finalidade ERP: Calibração de metas de margem comercial, precificação de balcão e estratégia de desossa no Módulo de Gestão e Apuração do Boi v10.7.';
+    doc.text(note1, margin + 3, finalY + 8);
+    doc.text(note2, margin + 3, finalY + 11.5);
+    doc.text(note3, margin + 3, finalY + 15);
+
+    // 6. Rodapé da Página
+    const totalPages = (doc.internal as any).getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.3);
+      doc.line(margin, pageHeight - 7, pageWidth - margin, pageHeight - 7);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.2);
+      doc.setTextColor(148, 163, 184);
+      doc.text(
+        'Grupo GAPP Sistemas ERP • Relatório de Auditoria de Balcão 12 Redes Supermercadistas RJ • Direção Técnica: Patrick Pessoa',
+        margin,
+        pageHeight - 3.8
+      );
+      doc.text(`Página ${i} de ${totalPages} • Documento Oficial Autenticado`, pageWidth - margin, pageHeight - 3.8, { align: 'right' });
+    }
+
+    const dateFileStr = new Date().toISOString().split('T')[0];
+    doc.save(`Auditoria_Precos_Balcao_12_Redes_RJ_GAPP_${dateFileStr}.pdf`);
+  }
+
+  /**
+   * Imprime o Relatório Oficial de Auditoria de Balcão das 12 Redes do RJ
+   * utilizando o motor de impressão de alta resolução PrintEngineService
+   */
+  public static printRjRetailAuditReport(): void {
+    const snapshot = this.getQuotesSnapshot();
+    const benchmarks = snapshot.rjRetailBenchmarks || INITIAL_RJ_RETAIL_BENCHMARKS;
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const emissionDateStr = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} às ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    // Cálculos
+    const cuts = ['picanha', 'contraFile', 'alcatra', 'coxaoMole', 'patinho', 'acem', 'costela', 'pernilSuino'] as const;
+    const stats: Record<string, { avg: number; min: number; max: number; spread: number }> = {};
+    cuts.forEach(cut => {
+      const vals = benchmarks.map(b => (b.sampleCutPrices as any)[cut] || 0).filter(v => v > 0);
+      const avg = vals.length > 0 ? vals.reduce((sum, v) => sum + v, 0) / vals.length : 0;
+      const min = vals.length > 0 ? Math.min(...vals) : 0;
+      const max = vals.length > 0 ? Math.max(...vals) : 0;
+      stats[cut] = { avg, min, max, spread: max - min };
+    });
+
+    const rowsHtml = benchmarks.map(b => {
+      const categoryLabel = b.category === 'supermercado_popular' ? 'SUPERMERCADO POPULAR' :
+        b.category === 'atacarejo' ? 'ATACAREJO' : 'SUPERMERCADO PREMIUM';
+      const categoryClass = b.category === 'supermercado_popular' ? 'badge-popular' :
+        b.category === 'atacarejo' ? 'badge-atacarejo' : 'badge-premium';
+
+      return `
+        <tr>
+          <td class="col-chain"><strong>${b.chainName}</strong></td>
+          <td class="col-profile"><span class="badge ${categoryClass}">${categoryLabel}</span></td>
+          <td class="col-num col-picanha">R$ ${b.sampleCutPrices.picanha.toFixed(2)}</td>
+          <td class="col-num">R$ ${b.sampleCutPrices.contraFile.toFixed(2)}</td>
+          <td class="col-num">R$ ${b.sampleCutPrices.alcatra.toFixed(2)}</td>
+          <td class="col-num">R$ ${b.sampleCutPrices.coxaoMole.toFixed(2)}</td>
+          <td class="col-num">R$ ${b.sampleCutPrices.patinho.toFixed(2)}</td>
+          <td class="col-num col-acem">R$ ${b.sampleCutPrices.acem.toFixed(2)}</td>
+          <td class="col-num">R$ ${b.sampleCutPrices.costela.toFixed(2)}</td>
+          <td class="col-num col-suino">R$ ${b.sampleCutPrices.pernilSuino.toFixed(2)}</td>
+          <td class="col-source">${b.source}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="utf-8">
+        <title>Auditoria de Preços Balcão 12 Redes RJ - Grupo GAPP</title>
+        <style>
+          @page {
+            size: A4 landscape;
+            margin: 8mm 10mm;
+          }
+          * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #0f172a;
+            margin: 0;
+            padding: 0;
+            font-size: 11px;
+            background: #fff;
+          }
+          .header-banner {
+            background-color: #113829;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          .header-badge {
+            display: inline-block;
+            background-color: #b5e550;
+            color: #113829;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+          }
+          .header-title {
+            font-size: 16px;
+            font-weight: 900;
+            margin: 0 0 2px 0;
+            letter-spacing: -0.2px;
+          }
+          .header-sub {
+            font-size: 10px;
+            color: #e2e8f0;
+            margin: 0;
+          }
+          .header-meta {
+            text-align: right;
+            font-size: 9px;
+            color: #cbd5e1;
+            line-height: 1.5;
+          }
+          .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+          }
+          .kpi-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 6px 8px;
+            background-color: #f8fafc;
+            border-top: 3px solid #113829;
+          }
+          .kpi-card.highlight-green {
+            border-top-color: #059669;
+          }
+          .kpi-card.highlight-rose {
+            border-top-color: #e11d48;
+          }
+          .kpi-label {
+            font-size: 8px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+          }
+          .kpi-value {
+            font-size: 13px;
+            font-weight: 900;
+            color: #0f172a;
+            margin: 2px 0;
+          }
+          .kpi-card.highlight-green .kpi-value { color: #059669; }
+          .kpi-card.highlight-rose .kpi-value { color: #e11d48; }
+          .kpi-sub {
+            font-size: 8px;
+            color: #94a3b8;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+            margin-bottom: 12px;
+          }
+          th {
+            background-color: #113829;
+            color: #fff;
+            padding: 6px 8px;
+            font-weight: 700;
+            font-size: 9px;
+            text-transform: uppercase;
+            border: 1px solid #0d2c20;
+          }
+          td {
+            padding: 5px 8px;
+            border: 1px solid #e2e8f0;
+          }
+          tr:nth-child(even) {
+            background-color: #f8fafc;
+          }
+          .col-chain {
+            font-weight: 700;
+          }
+          .col-profile {
+            text-align: center;
+          }
+          .col-num {
+            text-align: right;
+            font-family: monospace;
+            font-size: 10px;
+          }
+          .col-picanha {
+            font-weight: 700;
+          }
+          .col-acem {
+            font-weight: 800;
+            color: #059669;
+          }
+          .col-suino {
+            font-weight: 800;
+            color: #e11d48;
+          }
+          .col-source {
+            font-size: 8.5px;
+            color: #64748b;
+          }
+          .badge {
+            display: inline-block;
+            font-size: 8px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+          }
+          .badge-popular {
+            background-color: #d1fae5;
+            color: #065f46;
+          }
+          .badge-atacarejo {
+            background-color: #fef3c7;
+            color: #92400e;
+          }
+          .badge-premium {
+            background-color: #f3e8ff;
+            color: #6b21a8;
+          }
+          tfoot tr {
+            font-weight: 700;
+          }
+          tfoot tr.row-media {
+            background-color: #f1f5f9;
+          }
+          tfoot tr.row-min {
+            background-color: #ecfdf5;
+            color: #065f46;
+          }
+          tfoot tr.row-max {
+            background-color: #fff1f2;
+            color: #9f1239;
+          }
+          tfoot tr.row-spread {
+            background-color: #fef3c7;
+            color: #92400e;
+          }
+          .footer-notes {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 8.5px;
+            color: #475569;
+            line-height: 1.5;
+          }
+          .footer-auth {
+            margin-top: 10px;
+            padding-top: 6px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            font-size: 8.5px;
+            color: #94a3b8;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header-banner">
+          <div>
+            <span class="header-badge">Auditoria de Mercado RJ</span>
+            <h1 class="header-title">Preços Praticados no Balcão de 12 Redes Supermercadistas do Rio de Janeiro</h1>
+            <p class="header-sub">Amostragem comparativa de preços por corte nos supermercados do Grande Rio, Baixada Fluminense, Niterói e Região Metropolitana</p>
+          </div>
+          <div class="header-meta">
+            <div><strong>Base:</strong> NielsenIQ • Scantec • ASSERJ</div>
+            <div><strong>Emissão:</strong> ${emissionDateStr}</div>
+            <div><strong>Direção:</strong> Patrick Pessoa • ERP GAPP</div>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Média Picanha RJ</div>
+            <div class="kpi-value">R$ ${stats.picanha.avg.toFixed(2)}</div>
+            <div class="kpi-sub">Mín R$ ${stats.picanha.min.toFixed(2)} • Máx R$ ${stats.picanha.max.toFixed(2)}</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Média Contra Filé</div>
+            <div class="kpi-value">R$ ${stats.contraFile.avg.toFixed(2)}</div>
+            <div class="kpi-sub">Mín R$ ${stats.contraFile.min.toFixed(2)} • Máx R$ ${stats.contraFile.max.toFixed(2)}</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Média Alcatra RJ</div>
+            <div class="kpi-value">R$ ${stats.alcatra.avg.toFixed(2)}</div>
+            <div class="kpi-sub">Mín R$ ${stats.alcatra.min.toFixed(2)} • Máx R$ ${stats.alcatra.max.toFixed(2)}</div>
+          </div>
+          <div class="kpi-card highlight-green">
+            <div class="kpi-label">Acém (Dianteiro)</div>
+            <div class="kpi-value">R$ ${stats.acem.avg.toFixed(2)}</div>
+            <div class="kpi-sub">Destaque Popular RJ</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Média Costela RJ</div>
+            <div class="kpi-value">R$ ${stats.costela.avg.toFixed(2)}</div>
+            <div class="kpi-sub">Mín R$ ${stats.costela.min.toFixed(2)} • Máx R$ ${stats.costela.max.toFixed(2)}</div>
+          </div>
+          <div class="kpi-card highlight-rose">
+            <div class="kpi-label">Pernil Suíno (Giro)</div>
+            <div class="kpi-value">R$ ${stats.pernilSuino.avg.toFixed(2)}</div>
+            <div class="kpi-sub">Proteína Suína RJ</div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align: left;">Rede Supermercadista RJ</th>
+              <th>Perfil</th>
+              <th style="text-align: right;">Picanha</th>
+              <th style="text-align: right;">Contra Filé</th>
+              <th style="text-align: right;">Alcatra</th>
+              <th style="text-align: right;">Coxão Mole</th>
+              <th style="text-align: right;">Patinho</th>
+              <th style="text-align: right;">Acém</th>
+              <th style="text-align: right;">Costela</th>
+              <th style="text-align: right;">Pernil Suíno</th>
+              <th style="text-align: left;">Fonte / Pesquisa</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+          <tfoot>
+            <tr class="row-media">
+              <td>MÉDIA GERAL RJ (12 Redes)</td>
+              <td class="col-profile">MÉDIA</td>
+              <td class="col-num">R$ ${stats.picanha.avg.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.contraFile.avg.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.alcatra.avg.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.coxaoMole.avg.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.patinho.avg.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.acem.avg.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.costela.avg.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.pernilSuino.avg.toFixed(2)}</td>
+              <td>Média Varejo RJ</td>
+            </tr>
+            <tr class="row-min">
+              <td>MENOR PREÇO REGISTRADO RJ</td>
+              <td class="col-profile">MÍNIMO</td>
+              <td class="col-num">R$ ${stats.picanha.min.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.contraFile.min.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.alcatra.min.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.coxaoMole.min.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.patinho.min.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.acem.min.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.costela.min.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.pernilSuino.min.toFixed(2)}</td>
+              <td>Piso Balcão Atacarejo</td>
+            </tr>
+            <tr class="row-max">
+              <td>MAIOR PREÇO REGISTRADO RJ</td>
+              <td class="col-profile">MÁXIMO</td>
+              <td class="col-num">R$ ${stats.picanha.max.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.contraFile.max.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.alcatra.max.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.coxaoMole.max.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.patinho.max.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.acem.max.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.costela.max.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.pernilSuino.max.toFixed(2)}</td>
+              <td>Teto Balcão Premium</td>
+            </tr>
+            <tr class="row-spread">
+              <td>SPREAD DE PREÇO (MÁX - MÍN)</td>
+              <td class="col-profile">SPREAD</td>
+              <td class="col-num">R$ ${stats.picanha.spread.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.contraFile.spread.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.alcatra.spread.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.coxaoMole.spread.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.patinho.spread.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.acem.spread.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.costela.spread.toFixed(2)}</td>
+              <td class="col-num">R$ ${stats.pernilSuino.spread.toFixed(2)}</td>
+              <td>Dispersão de Balcão RJ</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div class="footer-notes">
+          <strong>Notas Metodológicas:</strong> Levantamento comparativo semanal em lojas físicas, encartes promocionais e sell-out das 12 principais redes supermercadistas e atacarejos do Estado do Rio de Janeiro. Indicadores balizados por NielsenIQ Retail Index, Scantec Sell-Out RJ e chancela da ASSERJ. Utilizado para calibragem de metas de margem comercial e precificação no ERP Apuração do Boi.
+        </div>
+
+        <div class="footer-auth">
+          <div>Grupo GAPP Sistemas ERP • Gestão Apuração do Boi v10.7 • Patrick Pessoa</div>
+          <div>Documento Oficial Autenticado • Impressão em Alta Resolução</div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    PrintEngineService.printDocument(html, {
+      documentTitle: 'Auditoria_Precos_Balcao_12_Redes_RJ',
+      landscape: true
+    });
+  }
+
+  /**
+   * Exporta os dados da Auditoria de Preços no Balcão de 12 Redes Supermercadistas RJ para Excel (.xlsx)
+   */
+  public static async exportRjRetailAuditToExcel(): Promise<void> {
+    const snapshot = this.getQuotesSnapshot();
+    const benchmarks = snapshot.rjRetailBenchmarks || INITIAL_RJ_RETAIL_BENCHMARKS;
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const emissionDateStr = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} às ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Grupo GAPP Sistemas - Patrick Pessoa';
+    workbook.created = new Date();
+
+    const ws = workbook.addWorksheet('Auditoria Balcão 12 Redes RJ', {
+      views: [{ state: 'frozen', xSplit: 2, ySplit: 4 }],
+      properties: { tabColor: { argb: 'FF113829' } }
+    });
+
+    // Title Row
+    ws.mergeCells('A1:K1');
+    const title = ws.getCell('A1');
+    title.value = 'GRUPO GAPP SISTEMAS • AUDITORIA OFICIAL DE PREÇOS NO BALCÃO DE 12 REDES DO RIO DE JANEIRO';
+    title.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
+    title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF113829' } };
+    title.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getRow(1).height = 30;
+
+    // Subtitle Row
+    ws.mergeCells('A2:K2');
+    const subtitle = ws.getCell('A2');
+    subtitle.value = `Base Oficial: NielsenIQ Retail Index • Scantec Sell-Out RJ • ASSERJ | Emissão: ${emissionDateStr} | Direção: Patrick Pessoa`;
+    subtitle.font = { name: 'Arial', size: 9.5, italic: true, color: { argb: 'FFFFFFFF' } };
+    subtitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E3B' } };
+    subtitle.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getRow(2).height = 20;
+
+    // Blank row 3
+    ws.getRow(3).height = 8;
+
+    // Header Row 4
+    const headers = [
+      'Rede Supermercadista RJ',
+      'Perfil',
+      'Picanha (R$/kg)',
+      'Contra Filé (R$/kg)',
+      'Alcatra (R$/kg)',
+      'Coxão Mole (R$/kg)',
+      'Patinho (R$/kg)',
+      'Acém (R$/kg)',
+      'Costela (R$/kg)',
+      'Pernil Suíno (R$/kg)',
+      'Fonte / Pesquisa Oficial'
+    ];
+
+    const headerRow = ws.getRow(4);
+    headerRow.values = headers;
+    headerRow.height = 24;
+    headerRow.eachCell((cell, colNum) => {
+      cell.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF113829' } };
+      cell.alignment = { horizontal: colNum >= 3 && colNum <= 10 ? 'right' : colNum === 2 ? 'center' : 'left', vertical: 'middle' };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+        bottom: { style: 'medium', color: { argb: 'FF999999' } },
+        left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+        right: { style: 'thin', color: { argb: 'FFCCCCCC' } }
+      };
+    });
+
+    // Populate rows
+    benchmarks.forEach((b, idx) => {
+      const rowNum = 5 + idx;
+      const r = ws.getRow(rowNum);
+      const categoryLabel = b.category === 'supermercado_popular' ? 'SUPERMERCADO POPULAR' :
+        b.category === 'atacarejo' ? 'ATACAREJO' : 'SUPERMERCADO PREMIUM';
+
+      r.values = [
+        b.chainName,
+        categoryLabel,
+        b.sampleCutPrices.picanha,
+        b.sampleCutPrices.contraFile,
+        b.sampleCutPrices.alcatra,
+        b.sampleCutPrices.coxaoMole,
+        b.sampleCutPrices.patinho,
+        b.sampleCutPrices.acem,
+        b.sampleCutPrices.costela,
+        b.sampleCutPrices.pernilSuino,
+        b.source
+      ];
+      r.height = 20;
+
+      r.eachCell((cell, colNum) => {
+        cell.font = { name: 'Arial', size: 9 };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+        };
+
+        if (colNum >= 3 && colNum <= 10) {
+          cell.numFmt = '"R$ "#,##0.00';
+          cell.alignment = { horizontal: 'right', vertical: 'middle' };
+        } else if (colNum === 2) {
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.font = { name: 'Arial', size: 8, bold: true };
+          if (b.category === 'supermercado_popular') {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+            cell.font = { color: { argb: 'FF065F46' }, bold: true, size: 8 };
+          } else if (b.category === 'atacarejo') {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+            cell.font = { color: { argb: 'FF92400E' }, bold: true, size: 8 };
+          } else {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3E8FF' } };
+            cell.font = { color: { argb: 'FF6B21A8' }, bold: true, size: 8 };
+          }
+        } else {
+          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        }
+
+        // Highlight Picanha (bold)
+        if (colNum === 3) {
+          cell.font = { name: 'Arial', size: 9, bold: true };
+        }
+        // Highlight Acém (green)
+        if (colNum === 8) {
+          cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF059669' } };
+        }
+        // Highlight Pernil Suíno (red/coral)
+        if (colNum === 10) {
+          cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFE11D48' } };
+        }
+      });
+    });
+
+    const startDataRow = 5;
+    const endDataRow = 4 + benchmarks.length;
+    const mediaRowNum = endDataRow + 1;
+    const minRowNum = endDataRow + 2;
+    const maxRowNum = endDataRow + 3;
+    const spreadRowNum = endDataRow + 4;
+
+    // Helper to setup summary row
+    const setupSummaryRow = (rowNum: number, label: string, formulaFn: (colLetter: string) => string, fgColor: string, textColor: string) => {
+      const r = ws.getRow(rowNum);
+      const cols = ['C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+      r.getCell(1).value = label;
+      r.getCell(2).value = 'ESTATÍSTICA';
+      cols.forEach((col, idx) => {
+        r.getCell(idx + 3).value = { formula: formulaFn(col) };
+      });
+      r.getCell(11).value = 'Cálculo Oficial 12 Redes RJ';
+      r.height = 22;
+
+      r.eachCell((cell, colNum) => {
+        cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: textColor } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fgColor } };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+        };
+        if (colNum >= 3 && colNum <= 10) {
+          cell.numFmt = '"R$ "#,##0.00';
+          cell.alignment = { horizontal: 'right', vertical: 'middle' };
+        } else if (colNum === 2) {
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        } else {
+          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        }
+      });
+    };
+
+    setupSummaryRow(mediaRowNum, 'MÉDIA GERAL RJ (12 Redes)', col => `AVERAGE(${col}${startDataRow}:${col}${endDataRow})`, 'FFF1F5F9', 'FF0F172A');
+    setupSummaryRow(minRowNum, 'MENOR PREÇO REGISTRADO RJ (Mínimo)', col => `MIN(${col}${startDataRow}:${col}${endDataRow})`, 'FFECFDF5', 'FF065F46');
+    setupSummaryRow(maxRowNum, 'MAIOR PREÇO REGISTRADO RJ (Máximo)', col => `MAX(${col}${startDataRow}:${col}${endDataRow})`, 'FFFFF1F2', 'FF9F1239');
+    setupSummaryRow(spreadRowNum, 'SPREAD DE BALCÃO (Máx - Mín)', col => `MAX(${col}${startDataRow}:${col}${endDataRow})-MIN(${col}${startDataRow}:${col}${endDataRow})`, 'FFFEF3C7', 'FF92400E');
+
+    // Column Widths
+    ws.getColumn(1).width = 34; // Rede
+    ws.getColumn(2).width = 24; // Perfil
+    ws.getColumn(3).width = 16; // Picanha
+    ws.getColumn(4).width = 16; // Contra
+    ws.getColumn(5).width = 16; // Alcatra
+    ws.getColumn(6).width = 16; // Coxão Mole
+    ws.getColumn(7).width = 16; // Patinho
+    ws.getColumn(8).width = 16; // Acém
+    ws.getColumn(9).width = 16; // Costela
+    ws.getColumn(10).width = 17; // Pernil
+    ws.getColumn(11).width = 46; // Fonte
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const dateFileStr = new Date().toISOString().slice(0, 10);
+    a.download = `Auditoria_Precos_Balcao_12_Redes_RJ_GAPP_${dateFileStr}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Compartilha a Auditoria de Balcão das 12 Redes do RJ via WhatsApp
+   */
+  public static shareRjRetailAuditViaWhatsApp(targetPhone?: string): void {
+    const snapshot = this.getQuotesSnapshot();
+    const benchmarks = snapshot.rjRetailBenchmarks || INITIAL_RJ_RETAIL_BENCHMARKS;
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const emissionDateStr = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} às ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    const lines = [
+      `🥩 *GRUPO GAPP SISTEMAS • AUDITORIA DE MERCADO RJ*`,
+      `📊 *PREÇOS PRATICADOS NO BALCÃO DE 12 REDES SUPERMERCADISTAS RJ*`,
+      `📍 *Amostragem:* Grande Rio, Baixada Fluminense, Niterói e Região Metropolitana`,
+      `📅 *Atualização:* ${emissionDateStr}`,
+      `🔍 *Fontes:* NielsenIQ Retail Index • Scantec Sell-Out RJ • ASSERJ`,
+      ``,
+      `🛒 *COMPARATIVO DE BALCÃO POR REDE (R$/kg):*`,
+      ...benchmarks.map(b => 
+        `• *${b.chainName}* (${b.category === 'atacarejo' ? 'Atacarejo' : b.category === 'supermercado_premium' ? 'Premium' : 'Popular'}):\n` +
+        `  - Picanha: R$ ${b.sampleCutPrices.picanha.toFixed(2)} | Contra: R$ ${b.sampleCutPrices.contraFile.toFixed(2)} | Alcatra: R$ ${b.sampleCutPrices.alcatra.toFixed(2)}\n` +
+        `  - Coxão: R$ ${b.sampleCutPrices.coxaoMole.toFixed(2)} | Patinho: R$ ${b.sampleCutPrices.patinho.toFixed(2)} | *Acém:* R$ ${b.sampleCutPrices.acem.toFixed(2)}\n` +
+        `  - Costela: R$ ${b.sampleCutPrices.costela.toFixed(2)} | *Pernil Suíno:* R$ ${b.sampleCutPrices.pernilSuino.toFixed(2)}`
+      ),
+      ``,
+      `🔒 _Relatório Oficial Grupo GAPP Sistemas ERP • Patrick Pessoa_`
     ];
 
     const messageText = lines.join('\n');
