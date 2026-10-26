@@ -359,13 +359,15 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
               className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold transition backdrop-blur-xl shadow-lg cursor-pointer group ${
                 isSolidcon
                   ? 'bg-rose-600 hover:bg-rose-700 text-white border border-rose-400 shadow-rose-950/30'
+                  : isGappNew
+                  ? 'bg-white hover:bg-rose-50 text-slate-800 hover:text-rose-700 border border-[#cad5cc] hover:border-rose-300 shadow-sm'
                   : isLight
                   ? 'bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-300 shadow-slate-200/50'
                   : 'bg-zinc-900/70 hover:bg-rose-600/90 text-zinc-300 hover:text-white border border-white/10 hover:border-rose-500'
               }`}
               title="Fechar Navegador / Encerrar Aplicação"
             >
-              <Power className={`w-3.5 h-3.5 transition ${isLight ? 'text-rose-600' : 'text-rose-400 group-hover:text-white'}`} />
+              <Power className={`w-3.5 h-3.5 transition ${isLight || isGappNew ? 'text-rose-600' : 'text-rose-400 group-hover:text-white'}`} />
               <span className="hidden sm:inline">Fechar Navegador</span>
             </button>
           )}
@@ -384,7 +386,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
               isSolidcon
                 ? 'rounded-xl sm:rounded-2xl bg-[#f4f6f8] border-2 border-[#0078d7] shadow-[0_25px_80px_rgba(0,0,0,0.55)] text-slate-900'
                 : isGappNew
-                ? 'rounded-[32px] sm:rounded-[38px] bg-white border border-[#dfe5e0] shadow-[0_25px_80px_rgba(17,56,41,0.12)] text-slate-900'
+                ? 'rounded-[32px] sm:rounded-[38px] bg-white border border-[#cad5cc] shadow-[0_25px_80px_rgba(17,56,41,0.14)] text-slate-900'
                 : isLight
                 ? 'rounded-[32px] sm:rounded-[38px] bg-white/95 backdrop-blur-2xl border border-slate-200 shadow-[0_25px_80px_rgba(15,23,42,0.12)] text-slate-900'
                 : 'rounded-[32px] sm:rounded-[38px] bg-zinc-950/75 backdrop-blur-2xl border border-white/15 shadow-[0_25px_80px_rgba(0,0,0,0.85)] text-white'
@@ -420,13 +422,15 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
               </div>
             )}
 
-            {/* Brilho sutil de borda superior nos temas Modernos */}
+            {/* Brilho ou Friso Superior nos temas Modernos */}
             {!isSolidcon && (
               <div 
-                className={`absolute top-0 inset-x-0 h-px pointer-events-none ${
-                  isLight 
-                    ? 'bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent' 
-                    : 'bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent'
+                className={`absolute top-0 inset-x-0 pointer-events-none ${
+                  isGappNew
+                    ? 'h-1.5 bg-gradient-to-r from-[#113829] via-[#1d5b43] to-[#b5e550]'
+                    : isLight 
+                    ? 'h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent' 
+                    : 'h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent'
                 }`} 
               />
             )}
@@ -447,6 +451,8 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                         className={`absolute -inset-1.5 rounded-[28px] blur-md opacity-70 animate-pulse ${
                           isSolidcon
                             ? 'bg-gradient-to-tr from-blue-600 via-sky-400 to-indigo-600'
+                            : isGappNew
+                            ? 'bg-gradient-to-tr from-[#113829] via-emerald-600 to-[#b5e550] opacity-40'
                             : isLight
                             ? 'bg-gradient-to-tr from-emerald-400 via-teal-300 to-indigo-400 opacity-50'
                             : 'bg-gradient-to-tr from-emerald-500 via-amber-400 to-purple-600'
@@ -456,6 +462,8 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                         className={`relative w-20 h-20 sm:w-24 sm:h-24 p-2.5 flex items-center justify-center shadow-2xl transition-colors ${
                           isSolidcon
                             ? 'rounded-xl bg-gradient-to-b from-white to-slate-100 border-2 border-[#0078d7] shadow-blue-900/20'
+                            : isGappNew
+                            ? 'rounded-[24px] bg-[#113829] border-2 border-[#b5e550]/60 shadow-[0_12px_30px_rgba(17,56,41,0.35)]'
                             : isLight
                             ? 'rounded-[24px] bg-gradient-to-b from-emerald-50 via-white to-emerald-100/50 border-2 border-emerald-500/50 shadow-emerald-950/10'
                             : 'rounded-[24px] bg-gradient-to-b from-[#1b2d1e] via-[#101912] to-[#0a100c] border-2 border-emerald-400/60 shadow-emerald-950/80'
@@ -478,6 +486,8 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                         className={`text-2xl sm:text-3xl font-black tracking-tight block drop-shadow-sm ${
                           isSolidcon
                             ? 'text-[#005a9e]'
+                            : isGappNew
+                            ? 'text-[#113829]'
                             : isLight
                             ? 'text-slate-900'
                             : 'text-transparent bg-clip-text bg-gradient-to-r from-white via-emerald-100 to-emerald-300'
@@ -487,9 +497,11 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                       </span>
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                         <span 
-                          className={`text-[11px] font-extrabold uppercase tracking-wider font-mono px-2 py-0.5 rounded-lg shadow-xs ${
+                          className={`text-[11px] font-extrabold uppercase tracking-wider font-mono px-2.5 py-0.5 rounded-lg shadow-xs ${
                             isSolidcon
                               ? 'bg-blue-100 text-[#005a9e] border border-blue-300'
+                              : isGappNew
+                              ? 'bg-[#113829] text-[#b5e550] border border-[#b5e550]/40 font-bold'
                               : isLight
                               ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
                               : 'text-amber-300 bg-amber-500/15 border border-amber-400/40'
@@ -499,7 +511,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                         </span>
                         <span 
                           className={`text-[11px] font-medium ${
-                            isSolidcon ? 'text-slate-600' : isLight ? 'text-slate-500' : 'text-zinc-400'
+                            isSolidcon ? 'text-slate-600' : isGappNew ? 'text-slate-600 font-semibold' : isLight ? 'text-slate-500' : 'text-zinc-400'
                           }`}
                         >
                           Gestão de Desossa & Câmaras
@@ -512,7 +524,13 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                   <div className="space-y-1">
                     <h1 
                       className={`text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[1.08] ${
-                        isSolidcon ? 'text-slate-800' : isLight ? 'text-slate-900' : 'text-white'
+                        isSolidcon 
+                          ? 'text-slate-800' 
+                          : isGappNew
+                          ? 'text-[#113829]'
+                          : isLight 
+                          ? 'text-slate-900' 
+                          : 'text-white'
                       }`}
                     >
                       Gestão
@@ -521,6 +539,8 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                       className={`text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[1.08] ${
                         isSolidcon
                           ? 'text-[#0078d7]'
+                          : isGappNew
+                          ? 'text-[#113829] drop-shadow-xs'
                           : isLight
                           ? 'text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700'
                           : 'text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-indigo-300'
@@ -532,8 +552,12 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
 
                   {/* 3. Parágrafo Descritivo com as informações reais do nosso sistema */}
                   <p 
-                    className={`mt-5 text-xs sm:text-sm leading-relaxed max-w-sm font-normal ${
-                      isSolidcon || isLight ? 'text-slate-600' : 'text-zinc-300/85'
+                    className={`mt-5 text-xs sm:text-sm leading-relaxed max-w-sm ${
+                      isGappNew 
+                        ? 'text-slate-600 font-medium' 
+                        : isSolidcon || isLight 
+                        ? 'text-slate-600 font-normal' 
+                        : 'text-zinc-300/85 font-normal'
                     }`}
                   >
                     Ambiente corporativo oficial para apuração de compras de gado, 
@@ -547,6 +571,8 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                   className={`pt-4 border-t flex items-center justify-between text-[11px] font-mono ${
                     isSolidcon
                       ? 'border-slate-300 text-slate-600'
+                      : isGappNew
+                      ? 'border-[#cad5cc] text-slate-600 font-medium'
                       : isLight
                       ? 'border-slate-200 text-slate-500'
                       : 'border-white/10 text-zinc-400'
@@ -559,6 +585,8 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                     className={`transition underline underline-offset-4 font-semibold ${
                       isSolidcon
                         ? 'text-[#005a9e] hover:text-[#0078d7] decoration-blue-400/50'
+                        : isGappNew
+                        ? 'text-[#113829] hover:text-emerald-800 font-bold decoration-[#113829]/50'
                         : isLight
                         ? 'text-emerald-700 hover:text-emerald-900 decoration-emerald-500/40'
                         : 'text-emerald-400 hover:text-emerald-300 decoration-emerald-500/40'
@@ -567,7 +595,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                   >
                     www.gipp-site.vercel.app
                   </a>
-                  <span className={isSolidcon || isLight ? 'text-slate-500' : 'text-zinc-500'}>
+                  <span className={isSolidcon || isLight || isGappNew ? 'text-slate-600 font-medium' : 'text-zinc-500'}>
                     16 Filiais Integradas
                   </span>
                 </div>
@@ -582,6 +610,8 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                   className={`w-[3px] h-[78%] rounded-full ${
                     isSolidcon
                       ? 'bg-slate-300 shadow-xs'
+                      : isGappNew
+                      ? 'bg-[#cad5cc]'
                       : isLight
                       ? 'bg-slate-200 shadow-xs'
                       : 'bg-white/90 shadow-[0_0_12px_rgba(255,255,255,0.4)]'
@@ -593,7 +623,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
               <div className="md:hidden px-8">
                 <div 
                   className={`h-[2px] w-full rounded-full ${
-                    isSolidcon || isLight ? 'bg-slate-200' : 'bg-white/20'
+                    isGappNew ? 'bg-[#cad5cc]' : isSolidcon || isLight ? 'bg-slate-200' : 'bg-white/20'
                   }`} 
                 />
               </div>
@@ -607,19 +637,29 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                 <div className="mb-7 text-center">
                   <div className="flex items-center justify-center gap-2">
                     <h2 
-                      className={`text-2xl sm:text-3xl font-bold tracking-tight ${
-                        isSolidcon ? 'text-slate-900 font-extrabold' : isLight ? 'text-slate-900' : 'text-white'
+                      className={`text-2xl sm:text-3xl tracking-tight ${
+                        isSolidcon 
+                          ? 'text-slate-900 font-extrabold' 
+                          : isGappNew
+                          ? 'text-[#113829] font-black'
+                          : isLight 
+                          ? 'text-slate-900 font-bold' 
+                          : 'text-white font-bold'
                       }`}
                     >
                       {isSolidcon ? 'Autenticação de Operador' : 'Login'}
                     </h2>
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-mono font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                    <span className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-extrabold ${
+                      isGappNew
+                        ? 'bg-[#113829] text-[#b5e550] border border-[#b5e550]/40'
+                        : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                    }`}>
                       v10.7
                     </span>
                   </div>
                   <p 
                     className={`text-xs mt-1 ${
-                      isSolidcon ? 'text-slate-600' : isLight ? 'text-slate-500' : 'text-zinc-400'
+                      isSolidcon ? 'text-slate-600' : isGappNew ? 'text-slate-600 font-medium' : isLight ? 'text-slate-500' : 'text-zinc-400'
                     }`}
                   >
                     Entre com suas credenciais autorizadas
@@ -640,8 +680,14 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                   {/* Campo: Username */}
                   <div className="space-y-1">
                     <label 
-                      className={`block text-[11px] font-semibold pl-3 ${
-                        isSolidcon || isLight ? 'text-slate-700' : 'text-zinc-300'
+                      className={`block text-xs font-bold pl-3 ${
+                        isSolidcon 
+                          ? 'text-slate-700 font-semibold text-[11px]' 
+                          : isGappNew
+                          ? 'text-[#113829] font-bold'
+                          : isLight 
+                          ? 'text-slate-700 font-semibold text-[11px]' 
+                          : 'text-zinc-300 font-semibold text-[11px]'
                       }`}
                     >
                       Usuário / Login
@@ -649,7 +695,11 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                     <div className="relative">
                       <div 
                         className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none ${
-                          isSolidcon || isLight ? 'text-slate-500' : 'text-zinc-400'
+                          isGappNew
+                            ? 'text-[#113829]'
+                            : isSolidcon || isLight 
+                            ? 'text-slate-500' 
+                            : 'text-zinc-400'
                         }`}
                       >
                         <User className="w-4 h-4" />
@@ -661,12 +711,14 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                         placeholder="Username"
                         autoComplete="username"
                         autoFocus
-                        className={`w-full pl-11 pr-4 py-3 text-sm font-semibold focus:outline-none transition shadow-inner ${
+                        className={`w-full pl-11 pr-4 py-3 text-sm font-semibold focus:outline-none transition ${
                           isSolidcon
-                            ? 'bg-white hover:border-slate-400 focus:border-[#0078d7] border-2 border-slate-300 rounded-md text-slate-900 placeholder:text-slate-400'
+                            ? 'bg-white hover:border-slate-400 focus:border-[#0078d7] border-2 border-slate-300 rounded-md text-slate-900 placeholder:text-slate-400 shadow-inner'
+                            : isGappNew
+                            ? 'bg-[#f4f7f4] hover:bg-[#ebf0ec] focus:bg-white border-2 border-[#cad5cc] focus:border-[#113829] focus:ring-4 focus:ring-[#113829]/10 rounded-full text-slate-900 placeholder:text-slate-500 shadow-xs'
                             : isLight
-                            ? 'bg-slate-100/90 hover:bg-slate-100 focus:bg-white border border-slate-300 focus:border-emerald-600 rounded-full text-slate-900 placeholder:text-slate-400'
-                            : 'bg-zinc-800/80 hover:bg-zinc-800/95 focus:bg-zinc-800 border border-white/10 focus:border-emerald-400/70 rounded-full text-white placeholder:text-zinc-400'
+                            ? 'bg-slate-100/90 hover:bg-slate-100 focus:bg-white border border-slate-300 focus:border-emerald-600 rounded-full text-slate-900 placeholder:text-slate-400 shadow-inner'
+                            : 'bg-zinc-800/80 hover:bg-zinc-800/95 focus:bg-zinc-800 border border-white/10 focus:border-emerald-400/70 rounded-full text-white placeholder:text-zinc-400 shadow-inner'
                         }`}
                       />
                     </div>
@@ -675,8 +727,14 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                   {/* Campo: Password */}
                   <div className="space-y-1">
                     <label 
-                      className={`block text-[11px] font-semibold pl-3 ${
-                        isSolidcon || isLight ? 'text-slate-700' : 'text-zinc-300'
+                      className={`block text-xs font-bold pl-3 ${
+                        isSolidcon 
+                          ? 'text-slate-700 font-semibold text-[11px]' 
+                          : isGappNew
+                          ? 'text-[#113829] font-bold'
+                          : isLight 
+                          ? 'text-slate-700 font-semibold text-[11px]' 
+                          : 'text-zinc-300 font-semibold text-[11px]'
                       }`}
                     >
                       Senha de Acesso
@@ -684,7 +742,11 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                     <div className="relative">
                       <div 
                         className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none ${
-                          isSolidcon || isLight ? 'text-slate-500' : 'text-zinc-400'
+                          isGappNew
+                            ? 'text-[#113829]'
+                            : isSolidcon || isLight 
+                            ? 'text-slate-500' 
+                            : 'text-zinc-400'
                         }`}
                       >
                         <Lock className="w-4 h-4" />
@@ -695,19 +757,25 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Password"
                         autoComplete="current-password"
-                        className={`w-full pl-11 pr-12 py-3 text-sm font-semibold focus:outline-none transition shadow-inner ${
+                        className={`w-full pl-11 pr-12 py-3 text-sm font-semibold focus:outline-none transition ${
                           isSolidcon
-                            ? 'bg-white hover:border-slate-400 focus:border-[#0078d7] border-2 border-slate-300 rounded-md text-slate-900 placeholder:text-slate-400'
+                            ? 'bg-white hover:border-slate-400 focus:border-[#0078d7] border-2 border-slate-300 rounded-md text-slate-900 placeholder:text-slate-400 shadow-inner'
+                            : isGappNew
+                            ? 'bg-[#f4f7f4] hover:bg-[#ebf0ec] focus:bg-white border-2 border-[#cad5cc] focus:border-[#113829] focus:ring-4 focus:ring-[#113829]/10 rounded-full text-slate-900 placeholder:text-slate-500 shadow-xs'
                             : isLight
-                            ? 'bg-slate-100/90 hover:bg-slate-100 focus:bg-white border border-slate-300 focus:border-emerald-600 rounded-full text-slate-900 placeholder:text-slate-400'
-                            : 'bg-zinc-800/80 hover:bg-zinc-800/95 focus:bg-zinc-800 border border-white/10 focus:border-emerald-400/70 rounded-full text-white placeholder:text-zinc-400'
+                            ? 'bg-slate-100/90 hover:bg-slate-100 focus:bg-white border border-slate-300 focus:border-emerald-600 rounded-full text-slate-900 placeholder:text-slate-400 shadow-inner'
+                            : 'bg-zinc-800/80 hover:bg-zinc-800/95 focus:bg-zinc-800 border border-white/10 focus:border-emerald-400/70 rounded-full text-white placeholder:text-zinc-400 shadow-inner'
                         }`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className={`absolute inset-y-0 right-0 pr-4 flex items-center transition cursor-pointer ${
-                          isSolidcon || isLight ? 'text-slate-500 hover:text-slate-800' : 'text-zinc-400 hover:text-white'
+                          isGappNew
+                            ? 'text-slate-500 hover:text-[#113829]'
+                            : isSolidcon || isLight 
+                            ? 'text-slate-500 hover:text-slate-800' 
+                            : 'text-zinc-400 hover:text-white'
                         }`}
                         title={showPassword ? 'Ocultar senha' : 'Exibir senha'}
                       >
@@ -721,11 +789,11 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className={`w-full sm:w-auto min-w-[160px] py-3 px-8 font-bold text-sm tracking-wide transition cursor-pointer disabled:opacity-75 flex items-center justify-center gap-2 ${
+                      className={`w-full sm:w-auto min-w-[170px] py-3.5 px-8 font-bold text-sm tracking-wide transition cursor-pointer disabled:opacity-75 flex items-center justify-center gap-2 ${
                         isSolidcon
                           ? 'rounded-md bg-gradient-to-b from-[#0078d7] to-[#005a9e] hover:from-[#1084e3] hover:to-[#006bbd] text-white border border-[#004e8c] shadow-md active:translate-y-px'
                           : isGappNew
-                          ? 'rounded-full bg-[#113829] hover:bg-[#1a4f3b] text-[#b5e550] shadow-lg shadow-[#113829]/25 border border-[#b5e550]/40 active:scale-95'
+                          ? 'rounded-full bg-[#113829] hover:bg-[#184e3a] text-[#b5e550] hover:text-white shadow-xl shadow-[#113829]/25 border-2 border-[#b5e550]/40 active:scale-95'
                           : isLight
                           ? 'rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20 active:scale-95'
                           : 'rounded-full bg-zinc-700/90 hover:bg-zinc-600 text-white shadow-xl shadow-black/50 border border-white/15 active:scale-95'
@@ -733,7 +801,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                     >
                       {isLoading ? (
                         <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                           <span>Entrando...</span>
                         </>
                       ) : (
@@ -749,15 +817,19 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                   className={`mt-6 pt-4 border-t text-center ${
                     isSolidcon
                       ? 'border-slate-300'
+                      : isGappNew
+                      ? 'border-[#cad5cc]'
                       : isLight
                       ? 'border-slate-200'
                       : 'border-white/10'
                   }`}
                 >
                   <div 
-                    className={`inline-flex items-center gap-2 px-3.5 py-1.5 text-[11px] border transition-colors ${
+                    className={`inline-flex items-center gap-2 px-4 py-1.5 text-[11px] border transition-colors ${
                       isSolidcon
                         ? 'rounded bg-slate-200/80 border-slate-300 text-slate-700 font-mono'
+                        : isGappNew
+                        ? 'rounded-full bg-[#f4f7f4] border border-[#cad5cc] text-slate-700 font-semibold shadow-2xs'
                         : isLight
                         ? 'rounded-full bg-slate-100 border-slate-200 text-slate-600'
                         : 'rounded-full bg-white/5 border-white/10 text-zinc-400'
@@ -765,7 +837,13 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                   >
                     <ShieldCheck 
                       className={`w-3.5 h-3.5 ${
-                        isSolidcon ? 'text-[#0078d7]' : isLight ? 'text-emerald-600' : 'text-emerald-400'
+                        isSolidcon 
+                          ? 'text-[#0078d7]' 
+                          : isGappNew
+                          ? 'text-[#113829]'
+                          : isLight 
+                          ? 'text-emerald-600' 
+                          : 'text-emerald-400'
                       }`} 
                     />
                     <span>
@@ -805,7 +883,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
       {/* ============================================================ */}
       <footer 
         className={`relative z-10 w-full max-w-7xl mx-auto px-6 py-3 text-center text-[11px] transition-colors ${
-          isSolidcon ? 'text-blue-200/70 font-mono' : isLight ? 'text-slate-500' : 'text-zinc-500'
+          isSolidcon ? 'text-blue-200/70 font-mono' : isLight || isGappNew ? 'text-slate-600 font-medium' : 'text-zinc-500'
         }`}
       >
         Grupo GAPP • Patrick Pessoa • Gestão Apuração do Boi v10.7 • 16 Filiais Conectadas
