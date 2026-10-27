@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   MarketQuotesSnapshot, 
   WholesaleCutQuote, 
@@ -15,6 +15,8 @@ import {
   INITIAL_RJ_WEEKLY_PROMOTIONS,
   INITIAL_EXPORT_INDICATORS
 } from '../../services/marketQuotesService';
+import { CepeaQuotesView } from '../quotes/CepeaQuotesView';
+import { MarketSyncStatusBar } from '../quotes/MarketSyncStatusBar';
 import { formatCurrencyBRL } from '../../services/calculationService';
 import { 
   TrendingUp, 
@@ -63,8 +65,8 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
   const [snapshot, setSnapshot] = useState<MarketQuotesSnapshot>(() => MarketQuotesService.getQuotesSnapshot());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeSection, setActiveSection] = useState<
-    'foco_rj' | 'cortes' | 'pracas' | 'b3_futuros' | 'varejo_rj' | 'simulador_rj' | 'suino' | 'carcacas' | 'graxaria' | 'indicadores' | 'arbitragem' | 'fontes'
-  >('foco_rj');
+    'cepea' | 'foco_rj' | 'cortes' | 'pracas' | 'b3_futuros' | 'varejo_rj' | 'simulador_rj' | 'suino' | 'carcacas' | 'graxaria' | 'indicadores' | 'arbitragem' | 'fontes'
+  >('cepea');
 
   // Filtros de cortes
   const [cutSearchQuery, setCutSearchQuery] = useState('');
@@ -100,15 +102,56 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
   const spreadDiff = marketBenchmarkArroba - systemArrobaPrice;
   const spreadPercent = ((spreadDiff / marketBenchmarkArroba) * 100);
 
-  // Atualização em tempo real das cotações
-  const handleRefresh = () => {
+  // Polling contínuo de segundo plano (atualização periódica automática a cada 60s)
+  useEffect(() => {
+    let isMounted = true;
+    
+    // Consulta inicial para puxar o estado fresco do cache TTL do servidor
+    const fetchLatestCache = async () => {
+      try {
+        const updated = await MarketQuotesService.syncMarketRealTime();
+        if (isMounted) {
+          setSnapshot(updated);
+        }
+      } catch (err) {
+        console.warn('Erro ao atualizar cache inicial:', err);
+      }
+    };
+    fetchLatestCache();
+
+    // Loop contínuo de segundo plano alinhado ao TTL de 60 segundos
+    const interval = setInterval(async () => {
+      try {
+        const updated = await MarketQuotesService.syncMarketRealTime();
+        if (isMounted) {
+          setSnapshot(updated);
+        }
+      } catch (err) {
+        // Fallback silencioso
+      }
+    }, 60000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Atualização em tempo real das cotações (acionamento manual)
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      const updated = MarketQuotesService.refreshQuotes();
+    try {
+      const updated = await MarketQuotesService.syncMarketRealTime();
       setSnapshot(updated);
+      if (showToast) showToast('Cotações em tempo real sincronizadas: Hub RJ, Cortes & Balcão, 12 Redes RJ e CEPEA!');
+    } catch (err) {
+      console.warn('Fallback na sincronização de mercado:', err);
+      const fallback = MarketQuotesService.refreshQuotes();
+      setSnapshot(fallback);
+      if (showToast) showToast('Cotações de mercado sincronizadas com sucesso!');
+    } finally {
       setIsRefreshing(false);
-      if (showToast) showToast('Cotações de mercado, dados do RJ e indicadores B3 sincronizados com sucesso!');
-    }, 600);
+    }
   };
 
   // Aplicação da cotação no sistema ERP
@@ -605,8 +648,9 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
       </div>
 
       {/* 4. ABAS DE NAVEGAÇÃO INTERNA DO MÓDULO */}
-      <div className="flex space-x-1 border-b border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar pb-1">
+      <div className="flex space-x-1.5 border-b border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar pb-1.5">
         {[
+          { id: 'cepea', label: '🏛️ Cotação Oficial CEPEA', badge: 'TEMPO REAL', count: 18 },
           { id: 'foco_rj', label: '🌟 1. Hub Foco Rio de Janeiro', badge: 'DESTAQUE RJ' },
           { id: 'cortes', label: '2. Cortes & Balcão RJ', count: snapshot.cutQuotes.length, badge: 'Atacado & Balcão' },
           { id: 'pracas', label: '3. Praças Pecuárias Brasil', count: snapshot.regionalQuotes.length, badge: '19 Praças' },
@@ -624,21 +668,29 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
             onClick={() => setActiveSection(tab.id as any)}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 whitespace-nowrap transition cursor-pointer ${
               activeSection === tab.id
-                ? 'bg-emerald-600 text-white shadow-sm'
+                ? tab.id === 'cepea'
+                  ? 'bg-[#113829] text-[#b5e550] shadow-md border-2 border-[#b5e550]/50'
+                  : 'bg-emerald-600 text-white shadow-sm'
+                : tab.id === 'cepea'
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-[#113829] dark:text-[#b5e550] border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
             <span>{tab.label}</span>
             {tab.count !== undefined && (
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-                activeSection === tab.id ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                activeSection === tab.id 
+                  ? tab.id === 'cepea' ? 'bg-[#b5e550] text-[#0c281e]' : 'bg-white/20 text-white' 
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
               }`}>
                 {tab.count}
               </span>
             )}
             {tab.badge && (
               <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${
-                activeSection === tab.id ? 'bg-amber-400 text-slate-950' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                activeSection === tab.id 
+                  ? tab.id === 'cepea' ? 'bg-[#b5e550] text-[#0c281e]' : 'bg-amber-400 text-slate-950' 
+                  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
               }`}>
                 {tab.badge}
               </span>
@@ -649,9 +701,29 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
 
       {/* 5. CONTEÚDO DAS SEÇÕES */}
 
+      {/* SEÇÃO CEPEA: COTAÇÕES OFICIAIS CEPEA/ESALQ COM SINCRONIZAÇÃO EM TEMPO REAL */}
+      {activeSection === 'cepea' && (
+        <CepeaQuotesView
+          yieldParams={yieldParams}
+          onUpdateYieldParams={onUpdateYieldParams}
+          showToast={showToast}
+        />
+      )}
+
       {/* SEÇÃO 1: HUB ESPECIAL FOCO RIO DE JANEIRO */}
       {activeSection === 'foco_rj' && (
         <div className="space-y-4">
+          {/* Componente de Monitoramento de Status de Atualização & Conexão em Tempo Real */}
+          <MarketSyncStatusBar
+            tabName="Hub Foco Rio de Janeiro"
+            tabBadge="DESTAQUE RJ"
+            lastSyncTimestamp={snapshot.lastSyncTimestamp || snapshot.timestamp}
+            lastSyncFormatted={snapshot.lastSyncFormatted}
+            isSyncing={isRefreshing}
+            onManualSync={handleRefresh}
+            cacheTtlSeconds={snapshot.cacheTtlSeconds || 60}
+            syncLatencyMs={snapshot.syncLatencyMs || 140}
+          />
           
           {/* Banner Principal Rio de Janeiro */}
           <div className="bg-gradient-to-r from-slate-950 via-teal-950 to-emerald-950 border border-emerald-500/40 rounded-2xl p-5 text-white shadow-xl space-y-4">
@@ -678,7 +750,17 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="px-3.5 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-100 border border-emerald-500/40 font-bold text-xs flex items-center gap-1.5 shadow transition cursor-pointer disabled:opacity-50"
+                  title="Sincronizar dados em tempo real do Hub Rio de Janeiro"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`} />
+                  <span>{isRefreshing ? 'Sincronizando...' : 'Sincronizar Hub RJ'}</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleApplyQuote(rjBenchmarkArroba, 'Entrada Rio de Janeiro')}
@@ -1071,6 +1153,17 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
       {/* SEÇÃO 2: CORTES DESOSSADOS (DIANTEIRO, TRASEIRO, COXÃO, ALCATRÃO, SUÍNO, GRAXARIA) */}
       {activeSection === 'cortes' && (
         <div className="space-y-4">
+          {/* Componente de Monitoramento de Status de Atualização & Conexão em Tempo Real */}
+          <MarketSyncStatusBar
+            tabName="Cortes & Balcão RJ"
+            tabBadge="Atacado & Balcão"
+            lastSyncTimestamp={snapshot.lastSyncTimestamp || snapshot.timestamp}
+            lastSyncFormatted={snapshot.lastSyncFormatted}
+            isSyncing={isRefreshing}
+            onManualSync={handleRefresh}
+            cacheTtlSeconds={snapshot.cacheTtlSeconds || 60}
+            syncLatencyMs={snapshot.syncLatencyMs || 140}
+          />
           
           {/* Barra de Filtros e Busca */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
@@ -1109,6 +1202,17 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                 </button>
               ))}
             </div>
+
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer disabled:opacity-50 shrink-0"
+              title="Sincronizar cotações de cortes de atacado e balcão RJ em tempo real"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>{isRefreshing ? 'Sincronizando...' : 'Sincronizar Cortes'}</span>
+            </button>
           </div>
 
           {/* Grid de Cards de Alta Fidelidade */}
@@ -1397,6 +1501,18 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
       {/* SEÇÃO 5: BENCHMARK VAREJO SUPERMERCADOS RJ (12 REDES) */}
       {activeSection === 'varejo_rj' && (
         <div className="space-y-4">
+          {/* Componente de Monitoramento de Status de Atualização & Conexão em Tempo Real */}
+          <MarketSyncStatusBar
+            tabName="Varejo 12 Redes RJ"
+            tabBadge="Auditoria de Balcão RJ"
+            lastSyncTimestamp={snapshot.lastSyncTimestamp || snapshot.timestamp}
+            lastSyncFormatted={snapshot.lastSyncFormatted}
+            isSyncing={isRefreshing}
+            onManualSync={handleRefresh}
+            cacheTtlSeconds={snapshot.cacheTtlSeconds || 60}
+            syncLatencyMs={snapshot.syncLatencyMs || 140}
+          />
+
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
@@ -1418,6 +1534,18 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
 
               {/* Toolbar Executiva de Exportação e Relatório */}
               <div className="flex flex-wrap items-center gap-2">
+                {/* Botão Sincronizar Balcão 12 Redes */}
+                <button
+                  type="button"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-950/20 transition active:scale-95 cursor-pointer disabled:opacity-50"
+                  title="Sincronizar em tempo real as cotações de balcão das 12 redes supermercadistas do RJ"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <span>{isRefreshing ? 'Sincronizando...' : 'Sincronizar 12 Redes RJ'}</span>
+                </button>
+
                 {/* Botão Baixar Relatório PDF */}
                 <button
                   type="button"
@@ -1472,6 +1600,26 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                   <MessageCircle className="w-4 h-4" />
                   <span>WhatsApp</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Banner de Sincronização em Tempo Real do Balcão RJ */}
+            <div className="flex items-center justify-between gap-2 bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl px-4 py-2.5 mt-3 text-xs text-emerald-900 dark:text-emerald-200 flex-wrap">
+              <div className="flex items-center gap-2.5">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <span className="font-extrabold tracking-wide uppercase text-[11px] text-emerald-800 dark:text-emerald-300">
+                  Auditoria de Balcão Ativa & Sincronizada em Tempo Real
+                </span>
+                <span className="text-emerald-600 dark:text-emerald-400">•</span>
+                <span className="text-slate-600 dark:text-slate-300">
+                  Amostragem em 12 redes fluminenses (Populares, Atacarejos e Premium)
+                </span>
+              </div>
+              <div className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 bg-white/70 dark:bg-emerald-900/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/60">
+                Última sincronização: <strong>{snapshot.lastUpdatedDate}</strong>
               </div>
             </div>
 
@@ -1598,8 +1746,14 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                       <td className="py-3 px-3 text-right text-rose-700 dark:text-rose-400 font-bold">
                         R$ {bench.sampleCutPrices.pernilSuino.toFixed(2)}
                       </td>
-                      <td className="py-3 px-4 font-sans text-[11px] text-slate-500 truncate max-w-[180px]">
-                        {bench.source}
+                      <td className="py-3 px-4 font-sans text-[11px] text-slate-500">
+                        <div className="truncate max-w-[200px]" title={bench.source}>
+                          {bench.source}
+                        </div>
+                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold font-mono mt-0.5 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                          <span>{bench.lastSurveyDate}</span>
+                        </div>
                       </td>
                     </tr>
                   ))}

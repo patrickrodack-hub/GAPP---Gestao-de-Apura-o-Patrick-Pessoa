@@ -171,9 +171,54 @@ export interface ExportIndicator {
   source: string; // 'SECEX / MDIC / ABRAFRIGO'
 }
 
+export type CepeaCategory = 'bovino' | 'suino' | 'frango' | 'milho' | 'soja' | 'cambio' | 'relacao_troca';
+
+export interface CepeaIndicatorQuote {
+  id: string;
+  name: string;
+  category: CepeaCategory;
+  priceBrl: number;
+  unit: string;
+  priceUsd?: number;
+  unitUsd?: string;
+  variationDayPercent: number;
+  variationDayBrl: number;
+  variationMonthPercent: number;
+  variation12mPercent: number;
+  min30d: number;
+  max30d: number;
+  region: string;
+  paymentCondition: string;
+  closingDate: string;
+  closingTime: string;
+  officialSource: string;
+  methodology: string;
+  historicalSeries: { date: string; value: number }[];
+  trend: QuoteTrend;
+  isHighlight?: boolean;
+}
+
+export interface CepeaRealtimeSyncStatus {
+  lastSyncTimestamp: number;
+  lastSyncFormatted: string;
+  latencyMs: number;
+  isSyncing: boolean;
+  verificationHash: string;
+  serverRegion: string;
+  serverStatus: 'ONLINE' | 'OFFLINE';
+  autoSyncEnabled: boolean;
+  autoSyncIntervalSec: number;
+  totalQuotesTracked: number;
+}
+
 export interface MarketQuotesSnapshot {
   timestamp: number;
   lastUpdatedDate: string;
+  lastSyncTimestamp?: number;
+  lastSyncFormatted?: string;
+  cacheTtlSeconds?: number;
+  syncSource?: string;
+  syncLatencyMs?: number;
   marketStatus: 'ABERTO' | 'FECHADO' | 'PRE-ABERTURA';
   indicators: MarketIndicator[];
   regionalQuotes: RegionalQuote[];
@@ -186,4 +231,6 @@ export interface MarketQuotesSnapshot {
   rjLogistics?: RJInflowLogistics[];
   rjWeeklyPromotions?: RJWeeklyPromotion[];
   exportIndicators?: ExportIndicator[];
+  cepeaQuotes?: CepeaIndicatorQuote[];
+  cepeaSyncStatus?: CepeaRealtimeSyncStatus;
 }
