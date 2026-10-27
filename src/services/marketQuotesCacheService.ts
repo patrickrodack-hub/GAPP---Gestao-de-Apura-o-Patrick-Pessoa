@@ -74,7 +74,7 @@ class MarketQuotesCacheService {
    */
   private buildMarketData(cepea: CepeaScrapeResult, latencyMs: number): MarketCacheData {
     const now = new Date();
-    const cepeaPrice = cepea.boiGordo.indicadorAtual.valorRs || 332.50;
+    const cepeaPrice = cepea.boiGordo?.indicadorAtual?.valorRs || 381.40;
     
     // Entrada RJ: média ponderada Fluminense (normalmente entre R$ 3,50 a R$ 5,00 abaixo de SP)
     const boiEntradaRj = Number((cepeaPrice - 4.50).toFixed(2));
@@ -82,17 +82,18 @@ class MarketQuotesCacheService {
     const freteMedioRj = 9.80;
     const perdaGotejo = Number((boiEntradaRj * 0.018).toFixed(2));
     const custoMedioPostoRj = Number((boiEntradaRj + freteMedioRj + perdaGotejo).toFixed(2));
+    const mediaInterestadualPostoRj = Number((cepeaPrice + 6.40).toFixed(2));
 
     const day = now.getDay();
     const hour = now.getHours();
     const statusMercado: 'ABERTO' | 'FECHADO' = (day >= 1 && day <= 5 && hour >= 9 && hour <= 17) ? 'ABERTO' : 'FECHADO';
 
     // Cortes Atacado & Balcão RJ
-    const picanhaAvg = Number((cepeaPrice * 0.224).toFixed(2)); // ~74.50
-    const contraFileAvg = Number((cepeaPrice * 0.135).toFixed(2)); // ~44.80
-    const alcatraAvg = Number((cepeaPrice * 0.120).toFixed(2)); // ~39.90
-    const acemAvg = Number((cepeaPrice * 0.081).toFixed(2)); // ~26.80
-    const suinoCarcaca = cepea.suinos.destaqueCarcaca.valorRs || 13.80;
+    const picanhaAvg = Number((cepeaPrice * 0.248).toFixed(2));
+    const contraFileAvg = Number((cepeaPrice * 0.144).toFixed(2));
+    const alcatraAvg = Number((cepeaPrice * 0.133).toFixed(2));
+    const acemAvg = Number((cepeaPrice * 0.088).toFixed(2));
+    const suinoCarcaca = cepea.suinos?.destaqueCarcaca?.valorRs || 13.90;
     const pernilSuinoAvg = Number((suinoCarcaca * 1.05).toFixed(2));
 
     const redes = [
@@ -126,7 +127,7 @@ class MarketQuotesCacheService {
         boiCepeaSp: cepeaPrice,
         spreadVsSp,
         custoMedioPostoRj,
-        mediaInterestadualPostoRj: 338.20,
+        mediaInterestadualPostoRj,
         escalaMediaDias: 6.0,
         statusMercado
       },

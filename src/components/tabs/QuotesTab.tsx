@@ -99,8 +99,8 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
   // Cotação Oficial de Referência (CEPEA SP e RJ Entrada)
   const cepeaIndicator = snapshot.indicators.find(i => i.id === 'ind-cepea-sp') || snapshot.indicators[0];
   const rjIndicator = snapshot.indicators.find(i => i.id === 'ind-rj-ceasa');
-  const marketBenchmarkArroba = cepeaIndicator ? cepeaIndicator.price : 332.50;
-  const rjBenchmarkArroba = rjIndicator ? rjIndicator.price : 328.00;
+  const marketBenchmarkArroba = cepeaIndicator ? cepeaIndicator.price : 381.40;
+  const rjBenchmarkArroba = rjIndicator ? rjIndicator.price : 376.50;
 
   // Spread entre Mercado e Custo Atual do ERP
   const spreadDiff = marketBenchmarkArroba - systemArrobaPrice;

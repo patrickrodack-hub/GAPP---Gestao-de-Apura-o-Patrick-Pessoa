@@ -17,33 +17,34 @@ const CEPEA_STORAGE_KEY = 'gapp_cepea_quotes_snapshot_v2';
 // 1. BASE OFICIAL DE COTAÇÕES CEPEA/ESALQ - USP (BOVINO, SUÍNO, GRÃOS E DEMAIS DEMANDAS)
 export const INITIAL_CEPEA_QUOTES: CepeaCommodityQuote[] = [
   // ==========================================
-  // BOVINOS (DESTAQUE PRINCIPAL)
+  // ==========================================
+  // BOVINOS (DESTAQUE PRINCIPAL - OFICIAL CEPEA/ESALQ - USP & B3)
   // ==========================================
   {
     id: 'cepea-boi-sp',
     code: 'CEPEA-B3-BOI-SP',
     name: 'Boi Gordo CEPEA/B3 (São Paulo - À Vista)',
     category: 'bovino',
-    price: 332.50,
+    price: 381.40,
     unit: 'R$/@',
-    priceUsd: 59.16,
-    changeDay: 0.85,
-    changeDayValue: 2.80,
-    changeMonth: 3.90,
-    changeYear: 14.80,
-    min30d: 318.00,
-    max30d: 335.00,
-    trend: 'up',
+    priceUsd: 70.72,
+    changeDay: 0.00,
+    changeDayValue: 0.00,
+    changeMonth: 4.69,
+    changeYear: 18.20,
+    min30d: 364.00,
+    max30d: 382.50,
+    trend: 'stable',
     frequency: 'Diária',
     source: 'CEPEA/ESALQ - USP / B3 S.A.',
-    marketPraca: 'São Paulo (Média Estado)',
+    marketPraca: 'São Paulo (Média Estado - Base B3)',
     paymentTerms: 'À Vista',
     icmsFunruralIncluded: false,
     lastSyncTimestamp: new Date().toISOString(),
     lastFormattedDate: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     officialEsalqLink: 'https://cepea.esalq.usp.br/br/indicador/boi-gordo.aspx',
     description: 'Indicador Oficial do Boi Gordo CEPEA/B3 no estado de São Paulo, base de liquidação financeira de contratos futuros BGI na B3.',
-    zootecnicNotes: 'Equivale a R$ 22,17/kg carcaça. Balizador mandatório para compras de carcaça e gado em pé no Grande Rio e São Paulo.',
+    zootecnicNotes: 'Equivale a R$ 25,43/kg carcaça à vista (381,40 / 15). Balizador mandatório e oficial para compras de carcaça e gado em pé no Grande Rio e São Paulo.',
     isHeadline: true
   },
   {
@@ -51,15 +52,15 @@ export const INITIAL_CEPEA_QUOTES: CepeaCommodityQuote[] = [
     code: 'CEPEA-VACA-SP',
     name: 'Vaca Gorda CEPEA (São Paulo - À Vista)',
     category: 'bovino',
-    price: 305.00,
+    price: 348.00,
     unit: 'R$/@',
-    priceUsd: 54.27,
-    changeDay: 0.49,
-    changeDayValue: 1.50,
-    changeMonth: 2.70,
-    changeYear: 11.20,
-    min30d: 295.00,
-    max30d: 308.00,
+    priceUsd: 64.53,
+    changeDay: 0.20,
+    changeDayValue: 0.70,
+    changeMonth: 3.80,
+    changeYear: 15.20,
+    min30d: 335.00,
+    max30d: 350.00,
     trend: 'up',
     frequency: 'Diária',
     source: 'CEPEA/ESALQ - USP',
@@ -69,23 +70,23 @@ export const INITIAL_CEPEA_QUOTES: CepeaCommodityQuote[] = [
     lastSyncTimestamp: new Date().toISOString(),
     lastFormattedDate: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     officialEsalqLink: 'https://cepea.esalq.usp.br/br/indicador/boi-gordo.aspx',
-    description: 'Fêmeas terminadas para abate. Desconto tradicional de 8% a 10% em relação ao macho castrado.',
-    zootecnicNotes: 'Equivale a R$ 20,33/kg carcaça. Ideal para fabricação de moídos e cortes populares em redes supermercadistas.'
+    description: 'Fêmeas terminadas para abate. Desconto tradicional de 8% a 9% em relação ao boi gordo.',
+    zootecnicNotes: 'Equivale a R$ 23,20/kg carcaça. Ideal para fabricação de moídos e cortes populares em redes supermercadistas.'
   },
   {
     id: 'cepea-novilha-sp',
     code: 'CEPEA-NOVILHA-SP',
     name: 'Novilha Gorda Precoce CEPEA (São Paulo)',
     category: 'bovino',
-    price: 318.00,
+    price: 362.00,
     unit: 'R$/@',
-    priceUsd: 56.58,
-    changeDay: 0.63,
-    changeDayValue: 2.00,
-    changeMonth: 3.25,
-    changeYear: 12.80,
-    min30d: 306.00,
-    max30d: 322.00,
+    priceUsd: 67.12,
+    changeDay: 0.30,
+    changeDayValue: 1.10,
+    changeMonth: 4.10,
+    changeYear: 16.40,
+    min30d: 348.00,
+    max30d: 365.00,
     trend: 'up',
     frequency: 'Diária',
     source: 'CEPEA/ESALQ - USP',
@@ -96,22 +97,22 @@ export const INITIAL_CEPEA_QUOTES: CepeaCommodityQuote[] = [
     lastFormattedDate: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     officialEsalqLink: 'https://cepea.esalq.usp.br/br/indicador/boi-gordo.aspx',
     description: 'Fêmeas jovens até 24 meses (dente de leite/2 dentes) com alto acabamento de gordura.',
-    zootecnicNotes: 'Equivale a R$ 21,20/kg carcaça. Excelente rendimento de cortes nobres e maciez superior no balcão gourmet.'
+    zootecnicNotes: 'Equivale a R$ 24,13/kg carcaça. Excelente rendimento de cortes nobres e maciez superior no balcão gourmet.'
   },
   {
     id: 'cepea-bezerro-ms',
     code: 'CEPEA-BEZERRO-MS',
     name: 'Bezerro Nelore Reposição CEPEA (Mato Grosso do Sul)',
     category: 'bovino',
-    price: 2680.00,
+    price: 3521.44,
     unit: 'R$/cabeça',
-    priceUsd: 476.86,
-    changeDay: 0.75,
-    changeDayValue: 20.00,
-    changeMonth: 2.90,
-    changeYear: 8.50,
-    min30d: 2550.00,
-    max30d: 2720.00,
+    priceUsd: 653.00,
+    changeDay: 0.00,
+    changeDayValue: 0.00,
+    changeMonth: 2.19,
+    changeYear: 14.80,
+    min30d: 3380.00,
+    max30d: 3550.00,
     trend: 'up',
     frequency: 'Diária',
     source: 'CEPEA/ESALQ - USP',
@@ -121,8 +122,8 @@ export const INITIAL_CEPEA_QUOTES: CepeaCommodityQuote[] = [
     lastSyncTimestamp: new Date().toISOString(),
     lastFormattedDate: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     officialEsalqLink: 'https://cepea.esalq.usp.br/br/indicador/bezerro.aspx',
-    description: 'Bezerro macho Nelore de 8 a 12 meses, peso médio de 190kg a 210kg. Indicador de reposição pecuária.',
-    zootecnicNotes: 'Relação de troca de 8,06 arrobas de boi gordo por 1 bezerro. Ciclo de alta na retenção de fêmeas.',
+    description: 'Bezerro macho Nelore de 8 a 12 meses, peso médio de 190kg a 210kg. Indicador oficial de reposição pecuária.',
+    zootecnicNotes: 'Relação de troca de 9,23 arrobas de boi gordo por 1 bezerro. Ciclo de alta e retenção de fêmeas.',
     isHeadline: true
   },
   {
@@ -130,15 +131,15 @@ export const INITIAL_CEPEA_QUOTES: CepeaCommodityQuote[] = [
     code: 'CEPEA-BEZERRO-SP',
     name: 'Bezerro Nelore Reposição CEPEA (São Paulo)',
     category: 'bovino',
-    price: 2790.00,
+    price: 3590.00,
     unit: 'R$/cabeça',
-    priceUsd: 496.44,
-    changeDay: 0.54,
-    changeDayValue: 15.00,
-    changeMonth: 2.60,
-    changeYear: 9.10,
-    min30d: 2680.00,
-    max30d: 2830.00,
+    priceUsd: 665.70,
+    changeDay: 0.25,
+    changeDayValue: 9.00,
+    changeMonth: 2.45,
+    changeYear: 15.20,
+    min30d: 3450.00,
+    max30d: 3620.00,
     trend: 'up',
     frequency: 'Diária',
     source: 'CEPEA/ESALQ - USP',
@@ -156,15 +157,15 @@ export const INITIAL_CEPEA_QUOTES: CepeaCommodityQuote[] = [
     code: 'CEPEA-CARCACA-BOI-SP',
     name: 'Carcaça Bovina Casada Atacado CEPEA (Grande SP)',
     category: 'bovino',
-    price: 22.40,
+    price: 25.60,
     unit: 'R$/kg',
-    priceUsd: 3.98,
-    changeDay: 0.67,
-    changeDayValue: 0.15,
-    changeMonth: 3.40,
-    changeYear: 13.60,
-    min30d: 21.20,
-    max30d: 22.80,
+    priceUsd: 4.75,
+    changeDay: 0.39,
+    changeDayValue: 0.10,
+    changeMonth: 4.20,
+    changeYear: 17.50,
+    min30d: 24.20,
+    max30d: 25.80,
     trend: 'up',
     frequency: 'Diária',
     source: 'CEPEA/ESALQ - USP',
@@ -175,7 +176,7 @@ export const INITIAL_CEPEA_QUOTES: CepeaCommodityQuote[] = [
     lastFormattedDate: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     officialEsalqLink: 'https://cepea.esalq.usp.br/br/indicador/boi-gordo.aspx',
     description: 'Conjunto completo de 4 quartos (2 dianteiros + 2 traseiros). Média negociada entre frigoríficos e distribuidores.',
-    zootecnicNotes: 'Equivale a R$ 336,00/@ no atacado faturado. Ponto de equilíbrio zootécnico na carcaça de 240kg.',
+    zootecnicNotes: 'Equivale a R$ 384,00/@ no atacado faturado. Ponto de equilíbrio zootécnico na carcaça de 240kg.',
     isHeadline: true
   },
   {
@@ -824,26 +825,26 @@ export const INITIAL_CEPEA_EXCHANGE_RATIOS: CepeaExchangeRatio[] = [
   {
     id: 'ratio-boi-bezerro',
     name: 'Relação de Troca Boi Gordo / Bezerro Nelore MS',
-    numeratorCommodity: 'Boi Gordo CEPEA/B3 SP (R$ 332,50/@)',
-    denominatorCommodity: 'Bezerro Nelore MS (R$ 2.680,00/cab)',
-    currentRatio: 8.06,
+    numeratorCommodity: 'Boi Gordo CEPEA/B3 SP (R$ 381,40/@)',
+    denominatorCommodity: 'Bezerro Nelore MS (R$ 3.521,44/cab)',
+    currentRatio: 9.23,
     unit: '@ de boi / bezerro',
     historicalAvg: 8.50,
     evaluation: 'FAVORÁVEL AO COMPRADOR',
-    explanation: 'São necessárias 8,06 arrobas de boi gordo pronto para comprar 1 bezerro de reposição no Mato Grosso do Sul.',
+    explanation: 'São necessárias 9,23 arrobas de boi gordo pronto para comprar 1 bezerro de reposição oficial no Mato Grosso do Sul.',
     impactOnGapp: 'Comprador de gado e confinador operam com poder de compra positivo, favorecendo a estabilidade da oferta de carcaça.',
     lastUpdated: 'Hoje'
   },
   {
     id: 'ratio-boi-milho',
     name: 'Relação de Troca Boi Gordo / Milho Campinas SP',
-    numeratorCommodity: 'Boi Gordo CEPEA/B3 SP (R$ 332,50/@)',
+    numeratorCommodity: 'Boi Gordo CEPEA/B3 SP (R$ 381,40/@)',
     denominatorCommodity: 'Milho Grão Campinas (R$ 68,50/saca)',
-    currentRatio: 4.85,
+    currentRatio: 5.57,
     unit: 'sacas de milho / @ boi',
     historicalAvg: 4.20,
     evaluation: 'FAVORÁVEL AO COMPRADOR',
-    explanation: 'Uma arroba de boi gordo adquire 4,85 sacas de 60kg de milho. Média histórica de 4,20 sacas.',
+    explanation: 'Uma arroba de boi gordo adquire 5,57 sacas de 60kg de milho. Média histórica de 4,20 sacas.',
     impactOnGapp: 'Confinamentos estão engordando com custo alimentar atrativo, garantindo entrega contínua de lotes bem acabados.',
     lastUpdated: 'Hoje'
   },
@@ -892,15 +893,15 @@ export class CepeaService {
   /**
    * Gera série histórica calibrada de 30 dias para o Boi Gordo CEPEA/B3
    */
-  static generateDefault30DaysHistory(basePrice: number = 332.50, dolarPtax: number = 5.62): CepeaHistoricalPoint[] {
+  static generateDefault30DaysHistory(basePrice: number = 381.40, dolarPtax: number = 5.39): CepeaHistoricalPoint[] {
     const points: CepeaHistoricalPoint[] = [];
     const priceCurve = [
-      318.00, 318.50, 319.20, 320.00, 321.10,
-      320.80, 321.50, 322.40, 323.00, 322.80,
-      323.50, 324.20, 325.00, 325.80, 326.30,
-      327.00, 326.50, 327.80, 328.50, 329.20,
-      329.80, 330.40, 330.00, 331.20, 331.80,
-      332.10, 331.90, 332.30, 332.80, basePrice
+      364.50, 365.20, 366.00, 367.40, 368.10,
+      367.80, 369.20, 370.50, 371.80, 372.50,
+      373.00, 374.20, 375.00, 376.10, 376.80,
+      377.50, 377.20, 378.00, 378.80, 379.40,
+      380.20, 380.70, 380.70, 380.45, 380.40,
+      380.55, 381.00, 381.20, 381.40, basePrice
     ];
 
     const today = new Date();
@@ -922,7 +923,7 @@ export class CepeaService {
       const prevP = i > 0 ? priceCurve[i - 1] : p - 0.5;
       const varDia = Number((((p - prevP) / prevP) * 100).toFixed(2));
       const varMes = Number((((p - priceCurve[0]) / priceCurve[0]) * 100).toFixed(2));
-      const usd = Number((p / dolarPtax).toFixed(2));
+      const usd = Number((p / (dolarPtax || 5.39)).toFixed(2));
       const carcass = Number((p / 15).toFixed(2));
 
       const sliceStart = Math.max(0, i - 6);
@@ -944,7 +945,7 @@ export class CepeaService {
   }
 
   /**
-   * Obtém o snapshot atual com persistência no LocalStorage
+   * Obtém o snapshot atual com persistência no LocalStorage e auto-atualização para dados oficiais
    */
   static getSnapshot(): CepeaSnapshot {
     try {
@@ -952,10 +953,20 @@ export class CepeaService {
       if (stored) {
         const parsed = JSON.parse(stored) as CepeaSnapshot;
         if (parsed && Array.isArray(parsed.quotes) && parsed.quotes.length > 0) {
+          const boiSp = parsed.quotes.find(q => q.id === 'cepea-boi-sp');
+          // Auto-upgrade se dados antigos (< 350) estavam cacheados
+          if (!boiSp || boiSp.price < 350) {
+            parsed.quotes = INITIAL_CEPEA_QUOTES;
+            parsed.exchangeRatios = INITIAL_CEPEA_EXCHANGE_RATIOS;
+            parsed.historicoBoiGordo30d = this.generateDefault30DaysHistory(381.40, parsed.dolarPtax || 5.39);
+            localStorage.setItem(CEPEA_STORAGE_KEY, JSON.stringify(parsed));
+            return parsed;
+          }
+
           if (!parsed.historicoBoiGordo30d || parsed.historicoBoiGordo30d.length === 0) {
             parsed.historicoBoiGordo30d = this.generateDefault30DaysHistory(
-              parsed.quotes.find(q => q.id === 'cepea-boi-sp')?.price || 332.50,
-              parsed.dolarPtax || 5.62
+              boiSp?.price || 381.40,
+              parsed.dolarPtax || 5.39
             );
           }
           return parsed;
@@ -965,7 +976,7 @@ export class CepeaService {
       console.warn('Erro ao carregar CEPEA snapshot do storage:', e);
     }
 
-    const defaultHistory = this.generateDefault30DaysHistory(332.50, 5.62);
+    const defaultHistory = this.generateDefault30DaysHistory(381.40, 5.39);
 
     const defaultSnapshot: CepeaSnapshot = {
       lastUpdated: new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
@@ -986,7 +997,7 @@ export class CepeaService {
           message: 'Base oficial CEPEA/ESALQ - USP sincronizada com sucesso.'
         }
       ],
-      dolarPtax: 5.62,
+      dolarPtax: 5.39,
       historicoBoiGordo30d: defaultHistory,
       scrapedMeta: {
         status: 'CACHED_BENCHMARK',

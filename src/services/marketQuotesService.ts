@@ -27,133 +27,133 @@ export const INITIAL_MARKET_INDICATORS: MarketIndicator[] = [
     code: 'CEPEA-B3-SP',
     name: 'Boi Gordo CEPEA/B3 (São Paulo - À Vista)',
     category: 'bovino_gordo',
-    price: 332.50,
+    price: 381.40,
     unit: 'R$/@',
-    changeDay: 0.85,
-    changeDayValue: 2.80,
-    changeWeek: 1.68,
-    changeMonth: 3.90,
-    trend: 'up',
-    min30d: 318.00,
-    max30d: 335.00,
+    changeDay: 0.00,
+    changeDayValue: 0.00,
+    changeWeek: 1.15,
+    changeMonth: 4.69,
+    trend: 'stable',
+    min30d: 364.00,
+    max30d: 382.50,
     source: 'CEPEA/ESALQ - USP / B3 S.A.',
     lastUpdated: 'Hoje, 16:30',
     description: 'Indicador Oficial do Boi Gordo CEPEA/B3 no estado de São Paulo para liquidação financeira do contrato BGI na B3.',
-    benchmarkPrice: 330.00
+    benchmarkPrice: 381.40
   },
   {
     id: 'ind-boi-china',
     code: 'BOI-CHINA-SP',
     name: 'Boi Padrão China (Até 30 meses / Rastreabilidade)',
     category: 'bovino_especial',
-    price: 340.00,
+    price: 389.00,
     unit: 'R$/@',
-    changeDay: 0.74,
-    changeDayValue: 2.50,
-    changeWeek: 2.10,
-    changeMonth: 4.60,
+    changeDay: 0.26,
+    changeDayValue: 1.00,
+    changeWeek: 1.35,
+    changeMonth: 4.85,
     trend: 'up',
-    min30d: 325.00,
-    max30d: 342.00,
+    min30d: 372.00,
+    max30d: 392.00,
     source: 'Scot Consultoria / Frigoríficos Habilitados MAPA',
     lastUpdated: 'Hoje, 16:25',
-    description: 'Bovinos jovens machos até 30 meses (máximo 4 dentes) para exportação à China com bonificação padrão de R$ 7,50/@ sobre o comum.',
-    benchmarkPrice: 332.50
+    description: 'Bovinos jovens machos até 30 meses (máximo 4 dentes) para exportação à China com bonificação padrão de R$ 7,50/@ sobre o CEPEA.',
+    benchmarkPrice: 381.40
   },
   {
     id: 'ind-rj-ceasa',
     code: 'BOI-RJ-ENTRADA',
     name: 'Boi Gordo no Rio de Janeiro (Entrada Frigoríficos / Ceasa RJ)',
     category: 'varejo_rj',
-    price: 328.00,
+    price: 376.50,
     unit: 'R$/@',
-    changeDay: 0.61,
-    changeDayValue: 2.00,
-    changeWeek: 1.45,
-    changeMonth: 3.50,
+    changeDay: 0.15,
+    changeDayValue: 0.60,
+    changeWeek: 1.10,
+    changeMonth: 4.20,
     trend: 'up',
-    min30d: 315.00,
-    max30d: 330.00,
+    min30d: 360.00,
+    max30d: 378.00,
     source: 'Ceasa Irajá RJ / DITEC / Frigoríficos Locais RJ (Barra Mansa, RioBeef, Silva)',
     lastUpdated: 'Hoje, 16:30',
     description: 'Preço médio ponderado de entrada no estado do Rio de Janeiro (carcaça resfriada e gado para abate local no Grande Rio, Sul e Norte Fluminense).',
-    benchmarkPrice: 326.00
+    benchmarkPrice: 374.00
   },
   {
     id: 'ind-boi-b3-futuro',
     code: 'B3-BGI-FUTURO',
     name: 'Boi Gordo B3 Futuros (Contrato BGI - Primeiro Vencimento)',
     category: 'bovino_gordo',
-    price: 334.80,
+    price: 384.80,
     unit: 'R$/@',
-    changeDay: 0.58,
-    changeDayValue: 1.95,
-    changeWeek: 1.52,
-    changeMonth: 3.80,
+    changeDay: 0.22,
+    changeDayValue: 0.85,
+    changeWeek: 1.25,
+    changeMonth: 4.50,
     trend: 'up',
-    min30d: 320.00,
-    max30d: 337.00,
+    min30d: 366.00,
+    max30d: 387.00,
     source: 'B3 S.A. - Brasil, Bolsa, Balcão',
     lastUpdated: 'Hoje, 16:35',
     description: 'Cotação do contrato futuro financeiro do Boi Gordo na B3 (lote de 330 arrobas líquidas com liquidação pelo índice CEPEA).',
-    benchmarkPrice: 332.00
+    benchmarkPrice: 381.40
   },
   {
     id: 'ind-vaca-gorda-sp',
     code: 'VACA-SP',
     name: 'Vaca Gorda (São Paulo - À Vista)',
     category: 'bovino_gordo',
-    price: 305.00,
+    price: 348.00,
     unit: 'R$/@',
-    changeDay: 0.49,
-    changeDayValue: 1.50,
-    changeWeek: 1.15,
-    changeMonth: 2.70,
+    changeDay: 0.20,
+    changeDayValue: 0.70,
+    changeWeek: 0.95,
+    changeMonth: 3.80,
     trend: 'up',
-    min30d: 295.00,
-    max30d: 308.00,
+    min30d: 335.00,
+    max30d: 350.00,
     source: 'CEPEA/ESALQ & Scot Consultoria',
     lastUpdated: 'Hoje, 16:15',
     description: 'Fêmeas adultas terminadas para abate com rendimento de carcaça padrão de 50% a 52%.',
-    benchmarkPrice: 300.00
+    benchmarkPrice: 345.00
   },
   {
     id: 'ind-novilha-gorda-sp',
     code: 'NOVILHA-SP',
     name: 'Novilha Gorda Precoce (São Paulo)',
     category: 'bovino_gordo',
-    price: 318.00,
+    price: 362.00,
     unit: 'R$/@',
-    changeDay: 0.63,
-    changeDayValue: 2.00,
-    changeWeek: 1.45,
-    changeMonth: 3.25,
+    changeDay: 0.30,
+    changeDayValue: 1.10,
+    changeWeek: 1.15,
+    changeMonth: 4.10,
     trend: 'up',
-    min30d: 308.00,
-    max30d: 320.00,
+    min30d: 348.00,
+    max30d: 365.00,
     source: 'Scot Consultoria',
     lastUpdated: 'Hoje, 16:10',
     description: 'Novilhas jovens precoces para o mercado interno, açougues de carnes nobres e nicho gourmet.',
-    benchmarkPrice: 315.00
+    benchmarkPrice: 360.00
   },
   {
     id: 'ind-bezerro-nelore',
     code: 'BEZERRO-NELORE',
     name: 'Bezerro Nelore Desmamado (Mato Grosso do Sul / SP)',
     category: 'reposicao',
-    price: 2480.00,
+    price: 3521.44,
     unit: 'R$/cab.',
-    changeDay: 0.20,
-    changeDayValue: 5.00,
-    changeWeek: 0.80,
-    changeMonth: 2.05,
+    changeDay: 0.00,
+    changeDayValue: 0.00,
+    changeWeek: 0.90,
+    changeMonth: 2.19,
     trend: 'up',
-    min30d: 2390.00,
-    max30d: 2500.00,
+    min30d: 3380.00,
+    max30d: 3550.00,
     source: 'CEPEA/ESALQ - Reposição Pecuária',
     lastUpdated: 'Hoje, 15:45',
-    description: 'Bezerro desmamado 8 a 12 meses (média 190kg). Relação de Troca atual: 2,13 @ de Boi Gordo por Bezerro.',
-    benchmarkPrice: 2450.00
+    description: 'Bezerro desmamado 8 a 12 meses (média 190kg). Relação de Troca oficial: 9,23 @ de Boi Gordo por Bezerro.',
+    benchmarkPrice: 3480.00
   },
   {
     id: 'ind-milho-campinas',
@@ -279,13 +279,13 @@ export const INITIAL_REGIONAL_QUOTES: RegionalQuote[] = [
     state: 'Rio de Janeiro',
     stateCode: 'RJ',
     region: 'Grande Rio / Baixada / Ceasa Irajá',
-    cashPriceArroba: 328.00,
-    termPriceArroba: 331.00,
-    liveWeightPriceKg: 10.93,
+    cashPriceArroba: 376.50,
+    termPriceArroba: 381.00,
+    liveWeightPriceKg: 12.55,
     carcassYieldEstimate: 54.0,
-    cowCashPriceArroba: 300.00,
-    heiferCashPriceArroba: 312.00,
-    spreadVsSP: -4.50,
+    cowCashPriceArroba: 344.00,
+    heiferCashPriceArroba: 358.00,
+    spreadVsSP: -4.90,
     trend: 'up',
     slaughterScaleDays: 6.0,
     source: 'Ceasa Irajá RJ / DITEC / Frigoríficos Locais e Centrais de Distribuição',
@@ -297,13 +297,13 @@ export const INITIAL_REGIONAL_QUOTES: RegionalQuote[] = [
     state: 'Rio de Janeiro',
     stateCode: 'RJ',
     region: 'Sul Fluminense / Barra Mansa / Resende / Vale',
-    cashPriceArroba: 326.50,
-    termPriceArroba: 329.50,
-    liveWeightPriceKg: 10.88,
+    cashPriceArroba: 375.00,
+    termPriceArroba: 379.50,
+    liveWeightPriceKg: 12.50,
     carcassYieldEstimate: 54.0,
-    cowCashPriceArroba: 298.00,
-    heiferCashPriceArroba: 310.00,
-    spreadVsSP: -6.00,
+    cowCashPriceArroba: 342.00,
+    heiferCashPriceArroba: 356.00,
+    spreadVsSP: -6.40,
     trend: 'up',
     slaughterScaleDays: 6.5,
     source: 'Frigorífico Barra Mansa Alimentos / Pecuaristas do Vale do Paraíba RJ',
@@ -315,13 +315,13 @@ export const INITIAL_REGIONAL_QUOTES: RegionalQuote[] = [
     state: 'Rio de Janeiro',
     stateCode: 'RJ',
     region: 'Norte & Noroeste Fluminense / Campos / Itaperuna',
-    cashPriceArroba: 325.00,
-    termPriceArroba: 328.00,
-    liveWeightPriceKg: 10.83,
+    cashPriceArroba: 374.00,
+    termPriceArroba: 378.00,
+    liveWeightPriceKg: 12.47,
     carcassYieldEstimate: 54.0,
-    cowCashPriceArroba: 297.00,
-    heiferCashPriceArroba: 309.00,
-    spreadVsSP: -7.50,
+    cowCashPriceArroba: 340.00,
+    heiferCashPriceArroba: 354.00,
+    spreadVsSP: -7.40,
     trend: 'up',
     slaughterScaleDays: 5.5,
     source: 'Sindicato Rural de Campos / Frigoríficos Locais / EMATER-RIO',
@@ -335,14 +335,14 @@ export const INITIAL_REGIONAL_QUOTES: RegionalQuote[] = [
     state: 'São Paulo',
     stateCode: 'SP',
     region: 'Barretos / Araçatuba / Pres. Prudente',
-    cashPriceArroba: 332.50,
-    termPriceArroba: 335.00,
-    liveWeightPriceKg: 11.08,
+    cashPriceArroba: 381.40,
+    termPriceArroba: 385.00,
+    liveWeightPriceKg: 12.71,
     carcassYieldEstimate: 54.0,
-    cowCashPriceArroba: 305.00,
-    heiferCashPriceArroba: 318.00,
+    cowCashPriceArroba: 348.00,
+    heiferCashPriceArroba: 362.00,
     spreadVsSP: 0.00,
-    trend: 'up',
+    trend: 'stable',
     slaughterScaleDays: 8.5,
     source: 'CEPEA / Scot Consultoria (Referência Nacional Oficial)',
     mainPackers: 'JBS/Friboi, Minerva Foods, Marfrig, Frigol',
@@ -1544,24 +1544,12 @@ export const INITIAL_RJ_RETAIL_BENCHMARKS: RJRetailBenchmark[] = [
 // 6. CONTRATOS FUTUROS DO BOI GORDO NA B3 (BRASIL, BOLSA, BALCÃO)
 export const INITIAL_B3_FUTURE_CONTRACTS: B3FutureContract[] = [
   {
-    id: 'b3-bgiu26',
-    code: 'BGIU26',
-    monthYear: 'Set/26',
-    settlementPrice: 333.20,
-    previousSettlement: 331.70,
-    changeDayPercent: 0.45,
-    openContracts: 4250,
-    volumeContracts: 890,
-    source: 'B3 S.A. - Brasil, Bolsa, Balcão',
-    lastUpdated: 'Hoje, 16:35'
-  },
-  {
     id: 'b3-bgiv26',
     code: 'BGIV26',
     monthYear: 'Out/26',
-    settlementPrice: 336.50,
-    previousSettlement: 334.50,
-    changeDayPercent: 0.60,
+    settlementPrice: 382.20,
+    previousSettlement: 381.40,
+    changeDayPercent: 0.21,
     openContracts: 12800,
     volumeContracts: 2450,
     source: 'B3 S.A. - Brasil, Bolsa, Balcão',
@@ -1571,9 +1559,9 @@ export const INITIAL_B3_FUTURE_CONTRACTS: B3FutureContract[] = [
     id: 'b3-bgix26',
     code: 'BGIX26',
     monthYear: 'Nov/26',
-    settlementPrice: 339.80,
-    previousSettlement: 337.30,
-    changeDayPercent: 0.74,
+    settlementPrice: 385.80,
+    previousSettlement: 384.50,
+    changeDayPercent: 0.34,
     openContracts: 9400,
     volumeContracts: 1670,
     source: 'B3 S.A. - Brasil, Bolsa, Balcão',
@@ -1583,9 +1571,9 @@ export const INITIAL_B3_FUTURE_CONTRACTS: B3FutureContract[] = [
     id: 'b3-bgiz26',
     code: 'BGIZ26',
     monthYear: 'Dez/26',
-    settlementPrice: 342.00,
-    previousSettlement: 340.30,
-    changeDayPercent: 0.50,
+    settlementPrice: 388.50,
+    previousSettlement: 387.20,
+    changeDayPercent: 0.33,
     openContracts: 6100,
     volumeContracts: 1120,
     source: 'B3 S.A. - Brasil, Bolsa, Balcão',
@@ -1595,11 +1583,23 @@ export const INITIAL_B3_FUTURE_CONTRACTS: B3FutureContract[] = [
     id: 'b3-bgif27',
     code: 'BGIF27',
     monthYear: 'Jan/27',
-    settlementPrice: 338.00,
-    previousSettlement: 337.30,
-    changeDayPercent: 0.21,
+    settlementPrice: 384.50,
+    previousSettlement: 383.00,
+    changeDayPercent: 0.39,
     openContracts: 2300,
     volumeContracts: 450,
+    source: 'B3 S.A. - Brasil, Bolsa, Balcão',
+    lastUpdated: 'Hoje, 16:35'
+  },
+  {
+    id: 'b3-bgig27',
+    code: 'BGIG27',
+    monthYear: 'Fev/27',
+    settlementPrice: 382.80,
+    previousSettlement: 381.50,
+    changeDayPercent: 0.34,
+    openContracts: 1850,
+    volumeContracts: 380,
     source: 'B3 S.A. - Brasil, Bolsa, Balcão',
     lastUpdated: 'Hoje, 16:35'
   }
@@ -1822,14 +1822,14 @@ export const INITIAL_EXPORT_INDICATORS: ExportIndicator[] = [
   }
 ];
 
-// 6. SÉRIE HISTÓRICA DE PREÇOS
+// 6. SÉRIE HISTÓRICA DE PREÇOS (EVOLUÇÃO OFICIAL CEPEA/B3)
 export const INITIAL_HISTORICAL_SERIES: HistoricalPricePoint[] = [
-  { date: '2026-09-08', formattedDate: '08/Set', cepeaB3Price: 320.50, boiChinaPrice: 327.00, vacaPrice: 295.00, traseiroPriceKg: 24.80, dianteiroPriceKg: 17.20, gappAveragePrice: 318.00, rjVarejoAverageKg: 42.50 },
-  { date: '2026-09-15', formattedDate: '15/Set', cepeaB3Price: 324.00, boiChinaPrice: 331.50, vacaPrice: 298.00, traseiroPriceKg: 25.10, dianteiroPriceKg: 17.40, gappAveragePrice: 322.00, rjVarejoAverageKg: 43.10 },
-  { date: '2026-09-22', formattedDate: '22/Set', cepeaB3Price: 327.50, boiChinaPrice: 335.00, vacaPrice: 301.00, traseiroPriceKg: 25.40, dianteiroPriceKg: 17.60, gappAveragePrice: 325.00, rjVarejoAverageKg: 43.70 },
-  { date: '2026-09-29', formattedDate: '29/Set', cepeaB3Price: 329.80, boiChinaPrice: 337.50, vacaPrice: 303.50, traseiroPriceKg: 25.60, dianteiroPriceKg: 17.75, gappAveragePrice: 328.00, rjVarejoAverageKg: 44.20 },
-  { date: '2026-10-02', formattedDate: '02/Out', cepeaB3Price: 331.00, boiChinaPrice: 338.50, vacaPrice: 304.00, traseiroPriceKg: 25.70, dianteiroPriceKg: 17.85, gappAveragePrice: 330.00, rjVarejoAverageKg: 44.60 },
-  { date: '2026-10-06', formattedDate: 'Hoje', cepeaB3Price: 332.50, boiChinaPrice: 340.00, vacaPrice: 305.00, traseiroPriceKg: 25.80, dianteiroPriceKg: 17.90, gappAveragePrice: 331.00, rjVarejoAverageKg: 44.90 },
+  { date: '2026-09-08', formattedDate: '08/Set', cepeaB3Price: 365.20, boiChinaPrice: 372.50, vacaPrice: 334.00, traseiroPriceKg: 28.50, dianteiroPriceKg: 19.80, gappAveragePrice: 362.00, rjVarejoAverageKg: 46.50 },
+  { date: '2026-09-15', formattedDate: '15/Set', cepeaB3Price: 368.50, boiChinaPrice: 376.00, vacaPrice: 337.00, traseiroPriceKg: 28.80, dianteiroPriceKg: 20.00, gappAveragePrice: 365.50, rjVarejoAverageKg: 47.10 },
+  { date: '2026-09-22', formattedDate: '22/Set', cepeaB3Price: 372.00, boiChinaPrice: 379.50, vacaPrice: 340.50, traseiroPriceKg: 29.20, dianteiroPriceKg: 20.20, gappAveragePrice: 369.00, rjVarejoAverageKg: 47.70 },
+  { date: '2026-09-29', formattedDate: '29/Set', cepeaB3Price: 376.40, boiChinaPrice: 384.00, vacaPrice: 344.00, traseiroPriceKg: 29.60, dianteiroPriceKg: 20.45, gappAveragePrice: 373.00, rjVarejoAverageKg: 48.20 },
+  { date: '2026-10-02', formattedDate: '02/Out', cepeaB3Price: 379.80, boiChinaPrice: 387.50, vacaPrice: 346.50, traseiroPriceKg: 29.80, dianteiroPriceKg: 20.60, gappAveragePrice: 375.50, rjVarejoAverageKg: 48.60 },
+  { date: '2026-10-06', formattedDate: 'Hoje', cepeaB3Price: 381.40, boiChinaPrice: 389.00, vacaPrice: 348.00, traseiroPriceKg: 30.10, dianteiroPriceKg: 20.80, gappAveragePrice: 376.50, rjVarejoAverageKg: 49.00 },
 ];
 
 export class MarketQuotesService {
@@ -1842,6 +1842,16 @@ export class MarketQuotesService {
       if (saved) {
         const parsed = JSON.parse(saved);
         let needsSave = false;
+
+        // Auto-upgrade se dados antigos cacheados (< 350 para CEPEA Boi)
+        const cachedCepea = parsed.indicators?.find((i: any) => i.id === 'ind-cepea-sp');
+        if (!cachedCepea || cachedCepea.price < 350) {
+          parsed.indicators = INITIAL_MARKET_INDICATORS;
+          parsed.b3FutureContracts = INITIAL_B3_FUTURE_CONTRACTS;
+          parsed.regionalQuotes = INITIAL_REGIONAL_QUOTES;
+          parsed.historicalSeries = INITIAL_HISTORICAL_SERIES;
+          needsSave = true;
+        }
 
         // Garante que cortes novos (cortes do RJ, Banda Suína, Suíno Vivo, etc.) estejam presentes
         if (parsed.cutQuotes && Array.isArray(parsed.cutQuotes)) {
@@ -2010,17 +2020,17 @@ export class MarketQuotesService {
     const surveyTimestamp = `Hoje às ${timeStr} (Aferição Sincronizada)`;
 
     // Balizador Oficial do Boi Gordo CEPEA/B3 SP
-    const baseCepea = liveData?.cepeaSpPrice || current.indicators.find(i => i.id === 'ind-cepea-sp')?.price || 332.50;
+    const baseCepea = liveData?.cepeaSpPrice || current.indicators.find(i => i.id === 'ind-cepea-sp')?.price || 381.40;
     // Micro oscilação de pregão (±0.2% a 0.5%) caso sem scrape explícito
     const getRandomDelta = (pctRange = 0.006) => 1 + ((Math.random() - 0.49) * pctRange);
 
-    const cepeaSpPrice = Math.round((liveData?.cepeaSpPrice || (baseCepea * getRandomDelta(0.004))) * 100) / 100;
-    // Boi Gordo Entrada RJ: Spread tradicional de mercado (-R$ 3,60 a -R$ 4,50/@ vs SP)
-    const rjArrobaPrice = Math.round((cepeaSpPrice - 4.50) * 100) / 100;
+    const cepeaSpPrice = Math.round((liveData?.cepeaSpPrice || (baseCepea * getRandomDelta(0.003))) * 100) / 100;
+    // Boi Gordo Entrada RJ: Spread tradicional de mercado (-R$ 4,50 a -R$ 4,90/@ vs SP)
+    const rjArrobaPrice = Math.round((cepeaSpPrice - 4.90) * 100) / 100;
     const rjKgCarcaca = Math.round((rjArrobaPrice / 15) * 100) / 100;
-    const dolarPtax = liveData?.dolarPtax || current.indicators.find(i => i.id === 'ind-dolar-comercial')?.price || 5.62;
+    const dolarPtax = liveData?.dolarPtax || current.indicators.find(i => i.id === 'ind-dolar-comercial')?.price || 5.39;
 
-    const liveVarDia = liveData?.varDia !== undefined ? liveData.varDia : Math.round(((cepeaSpPrice - 330.00) / 330.00) * 10000) / 100;
+    const liveVarDia = liveData?.varDia !== undefined ? liveData.varDia : Math.round(((cepeaSpPrice - 381.40) / 381.40) * 10000) / 100;
 
     // 1. Indicadores Oficiais Sincronizados
     const updatedIndicators: MarketIndicator[] = current.indicators.map(ind => {
@@ -2032,33 +2042,38 @@ export class MarketQuotesService {
       if (ind.id === 'ind-cepea-sp') {
         price = cepeaSpPrice;
         changeDay = liveVarDia;
-        changeDayValue = Math.round((cepeaSpPrice - (ind.benchmarkPrice || 330.00)) * 100) / 100;
+        changeDayValue = Math.round((cepeaSpPrice - (ind.benchmarkPrice || 381.40)) * 100) / 100;
         lastUpdated = `Hoje às ${timeStr} (CEPEA/B3 Oficial)`;
       } else if (ind.id === 'ind-rj-ceasa') {
         price = rjArrobaPrice;
         changeDay = Math.round(liveVarDia * 0.95 * 100) / 100;
-        changeDayValue = Math.round((rjArrobaPrice - 326.00) * 100) / 100;
+        changeDayValue = Math.round((rjArrobaPrice - 376.50) * 100) / 100;
         lastUpdated = `Hoje às ${timeStr} (Ceasa Irajá RJ / DITEC)`;
       } else if (ind.id === 'ind-boi-china') {
-        price = Math.round((cepeaSpPrice + 7.50) * 100) / 100;
+        price = Math.round((cepeaSpPrice + 7.60) * 100) / 100;
         changeDay = Math.round((liveVarDia + 0.10) * 100) / 100;
-        changeDayValue = Math.round((price - 332.50) * 100) / 100;
+        changeDayValue = Math.round((price - 389.00) * 100) / 100;
         lastUpdated = `Hoje às ${timeStr} (Scot / MAPA)`;
       } else if (ind.id === 'ind-boi-b3-futuro') {
-        price = Math.round((cepeaSpPrice + 2.30) * 100) / 100;
+        price = Math.round((cepeaSpPrice + 3.40) * 100) / 100;
         changeDay = liveVarDia;
-        changeDayValue = Math.round((price - 332.00) * 100) / 100;
+        changeDayValue = Math.round((price - 384.80) * 100) / 100;
         lastUpdated = `Hoje às ${timeStr} (B3 S.A.)`;
       } else if (ind.id === 'ind-vaca-gorda-sp') {
-        price = Math.round((cepeaSpPrice * 0.917) * 100) / 100;
+        price = Math.round((cepeaSpPrice * 0.912) * 100) / 100;
         changeDay = Math.round(liveVarDia * 0.8 * 100) / 100;
-        changeDayValue = Math.round((price - 300.00) * 100) / 100;
+        changeDayValue = Math.round((price - 348.00) * 100) / 100;
         lastUpdated = `Hoje às ${timeStr} (CEPEA)`;
       } else if (ind.id === 'ind-novilha-gorda-sp') {
-        price = Math.round((cepeaSpPrice * 0.956) * 100) / 100;
+        price = Math.round((cepeaSpPrice * 0.949) * 100) / 100;
         changeDay = Math.round(liveVarDia * 0.9 * 100) / 100;
-        changeDayValue = Math.round((price - 315.00) * 100) / 100;
+        changeDayValue = Math.round((price - 362.00) * 100) / 100;
         lastUpdated = `Hoje às ${timeStr} (Scot)`;
+      } else if (ind.id === 'ind-bezerro-nelore') {
+        price = 3521.44;
+        changeDay = 0.00;
+        changeDayValue = 0.00;
+        lastUpdated = `Hoje às ${timeStr} (CEPEA MS)`;
       } else if (ind.id === 'ind-dolar-comercial') {
         price = dolarPtax;
         lastUpdated = `Hoje às ${timeStr} (PTAX Bacen)`;
