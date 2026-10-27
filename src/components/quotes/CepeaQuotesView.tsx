@@ -44,19 +44,24 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Search,
-  Filter
+  Filter,
+  RotateCcw
 } from 'lucide-react';
 
 interface CepeaQuotesViewProps {
   yieldParams?: YieldParams;
   onUpdateYieldParams?: (params: any) => void;
   showToast?: (message: string) => void;
+  resetTrigger?: number;
+  onResetAndReload?: () => void | Promise<void>;
 }
 
 export const CepeaQuotesView: React.FC<CepeaQuotesViewProps> = ({
   yieldParams,
   onUpdateYieldParams,
-  showToast
+  showToast,
+  resetTrigger = 0,
+  onResetAndReload
 }) => {
   const [snapshot, setSnapshot] = useState<CepeaSnapshot>(() => CepeaService.getSnapshot());
   const [isSyncing, setIsSyncing] = useState(false);
@@ -88,6 +93,24 @@ export const CepeaQuotesView: React.FC<CepeaQuotesViewProps> = ({
     runAutoSync();
     return () => { isMounted = false; };
   }, []);
+
+  // Efeito de Reset Completo disparado pela ação global de Limpar e Resetar Cotações
+  useEffect(() => {
+    if (resetTrigger > 0) {
+      setSearchQuery('');
+      setActiveTab('bovino');
+      setChartRange('30D');
+      setChartMetric('rs');
+      setShowMma7(true);
+      setShowRefLines(true);
+      setAppliedQuoteMsg(null);
+      CepeaService.syncRealTimeQuotes().then(updated => {
+        setSnapshot(updated);
+      }).catch(err => {
+        console.warn('Erro ao atualizar CEPEA durante reset:', err);
+      });
+    }
+  }, [resetTrigger]);
 
   // Histórico de 30 dias para o gráfico Recharts
   const rawHistory = useMemo(() => {
@@ -296,6 +319,20 @@ export const CepeaQuotesView: React.FC<CepeaQuotesViewProps> = ({
 
           {/* Lado Direito: Botões de Ação Rápida */}
           <div className="flex flex-wrap items-center gap-2">
+
+            {/* Botão Limpar Campos & Resetar Cotações */}
+            {onResetAndReload && (
+              <button
+                type="button"
+                onClick={onResetAndReload}
+                disabled={isSyncing}
+                className="px-3.5 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-xs flex items-center gap-1.5 border border-amber-400/40 shadow-sm active:scale-95 transition cursor-pointer disabled:opacity-50"
+                title="Limpar todos os campos, filtros e formulários em toda a área de cotações e recarregar os dados de mercado atualizados"
+              >
+                <RotateCcw className="w-4 h-4 text-amber-300" />
+                <span>Limpar e Resetar Cotações</span>
+              </button>
+            )}
             
             {/* Botão Sincronizar Agora */}
             <button

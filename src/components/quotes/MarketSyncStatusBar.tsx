@@ -9,7 +9,8 @@ import {
   CheckCircle2, 
   Zap,
   Layers,
-  ArrowRight
+  ArrowRight,
+  RotateCcw
 } from 'lucide-react';
 
 interface MarketSyncStatusBarProps {
@@ -19,6 +20,8 @@ interface MarketSyncStatusBarProps {
   lastSyncFormatted?: string;
   isSyncing: boolean;
   onManualSync: () => void | Promise<void>;
+  onResetAndReload?: () => void | Promise<void>;
+  isResetting?: boolean;
   cacheTtlSeconds?: number;
   syncLatencyMs?: number;
 }
@@ -30,6 +33,8 @@ export const MarketSyncStatusBar: React.FC<MarketSyncStatusBarProps> = ({
   lastSyncFormatted,
   isSyncing,
   onManualSync,
+  onResetAndReload,
+  isResetting = false,
   cacheTtlSeconds = 60,
   syncLatencyMs = 140
 }) => {
@@ -145,11 +150,25 @@ export const MarketSyncStatusBar: React.FC<MarketSyncStatusBarProps> = ({
             </span>
           </div>
 
+          {/* Botão de Limpar Campos e Resetar Cotações */}
+          {onResetAndReload && (
+            <button
+              type="button"
+              onClick={onResetAndReload}
+              disabled={isResetting || isSyncing}
+              className="px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/30 font-bold text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer disabled:opacity-50"
+              title="Limpar todos os campos e filtros, restaurando imediatamente as cotações oficiais atualizadas"
+            >
+              <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin text-amber-200' : 'text-amber-400'}`} />
+              <span className="hidden sm:inline">{isResetting ? 'Resetando...' : 'Limpar e Resetar'}</span>
+            </button>
+          )}
+
           {/* Botão de Sincronização Manual */}
           <button
             type="button"
             onClick={onManualSync}
-            disabled={isSyncing}
+            disabled={isSyncing || isResetting}
             className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-md hover:shadow-emerald-900/40 transition active:scale-95 cursor-pointer disabled:opacity-50"
             title="Forçar atualização imediata com o servidor de cotações em tempo real"
           >

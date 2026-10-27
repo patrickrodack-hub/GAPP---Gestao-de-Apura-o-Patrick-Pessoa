@@ -48,7 +48,8 @@ import {
   Layers,
   BarChart3,
   Printer,
-  FileSpreadsheet
+  FileSpreadsheet,
+  RotateCcw
 } from 'lucide-react';
 
 interface QuotesTabProps {
@@ -87,6 +88,9 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
   const [isApplyingQuote, setIsApplyingQuote] = useState(false);
   const [appliedSuccessMsg, setAppliedSuccessMsg] = useState<string | null>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetSuccessMsg, setResetSuccessMsg] = useState<string | null>(null);
+  const [cepeaResetTrigger, setCepeaResetTrigger] = useState(0);
 
   // Cotação atual do sistema ERP
   const systemCostPerKg = yieldParams?.costPerKg || 26.00;
@@ -151,6 +155,56 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
       if (showToast) showToast('Cotações de mercado sincronizadas com sucesso!');
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  // Limpeza de campos e reset sincronizado com dados oficiais atualizados
+  const handleResetAndReloadQuotes = async () => {
+    setIsResetting(true);
+    try {
+      // 1. Limpa todos os campos de busca, filtros de categoria/região e inputs de simulação
+      setCutSearchQuery('');
+      setSelectedCutCategory('all');
+      setSelectedPracaRegion('all');
+      setSimOriginId('log-mg-triangulo');
+      setSimFreightRate(9.50);
+      setSimGotejoRate(1.8);
+      setSimTargetMargin(24.0);
+      setSimSuinoLiveWeight(115);
+      setAppliedSuccessMsg(null);
+
+      // Dispara o reset no submódulo CEPEA (aba, busca, métricas e dados)
+      setCepeaResetTrigger(prev => prev + 1);
+
+      // 2. Invalida cache no backend via POST /api/market/sync para forçar nova coleta oficial
+      try {
+        await fetch('/api/market/sync', { 
+          method: 'POST',
+          headers: { 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(6000)
+        });
+      } catch (err) {
+        console.warn('Backend /api/market/sync notice:', err);
+      }
+
+      // 3. Recarrega as cotações oficiais atualizadas em tempo real
+      const updated = await MarketQuotesService.syncMarketRealTime();
+      setSnapshot(updated);
+
+      const msg = 'Campos limpos com sucesso! Cotações oficiais atualizadas e recarregadas em todas as abas (Hub RJ, Cortes & Balcão, 12 Redes RJ e CEPEA).';
+      setResetSuccessMsg(msg);
+      if (showToast) showToast(msg);
+
+      setTimeout(() => {
+        setResetSuccessMsg(null);
+      }, 6000);
+    } catch (err) {
+      console.warn('Fallback no reset de cotações:', err);
+      const fallback = MarketQuotesService.refreshQuotes();
+      setSnapshot(fallback);
+      if (showToast) showToast('Campos limpos e cotações redefinidas com sucesso!');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -515,11 +569,23 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
           {/* Botões de Ação do Módulo */}
           <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
             
+            {/* Botão de Limpar Campos e Resetar Cotações Atualizadas */}
+            <button
+              type="button"
+              onClick={handleResetAndReloadQuotes}
+              disabled={isResetting || isRefreshing}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-500 hover:to-orange-500 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-amber-950/20 transition active:scale-95 cursor-pointer disabled:opacity-50"
+              title="Limpar todos os campos, filtros e formulários em toda a área de cotações e recarregar os dados de mercado atualizados"
+            >
+              <RotateCcw className={`w-4 h-4 ${isResetting ? 'animate-spin' : ''}`} />
+              <span>{isResetting ? 'Limpando & Recarregando...' : 'Limpar e Resetar Cotações'}</span>
+            </button>
+
             {/* Atualizar Cotações */}
             <button
               type="button"
               onClick={handleRefresh}
-              disabled={isRefreshing}
+              disabled={isRefreshing || isResetting}
               className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer disabled:opacity-50"
               title="Sincronizar dados em tempo real com fontes oficiais"
             >
@@ -638,11 +704,35 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
           </div>
         </div>
 
-        {/* Feedback Banner */}
+        {/* Feedback Banner de Aplicação ERP */}
         {appliedSuccessMsg && (
           <div className="mt-3 p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-400 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 animate-fade-in">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span>{appliedSuccessMsg}</span>
+          </div>
+        )}
+
+        {/* Feedback Banner de Limpeza & Reset de Cotações */}
+        {resetSuccessMsg && (
+          <div className="mt-3 p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-center justify-between gap-3 animate-fade-in shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-amber-500/25 flex items-center justify-center shrink-0 border border-amber-400/40">
+                <RotateCcw className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <span className="font-extrabold uppercase tracking-wide text-[10px] text-amber-700 dark:text-amber-300 block">
+                  RESET E RECARGA DE COTAÇÕES EM TEMPO REAL CONCLUÍDOS
+                </span>
+                <span>{resetSuccessMsg}</span>
+              </div>
+            </div>
+            <button 
+              type="button" 
+              onClick={() => setResetSuccessMsg(null)}
+              className="text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-white hover:underline text-xs cursor-pointer px-2 py-1 shrink-0 font-extrabold"
+            >
+              ✕ Fechar
+            </button>
           </div>
         )}
       </div>
@@ -707,6 +797,8 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
           yieldParams={yieldParams}
           onUpdateYieldParams={onUpdateYieldParams}
           showToast={showToast}
+          resetTrigger={cepeaResetTrigger}
+          onResetAndReload={handleResetAndReloadQuotes}
         />
       )}
 
@@ -721,6 +813,8 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
             lastSyncFormatted={snapshot.lastSyncFormatted}
             isSyncing={isRefreshing}
             onManualSync={handleRefresh}
+            onResetAndReload={handleResetAndReloadQuotes}
+            isResetting={isResetting}
             cacheTtlSeconds={snapshot.cacheTtlSeconds || 60}
             syncLatencyMs={snapshot.syncLatencyMs || 140}
           />
@@ -1161,6 +1255,8 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
             lastSyncFormatted={snapshot.lastSyncFormatted}
             isSyncing={isRefreshing}
             onManualSync={handleRefresh}
+            onResetAndReload={handleResetAndReloadQuotes}
+            isResetting={isResetting}
             cacheTtlSeconds={snapshot.cacheTtlSeconds || 60}
             syncLatencyMs={snapshot.syncLatencyMs || 140}
           />
@@ -1174,8 +1270,18 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                 value={cutSearchQuery}
                 onChange={(e) => setCutSearchQuery(e.target.value)}
                 placeholder="Buscar corte (ex: Picanha, Contra Filé, Chã, Carne Moída, Costela, Acém, Suíno, Sebo)..."
-                className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:outline-emerald-500"
+                className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:outline-emerald-500"
               />
+              {cutSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setCutSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 cursor-pointer"
+                  title="Limpar busca"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
@@ -1205,8 +1311,19 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
 
             <button
               type="button"
+              onClick={handleResetAndReloadQuotes}
+              disabled={isResetting || isRefreshing}
+              className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 dark:text-amber-300 border border-amber-400/40 font-bold text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer disabled:opacity-50 shrink-0"
+              title="Limpar filtros e campos e recarregar cotações de cortes atualizadas"
+            >
+              <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
+              <span>{isResetting ? 'Resetando...' : 'Limpar e Resetar'}</span>
+            </button>
+
+            <button
+              type="button"
               onClick={handleRefresh}
-              disabled={isRefreshing}
+              disabled={isRefreshing || isResetting}
               className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer disabled:opacity-50 shrink-0"
               title="Sincronizar cotações de cortes de atacado e balcão RJ em tempo real"
             >
@@ -1509,6 +1626,8 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
             lastSyncFormatted={snapshot.lastSyncFormatted}
             isSyncing={isRefreshing}
             onManualSync={handleRefresh}
+            onResetAndReload={handleResetAndReloadQuotes}
+            isResetting={isResetting}
             cacheTtlSeconds={snapshot.cacheTtlSeconds || 60}
             syncLatencyMs={snapshot.syncLatencyMs || 140}
           />
@@ -1534,11 +1653,23 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
 
               {/* Toolbar Executiva de Exportação e Relatório */}
               <div className="flex flex-wrap items-center gap-2">
+                {/* Botão Limpar Campos & Resetar Cotações */}
+                <button
+                  type="button"
+                  onClick={handleResetAndReloadQuotes}
+                  disabled={isResetting || isRefreshing}
+                  className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 dark:text-amber-300 border border-amber-400/40 font-bold text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer disabled:opacity-50"
+                  title="Limpar todos os campos e restaurar dados oficiais atualizados"
+                >
+                  <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
+                  <span>{isResetting ? 'Resetando...' : 'Limpar e Resetar'}</span>
+                </button>
+
                 {/* Botão Sincronizar Balcão 12 Redes */}
                 <button
                   type="button"
                   onClick={handleRefresh}
-                  disabled={isRefreshing}
+                  disabled={isRefreshing || isResetting}
                   className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-950/20 transition active:scale-95 cursor-pointer disabled:opacity-50"
                   title="Sincronizar em tempo real as cotações de balcão das 12 redes supermercadistas do RJ"
                 >
@@ -1850,18 +1981,30 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
       {activeSection === 'simulador_rj' && (
         <div className="space-y-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div className="p-3 rounded-xl bg-emerald-600 text-white shadow-sm shrink-0">
-                <Calculator className="w-6 h-6" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-emerald-600 text-white shadow-sm shrink-0">
+                  <Calculator className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                    Simulador de Aquisição Interestadual & Frete Posto Rio de Janeiro
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Simule a compra de lotes de gado em diferentes estados do Brasil, compute o frete rodoviário até a câmara fria no RJ e a quebra de gotejo para obter o custo real posto RJ.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                  Simulador de Aquisição Interestadual & Frete Posto Rio de Janeiro
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Simule a compra de lotes de gado em diferentes estados do Brasil, compute o frete rodoviário até a câmara fria no RJ e a quebra de gotejo para obter o custo real posto RJ.
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={handleResetAndReloadQuotes}
+                disabled={isResetting || isRefreshing}
+                className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 dark:text-amber-300 border border-amber-400/40 font-bold text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer disabled:opacity-50 shrink-0"
+                title="Restaurar parâmetros padrão de frete/gotejo e atualizar cotações de origem"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
+                <span>{isResetting ? 'Resetando...' : 'Restaurar Padrões'}</span>
+              </button>
             </div>
 
             {/* Controles do Simulador */}
