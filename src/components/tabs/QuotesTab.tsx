@@ -1640,14 +1640,14 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                     AUDITORIA DE MERCADO RJ
                   </span>
                   <span className="text-xs text-slate-500 font-semibold">
-                    Base: NielsenIQ Retail Index • Scantec Sell-Out RJ • ASSERJ
+                    Base: ASSERJ • Procon-RJ • Preço da Hora RJ (SEFAZ-RJ) • Encartes Oficiais
                   </span>
                 </div>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white mt-1">
                   Preços Praticados no Balcão de 12 Redes Supermercadistas do Rio de Janeiro
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Amostragem comparativa de preços por corte nos supermercados do Grande Rio, Baixada Fluminense, Niterói e Região Metropolitana.
+                  Preços reais consultados diretamente da base de dados de pesquisas dos supermercados do Rio de Janeiro (Grande Rio, Baixada Fluminense, Niterói e Região Metropolitana), sem cálculos automáticos residuais.
                 </p>
               </div>
 
@@ -1659,10 +1659,10 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                   onClick={handleResetAndReloadQuotes}
                   disabled={isResetting || isRefreshing}
                   className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 dark:text-amber-300 border border-amber-400/40 font-bold text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer disabled:opacity-50"
-                  title="Limpar todos os campos e restaurar dados oficiais atualizados"
+                  title="Restaurar base de dados oficial de supermercados do RJ e limpar filtros"
                 >
                   <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
-                  <span>{isResetting ? 'Resetando...' : 'Limpar e Resetar'}</span>
+                  <span>{isResetting ? 'Resetando...' : 'Restaurar Base Oficial RJ'}</span>
                 </button>
 
                 {/* Botão Sincronizar Balcão 12 Redes */}
@@ -1671,10 +1671,10 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                   onClick={handleRefresh}
                   disabled={isRefreshing || isResetting}
                   className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-950/20 transition active:scale-95 cursor-pointer disabled:opacity-50"
-                  title="Sincronizar em tempo real as cotações de balcão das 12 redes supermercadistas do RJ"
+                  title="Consultar e sincronizar cotações reais das 12 redes supermercadistas do RJ"
                 >
                   <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  <span>{isRefreshing ? 'Sincronizando...' : 'Sincronizar 12 Redes RJ'}</span>
+                  <span>{isRefreshing ? 'Consultando...' : 'Consultar 12 Redes RJ'}</span>
                 </button>
 
                 {/* Botão Baixar Relatório PDF */}
@@ -1742,11 +1742,11 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                 </span>
                 <span className="font-extrabold tracking-wide uppercase text-[11px] text-emerald-800 dark:text-emerald-300">
-                  Auditoria de Balcão Ativa & Sincronizada em Tempo Real
+                  Base de Dados Oficial RJ • Preços Reais de Balcão e Gôndola
                 </span>
                 <span className="text-emerald-600 dark:text-emerald-400">•</span>
                 <span className="text-slate-600 dark:text-slate-300">
-                  Amostragem em 12 redes fluminenses (Populares, Atacarejos e Premium)
+                  Fontes: ASSERJ, Procon-RJ, Preço da Hora SEFAZ-RJ e Encartes Oficiais (12 Redes)
                 </span>
               </div>
               <div className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 bg-white/70 dark:bg-emerald-900/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/60">

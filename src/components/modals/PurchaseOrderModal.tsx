@@ -101,7 +101,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
     const p = StorageService.getYieldParams();
     return p.bandaCostKg || 26.00;
   });
-  const [notes, setNotes] = useState('Pedido emitido conforme apuração oficial da Matriz Direção v10.7. Entrega programada nas câmaras frigoríficas.');
+  const [notes, setNotes] = useState('Pedido emitido conforme apuração oficial da Matriz Direção v10.8. Entrega programada nas câmaras frigoríficas.');
   const [copiedToast, setCopiedToast] = useState(false);
   const [savedBatchSuccess, setSavedBatchSuccess] = useState(false);
   const [isSharingPdfWhatsApp, setIsSharingPdfWhatsApp] = useState(false);
@@ -427,7 +427,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
       costPerKg: Math.round(pricePerKg * 100) / 100,
       targetStoreId: 'TODAS',
       status: 'PENDENTE',
-      notes: notes ? `Pedido de Compra Padrão gerado pela Planilha da Direção v10.7 (${notes})` : `Pedido de Compra Padrão gerado pela Planilha da Direção v10.7`,
+      notes: notes ? `Pedido de Compra Padrão gerado pela Planilha da Direção v10.8 (${notes})` : `Pedido de Compra Padrão gerado pela Planilha da Direção v10.8`,
       deliveryDate: deliveryDateStr,
       items: orderItems,
     };
@@ -765,7 +765,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-white/80">
-                Grupo GAPP Sistemas • Emitido com base no cabeçalho operacional da Planilha v10.7
+                Grupo GAPP Sistemas • Emitido com base no cabeçalho operacional da Planilha v10.8
               </p>
             </div>
           </div>

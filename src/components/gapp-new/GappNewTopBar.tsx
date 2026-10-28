@@ -127,7 +127,7 @@ export const GappNewTopBar: React.FC<GappNewTopBarProps> = ({
   const quickModules = useMemo(() => {
     const list: { label: string; desc: string; action: () => void }[] = [
       {
-        label: 'Planilha Direção v10.7',
+        label: 'Planilha Direção v10.8',
         desc: 'Editar pedidos de bovino, cortes e suíno das 16 lojas',
         action: () => onNavigateTab('sheet')
       },

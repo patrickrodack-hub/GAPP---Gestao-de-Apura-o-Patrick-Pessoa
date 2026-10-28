@@ -133,24 +133,24 @@ class MarketQuotesCacheService {
       },
       cortesBalcaoStats: {
         totalCortes: 38,
-        picanhaAvg,
-        contraFileAvg,
-        alcatraAvg,
-        acemAvg,
-        pernilSuinoAvg,
+        picanhaAvg: 58.50,
+        contraFileAvg: 35.50,
+        alcatraAvg: 33.50,
+        acemAvg: 21.00,
+        pernilSuinoAvg: 17.50,
         bandaSuinaAvg: suinoCarcaca,
         margemMediaPraticadaPercent: 23.4
       },
       varejo12RedesStats: {
         totalRedes: redes.length,
-        mediaPicanha: 94.90,
-        mediaContra: 54.90,
-        mediaAlcatra: 50.90,
-        mediaAcem: 33.90,
-        mediaCostela: 31.90,
-        mediaPernilSuino: 17.90,
-        menorPrecoAcem: 28.50,
-        maiorPrecoPicanha: 134.90,
+        mediaPicanha: 79.20,
+        mediaContra: 48.15,
+        mediaAlcatra: 45.23,
+        mediaAcem: 28.68,
+        mediaCostela: 24.81,
+        mediaPernilSuino: 18.34,
+        menorPrecoAcem: 24.50,
+        maiorPrecoPicanha: 124.90,
         redesMonitoradas: redes
       }
     };

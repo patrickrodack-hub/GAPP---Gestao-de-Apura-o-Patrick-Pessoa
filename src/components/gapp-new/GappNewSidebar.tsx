@@ -352,7 +352,7 @@ export const GappNewSidebar: React.FC<GappNewSidebarProps> = ({
 
         {/* Subtle Logout / Exit row at very bottom */}
         <div className="mt-2.5 px-2 flex items-center justify-between text-[11px] text-slate-400">
-          <span>GAPP Sistemas v10.7</span>
+          <span>GAPP Sistemas v10.8</span>
           <button
             type="button"
             onClick={onExitSystem}

@@ -1693,7 +1693,7 @@ export class CepeaService {
     if (soja) text += `• Soja Paranaguá: *R$ ${soja.price.toFixed(2)}/sc 60kg*\n\n`;
 
     text += `🔗 *Fonte Oficial:* cepea.esalq.usp.br\n`;
-    text += `💻 _GAPP Sistemas • Gestão Apuração do Boi v10.7_`;
+    text += `💻 _GAPP Sistemas • Gestão Apuração do Boi v10.8_`;
 
     const encoded = encodeURIComponent(text);
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
@@ -1772,7 +1772,7 @@ export class CepeaService {
         </table>
 
         <div style="margin-top: 30px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 10px; color: #666; display: flex; justify-content: space-between;">
-          <span>Grupo GAPP Sistemas • Gestão Apuração do Boi v10.7</span>
+          <span>Grupo GAPP Sistemas • Gestão Apuração do Boi v10.8</span>
           <span>Fonte: cepea.esalq.usp.br • B3 S.A. • Banco Central do Brasil</span>
         </div>
       </div>

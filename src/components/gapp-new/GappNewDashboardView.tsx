@@ -1043,7 +1043,7 @@ export const GappNewDashboardView: React.FC<GappNewDashboardViewProps> = ({
                   onClick={() => onNavigate('sheet')}
                   className="py-2.5 px-4 rounded-full bg-[#1b4b38] hover:bg-[#235e47] text-white font-bold text-xs transition cursor-pointer text-center"
                 >
-                  Abrir Planilha v10.7
+                  Abrir Planilha v10.8
                 </button>
                 <button
                   type="button"

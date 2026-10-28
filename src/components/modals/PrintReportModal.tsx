@@ -309,7 +309,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                   ERP APURAÇÃO DO BOI • RELATÓRIO GERAL DE PEDIDOS
                 </h1>
                 <p className="text-xs text-slate-600 font-semibold flex items-center gap-2 mt-0.5 flex-wrap">
-                  <span>BASE: PLANILHA DE COMPRAS DA DIREÇÃO v10.7</span>
+                  <span>BASE: PLANILHA DE COMPRAS DA DIREÇÃO v10.8</span>
                   <span>•</span>
                   <span className="text-emerald-700 font-bold">16 Filiais Consolidadas</span>
                   <span>•</span>
@@ -660,7 +660,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
 
           {/* Rodapé Informativo */}
           <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-400 font-mono gap-1">
-            <span>Grupo GAPP Sistemas • Patrick Pessoa • ERP Apuração do Boi v10.7 • 16 Lojas Consolidadas</span>
+            <span>Grupo GAPP Sistemas • Patrick Pessoa • ERP Apuração do Boi v10.8 • 16 Lojas Consolidadas</span>
             <span className="flex items-center gap-1 text-emerald-700 font-sans font-semibold">
               <ShieldCheck className="w-3.5 h-3.5" />
               Relatório Oficial Gerado em {emissionDateFormatted}
