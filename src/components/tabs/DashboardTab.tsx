@@ -35,6 +35,8 @@ import {
 } from 'recharts';
 import { NavigationTab } from '../Navigation';
 import { D3TrendsChart } from '../dashboard/D3TrendsChart';
+import { DeboningYieldKpiPanel } from '../dashboard/DeboningYieldKpiPanel';
+import { StorageService } from '../../services/storageService';
 
 interface DashboardTabProps {
   rows: SheetRowData[];
@@ -77,8 +79,16 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   // 1. CÁLCULO DOS INDICADORES DE PERFORMANCE (TOP CARD)
   // ----------------------------------------------------
   const performanceKPIs = useMemo(() => {
-    // Rendimento Médio de Carne Limpa: 76.0% padrão da desossa comercial (24% osso/sebo)
-    const baseYieldPercent = 76.0;
+    // Identificação do último lote processado para cálculo real de rendimento
+    const effectiveBatches = batches && batches.length > 0 ? batches : StorageService.getBatches();
+    const latestBatch = effectiveBatches.length > 0
+      ? [...effectiveBatches].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+      : null;
+
+    // Rendimento Médio apurado sobre o último lote processado (ou parâmetros do ERP)
+    const yieldParams = StorageService.getYieldParams();
+    const breakage = yieldParams?.breakagePercent || 25.0;
+    const baseYieldPercent = Number((100 - breakage).toFixed(1)); // Ex: 75.0% padrão de carne limpa
 
     // Cálculo da Margem de Contribuição Média ponderada por loja
     let totalRevenueSum = 0;
@@ -370,6 +380,11 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ---------------------------------------------------- */}
+      {/* PAINEL DE INDICADORES (KPIS) DE DESOSSA EM TEMPO REAL */}
+      {/* ---------------------------------------------------- */}
+      <DeboningYieldKpiPanel batches={batches} onNavigate={onNavigate} />
 
       {/* ---------------------------------------------------- */}
       {/* GRÁFICO D3.JS: TENDÊNCIA DE CUSTO X RENDIMENTO (30 DIAS) */}

@@ -12,6 +12,7 @@ import {
 } from '../../services/perishablesQuotesService';
 import { OFFICIAL_RJ_TV_PROMO_REGISTRY } from '../../services/perishableTvPromoRegistry';
 import { TvPromoDetailModal } from './TvPromoDetailModal';
+import { PriceHistoryModal } from './PriceHistoryModal';
 import { 
   Search, 
   RotateCcw, 
@@ -34,7 +35,8 @@ import {
   Radio,
   Tag,
   TrendingDown,
-  Pin
+  Pin,
+  History
 } from 'lucide-react';
 
 interface PerishablesQuotesViewProps {
@@ -68,6 +70,37 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
     promo: PerishableTvPromoOffer;
     stats: any;
   } | null>(null);
+
+  // Modal de Histórico de Preços (4 Semanas)
+  const [selectedHistory, setSelectedHistory] = useState<{
+    isOpen: boolean;
+    product: PerishableProductItem | null;
+    chainId?: string;
+    stats?: any;
+  }>({
+    isOpen: false,
+    product: null
+  });
+
+  const handleOpenPriceHistory = (
+    product: PerishableProductItem,
+    chainId?: string,
+    stats?: any
+  ) => {
+    setSelectedHistory({
+      isOpen: true,
+      product,
+      chainId,
+      stats: stats || PerishablesQuotesService.calculateProductStats(product)
+    });
+  };
+
+  const handleClosePriceHistory = () => {
+    setSelectedHistory({
+      isOpen: false,
+      product: null
+    });
+  };
 
   // Edição inline de preço
   const [editingCell, setEditingCell] = useState<{ productId: string; chainId: string } | null>(null);
@@ -727,8 +760,16 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                           {product.unit.replace('R$/', '')}
                         </span>
                       </div>
-                      <div className="text-[10px] text-slate-400 font-normal truncate max-w-[250px] font-sans mt-0.5">
-                        {product.specification}
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 font-normal truncate max-w-[250px] font-sans mt-0.5">
+                        <span className="truncate">{product.specification}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPriceHistory(product, undefined, stats)}
+                          className="shrink-0 ml-1 p-0.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded transition cursor-pointer flex items-center"
+                          title="Ver histórico de preços (4 semanas)"
+                        >
+                          <History className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                        </button>
                       </div>
                     </td>
 
@@ -786,6 +827,19 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                           ) : (
                             <div className="flex items-center justify-end gap-1">
                               <span>{price > 0 ? `R$ ${price.toFixed(2)}` : '-'}</span>
+                              {price > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenPriceHistory(product, chain.id, stats);
+                                  }}
+                                  className="p-0.5 rounded text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 opacity-60 group-hover:opacity-100 transition shrink-0 cursor-pointer"
+                                  title={`Ver evolução de 4 semanas no ${chain.shortName}`}
+                                >
+                                  <History className="w-3 h-3" />
+                                </button>
+                              )}
                               <Edit3 className="w-2.5 h-2.5 text-slate-300 opacity-0 group-hover:opacity-100 transition shrink-0" />
                             </div>
                           )}
@@ -862,7 +916,17 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
 
                     {/* Média RJ */}
                     <td className="py-3 px-2.5 text-right font-black text-slate-900 dark:text-white bg-slate-100/70 dark:bg-slate-800/70">
-                      R$ {stats.avgPrice.toFixed(2)}
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span>R$ {stats.avgPrice.toFixed(2)}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPriceHistory(product, undefined, stats)}
+                          className="p-1 rounded text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-100/60 dark:hover:bg-emerald-950/60 transition cursor-pointer"
+                          title="Ver gráfico de evolução do preço médio no RJ (4 semanas)"
+                        >
+                          <History className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        </button>
+                      </div>
                     </td>
 
                     {/* Spread */}
@@ -1016,6 +1080,17 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
           product={selectedTvPromoProduct.product}
           promo={selectedTvPromoProduct.promo}
           stats={selectedTvPromoProduct.stats}
+        />
+      )}
+
+      {/* Modal / Popover de Histórico de Evolução de Preços (Últimas 4 Semanas) */}
+      {selectedHistory.isOpen && selectedHistory.product && (
+        <PriceHistoryModal
+          isOpen={selectedHistory.isOpen}
+          onClose={handleClosePriceHistory}
+          product={selectedHistory.product}
+          initialChainId={selectedHistory.chainId}
+          stats={selectedHistory.stats}
         />
       )}
     </div>

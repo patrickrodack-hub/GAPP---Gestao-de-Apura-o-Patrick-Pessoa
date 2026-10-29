@@ -22,6 +22,7 @@ import {
   LayoutGrid,
   CheckCircle2
 } from 'lucide-react';
+import { DeboningYieldKpiPanel } from '../dashboard/DeboningYieldKpiPanel';
 
 interface GappNewDashboardViewProps {
   rows: SheetRowData[];
@@ -919,6 +920,9 @@ export const GappNewDashboardView: React.FC<GappNewDashboardViewProps> = ({
               </div>
             </div>
           </div>
+
+          {/* 1.5. PAINEL DE KPIS DE DESOSSA & RENDIMENTO MÉDIO EM TEMPO REAL (ÚLTIMO LOTE) */}
+          <DeboningYieldKpiPanel batches={batches} onNavigate={onNavigate} />
 
           {/* 2. BOTTOM ROW LEFT/CENTER: 100% RATIO CARD + DEEP FOREST FEATURED CARD */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
