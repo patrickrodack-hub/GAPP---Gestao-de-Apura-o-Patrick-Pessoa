@@ -38,19 +38,24 @@ export class ManualPdfService {
     const logoBase64 = await this.getLogoBase64();
 
     const addHeader = (title: string, sectionNumber?: string) => {
-      doc.setFillColor(15, 23, 42); // Slate 900
+      doc.setFillColor(17, 56, 41); // #113829
       doc.rect(0, 0, pageWidth, 20, 'F');
+      doc.setFillColor(181, 229, 80); // #b5e550
+      doc.rect(0, 19.3, pageWidth, 0.7, 'F');
+
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(margin, 2.5, 14.5, 14.5, 2, 2, 'F');
 
       if (logoBase64) {
         try {
-          doc.addImage(logoBase64, 'PNG', margin, 3, 14, 14);
+          doc.addImage(logoBase64, 'PNG', margin + 0.5, 3, 13.5, 13.5);
         } catch {}
       }
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8);
-      doc.setTextColor(245, 158, 11); // Amber 500
-      doc.text('GRUPO GAPP SISTEMAS • ERP GESTÃO APURAÇÃO DO BOI v10.8', margin + 18, 8);
+      doc.setTextColor(181, 229, 80);
+      doc.text('GAPP - PATRICK PESSOA • ERP GESTÃO APURAÇÃO DO BOI v10.8', margin + 18, 8);
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
@@ -60,21 +65,29 @@ export class ManualPdfService {
       if (sectionNumber) {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
-        doc.setTextColor(148, 163, 184);
+        doc.setTextColor(203, 213, 225);
         doc.text(sectionNumber, pageWidth - margin, 12, { align: 'right' });
       }
     };
 
     const addFooter = (pageNum: number, totalPages: number) => {
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.3);
+      doc.setDrawColor(17, 56, 41);
+      doc.setLineWidth(0.35);
       doc.line(margin, pageHeight - 10, pageWidth - margin, pageHeight - 10);
 
-      doc.setFont('helvetica', 'normal');
+      let textX = margin;
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, 'PNG', margin, pageHeight - 8.5, 5.5, 5.5);
+          textX = margin + 7;
+        } catch {}
+      }
+
+      doc.setFont('helvetica', 'bold');
       doc.setFontSize(7);
-      doc.setTextColor(148, 163, 184);
-      doc.text('Manual do Usuário • Sistema ERP Gestão Apuração do Boi • Patrick Pessoa (Direção de Carnes)', margin, pageHeight - 6);
-      doc.text(`Página ${pageNum} de ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+      doc.setTextColor(17, 56, 41);
+      doc.text('GAPP - PATRICK PESSOA • Manual Oficial do Sistema ERP Gestão Apuração do Boi v10.8 • Desenvolvedor: Patrick Pessoa', textX, pageHeight - 5.5);
+      doc.text(`Página ${pageNum} de ${totalPages}`, pageWidth - margin, pageHeight - 5.5, { align: 'right' });
     };
 
     // -----------------------------------------------------------------------
@@ -99,7 +112,7 @@ export class ManualPdfService {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.setTextColor(245, 158, 11); // Amber 500
-    doc.text('GRUPO GAPP SISTEMAS • PATRICK PESSOA', pageWidth / 2, 82, { align: 'center' });
+    doc.text('GAPP - PATRICK PESSOA', pageWidth / 2, 82, { align: 'center' });
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(22);
@@ -129,7 +142,7 @@ export class ManualPdfService {
     doc.setFontSize(8.5);
     doc.setTextColor(241, 245, 249);
     doc.text('• Versão do Sistema: v10.8 (Build Oficial 1.8.0108)', margin + 15, 137);
-    doc.text('• Arquitetura: Solidcon Clássico ERP Engine + MDI Desktop Integrado', margin + 15, 143);
+    doc.text('• Arquitetura: GAPP - PATRICK PESSOA • Motor ERP & Gestão Integrada', margin + 15, 143);
     doc.text('• Abrangência da Rede: Matriz Consolidada de 16 Filiais', margin + 15, 149);
     doc.text('• Banco de Dados & Nuvem: PostgreSQL / Firestore Cloud Backup', margin + 15, 155);
     doc.text('• Data de Validação da Matriz: Quinta-feira, 1 de Outubro de 2026', margin + 15, 161);
@@ -461,19 +474,24 @@ export class ManualPdfService {
     const logoBase64 = await this.getLogoBase64();
 
     const addPortalHeader = (title: string, stepBadge?: string) => {
-      doc.setFillColor(6, 95, 70); // Emerald 800
+      doc.setFillColor(17, 56, 41); // #113829
       doc.rect(0, 0, pageWidth, 20, 'F');
+      doc.setFillColor(181, 229, 80);
+      doc.rect(0, 19.3, pageWidth, 0.7, 'F');
+
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(margin, 2.5, 14.5, 14.5, 2, 2, 'F');
 
       if (logoBase64) {
         try {
-          doc.addImage(logoBase64, 'PNG', margin, 3, 14, 14);
+          doc.addImage(logoBase64, 'PNG', margin + 0.5, 3, 13.5, 13.5);
         } catch {}
       }
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8);
-      doc.setTextColor(253, 224, 71); // Yellow 300
-      doc.text('GRUPO GAPP SISTEMAS • PORTAL DE ESTOQUE DAS 16 FILIAIS', margin + 18, 8);
+      doc.setTextColor(181, 229, 80);
+      doc.text('GAPP - PATRICK PESSOA • PORTAL DE ESTOQUE DAS 16 FILIAIS', margin + 18, 8);
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
@@ -489,15 +507,23 @@ export class ManualPdfService {
     };
 
     const addPortalFooter = (pageNum: number, totalPages: number) => {
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.3);
+      doc.setDrawColor(17, 56, 41);
+      doc.setLineWidth(0.35);
       doc.line(margin, pageHeight - 10, pageWidth - margin, pageHeight - 10);
 
-      doc.setFont('helvetica', 'normal');
+      let textX = margin;
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, 'PNG', margin, pageHeight - 8.5, 5.5, 5.5);
+          textX = margin + 7;
+        } catch {}
+      }
+
+      doc.setFont('helvetica', 'bold');
       doc.setFontSize(7);
-      doc.setTextColor(100, 116, 139);
-      doc.text('Manual Prático do Portal das Filiais • Guia Rápido do Operador e Encarregado de Açougue', margin, pageHeight - 6);
-      doc.text(`Página ${pageNum} de ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+      doc.setTextColor(17, 56, 41);
+      doc.text('GAPP - PATRICK PESSOA • Manual Prático do Portal das Filiais • Desenvolvedor: Patrick Pessoa', textX, pageHeight - 5.5);
+      doc.text(`Página ${pageNum} de ${totalPages}`, pageWidth - margin, pageHeight - 5.5, { align: 'right' });
     };
 
     // -----------------------------------------------------------------------

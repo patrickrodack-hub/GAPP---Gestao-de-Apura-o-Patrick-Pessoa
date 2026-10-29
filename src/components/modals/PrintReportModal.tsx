@@ -290,20 +290,20 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
           {/* Header Corporativo com Logotipos do Grupo GAPP e Data de Emissão */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b-2 border-slate-900 pb-3 gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-b from-[#1b2d1e] via-[#101912] to-[#0a100c] border-2 border-emerald-500/50 p-1.5 flex items-center justify-center shadow-md shrink-0">
+              <div className="w-16 h-12 rounded-xl bg-white border-2 border-emerald-600/60 p-1.5 flex items-center justify-center shadow-md shrink-0">
                 <img 
-                  src="/brand-logo.svg" 
-                  alt="Grupo GAPP - Patrick Pessoa" 
-                  className="w-full h-full object-contain filter drop-shadow"
+                  src="/patrick-pessoa-brand.png" 
+                  alt="GAPP - Patrick Pessoa" 
+                  className="w-full h-full object-contain"
                   onError={(e) => {
-                    e.currentTarget.src = '/patrick-pessoa-brand.png';
+                    e.currentTarget.src = '/brand-logo.svg';
                   }}
                 />
               </div>
 
               <div>
                 <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 font-mono block">
-                  Grupo GAPP Sistemas • Por Patrick Pessoa
+                  GAPP - PATRICK PESSOA • Gestão Integral de Compra Personalizado
                 </span>
                 <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
                   ERP APURAÇÃO DO BOI • RELATÓRIO GERAL DE PEDIDOS
@@ -644,7 +644,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
             <div>
               <div className="border-b border-slate-400 w-44 mx-auto mb-1" />
               <strong className="block text-slate-800 text-[11px]">Diretoria Operacional</strong>
-              <span className="text-[10px] text-slate-500">Grupo GAPP Sistemas</span>
+              <span className="text-[10px] text-slate-500">GAPP - PATRICK PESSOA</span>
             </div>
             <div>
               <div className="border-b border-slate-400 w-44 mx-auto mb-1" />
@@ -658,9 +658,19 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
             </div>
           </div>
 
-          {/* Rodapé Informativo */}
-          <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-400 font-mono gap-1">
-            <span>Grupo GAPP Sistemas • Patrick Pessoa • ERP Apuração do Boi v10.8 • 16 Lojas Consolidadas</span>
+          {/* Rodapé Informativo Padronizado com Logo */}
+          <div className="pt-2.5 border-t-2 border-emerald-800 flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-500 font-mono gap-2">
+            <div className="flex items-center gap-2">
+              <img 
+                src="/patrick-pessoa-brand.png" 
+                alt="GAPP - Patrick Pessoa" 
+                className="h-5 w-auto object-contain bg-white px-1 py-0.5 rounded border border-slate-200"
+                onError={(e) => { e.currentTarget.src = '/brand-logo.svg'; }}
+              />
+              <span>
+                <strong className="text-emerald-900">GAPP - PATRICK PESSOA</strong> • ERP Apuração do Boi v10.8 • Desenvolvedor: Patrick Pessoa
+              </span>
+            </div>
             <span className="flex items-center gap-1 text-emerald-700 font-sans font-semibold">
               <ShieldCheck className="w-3.5 h-3.5" />
               Relatório Oficial Gerado em {emissionDateFormatted}

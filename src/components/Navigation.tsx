@@ -11,7 +11,8 @@ import {
   Lock,
   Cloud,
   Activity,
-  Smartphone
+  Smartphone,
+  Layers
 } from 'lucide-react';
 import { SystemUser } from '../types/erp';
 
@@ -19,6 +20,7 @@ export type NavigationTab =
   | 'dashboard'
   | 'sheet'
   | 'quotes'
+  | 'perishables'
   | 'yield'
   | 'results'
   | 'inventory'
@@ -46,6 +48,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     { id: 'dashboard', label: 'Painel Geral', icon: LayoutDashboard, badge: null, shortcut: 'Alt+1' },
     { id: 'sheet', label: 'Planilha Direção v10.8', icon: FileSpreadsheet, badge: '16 Lojas', shortcut: 'Alt+2' },
     { id: 'quotes', label: 'Cotação em Tempo Real', icon: Activity, badge: 'Ao Vivo', shortcut: 'Alt+0' },
+    { id: 'perishables', label: 'Cotação de Perecíveis', icon: Layers, badge: '8 Abas RJ', shortcut: 'Alt+P' },
     { id: 'yield', label: 'Desossa & Rendimento', icon: Scissors, badge: 'Calculadora', shortcut: 'Alt+3' },
     { id: 'results', label: 'Apuração & Margens', icon: DollarSign, badge: 'DRE', shortcut: 'Alt+4' },
     { id: 'inventory', label: 'Estoque & Câmaras', icon: Boxes, badge: null, shortcut: 'Alt+5' },

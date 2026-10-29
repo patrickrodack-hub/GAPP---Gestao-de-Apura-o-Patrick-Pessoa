@@ -204,7 +204,7 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
                 Prévia de Impressão • Pedido de Compra Padrão
               </h3>
               <p className="text-[11px] text-blue-100">
-                Grupo GAPP Sistemas • Documento Oficial de Fornecimento de Gado
+                GAPP - PATRICK PESSOA • Documento Oficial de Fornecimento de Gado
               </p>
             </div>
           </div>
@@ -292,40 +292,44 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
         <div className="p-6 sm:p-10 overflow-y-auto bg-slate-100 print:bg-white print:p-0 print:overflow-visible">
           <div className="bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-slate-200 print:shadow-none print:border-none print:p-0 space-y-5 text-slate-900 font-sans">
             
-            {/* 1. Header do Documento */}
-            <div className="border-b-2 border-slate-900 pb-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            {/* 1. Header Oficial Padronizado com Logo */}
+            <div className="bg-[#113829] text-white p-4 rounded-xl border-b-4 border-[#b5e550] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md">
+              <div className="flex items-center gap-3.5">
+                <div className="w-14 h-14 bg-white rounded-xl p-1.5 flex items-center justify-center shadow-md shrink-0">
+                  <img
+                    src="/patrick-pessoa-brand.png"
+                    alt="GAPP - Patrick Pessoa"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      e.currentTarget.src = '/brand-logo.svg';
+                    }}
+                  />
+                </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-900 text-white px-2 py-0.5 rounded">
-                      Documento Oficial de Compra
-                    </span>
-                    <span className="text-[10px] font-bold text-slate-500 font-mono">
-                      v10.8 MATRIZ
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#b5e550]">
+                      GAPP - PATRICK PESSOA • GESTÃO INTEGRAL DE COMPRA PERSONALIZADO
                     </span>
                   </div>
-                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-1">
-                    GRUPO GAPP SISTEMAS
+                  <h1 className="text-lg sm:text-xl font-black text-white tracking-tight mt-0.5">
+                    PEDIDO DE COMPRA DE BOI PADRÃO • Nº {orderNumber}
                   </h1>
-                  <p className="text-xs font-bold text-amber-700 uppercase tracking-wide">
-                    PEDIDO DE COMPRA DE BOI PADRÃO
-                  </p>
-                  <p className="text-[11px] text-slate-600">
-                    Direção de Operações & Suprimentos • Patrick Pessoa
+                  <p className="text-[11px] text-slate-300">
+                    ERP Apuração do Boi v10.8 • Direção de Operações & Suprimentos • Desenvolvedor: Patrick Pessoa
                   </p>
                 </div>
+              </div>
 
-                <div className="text-left sm:text-right border-t sm:border-t-0 sm:border-l sm:border-slate-300 pt-2 sm:pt-0 sm:pl-6">
-                  <span className="text-sm font-mono font-bold text-blue-800 block">
-                    {orderNumber}
-                  </span>
-                  <span className="text-[11px] text-slate-600 block">
-                    Emissão: <strong>{todayStr}</strong>
-                  </span>
-                  <span className="text-[11px] text-emerald-700 font-semibold block">
-                    Previsão de Entrega: <strong>{deliveryDateStr}</strong>
-                  </span>
-                </div>
+              <div className="text-left sm:text-right bg-white/10 border border-white/20 rounded-lg px-3.5 py-2 text-xs text-slate-100 shrink-0">
+                <span className="text-sm font-mono font-black text-[#b5e550] block">
+                  {orderNumber}
+                </span>
+                <span className="text-[11px] text-slate-200 block">
+                  Emissão: <strong>{todayStr}</strong>
+                </span>
+                <span className="text-[11px] text-emerald-300 font-semibold block">
+                  Previsão de Entrega: <strong>{deliveryDateStr}</strong>
+                </span>
               </div>
             </div>
 
@@ -502,7 +506,7 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
             <div className="pt-6 grid grid-cols-3 gap-6 text-center text-xs">
               <div className="border-t border-slate-900 pt-2">
                 <span className="font-bold text-slate-900 block text-[11px]">Patrick Pessoa</span>
-                <span className="text-[10px] text-slate-600 block">Comprador / Direção Geral GRUPO GAPP</span>
+                <span className="text-[10px] text-slate-600 block">Comprador / Direção Geral • GAPP - PATRICK PESSOA</span>
               </div>
               <div className="border-t border-slate-900 pt-2">
                 <span className="font-bold text-slate-900 block text-[11px]">Gerência de Logística & Câmaras</span>
@@ -514,9 +518,29 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
               </div>
             </div>
 
-            {/* Rodapé institucional */}
-            <div className="text-center pt-2 border-t border-slate-200 text-[9px] text-slate-400">
-              Grupo GAPP Sistemas • Sistema de Apuração e Compra do Boi • Documento gerado eletronicamente em {todayStr} às {new Date().toLocaleTimeString('pt-BR')}
+            {/* Rodapé Institucional Padronizado com Logo */}
+            <div className="mt-3 pt-2.5 px-3 py-2 bg-slate-50 border-t-2 border-[#113829] rounded-b-lg flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-slate-600">
+              <div className="flex items-center gap-2.5">
+                <img
+                  src="/patrick-pessoa-brand.png"
+                  alt="Logo GAPP"
+                  className="w-6 h-6 object-contain bg-white rounded border border-slate-300 p-0.5"
+                  onError={(e) => {
+                    e.currentTarget.src = '/brand-logo.svg';
+                  }}
+                />
+                <div className="text-left">
+                  <div className="font-extrabold text-[#113829]">
+                    GAPP - PATRICK PESSOA • Sistema ERP Apuração do Boi v10.8 • Gestão Integral de Compra Personalizado
+                  </div>
+                  <div className="text-[9px] text-slate-500">
+                    Desenvolvedor & Direção do Sistema: <strong>Patrick Pessoa</strong> • Documento Oficial Padronizado
+                  </div>
+                </div>
+              </div>
+              <div className="font-semibold text-slate-700">
+                Emitido em {todayStr} às {new Date().toLocaleTimeString('pt-BR')}
+              </div>
             </div>
 
           </div>

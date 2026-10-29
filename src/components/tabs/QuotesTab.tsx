@@ -17,6 +17,7 @@ import {
 } from '../../services/marketQuotesService';
 import { CepeaQuotesView } from '../quotes/CepeaQuotesView';
 import { MarketSyncStatusBar } from '../quotes/MarketSyncStatusBar';
+import { PerishablesQuotesView } from '../quotes/PerishablesQuotesView';
 import { formatCurrencyBRL } from '../../services/calculationService';
 import { 
   TrendingUp, 
@@ -56,18 +57,20 @@ interface QuotesTabProps {
   yieldParams?: YieldParams;
   onUpdateYieldParams?: (params: any) => void;
   showToast?: (message: string) => void;
+  initialSection?: 'cepea' | 'foco_rj' | 'cortes' | 'pracas' | 'b3_futuros' | 'varejo_rj' | 'pereciveis_rj' | 'simulador_rj' | 'suino' | 'carcacas' | 'graxaria' | 'indicadores' | 'arbitragem' | 'fontes';
 }
 
 export const QuotesTab: React.FC<QuotesTabProps> = ({
   yieldParams,
   onUpdateYieldParams,
-  showToast
+  showToast,
+  initialSection
 }) => {
   const [snapshot, setSnapshot] = useState<MarketQuotesSnapshot>(() => MarketQuotesService.getQuotesSnapshot());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeSection, setActiveSection] = useState<
-    'cepea' | 'foco_rj' | 'cortes' | 'pracas' | 'b3_futuros' | 'varejo_rj' | 'simulador_rj' | 'suino' | 'carcacas' | 'graxaria' | 'indicadores' | 'arbitragem' | 'fontes'
-  >('cepea');
+    'cepea' | 'foco_rj' | 'cortes' | 'pracas' | 'b3_futuros' | 'varejo_rj' | 'pereciveis_rj' | 'simulador_rj' | 'suino' | 'carcacas' | 'graxaria' | 'indicadores' | 'arbitragem' | 'fontes'
+  >(initialSection || 'cepea');
 
   // Filtros de cortes
   const [cutSearchQuery, setCutSearchQuery] = useState('');
@@ -746,11 +749,12 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
           { id: 'pracas', label: '3. Praças Pecuárias Brasil', count: snapshot.regionalQuotes.length, badge: '19 Praças' },
           { id: 'b3_futuros', label: '4. B3 Futuros & Relações de Troca', badge: 'BGI & ESALQ' },
           { id: 'varejo_rj', label: '5. Varejo 12 Redes RJ', count: snapshot.rjRetailBenchmarks.length, badge: 'ASSERJ/Scantec' },
-          { id: 'simulador_rj', label: '6. Simulador Frete Posto RJ', badge: 'Logística' },
-          { id: 'suino', label: '7. Suíno (Carcaça & Vivo)', count: snapshot.cutQuotes.filter(c => c.category === 'suino').length, badge: 'Banda & Vivo' },
-          { id: 'carcacas', label: '8. Carcaças & Quartos Atacado', count: snapshot.carcassQuotes.length },
-          { id: 'graxaria', label: '9. Graxaria (Sebo & Osso)', count: 3, badge: 'Crédito Boi' },
-          { id: 'fontes', label: '10. Fontes Oficiais & Metodologia', badge: 'Transparência' }
+          { id: 'pereciveis_rj', label: '🍗 Cotação de Perecíveis (8 Abas)', count: 8, badge: 'FRANGO, LEITE, CARNES & +' },
+          { id: 'simulador_rj', label: '7. Simulador Frete Posto RJ', badge: 'Logística' },
+          { id: 'suino', label: '8. Suíno (Carcaça & Vivo)', count: snapshot.cutQuotes.filter(c => c.category === 'suino').length, badge: 'Banda & Vivo' },
+          { id: 'carcacas', label: '9. Carcaças & Quartos Atacado', count: snapshot.carcassQuotes.length },
+          { id: 'graxaria', label: '10. Graxaria (Sebo & Osso)', count: 3, badge: 'Crédito Boi' },
+          { id: 'fontes', label: '11. Fontes Oficiais & Metodologia', badge: 'Transparência' }
         ].map(tab => (
           <button
             key={tab.id}
@@ -1977,7 +1981,12 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
         </div>
       )}
 
-      {/* SEÇÃO 6: SIMULADOR DE AQUISIÇÃO & LOGÍSTICA POSTO RJ */}
+      {/* SEÇÃO 6: COTAÇÃO DE PERECÍVEIS NO VAREJO RJ (7 SUB-ABAS) */}
+      {activeSection === 'pereciveis_rj' && (
+        <PerishablesQuotesView showToast={showToast} />
+      )}
+
+      {/* SEÇÃO 7: SIMULADOR DE AQUISIÇÃO & LOGÍSTICA POSTO RJ */}
       {activeSection === 'simulador_rj' && (
         <div className="space-y-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">

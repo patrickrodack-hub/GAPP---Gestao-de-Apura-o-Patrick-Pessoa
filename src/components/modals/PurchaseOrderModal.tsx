@@ -4,6 +4,7 @@ import { formatCurrencyBRL, formatNumberBR, recalculateRowOrderFormulas } from '
 import { StorageService } from '../../services/storageService';
 import { PrintPurchaseOrderModal } from './PrintPurchaseOrderModal';
 import { WhatsAppShareService } from '../../services/whatsAppShareService';
+import { ReportBrandingService } from '../../services/reportBrandingService';
 import { 
   ShoppingCart, 
   X, 
@@ -569,20 +570,20 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
   // 4. Exportar pedido de compra padrão para Excel (.xlsx)
   const handleExportOrderXLSX = async () => {
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Grupo GAPP Sistemas - Patrick Pessoa';
+    workbook.creator = 'GAPP - PATRICK PESSOA';
     const ws = workbook.addWorksheet('Pedido de Compra Padrão');
 
     ws.mergeCells('A1:U1');
     const titleCell = ws.getCell('A1');
-    titleCell.value = 'GRUPO GAPP SISTEMAS • PEDIDO DE COMPRA PADRÃO (BOVINO & SUÍNO)';
+    titleCell.value = 'GAPP - PATRICK PESSOA • PEDIDO DE COMPRA PADRÃO (BOVINO & SUÍNO)';
     titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
-    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004B87' } };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF113829' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-    ws.getRow(1).height = 30;
+    ws.getRow(1).height = 32;
 
     ws.mergeCells('A2:U2');
     const subCell = ws.getCell('A2');
-    subCell.value = `Pedido: ${orderNumber} • Emissão: ${todayStr} • Previsão: ${deliveryDateStr} • Fornecedor: ${selectedSupplierName} • Responsável: Patrick Pessoa • Custo Alcatrão: R$ ${alcatraoCostKg.toFixed(2)}/kg • Custo Costela: R$ ${costelaCostKg.toFixed(2)}/kg • Custo Banda: R$ ${bandaCostKg.toFixed(2)}/kg`;
+    subCell.value = `Sistema ERP Apuração do Boi v10.8 • Desenvolvedor: Patrick Pessoa • Pedido: ${orderNumber} • Emissão: ${todayStr} • Previsão: ${deliveryDateStr} • Fornecedor: ${selectedSupplierName}`;
     subCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF334155' } };
     subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
     subCell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -727,7 +728,14 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
     });
 
     ws.getColumn(1).width = 28;
-    for (let c = 2; c <= 19; c++) ws.getColumn(c).width = 15;
+    for (let c = 2; c <= 21; c++) ws.getColumn(c).width = 15;
+
+    await ReportBrandingService.embedExcelLogoAndFooter(
+      workbook,
+      ws,
+      21,
+      `GAPP-PO-${orderNumber}`
+    );
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -860,16 +868,28 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
           {/* Document Printable Header */}
           <div className="border border-slate-300 dark:border-slate-700 rounded-xl p-4 sm:p-5 bg-slate-50/70 dark:bg-slate-950/50 print:bg-white print:border-slate-800">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4 mb-4">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
-                  Matriz Central de Abastecimento
-                </span>
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-                  GRUPO GAPP SISTEMAS
-                </h1>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Sistema de Gestão e Apuração de Compra do Boi • Patrick Pessoa
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-12 rounded-xl bg-white border border-emerald-600/50 p-1.5 flex items-center justify-center shadow-sm shrink-0">
+                  <img
+                    src="/patrick-pessoa-brand.png"
+                    alt="GAPP - Patrick Pessoa"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      e.currentTarget.src = '/brand-logo.svg';
+                    }}
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
+                    GAPP - PATRICK PESSOA • Gestão Integral de Compra Personalizado
+                  </span>
+                  <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                    GAPP - PATRICK PESSOA
+                  </h1>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    Sistema de Gestão e Apuração de Compra do Boi v10.8 • Desenvolvedor: Patrick Pessoa
+                  </p>
+                </div>
               </div>
 
               <div className="text-right sm:border-l sm:border-slate-200 dark:sm:border-slate-800 sm:pl-6">

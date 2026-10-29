@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { SheetRowData, Store, StockLaunchRecord } from '../types/erp';
+import { ReportBrandingService } from './reportBrandingService';
 
 export interface GenerateLaunchPdfParams {
   record: StockLaunchRecord;
@@ -35,35 +36,20 @@ export class PortalLaunchPdfService {
     let currentY = margin;
 
     // ==========================================
-    // 1. CABEÇALHO OFICIAL COM IDENTIDADE GAPP
+    // 1. CABEÇALHO OFICIAL COM LOGO E PADRÃO GAPP - PATRICK PESSOA
     // ==========================================
-    // Barra superior decorativa
-    doc.setFillColor(15, 23, 42); // Slate 900
-    doc.rect(0, 0, pageWidth, 24, 'F');
-
-    doc.setFillColor(16, 185, 129); // Emerald 500
-    doc.rect(0, 24, pageWidth, 1.5, 'F');
-
-    // Título no cabeçalho
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(245, 158, 11); // Amber 500
-    doc.text('GRUPO GAPP SISTEMAS • COMPROVANTE OFICIAL DE LANÇAMENTO', margin, 9);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.setTextColor(255, 255, 255);
-    doc.text(`EXTRATO DE CONTAGEM DE ESTOQUE • ${store.name.toUpperCase()}`, margin, 17);
-
-    // Meta direita do cabeçalho
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(203, 213, 225); // Slate 300
-    doc.text(`Data: ${record.date}`, pageWidth - margin, 11, { align: 'right' });
-    doc.text(`Operador: ${operatorName}`, pageWidth - margin, 16, { align: 'right' });
-    doc.text(`ID: ${record.id}`, pageWidth - margin, 21, { align: 'right' });
-
-    currentY = 32;
+    currentY = await ReportBrandingService.drawPdfHeader(doc, {
+      title: `EXTRATO DE CONTAGEM DE ESTOQUE • ${store.name.toUpperCase()}`,
+      subtitle: `Comprovante Oficial de Lançamento da Filial (${store.code}) • Operador: ${operatorName}`,
+      departmentTag: 'COMPROVANTE OFICIAL DE LANÇAMENTO DE ESTOQUE',
+      rightMetaLines: [
+        `Data: ${record.date}`,
+        `Operador: ${operatorName}`,
+        `ID: ${record.id}`
+      ],
+      themeColor: 'forest'
+    });
+    currentY += 2;
 
     // ==========================================
     // 2. QUADRO RESUMO & STATUS "RECEBEU BOI HOJE"
@@ -320,7 +306,7 @@ export class PortalLaunchPdfService {
     doc.setFontSize(7.5);
     doc.setTextColor(15, 23, 42);
     doc.text(operatorName, margin + 40, footerStartY + 18, { align: 'center' });
-    doc.text('Direção de Carnes / Matriz GAPP', pageWidth - margin - 40, footerStartY + 18, { align: 'center' });
+    doc.text('Direção de Carnes / GAPP - PATRICK PESSOA', pageWidth - margin - 40, footerStartY + 18, { align: 'center' });
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
@@ -328,11 +314,11 @@ export class PortalLaunchPdfService {
     doc.text(`Encarregado • ${store.name}`, margin + 40, footerStartY + 21, { align: 'center' });
     doc.text('Auditoria & Recebimento Oficial', pageWidth - margin - 40, footerStartY + 21, { align: 'center' });
 
-    // Rodapé de segurança
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
-    doc.setTextColor(148, 163, 184);
-    doc.text(`Grupo GAPP Sistemas • ERP Apuração do Boi v10.8 • Extrato Digital Autenticado: ${record.id} • Portal: https://gipp-site.vercel.app/`, margin, pageHeight - 5);
+    // Rodapé Oficial Padronizado com Logo
+    await ReportBrandingService.drawPdfFooterAllPages(doc, {
+      documentCode: record.id,
+      extraRightText: `Filial: ${store.name}`
+    });
 
     // Gera arquivo e blob
     const dateFileStr = emissionDate.toISOString().slice(0, 10);
@@ -376,7 +362,7 @@ export class PortalLaunchPdfService {
 
     // 2. Monta texto estruturado completo para o WhatsApp
     const messageLines = [
-      `🥩 *GRUPO GAPP SISTEMAS • EXTRATO DE LANÇAMENTO*`,
+      `🥩 *GAPP - PATRICK PESSOA • EXTRATO DE LANÇAMENTO*`,
       `📅 *Data/Hora:* ${record.date}`,
       `🏪 *Filial:* ${store.name} (${store.code})`,
       `👤 *Encarregado:* ${operatorName}`,
@@ -415,7 +401,7 @@ export class PortalLaunchPdfService {
       notes.trim() ? `📝 *Observações:* ${notes.trim()}\n` : '',
       `📄 _O Extrato Oficial em PDF foi gerado pelo sistema com todos os detalhes._`,
       `🌐 _Portal Oficial:_ https://gipp-site.vercel.app/`,
-      `🔒 _Autenticação Grupo GAPP • v10.8_`
+      `🔒 _Autenticação GAPP - PATRICK PESSOA • v10.8_`
     ].filter(Boolean);
 
     const messageText = messageLines.join('\n');

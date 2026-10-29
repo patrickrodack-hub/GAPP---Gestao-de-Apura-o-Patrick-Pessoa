@@ -276,10 +276,17 @@ export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
             {/* Sheet Timbre / Header */}
             <div className="flex items-center justify-between pb-3 mb-3 border-b-2 border-emerald-700">
               <div className="flex items-center gap-3">
-                <img src="/patrick-pessoa-brand.png" alt="Grupo GAPP" className="h-9 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                <div className="w-16 h-11 rounded-lg bg-white border border-emerald-600/60 p-1 flex items-center justify-center shadow-sm shrink-0">
+                  <img 
+                    src="/patrick-pessoa-brand.png" 
+                    alt="GAPP - Patrick Pessoa" 
+                    className="w-full h-full object-contain" 
+                    onError={(e) => { e.currentTarget.src = '/brand-logo.svg'; }} 
+                  />
+                </div>
                 <div>
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 block">
-                    GRUPO GAPP SISTEMAS • PATRICK PESSOA
+                    GAPP - PATRICK PESSOA • GESTÃO INTEGRAL DE COMPRA PERSONALIZADO
                   </span>
                   <h2 className="text-base font-black text-emerald-800 uppercase tracking-tight">
                     PLANILHA OFICIAL DE COMPRAS E APURAÇÃO DO BOI
@@ -587,7 +594,7 @@ export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
                 <div className="border-t border-slate-400 pt-1.5 font-bold">
                   Diretoria Operacional & Matriz
                 </div>
-                <span className="text-[10px] text-slate-400">Grupo GAPP Sistemas</span>
+                <span className="text-[10px] text-slate-400">GAPP - PATRICK PESSOA</span>
               </div>
               <div>
                 <div className="border-t border-slate-400 pt-1.5 font-bold">
@@ -601,6 +608,24 @@ export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
                 </div>
                 <span className="text-[10px] text-slate-400">Auditoria Oficial</span>
               </div>
+            </div>
+
+            {/* Rodapé Padronizado com Logo Oficial */}
+            <div className="mt-4 pt-2.5 border-t-2 border-emerald-800 flex items-center justify-between text-[10px] text-slate-500 font-mono">
+              <div className="flex items-center gap-2">
+                <img 
+                  src="/patrick-pessoa-brand.png" 
+                  alt="GAPP - Patrick Pessoa" 
+                  className="h-5 w-auto object-contain bg-white px-1 py-0.5 rounded border border-slate-200"
+                  onError={(e) => { e.currentTarget.src = '/brand-logo.svg'; }}
+                />
+                <span>
+                  <strong className="text-emerald-900">GAPP - PATRICK PESSOA</strong> • Sistema ERP Apuração do Boi v10.8 • Desenvolvedor: Patrick Pessoa
+                </span>
+              </div>
+              <span className="text-emerald-800 font-bold">
+                Autenticação: GAPP-SHEET-OFFICIAL-v10.8 • Emissão: {emissionDateFormatted} às {emissionTimeFormatted}
+              </span>
             </div>
           </div>
         </div>

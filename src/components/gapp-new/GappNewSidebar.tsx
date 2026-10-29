@@ -19,7 +19,8 @@ import {
   Lock,
   Sparkles,
   LogOut,
-  X
+  X,
+  Layers
 } from 'lucide-react';
 import { NavigationTab } from '../Navigation';
 import { SystemUser } from '../../types/erp';
@@ -75,6 +76,7 @@ export const GappNewSidebar: React.FC<GappNewSidebarProps> = ({
     { id: 'results', label: 'Apuração & Margens', icon: DollarSign },
     { id: 'purchases', label: 'Compras & Lotes', icon: ShoppingCart },
     { id: 'quotes', label: 'Cotações Ao Vivo', icon: Activity },
+    { id: 'perishables', label: 'Cotação de Perecíveis', icon: Layers, badge: '8 Abas RJ' },
     { id: 'waste', label: 'Descarte (Sebo/Osso)', icon: Bone },
   ];
 

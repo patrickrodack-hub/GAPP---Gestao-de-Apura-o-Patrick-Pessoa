@@ -114,6 +114,18 @@ export const getERPMenuCategories = (
         targetTab: 'quotes'
       },
       {
+        id: 'arq-pereciveis',
+        name: 'Cotação de Perecíveis (8 Sub-abas Balcão RJ)',
+        division: 'Mercado & Auditoria Balcão RJ',
+        code: 'PER-01',
+        shortcut: 'Alt+P',
+        badge: '12 Redes RJ',
+        description: 'Frango, carne seca, miúdos, suíno salgado, charque, queijos, linguiça e leite UHT 1L nas 12 redes do RJ',
+        icon: Layers,
+        actionType: 'tab',
+        targetTab: 'perishables'
+      },
+      {
         id: 'arq-painel',
         name: 'Painel Geral de Indicadores (Dashboard)',
         division: 'Controladoria & Gestão',
@@ -788,7 +800,7 @@ export const getERPMenuCategories = (
       {
         id: 'win-wallpaper',
         name: 'Alternar Janela / Área de Trabalho Metálica 3D',
-        division: 'Interface Solidcon',
+        division: 'Interface Desktop',
         code: 'WIN-01',
         badge: 'Logo 3D',
         description: 'Minimiza todas as janelas e exibe o papel de parede metálico',

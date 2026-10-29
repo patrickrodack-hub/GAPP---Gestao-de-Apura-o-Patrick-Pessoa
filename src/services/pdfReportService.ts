@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { SheetRowData, Store, Supplier } from '../types/erp';
 import { formatCurrencyBRL, formatNumberBR, calculateSheetTotals } from './calculationService';
 import { StorageService } from './storageService';
+import { ReportBrandingService } from './reportBrandingService';
 
 export interface GeneratePdfReportOptions {
   rows: SheetRowData[];
@@ -135,60 +136,18 @@ export class PdfReportService {
     const pageHeight = doc.internal.pageSize.getHeight(); // 210mm
     const margin = 8;
 
-    // 1. Cabeçalho Corporativo com Logo do Grupo GAPP
-    const logoBase64 = await this.getLogoBase64();
-    if (logoBase64) {
-      try {
-        doc.addImage(logoBase64, 'PNG', margin, margin, 18, 18);
-      } catch (e) {
-        console.warn('Não foi possível renderizar a imagem do logo no PDF:', e);
-      }
-    }
-
-    const headerLeftX = logoBase64 ? margin + 22 : margin;
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(180, 83, 9); // Amber 700
-    doc.text('GRUPO GAPP SISTEMAS • GESTÃO AGROINDUSTRIAL INTEGRADA', headerLeftX, margin + 4);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.setTextColor(15, 23, 42); // Slate 900
-    doc.text(title, headerLeftX, margin + 10);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Base: Planilha de Compras da Direção • Responsável: ${currentUser} • 16 Filiais Consolidadas (Bovino & Suíno)`, headerLeftX, margin + 15);
-
-    // Caixa de Informações de Emissão (Canto Superior Direito)
-    const rightBoxWidth = 88;
-    const rightBoxX = pageWidth - margin - rightBoxWidth;
-
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(rightBoxX, margin, rightBoxWidth, 18, 2, 2, 'FD');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(15, 23, 42);
-    doc.text('DATA DE EMISSÃO DO RELATÓRIO:', rightBoxX + 4, margin + 5);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(51, 65, 85);
-    doc.text(`${emissionDateFormatted} às ${emissionTimeFormatted}`, rightBoxX + 4, margin + 9.5);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Autenticação: ${hashAuth} • Base: ${yieldBasis}`, rightBoxX + 4, margin + 14);
-
-    // Linha divisória corporativa
-    doc.setDrawColor(0, 75, 135);
-    doc.setLineWidth(0.8);
-    doc.line(margin, margin + 22, pageWidth - margin, margin + 22);
+    // 1. Cabeçalho Corporativo Padronizado com Logo Oficial (GAPP - PATRICK PESSOA)
+    await ReportBrandingService.drawPdfHeader(doc, {
+      title: title,
+      subtitle: `Base: Planilha de Compras da Direção • Responsável: ${currentUser} • 16 Filiais Consolidadas (Bovino & Suíno)`,
+      departmentTag: 'RELATÓRIO GERENCIAL DE PEDIDOS DA MATRIZ',
+      rightMetaLines: [
+        `Emissão: ${emissionDateFormatted} às ${emissionTimeFormatted}`,
+        `Autenticação: ${hashAuth}`,
+        `Base: ${yieldBasis}`
+      ],
+      themeColor: 'forest'
+    });
 
     // 2. Cards de Destaque / KPIs Resumidos
     const kpiY = margin + 24;
@@ -396,7 +355,7 @@ export class PdfReportService {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(6.5);
         doc.setTextColor(71, 85, 105);
-        doc.text('Diretoria Operacional / Grupo GAPP', margin + 10 + sigWidth / 2, sigY + 3.5, { align: 'center' });
+        doc.text('Diretoria Operacional / GAPP - PATRICK PESSOA', margin + 10 + sigWidth / 2, sigY + 3.5, { align: 'center' });
 
         // Assinatura 2: Gerência de Carnes
         const sig2X = (pageWidth - sigWidth) / 2;
@@ -407,22 +366,12 @@ export class PdfReportService {
         const sig3X = pageWidth - margin - sigWidth - 10;
         doc.line(sig3X, sigY, sig3X + sigWidth, sigY);
         doc.text('Controladoria & Auditoria Matriz', sig3X + sigWidth / 2, sigY + 3.5, { align: 'center' });
-
-        // Linha final do rodapé
-        doc.setDrawColor(226, 232, 240);
-        doc.setLineWidth(0.3);
-        doc.line(margin, footerY + 8, pageWidth - margin, footerY + 8);
-
-        // Textos de rodapé
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(6.5);
-        doc.setTextColor(148, 163, 184);
-        doc.text('Grupo GAPP Sistemas • ERP Apuração do Boi v10.8 • Relatório com base na Planilha de Compras', margin, footerY + 12);
-
-        const totalPages = doc.getNumberOfPages();
-        const pageStr = `Página ${data.pageNumber} de ${totalPages}`;
-        doc.text(pageStr, pageWidth - margin, footerY + 12, { align: 'right' });
       }
+    });
+
+    await ReportBrandingService.drawPdfFooterAllPages(doc, {
+      documentCode: hashAuth,
+      extraRightText: 'Relatório com base na Planilha de Compras'
     });
 
     const dateFileStr = emissionDate.toISOString().split('T')[0];
@@ -477,51 +426,23 @@ export class PdfReportService {
     const pageHeight = doc.internal.pageSize.getHeight(); // 210mm
     const margin = 8;
 
-    // Logo
-    const logoBase64 = await this.getLogoBase64();
-    if (logoBase64) {
-      try {
-        doc.addImage(logoBase64, 'PNG', margin, margin, 14, 14);
-      } catch (e) {
-        console.warn('Não foi possível renderizar a imagem do logo no PDF:', e);
-      }
-    }
-
-    const headerLeftX = logoBase64 ? margin + 17 : margin;
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(180, 83, 9);
-    doc.text('GRUPO GAPP SISTEMAS • PATRICK PESSOA', headerLeftX, margin + 4);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(6, 95, 70);
-    doc.text(title, headerLeftX, margin + 9);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Matriz Oficial Consolidada de 16 Filiais • v10.8 • Validação de Compra & Apuração • Emissão: ${emissionDateFormatted} às ${emissionTimeFormatted}`, headerLeftX, margin + 13);
-
-    // Meta Direita
     const yieldParams = StorageService.getYieldParams();
     const alcatraoCost = yieldParams.alcatraoCostKg || 29.00;
     const costelaCost = yieldParams.costelaCostKg || 25.50;
     const bandaCost = yieldParams.bandaCostKg || 26.00;
     const boiCost = yieldParams.costPerKg || 26.00;
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Operador: ${currentUser}  |  Auth: ${hashAuth}`, pageWidth - margin, margin + 5, { align: 'right' });
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Custos Base: Alcatrão R$ ${alcatraoCost.toFixed(2)}/kg | Costela G. R$ ${costelaCost.toFixed(2)}/kg | Banda Suína R$ ${bandaCost.toFixed(2)}/kg | Boi R$ ${boiCost.toFixed(2)}/kg`, pageWidth - margin, margin + 9.5, { align: 'right' });
-
-    // Linha divisória topo
-    doc.setDrawColor(4, 120, 87);
-    doc.setLineWidth(0.6);
-    doc.line(margin, margin + 15, pageWidth - margin, margin + 15);
+    await ReportBrandingService.drawPdfHeader(doc, {
+      title: title,
+      subtitle: `Matriz Consolidada 16 Filiais • Custos: Boi R$ ${boiCost.toFixed(2)}/kg | Alcatrão R$ ${alcatraoCost.toFixed(2)}/kg | Costela R$ ${costelaCost.toFixed(2)}/kg | Banda R$ ${bandaCost.toFixed(2)}/kg`,
+      departmentTag: 'RELATÓRIO OFICIAL DA MATRIZ DE COMPRAS v10.8',
+      rightMetaLines: [
+        `Emissão: ${emissionDateFormatted} às ${emissionTimeFormatted}`,
+        `Operador: ${currentUser}`,
+        `Auth: ${hashAuth}`
+      ],
+      themeColor: 'forest'
+    });
 
     // Cabeçalhos Multinível (Tier 1 e Tier 2)
     const head: any[] = [
@@ -682,7 +603,7 @@ export class PdfReportService {
       head,
       body,
       foot,
-      startY: margin + 17,
+      startY: 27,
       margin: { left: margin, right: margin, bottom: 12 },
       styles: {
         fontSize: 5.2,
@@ -714,18 +635,12 @@ export class PdfReportService {
       },
       alternateRowStyles: {
         fillColor: [248, 250, 252]
-      },
-      didDrawPage: (data) => {
-        const footerY = pageHeight - 7;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(5.5);
-        doc.setTextColor(148, 163, 184);
-        doc.text('Grupo GAPP Sistemas • ERP Apuração do Boi v10.8 • Planilha de Compras Oficial • Patrick Pessoa', margin, footerY);
-
-        const totalPages = doc.getNumberOfPages();
-        const pageStr = `Página ${data.pageNumber} de ${totalPages}`;
-        doc.text(pageStr, pageWidth - margin, footerY, { align: 'right' });
       }
+    });
+
+    await ReportBrandingService.drawPdfFooterAllPages(doc, {
+      documentCode: hashAuth,
+      extraRightText: 'Planilha de Compras Oficial (16 Filiais)'
     });
 
     const dateFileStr = emissionDate.toISOString().split('T')[0];
@@ -770,40 +685,17 @@ export class PdfReportService {
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 8;
 
-    const logoBase64 = await this.getLogoBase64();
-    if (logoBase64) {
-      try {
-        doc.addImage(logoBase64, 'PNG', margin, margin, 14, 14);
-      } catch (e) {
-        console.warn('Não foi possível renderizar a imagem do logo no PDF:', e);
-      }
-    }
-
-    const headerLeftX = logoBase64 ? margin + 17 : margin;
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(180, 83, 9);
-    doc.text('GRUPO GAPP SISTEMAS • PATRICK PESSOA', headerLeftX, margin + 4);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(6, 95, 70);
-    doc.text(title, headerLeftX, margin + 9);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Matriz Oficial Consolidada de 16 Filiais • v10.8 • Validação de Compra & Apuração • Emissão: ${emissionDateFormatted} às ${emissionTimeFormatted}`, headerLeftX, margin + 13);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Operador: ${currentUser}  |  Auth: ${hashAuth}`, pageWidth - margin, margin + 5, { align: 'right' });
-
-    doc.setDrawColor(4, 120, 87);
-    doc.setLineWidth(0.6);
-    doc.line(margin, margin + 15, pageWidth - margin, margin + 15);
+    await ReportBrandingService.drawPdfHeader(doc, {
+      title: title,
+      subtitle: 'Matriz Oficial Consolidada de 16 Filiais • v10.8 • Validação de Compra & Apuração',
+      departmentTag: 'RELATÓRIO OFICIAL DA MATRIZ DE COMPRAS v10.8',
+      rightMetaLines: [
+        `Emissão: ${emissionDateFormatted} às ${emissionTimeFormatted}`,
+        `Operador: ${currentUser}`,
+        `Auth: ${hashAuth}`
+      ],
+      themeColor: 'forest'
+    });
 
     const head: any[] = [
       [
@@ -901,7 +793,7 @@ export class PdfReportService {
       head,
       body,
       foot,
-      startY: margin + 17,
+      startY: 27,
       margin: { left: margin, right: margin, bottom: 12 },
       styles: {
         fontSize: 5.2,
@@ -933,18 +825,12 @@ export class PdfReportService {
       },
       alternateRowStyles: {
         fillColor: [248, 250, 252]
-      },
-      didDrawPage: (data) => {
-        const footerY = pageHeight - 7;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(5.5);
-        doc.setTextColor(148, 163, 184);
-        doc.text('Grupo GAPP Sistemas • ERP Apuração do Boi v10.8 • Planilha de Compras Oficial • Patrick Pessoa', margin, footerY);
-
-        const totalPages = doc.getNumberOfPages();
-        const pageStr = `Página ${data.pageNumber} de ${totalPages}`;
-        doc.text(pageStr, pageWidth - margin, footerY, { align: 'right' });
       }
+    });
+
+    await ReportBrandingService.drawPdfFooterAllPages(doc, {
+      documentCode: hashAuth,
+      extraRightText: 'Planilha de Compras Oficial (16 Filiais)'
     });
 
     const dateFileStr = emissionDate.toISOString().split('T')[0];
@@ -983,47 +869,17 @@ export class PdfReportService {
     const pageHeight = doc.internal.pageSize.getHeight(); // 210mm
     const margin = 10;
 
-    const logoBase64 = await this.getLogoBase64();
-    if (logoBase64) {
-      try {
-        doc.addImage(logoBase64, 'PNG', margin, margin, 15, 15);
-      } catch {}
-    }
-
-    const headerLeftX = logoBase64 ? margin + 18 : margin;
-
-    // Header Top Texts
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(180, 83, 9);
-    doc.text('GRUPO GAPP SISTEMAS • DOCUMENTO OFICIAL DE COMPRA DE GADO', headerLeftX, margin + 4);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.setTextColor(0, 75, 135);
-    doc.text(`PEDIDO DE COMPRA Nº ${orderNumber}`, headerLeftX, margin + 10);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Fornecedor / Frigorífico: ${supplierName}  |  Emissão: ${todayStr}  |  Previsão Entrega: ${deliveryDateStr}`, headerLeftX, margin + 15);
-
-    // Meta Box Right
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(pageWidth - margin - 88, margin, 88, 16, 2, 2, 'FD');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
-    doc.setTextColor(15, 23, 42);
-    doc.text(`Cotação da @: R$ ${arrobaPrice.toFixed(2)} (@ 15kg)  |  Custo Boi: R$ ${pricePerKg.toFixed(2)}/kg`, pageWidth - margin - 85, margin + 4.5);
-    doc.text(`Custos: Alcatrão: R$ ${alcatraoCostKg.toFixed(2)}/kg | Costela G: R$ ${costelaCostKg.toFixed(2)}/kg | Banda: R$ ${bandaCostKg.toFixed(2)}/kg`, pageWidth - margin - 85, margin + 8.5);
-    doc.text(`Responsável: ${currentUser}`, pageWidth - margin - 85, margin + 13);
-
-    // Linha divisória
-    doc.setDrawColor(0, 75, 135);
-    doc.setLineWidth(0.5);
-    doc.line(margin, margin + 18, pageWidth - margin, margin + 18);
+    await ReportBrandingService.drawPdfHeader(doc, {
+      title: `PEDIDO DE COMPRA Nº ${orderNumber} • ${supplierName}`,
+      subtitle: `Fornecedor / Frigorífico: ${supplierName}  |  Emissão: ${todayStr}  |  Previsão Entrega: ${deliveryDateStr}`,
+      departmentTag: 'DOCUMENTO OFICIAL DE COMPRA DE GADO & SUÍNO',
+      rightMetaLines: [
+        `Cotação @: R$ ${arrobaPrice.toFixed(2)} (R$ ${pricePerKg.toFixed(2)}/kg)`,
+        `Alcatrão R$ ${alcatraoCostKg.toFixed(2)} | Costela R$ ${costelaCostKg.toFixed(2)} | Banda R$ ${bandaCostKg.toFixed(2)}`,
+        `Responsável: ${currentUser}`
+      ],
+      themeColor: 'forest'
+    });
 
     // Tabela de Itens do Pedido por Filial
     const head: any[] = [
@@ -1135,33 +991,27 @@ export class PdfReportService {
       alternateRowStyles: {
         fillColor: [248, 250, 252]
       },
-      didDrawPage: (data) => {
-        // Observações e Assinaturas no rodapé
-        const footerY = pageHeight - 16;
-        doc.setDrawColor(203, 213, 225);
-        doc.line(margin, footerY, pageWidth - margin, footerY);
-
+      didDrawPage: () => {
+        // Observações e Resumo de Custos antes do rodapé padronizado
+        const footerY = pageHeight - 18;
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(6.5);
+        doc.setFontSize(6.2);
         doc.setTextColor(71, 85, 105);
         if (notes) {
-          doc.text(`Observações: ${notes}`, margin, footerY + 4);
+          doc.text(`Observações: ${notes}`, margin, footerY);
         }
 
-        // Resumo analítico com os custos de compra
         const resumoCustos = `Valores e Custos: Cotação @ R$ ${arrobaPrice.toFixed(2)} (R$ ${pricePerKg.toFixed(2)}/kg) | Alcatrão R$ ${alcatraoCostKg.toFixed(2)}/kg (${totalPedAlc} pç) | Costela G. R$ ${costelaCostKg.toFixed(2)}/kg (${totalPedCost} pç) | Banda Suína R$ ${bandaCostKg.toFixed(2)}/kg (${totalBandas} pç)`;
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(6);
+        doc.setFontSize(5.8);
         doc.setTextColor(100, 116, 139);
-        doc.text(resumoCustos, margin, footerY + 7.5);
-
-        doc.setFontSize(6);
-        doc.setTextColor(148, 163, 184);
-        doc.text('Grupo GAPP Sistemas • Documento de Compra de Gado • Patrick Pessoa • Validação Oficial', margin, footerY + 11);
-
-        const pageStr = `Página ${data.pageNumber} de ${doc.getNumberOfPages()}`;
-        doc.text(pageStr, pageWidth - margin, footerY + 11, { align: 'right' });
+        doc.text(resumoCustos, margin, footerY + 3.8);
       }
+    });
+
+    await ReportBrandingService.drawPdfFooterAllPages(doc, {
+      documentCode: `PEDIDO-${orderNumber}`,
+      extraRightText: `Fornecedor: ${supplierName}`
     });
 
     const safeSupplier = supplierName.replace(/[^a-zA-Z0-9]/g, '_');

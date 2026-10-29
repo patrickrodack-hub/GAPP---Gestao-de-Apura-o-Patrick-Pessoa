@@ -17,6 +17,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { PrintEngineService } from './printEngineService';
+import { ReportBrandingService } from './reportBrandingService';
 
 const QUOTES_STORAGE_KEY = 'apuracao_boi_market_quotes_v8';
 
@@ -2468,37 +2469,20 @@ export class MarketQuotesService {
       format: 'a4',
     });
 
-    const pageWidth = doc.internal.pageSize.getWidth(); // 210mm
-    const pageHeight = doc.internal.pageSize.getHeight(); // 297mm
+    const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 12;
-    const logoBase64 = await this.getLogoBase64();
 
-    // Top Header
-    doc.setFillColor(15, 23, 42); // Slate 900
-    doc.rect(0, 0, pageWidth, 24, 'F');
-
-    if (logoBase64) {
-      try {
-        doc.addImage(logoBase64, 'PNG', margin, 3, 18, 18);
-      } catch {}
-    }
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(245, 158, 11); // Amber 500
-    doc.text('GRUPO GAPP SISTEMAS • BOLETIM OFICIAL DE COTAÇÃO EM TEMPO REAL', margin + 22, 9);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.setTextColor(255, 255, 255);
-    doc.text('MERCADO PECUÁRIO NACIONAL & FOCO RIO DE JANEIRO', margin + 22, 17);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(148, 163, 184);
-    doc.text(`Atualização: ${snapshot.lastUpdatedDate} • Fontes: CEPEA/ESALQ, B3 S.A., Scot Consultoria, Ceasa Irajá RJ, ASSERJ, Scantec RJ, NielsenIQ`, margin + 22, 22);
-
-    let y = 30;
+    let y = await ReportBrandingService.drawPdfHeader(doc, {
+      title: 'MERCADO PECUÁRIO NACIONAL & FOCO RIO DE JANEIRO',
+      subtitle: `Atualização: ${snapshot.lastUpdatedDate} • Fontes: CEPEA/ESALQ, B3 S.A., Scot Consultoria, Ceasa Irajá RJ, ASSERJ`,
+      departmentTag: 'BOLETIM OFICIAL DE COTAÇÃO EM TEMPO REAL',
+      rightMetaLines: [
+        `Data: ${snapshot.lastUpdatedDate}`,
+        'Sistema: GAPP - PATRICK PESSOA v10.8',
+        'Desenvolvedor: Patrick Pessoa'
+      ],
+      themeColor: 'forest'
+    });
 
     // 1. INDICADORES GERAIS OFICIAIS & B3 FUTUROS
     doc.setFont('helvetica', 'bold');
@@ -2661,20 +2645,11 @@ export class MarketQuotesService {
       theme: 'grid'
     });
 
-    // Footer
-    const totalPages = (doc.internal as any).getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.3);
-      doc.line(margin, pageHeight - 10, pageWidth - margin, pageHeight - 10);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.setTextColor(148, 163, 184);
-      doc.text('Boletim de Cotação em Tempo Real • Grupo GAPP Sistemas ERP • Patrick Pessoa (Direção de Carnes)', margin, pageHeight - 6);
-      doc.text(`Página ${i} de ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
-    }
+    // Footer Oficial Padronizado com Logo
+    await ReportBrandingService.drawPdfFooterAllPages(doc, {
+      documentCode: 'GAPP-BOLETIM-COTACAO-RJ',
+      extraRightText: 'Boletim de Cotação em Tempo Real'
+    });
 
     const dateStr = new Date().toISOString().split('T')[0];
     doc.save(`Boletim_Cotacao_RJ_Brasil_GAPP_${dateStr}.pdf`);
@@ -2754,49 +2729,23 @@ export class MarketQuotesService {
     });
 
     const pageWidth = doc.internal.pageSize.getWidth(); // 297mm
-    const pageHeight = doc.internal.pageSize.getHeight(); // 210mm
     const margin = 12;
-    const logoBase64 = await this.getLogoBase64();
-
-    // 1. Top Header Banner Corporativo (Verde Floresta / Executivo #113829)
-    doc.setFillColor(17, 56, 41);
-    doc.rect(0, 0, pageWidth, 24, 'F');
-
-    // Accent line inferior no topo (Verde-lima #b5e550)
-    doc.setFillColor(181, 229, 80);
-    doc.rect(0, 23.5, pageWidth, 0.7, 'F');
-
-    if (logoBase64) {
-      try {
-        doc.addImage(logoBase64, 'PNG', margin, 3, 18, 18);
-      } catch {}
-    }
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(181, 229, 80);
-    doc.text('GRUPO GAPP SISTEMAS • AUDITORIA OFICIAL DE VAREJO & BENCHMARKING DE BALCÃO', margin + 22, 7.5);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.setTextColor(255, 255, 255);
-    doc.text('PREÇOS PRATICADOS NO BALCÃO DE 12 REDES SUPERMERCADISTAS DO RIO DE JANEIRO', margin + 22, 14.5);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(226, 232, 240);
-    doc.text('Amostragem comparativa de preços por corte nos supermercados do Grande Rio, Baixada Fluminense, Niterói e Região Metropolitana', margin + 22, 19.8);
 
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     const emissionDateStr = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} às ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(203, 213, 225);
-    doc.text('Base: NielsenIQ Retail Index • Scantec Sell-Out RJ • ASSERJ', pageWidth - margin, 7.5, { align: 'right' });
-    doc.text(`Emissão: ${emissionDateStr} • Relatório Dinâmico`, pageWidth - margin, 14.5, { align: 'right' });
-    doc.text('Direção de Carnes: Patrick Pessoa • ERP v10.8', pageWidth - margin, 19.8, { align: 'right' });
+    await ReportBrandingService.drawPdfHeader(doc, {
+      title: 'PREÇOS PRATICADOS NO BALCÃO DE 12 REDES SUPERMERCADISTAS DO RIO DE JANEIRO',
+      subtitle: 'Amostragem comparativa de preços por corte nos supermercados do Grande Rio, Baixada Fluminense, Niterói e Região Metropolitana',
+      departmentTag: 'AUDITORIA OFICIAL DE VAREJO & BENCHMARKING DE BALCÃO',
+      rightMetaLines: [
+        'Base: NielsenIQ • Scantec • ASSERJ',
+        `Emissão: ${emissionDateStr}`,
+        'Desenvolvedor: Patrick Pessoa'
+      ],
+      themeColor: 'forest'
+    });
 
     // 2. Cálculos Estatísticos Consolidados das 12 Redes
     const cuts = [
@@ -3049,24 +2998,11 @@ export class MarketQuotesService {
     doc.text(note2, margin + 3, finalY + 11.5);
     doc.text(note3, margin + 3, finalY + 15);
 
-    // 6. Rodapé da Página
-    const totalPages = (doc.internal as any).getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.3);
-      doc.line(margin, pageHeight - 7, pageWidth - margin, pageHeight - 7);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(6.2);
-      doc.setTextColor(148, 163, 184);
-      doc.text(
-        'Grupo GAPP Sistemas ERP • Relatório de Auditoria de Balcão 12 Redes Supermercadistas RJ • Direção Técnica: Patrick Pessoa',
-        margin,
-        pageHeight - 3.8
-      );
-      doc.text(`Página ${i} de ${totalPages} • Documento Oficial Autenticado`, pageWidth - margin, pageHeight - 3.8, { align: 'right' });
-    }
+    // 6. Rodapé da Página Padronizado com Logo
+    await ReportBrandingService.drawPdfFooterAllPages(doc, {
+      documentCode: 'GAPP-AUDITORIA-12REDES-RJ',
+      extraRightText: 'Auditoria de Balcão 12 Redes RJ'
+    });
 
     const dateFileStr = new Date().toISOString().split('T')[0];
     doc.save(`Auditoria_Precos_Balcao_12_Redes_RJ_GAPP_${dateFileStr}.pdf`);
@@ -3323,18 +3259,17 @@ export class MarketQuotesService {
         </style>
       </head>
       <body>
-        <div class="header-banner">
-          <div>
-            <span class="header-badge">Auditoria de Mercado RJ</span>
-            <h1 class="header-title">Preços Praticados no Balcão de 12 Redes Supermercadistas do Rio de Janeiro</h1>
-            <p class="header-sub">Amostragem comparativa de preços por corte nos supermercados do Grande Rio, Baixada Fluminense, Niterói e Região Metropolitana</p>
-          </div>
-          <div class="header-meta">
+        ${ReportBrandingService.getHtmlHeader({
+          title: 'Preços Praticados no Balcão de 12 Redes Supermercadistas do Rio de Janeiro',
+          subtitle: 'Amostragem comparativa de preços por corte nos supermercados do Grande Rio, Baixada Fluminense, Niterói e Região Metropolitana',
+          departmentTag: 'AUDITORIA OFICIAL DE VAREJO & BENCHMARKING DE BALCÃO RJ',
+          rightMetaHtml: `
             <div><strong>Base:</strong> NielsenIQ • Scantec • ASSERJ</div>
             <div><strong>Emissão:</strong> ${emissionDateStr}</div>
-            <div><strong>Direção:</strong> Patrick Pessoa • ERP GAPP</div>
-          </div>
-        </div>
+            <div><strong>Sistema:</strong> GAPP - PATRICK PESSOA</div>
+          `,
+          themeColor: 'forest'
+        })}
 
         <div class="kpi-grid">
           <div class="kpi-card">
@@ -3448,10 +3383,10 @@ export class MarketQuotesService {
           <strong>Notas Metodológicas:</strong> Levantamento comparativo semanal em lojas físicas, encartes promocionais e sell-out das 12 principais redes supermercadistas e atacarejos do Estado do Rio de Janeiro. Indicadores balizados por NielsenIQ Retail Index, Scantec Sell-Out RJ e chancela da ASSERJ. Utilizado para calibragem de metas de margem comercial e precificação no ERP Apuração do Boi.
         </div>
 
-        <div class="footer-auth">
-          <div>Grupo GAPP Sistemas ERP • Gestão Apuração do Boi v10.8 • Patrick Pessoa</div>
-          <div>Documento Oficial Autenticado • Impressão em Alta Resolução</div>
-        </div>
+        ${ReportBrandingService.getHtmlFooter({
+          documentCode: 'GAPP-AUDITORIA-12REDES-RJ',
+          extraRightText: 'Documento Oficial Autenticado • Impressão em Alta Resolução'
+        })}
       </body>
       </html>
     `;
@@ -3473,7 +3408,7 @@ export class MarketQuotesService {
     const emissionDateStr = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} às ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Grupo GAPP Sistemas - Patrick Pessoa';
+    workbook.creator = 'GAPP - PATRICK PESSOA';
     workbook.created = new Date();
 
     const ws = workbook.addWorksheet('Auditoria Balcão 12 Redes RJ', {
@@ -3484,7 +3419,7 @@ export class MarketQuotesService {
     // Title Row
     ws.mergeCells('A1:K1');
     const title = ws.getCell('A1');
-    title.value = 'GRUPO GAPP SISTEMAS • AUDITORIA OFICIAL DE PREÇOS NO BALCÃO DE 12 REDES DO RIO DE JANEIRO';
+    title.value = 'GAPP - PATRICK PESSOA • AUDITORIA OFICIAL DE PREÇOS NO BALCÃO DE 12 REDES DO RIO DE JANEIRO';
     title.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
     title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF113829' } };
     title.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -3655,6 +3590,13 @@ export class MarketQuotesService {
     ws.getColumn(10).width = 17; // Pernil
     ws.getColumn(11).width = 46; // Fonte
 
+    await ReportBrandingService.embedExcelLogoAndFooter(
+      workbook,
+      ws,
+      11,
+      'Auditoria Oficial de Preços no Balcão de 12 Redes Supermercadistas do RJ'
+    );
+
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -3681,7 +3623,7 @@ export class MarketQuotesService {
     const emissionDateStr = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} às ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
     const lines = [
-      `🥩 *GRUPO GAPP SISTEMAS • AUDITORIA DE MERCADO RJ*`,
+      `🥩 *GAPP - PATRICK PESSOA • AUDITORIA DE MERCADO RJ*`,
       `📊 *PREÇOS PRATICADOS NO BALCÃO DE 12 REDES SUPERMERCADISTAS RJ*`,
       `📍 *Amostragem:* Grande Rio, Baixada Fluminense, Niterói e Região Metropolitana`,
       `📅 *Atualização:* ${emissionDateStr}`,
@@ -3695,7 +3637,7 @@ export class MarketQuotesService {
         `  - Costela: R$ ${b.sampleCutPrices.costela.toFixed(2)} | *Pernil Suíno:* R$ ${b.sampleCutPrices.pernilSuino.toFixed(2)}`
       ),
       ``,
-      `🔒 _Relatório Oficial Grupo GAPP Sistemas ERP • Patrick Pessoa_`
+      `🔒 _Relatório Oficial GAPP - PATRICK PESSOA • ERP v10.8 • Patrick Pessoa_`
     ];
 
     const messageText = lines.join('\n');

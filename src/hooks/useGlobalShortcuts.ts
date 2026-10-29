@@ -124,6 +124,10 @@ export function useGlobalShortcuts({
             e.preventDefault();
             onNavigateTab('devices');
             return;
+          case 'KeyE':
+            e.preventDefault();
+            onNavigateTab('perishables');
+            return;
           case 'KeyX':
             e.preventDefault();
             onExportXLSX();

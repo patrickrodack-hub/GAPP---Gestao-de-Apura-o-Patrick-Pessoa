@@ -11,6 +11,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { PrintEngineService } from './printEngineService';
+import { ReportBrandingService } from './reportBrandingService';
 
 const CEPEA_STORAGE_KEY = 'gapp_cepea_quotes_snapshot_v2';
 
@@ -1291,28 +1292,18 @@ export class CepeaService {
     });
 
     const primaryGreen: [number, number, number] = [17, 56, 41];
-    const accentLime: [number, number, number] = [181, 229, 80];
 
-    // Cabeçalho Oficial CEPEA
-    doc.setFillColor(...primaryGreen);
-    doc.rect(0, 0, 210, 32, 'F');
-
-    // Faixa Lime Accent
-    doc.setFillColor(...accentLime);
-    doc.rect(0, 32, 210, 2, 'F');
-
-    // Título
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(15);
-    doc.setFont('helvetica', 'bold');
-    doc.text('CEPEA / ESALQ - USP • BOLETIM OFICIAL DE MERCADO AGROPECUÁRIO', 14, 13);
-
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Centro de Estudos Avançados em Economia Aplicada • Escola Superior de Agricultura Luiz de Queiroz - USP', 14, 19);
-    doc.text(`Sincronização em Tempo Real: ${snapshot.lastUpdated} • Dólar PTAX: R$ ${snapshot.dolarPtax.toFixed(4)}/US$ • Status: ${snapshot.marketStatus}`, 14, 25);
-
-    let startY = 40;
+    const startY = await ReportBrandingService.drawPdfHeader(doc, {
+      title: 'CEPEA / ESALQ - USP • BOLETIM OFICIAL DE MERCADO AGROPECUÁRIO',
+      subtitle: `Centro de Estudos Avançados em Economia Aplicada • ESALQ/USP • Dólar PTAX: R$ ${snapshot.dolarPtax.toFixed(4)}/US$`,
+      departmentTag: 'INTELIGÊNCIA DE MERCADO & INDICADORES CEPEA/B3',
+      rightMetaLines: [
+        `Sincronização: ${snapshot.lastUpdated}`,
+        'Sistema: GAPP - PATRICK PESSOA v10.8',
+        'Desenvolvedor: Patrick Pessoa'
+      ],
+      themeColor: 'forest'
+    });
 
     // 1. BOVINOS CEPEA
     doc.setTextColor(...primaryGreen);
@@ -1505,21 +1496,10 @@ export class CepeaService {
       }
     });
 
-    // Rodapé de Autenticidade
-    const pageCount = (doc as any).internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFillColor(245, 247, 245);
-      doc.rect(0, 287, 210, 10, 'F');
-      doc.setTextColor(100, 110, 100);
-      doc.setFontSize(7);
-      doc.text(
-        `Grupo GAPP • Boletim Oficial CEPEA/ESALQ - USP • Sincronização em Tempo Real • Página ${i} de ${pageCount}`,
-        14,
-        293
-      );
-      doc.text('Fonte Oficial: cepea.esalq.usp.br • B3 S.A. • Banco Central do Brasil', 196, 293, { align: 'right' });
-    }
+    await ReportBrandingService.drawPdfFooterAllPages(doc, {
+      documentCode: 'GAPP-CEPEA-ESALQ',
+      extraRightText: 'Fonte: cepea.esalq.usp.br • B3 S.A.'
+    });
 
     doc.save(`Boletim_Oficial_CEPEA_GAPP_${new Date().toISOString().slice(0, 10)}.pdf`);
   }
@@ -1530,7 +1510,7 @@ export class CepeaService {
   static async exportCepeaToExcel(): Promise<void> {
     const snapshot = this.getSnapshot();
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Grupo GAPP - Sistema de Gestão Apuração do Boi';
+    workbook.creator = 'GAPP - PATRICK PESSOA';
     workbook.created = new Date();
 
     // Aba 1: Bovinos & Suínos CEPEA
@@ -1649,6 +1629,10 @@ export class CepeaService {
       });
     });
 
+    await ReportBrandingService.embedExcelLogoAndFooter(workbook, wsMeat, 14, 'Boletim Oficial CEPEA/ESALQ - USP');
+    await ReportBrandingService.embedExcelLogoAndFooter(workbook, wsAll, 10, 'Commodities CEPEA/ESALQ - USP');
+    await ReportBrandingService.embedExcelLogoAndFooter(workbook, wsRatios, 8, 'Relações de Troca Zootécnicas CEPEA');
+
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
@@ -1674,7 +1658,7 @@ export class CepeaService {
     const milho = snapshot.quotes.find(q => q.id === 'cepea-milho-sp');
     const soja = snapshot.quotes.find(q => q.id === 'cepea-soja-pr');
 
-    let text = `🏛️ *CEPEA/ESALQ - USP • COTAÇÕES OFICIAIS EM TEMPO REAL*\n`;
+    let text = `🏛️ *GAPP - PATRICK PESSOA • CEPEA/ESALQ - USP EM TEMPO REAL*\n`;
     text += `📅 _${snapshot.lastUpdated}_ | Dólar PTAX: *R$ ${snapshot.dolarPtax.toFixed(4)}*\n\n`;
 
     text += `🐂 *BOVINOS CEPEA/B3:*\n`;
@@ -1693,89 +1677,103 @@ export class CepeaService {
     if (soja) text += `• Soja Paranaguá: *R$ ${soja.price.toFixed(2)}/sc 60kg*\n\n`;
 
     text += `🔗 *Fonte Oficial:* cepea.esalq.usp.br\n`;
-    text += `💻 _GAPP Sistemas • Gestão Apuração do Boi v10.8_`;
+    text += `💻 _GAPP - PATRICK PESSOA • Gestão Apuração do Boi v10.8 • Patrick Pessoa_`;
 
     const encoded = encodeURIComponent(text);
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
   }
 
   /**
-   * Imprime o boletim CEPEA
+   * Imprime o boletim CEPEA com Cabeçalho e Rodapé Padronizados e Logo Oficial
    */
   static printCepeaReport(): void {
     const snapshot = this.getSnapshot();
     const bovinos = snapshot.quotes.filter(q => q.category === 'bovino');
     const suinos = snapshot.quotes.filter(q => q.category === 'suino');
 
-    const html = `
-      <div style="font-family: Arial, sans-serif; padding: 20px; color: #111;">
-        <div style="background-color: #113829; color: white; padding: 18px 24px; border-radius: 12px; margin-bottom: 24px;">
-          <h1 style="margin: 0; font-size: 20px; letter-spacing: 0.5px;">CEPEA / ESALQ - USP • COTAÇÕES OFICIAIS AGROPECUÁRIAS</h1>
-          <p style="margin: 6px 0 0; font-size: 12px; color: #b5e550;">
-            Centro de Estudos Avançados em Economia Aplicada • Escola Superior de Agricultura Luiz de Queiroz
-          </p>
-          <p style="margin: 4px 0 0; font-size: 11px; opacity: 0.9;">
-            Atualização: ${snapshot.lastUpdated} | Dólar PTAX: R$ ${snapshot.dolarPtax.toFixed(4)} | Status: ${snapshot.marketStatus}
-          </p>
-        </div>
+    const headerHtml = ReportBrandingService.getHtmlHeader({
+      title: 'CEPEA / ESALQ - USP • COTAÇÕES OFICIAIS AGROPECUÁRIAS',
+      subtitle: `Centro de Estudos Avançados em Economia Aplicada • ESALQ/USP • Dólar PTAX: R$ ${snapshot.dolarPtax.toFixed(4)} • Status: ${snapshot.marketStatus}`,
+      departmentTag: 'INTELIGÊNCIA DE MERCADO & INDICADORES CEPEA/B3',
+      emissionDateStr: snapshot.lastUpdated,
+      themeColor: 'forest'
+    });
 
-        <h2 style="color: #113829; font-size: 15px; border-bottom: 2px solid #113829; padding-bottom: 4px;">1. Bovinos CEPEA (Boi Gordo, Bezerro e Carcaças)</h2>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 11px;">
+    const footerHtml = ReportBrandingService.getHtmlFooter({
+      documentCode: 'GAPP-CEPEA-ESALQ',
+      extraRightText: 'Fonte: cepea.esalq.usp.br • B3 S.A. • Banco Central do Brasil'
+    });
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="utf-8" />
+        <title>Boletim Oficial CEPEA / ESALQ - USP - GAPP - PATRICK PESSOA</title>
+        <style>
+          @page { size: A4 portrait; margin: 10mm; }
+          * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #111; background: #fff; }
+        </style>
+      </head>
+      <body>
+        ${headerHtml}
+
+        <h2 style="color: #113829; font-size: 13px; border-bottom: 2px solid #113829; padding-bottom: 4px; margin-top: 10px;">1. Bovinos CEPEA (Boi Gordo, Bezerro e Carcaças)</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 10px;">
           <thead>
-            <tr style="background-color: #f0f4f1; border-bottom: 2px solid #cad5cc;">
-              <th style="padding: 8px; text-align: left;">Código</th>
-              <th style="padding: 8px; text-align: left;">Indicador</th>
-              <th style="padding: 8px; text-align: left;">Praça</th>
-              <th style="padding: 8px; text-align: right;">Cotação R$</th>
-              <th style="padding: 8px; text-align: center;">Var. Dia</th>
-              <th style="padding: 8px; text-align: center;">Faixa 30d</th>
+            <tr style="background-color: #113829; color: #ffffff;">
+              <th style="padding: 6px; text-align: left;">Código</th>
+              <th style="padding: 6px; text-align: left;">Indicador</th>
+              <th style="padding: 6px; text-align: left;">Praça</th>
+              <th style="padding: 6px; text-align: right;">Cotação R$</th>
+              <th style="padding: 6px; text-align: center;">Var. Dia</th>
+              <th style="padding: 6px; text-align: center;">Faixa 30d</th>
             </tr>
           </thead>
           <tbody>
             ${bovinos.map(b => `
               <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 8px; font-weight: bold; font-family: monospace;">${b.code}</td>
-                <td style="padding: 8px; font-weight: bold;">${b.name}</td>
-                <td style="padding: 8px;">${b.marketPraca}</td>
-                <td style="padding: 8px; text-align: right; font-weight: bold; font-family: monospace;">R$ ${b.price.toFixed(2)} ${b.unit}</td>
-                <td style="padding: 8px; text-align: center; font-weight: bold; color: ${b.changeDay >= 0 ? '#15803d' : '#b91c1c'};">${b.changeDay >= 0 ? '+' : ''}${b.changeDay.toFixed(2)}%</td>
-                <td style="padding: 8px; text-align: center; font-family: monospace;">${b.min30d.toFixed(2)} - ${b.max30d.toFixed(2)}</td>
+                <td style="padding: 6px; font-weight: bold; font-family: monospace;">${b.code}</td>
+                <td style="padding: 6px; font-weight: bold;">${b.name}</td>
+                <td style="padding: 6px;">${b.marketPraca}</td>
+                <td style="padding: 6px; text-align: right; font-weight: bold; font-family: monospace;">R$ ${b.price.toFixed(2)} ${b.unit}</td>
+                <td style="padding: 6px; text-align: center; font-weight: bold; color: ${b.changeDay >= 0 ? '#15803d' : '#b91c1c'};">${b.changeDay >= 0 ? '+' : ''}${b.changeDay.toFixed(2)}%</td>
+                <td style="padding: 6px; text-align: center; font-family: monospace;">${b.min30d.toFixed(2)} - ${b.max30d.toFixed(2)}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
 
-        <h2 style="color: #113829; font-size: 15px; border-bottom: 2px solid #113829; padding-bottom: 4px;">2. Suínos CEPEA (Suíno Vivo e Carcaça Especial)</h2>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 11px;">
+        <h2 style="color: #113829; font-size: 13px; border-bottom: 2px solid #113829; padding-bottom: 4px;">2. Suínos CEPEA (Suíno Vivo e Carcaça Especial)</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 10px;">
           <thead>
-            <tr style="background-color: #f0f4f1; border-bottom: 2px solid #cad5cc;">
-              <th style="padding: 8px; text-align: left;">Código</th>
-              <th style="padding: 8px; text-align: left;">Indicador Suíno</th>
-              <th style="padding: 8px; text-align: left;">Praça Regional</th>
-              <th style="padding: 8px; text-align: right;">Cotação R$</th>
-              <th style="padding: 8px; text-align: center;">Var. Dia</th>
-              <th style="padding: 8px; text-align: center;">Faixa 30d</th>
+            <tr style="background-color: #113829; color: #ffffff;">
+              <th style="padding: 6px; text-align: left;">Código</th>
+              <th style="padding: 6px; text-align: left;">Indicador Suíno</th>
+              <th style="padding: 6px; text-align: left;">Praça Regional</th>
+              <th style="padding: 6px; text-align: right;">Cotação R$</th>
+              <th style="padding: 6px; text-align: center;">Var. Dia</th>
+              <th style="padding: 6px; text-align: center;">Faixa 30d</th>
             </tr>
           </thead>
           <tbody>
             ${suinos.map(s => `
               <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 8px; font-weight: bold; font-family: monospace;">${s.code}</td>
-                <td style="padding: 8px; font-weight: bold;">${s.name}</td>
-                <td style="padding: 8px;">${s.marketPraca}</td>
-                <td style="padding: 8px; text-align: right; font-weight: bold; font-family: monospace;">R$ ${s.price.toFixed(2)} ${s.unit}</td>
-                <td style="padding: 8px; text-align: center; font-weight: bold; color: ${s.changeDay >= 0 ? '#15803d' : '#b91c1c'};">${s.changeDay >= 0 ? '+' : ''}${s.changeDay.toFixed(2)}%</td>
-                <td style="padding: 8px; text-align: center; font-family: monospace;">${s.min30d.toFixed(2)} - ${s.max30d.toFixed(2)}</td>
+                <td style="padding: 6px; font-weight: bold; font-family: monospace;">${s.code}</td>
+                <td style="padding: 6px; font-weight: bold;">${s.name}</td>
+                <td style="padding: 6px;">${s.marketPraca}</td>
+                <td style="padding: 6px; text-align: right; font-weight: bold; font-family: monospace;">R$ ${s.price.toFixed(2)} ${s.unit}</td>
+                <td style="padding: 6px; text-align: center; font-weight: bold; color: ${s.changeDay >= 0 ? '#15803d' : '#b91c1c'};">${s.changeDay >= 0 ? '+' : ''}${s.changeDay.toFixed(2)}%</td>
+                <td style="padding: 6px; text-align: center; font-family: monospace;">${s.min30d.toFixed(2)} - ${s.max30d.toFixed(2)}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
 
-        <div style="margin-top: 30px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 10px; color: #666; display: flex; justify-content: space-between;">
-          <span>Grupo GAPP Sistemas • Gestão Apuração do Boi v10.8</span>
-          <span>Fonte: cepea.esalq.usp.br • B3 S.A. • Banco Central do Brasil</span>
-        </div>
-      </div>
+        ${footerHtml}
+      </body>
+      </html>
     `;
 
     PrintEngineService.printDocument(html, { documentTitle: 'Boletim Oficial CEPEA / ESALQ - USP' });

@@ -8,6 +8,7 @@ import { DashboardTab } from './components/tabs/DashboardTab';
 import { SheetTab } from './components/tabs/SheetTab';
 import { YieldTab } from './components/tabs/YieldTab';
 import { QuotesTab } from './components/tabs/QuotesTab';
+import { PerishablesQuotesView } from './components/quotes/PerishablesQuotesView';
 import { ResultsTab } from './components/tabs/ResultsTab';
 import { InventoryTab } from './components/tabs/InventoryTab';
 import { PurchasesTab } from './components/tabs/PurchasesTab';
@@ -704,6 +705,7 @@ export default function App() {
         dashboard: 'Painel Geral (Alt+1)',
         sheet: 'Planilha Direção v10.8 (Alt+2)',
         quotes: 'Cotação em Tempo Real (Alt+0)',
+        perishables: 'Cotação de Perecíveis (Alt+P)',
         yield: 'Desossa & Rendimento (Alt+3)',
         results: 'DRE & Margens (Alt+4)',
         inventory: 'Estoque & Câmaras (Alt+5)',
@@ -746,6 +748,8 @@ export default function App() {
     switch (activeTab) {
       case 'sheet': return 'Planilha de Compra da Direção v10.8 (Matriz 16 Filiais)';
       case 'dashboard': return 'Painel Executivo Geral';
+      case 'quotes': return 'Cotações em Tempo Real (CEPEA, B3 & Hub RJ)';
+      case 'perishables': return 'Cotação de Perecíveis • 12 Redes Supermercadistas RJ (8 Sub-abas)';
       case 'yield': return 'Rendimento e Desossa do Boi';
       case 'results': return 'Apuração de Resultados DRE e Margens';
       case 'inventory': return 'Controle de Estoque e Câmaras Frias';
@@ -1025,6 +1029,10 @@ export default function App() {
                       onUpdateYieldParams={handleUpdateYieldParams}
                       showToast={showToast}
                     />
+                  )}
+
+                  {activeTab === 'perishables' && (
+                    <PerishablesQuotesView showToast={showToast} />
                   )}
 
                   {activeTab === 'yield' && (
@@ -1362,6 +1370,10 @@ export default function App() {
                       />
                     )}
 
+                    {activeTab === 'perishables' && (
+                      <PerishablesQuotesView showToast={showToast} />
+                    )}
+
                     {activeTab === 'yield' && (
                       <YieldTab
                         yieldParams={yieldParams}
@@ -1539,6 +1551,10 @@ export default function App() {
                   onUpdateYieldParams={handleUpdateYieldParams}
                   showToast={showToast}
                 />
+              )}
+
+              {activeTab === 'perishables' && (
+                <PerishablesQuotesView showToast={showToast} />
               )}
 
               {activeTab === 'yield' && (

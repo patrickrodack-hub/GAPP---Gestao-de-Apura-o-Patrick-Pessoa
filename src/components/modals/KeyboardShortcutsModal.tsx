@@ -20,7 +20,8 @@ import {
   Power,
   Activity,
   Smartphone,
-  Cloud
+  Cloud,
+  Layers
 } from 'lucide-react';
 
 interface KeyboardShortcutsModalProps {
@@ -40,6 +41,7 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
     { key: 'Alt + 1', label: 'Painel Executivo Geral (Dashboard)', tabId: 'dashboard', icon: LayoutDashboard },
     { key: 'Alt + 2', label: 'Planilha de Compra da Direção v10.8', tabId: 'sheet', icon: FileSpreadsheet, highlight: true },
     { key: 'Alt + 0', label: 'Cotação em Tempo Real (CEPEA / B3)', tabId: 'quotes', icon: Activity, highlight: true },
+    { key: 'Alt + E', label: 'Cotação de Perecíveis (8 Abas RJ)', tabId: 'perishables', icon: Layers, highlight: true },
     { key: 'Alt + 3', label: 'Desossa & Rendimento Zootécnico', tabId: 'yield', icon: Scissors },
     { key: 'Alt + 4', label: 'DRE & Apuração de Margens', tabId: 'results', icon: DollarSign },
     { key: 'Alt + 5', label: 'Estoque & Câmaras Frias (16 Lojas)', tabId: 'inventory', icon: Boxes },

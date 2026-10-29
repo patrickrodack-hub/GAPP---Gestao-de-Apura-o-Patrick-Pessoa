@@ -1,6 +1,7 @@
 import { SheetRowData, Store, Supplier, PurchaseBatch } from '../types/erp';
 import { formatCurrencyBRL, formatNumberBR, calculateSheetTotals } from './calculationService';
 import { StorageService } from './storageService';
+import { ReportBrandingService } from './reportBrandingService';
 
 export interface PrintEngineOptions {
   documentTitle: string;
@@ -312,24 +313,18 @@ export class PrintEngineService {
   </style>
 </head>
 <body>
-  <!-- Header GIPP -->
-  <table class="header-table">
-    <tr>
-      <td style="vertical-align: middle;">
-        <span class="badge badge-primary">Motor de Impressão GIPP</span>
-        <span class="badge badge-amber" style="margin-left: 4px;">Documento Oficial de Fornecimento</span>
-        <div class="company-title">ERP APURAÇÃO DO BOI • PEDIDO DE COMPRA</div>
-        <div style="font-size: 7pt; color: #475569; margin-top: 1px;">
-          <strong>Grupo GAPP Sistemas</strong> • Por Patrick Pessoa • Matriz Operacional 16 Lojas
-        </div>
-      </td>
-      <td style="text-align: right; vertical-align: middle;">
-        <div style="font-size: 7pt; color: #64748b;">NÚMERO DO PEDIDO</div>
-        <div style="font-size: 13pt; font-weight: 900; color: #004b87; font-family: monospace;">${orderNumber}</div>
-        <div style="font-size: 6.8pt; color: #475569;">Emissão: <strong>${todayStr}</strong> | Entrega: <strong style="color: #b45309;">${deliveryDateStr}</strong></div>
-      </td>
-    </tr>
-  </table>
+  <!-- Header Oficial Padronizado com Logo -->
+  ${ReportBrandingService.getHtmlHeader({
+    title: `PEDIDO DE COMPRA Nº ${orderNumber} • ${supplierName}`,
+    subtitle: 'ERP Apuração do Boi v10.8 • Documento Oficial de Fornecimento • Matriz Operacional 16 Lojas',
+    departmentTag: 'DIRETORIA DE COMPRAS & SUPRIMENTOS FRIGORÍFICOS',
+    rightMetaHtml: `
+      <div><strong>Pedido Nº:</strong> <span style="font-family:monospace;color:#b5e550;font-weight:900;">${orderNumber}</span></div>
+      <div><strong>Emissão:</strong> ${todayStr} | <strong>Entrega:</strong> ${deliveryDateStr}</div>
+      <div><strong>Sistema:</strong> GAPP - PATRICK PESSOA</div>
+    `,
+    themeColor: 'forest'
+  })}
 
   <!-- Fornecedor & Condições -->
   <div class="card-grid" style="grid-template-columns: repeat(6, 1fr);">
@@ -425,7 +420,7 @@ export class PrintEngineService {
 
   <div class="signatures-box">
     <div class="sig-line">
-      <strong>Direção de Compras / GIPP ERP</strong><br>
+      <strong>Direção de Compras / GAPP - PATRICK PESSOA</strong><br>
       Patrick Pessoa • Comprador Autorizado
     </div>
     <div class="sig-line">
@@ -437,6 +432,11 @@ export class PrintEngineService {
       Nome Legível e RG / Assinatura
     </div>
   </div>
+
+  ${ReportBrandingService.getHtmlFooter({
+    documentCode: hashAuth,
+    extraRightText: `Pedido Nº ${orderNumber} • Emitido em ${todayStr}`
+  })}
 </body>
 </html>`;
   }
@@ -628,24 +628,17 @@ export class PrintEngineService {
   </style>
 </head>
 <body>
-  <div class="header-box">
-    <div class="brand-section">
-      <img src="/brand-logo.svg" alt="Grupo GAPP" class="brand-logo" onerror="this.src='/patrick-pessoa-brand.png'" />
-      <div>
-        <div style="font-size: 6.8pt; font-weight: 800; color: #b45309; text-transform: uppercase; letter-spacing: 0.5px;">
-          Grupo GAPP Sistemas • Por Patrick Pessoa
-        </div>
-        <div class="title">ERP APURAÇÃO DO BOI • RELATÓRIO DE PEDIDOS (BOVINO & SUÍNO)</div>
-        <div style="font-size: 7pt; color: #475569;">
-          Demonstrativo Oficial com base na Planilha de Compras • 16 Filiais Consolidadas
-        </div>
-      </div>
-    </div>
-    <div style="text-align: right; font-size: 6.8pt; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; padding: 3px 6px; border-radius: 4px;">
+  ${ReportBrandingService.getHtmlHeader({
+    title: 'ERP APURAÇÃO DO BOI • RELATÓRIO DE PEDIDOS (BOVINO & SUÍNO)',
+    subtitle: 'Demonstrativo Oficial com base na Planilha de Compras • 16 Filiais Consolidadas',
+    departmentTag: 'RELATÓRIO GERENCIAL DE PEDIDOS DA MATRIZ',
+    rightMetaHtml: `
       <div><strong>Data de Emissão:</strong> ${emissionDateFormatted} às ${emissionTimeFormatted}</div>
-      <div style="font-family: monospace; font-size: 6pt; color: #64748b; margin-top: 1px;">Autenticação: ${hashAuth}</div>
-    </div>
-  </div>
+      <div><strong>Sistema:</strong> GAPP - PATRICK PESSOA (v10.8)</div>
+      <div style="font-family: monospace; font-size: 6pt; color: #b5e550;">Autenticação: ${hashAuth}</div>
+    `,
+    themeColor: 'forest'
+  })}
 
   <div class="kpi-row">
     <div class="kpi-card">
@@ -759,7 +752,7 @@ export class PrintEngineService {
 
   <div class="signatures">
     <div>
-      <div class="sig-line"><strong>Diretoria Operacional</strong><br>Grupo GAPP Sistemas</div>
+      <div class="sig-line"><strong>Diretoria Operacional</strong><br>GAPP - PATRICK PESSOA</div>
     </div>
     <div>
       <div class="sig-line"><strong>Gerência de Carnes & Desossa</strong><br>Patrick Pessoa</div>
@@ -769,10 +762,10 @@ export class PrintEngineService {
     </div>
   </div>
 
-  <div style="margin-top: 10px; font-size: 6pt; color: #94a3b8; display: flex; justify-content: space-between; border-top: 1px solid #e2e8f0; padding-top: 3px;">
-    <span>Grupo GAPP Sistemas • ERP Apuração do Boi v10.8 • Portal: https://gipp-site.vercel.app/</span>
-    <span>Emissão Oficial em ${new Date().toLocaleDateString('pt-BR')} • Página 1 de 1</span>
-  </div>
+  ${ReportBrandingService.getHtmlFooter({
+    documentCode: hashAuth,
+    extraRightText: `Emissão Oficial em ${new Date().toLocaleDateString('pt-BR')} • Página 1 de 1`
+  })}
 </body>
 </html>`;
   }
@@ -960,23 +953,17 @@ export class PrintEngineService {
   </style>
 </head>
 <body>
-  <div class="header-bar">
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <img src="/patrick-pessoa-brand.png" alt="Grupo GAPP" style="height: 24px; object-fit: contain;" onerror="this.style.display='none'" />
-      <div>
-        <div class="sub-brand">GRUPO GAPP SISTEMAS • PATRICK PESSOA</div>
-        <div class="title-main">${title}</div>
-        <div style="font-size: 6pt; color: #475569;">
-          Matriz Oficial Consolidada de 16 Filiais • v10.8 • Validação de Compra & Apuração
-        </div>
-      </div>
-    </div>
-    <div class="meta-box">
+  ${ReportBrandingService.getHtmlHeader({
+    title: title,
+    subtitle: 'Matriz Oficial Consolidada de 16 Filiais • v10.8 • Validação de Compra & Apuração',
+    departmentTag: 'PLANILHA MATRIZ DE COMPRAS DA DIREÇÃO',
+    rightMetaHtml: `
       <div><strong>Emissão:</strong> ${emissionDateFormatted} às ${emissionTimeFormatted}</div>
       <div><strong>Operador:</strong> ${currentUser}</div>
-      <div style="font-family: monospace; font-size: 5.5pt; color: #64748b;">Auth: ${hashAuth}</div>
-    </div>
-  </div>
+      <div style="font-family: monospace; font-size: 6pt; color: #b5e550;">Auth: ${hashAuth}</div>
+    `,
+    themeColor: 'forest'
+  })}
 
   <table class="matrix-table">
     <thead>
@@ -1146,7 +1133,7 @@ export class PrintEngineService {
 
   <div class="signatures">
     <div class="sig-col">
-      <strong>Diretoria Operacional & Matriz</strong><br>Grupo GAPP Sistemas
+      <strong>Diretoria Operacional & Matriz</strong><br>GAPP - PATRICK PESSOA
     </div>
     <div class="sig-col">
       <strong>Gerência de Carnes & Desossa</strong><br>Patrick Pessoa
@@ -1156,10 +1143,10 @@ export class PrintEngineService {
     </div>
   </div>
 
-  <div class="footer-bar">
-    <span>Grupo GAPP Sistemas • ERP Apuração do Boi v10.8 • Planilha de Compras Oficial • Patrick Pessoa</span>
-    <span>Emissão Oficial em ${new Date().toLocaleDateString('pt-BR')} • Documento Gerencial A4 Paisagem</span>
-  </div>
+  ${ReportBrandingService.getHtmlFooter({
+    documentCode: hashAuth,
+    extraRightText: `Emissão Oficial em ${new Date().toLocaleDateString('pt-BR')} • Documento Gerencial A4 Paisagem`
+  })}
 </body>
 </html>`;
   }

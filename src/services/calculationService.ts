@@ -477,7 +477,7 @@ export function kgToArroba(kgPrice: number): number {
 }
 
 /**
- * Definição dos Cortes Reais da Base de Dados do Boi (Solidcon ERP)
+ * Definição dos Cortes Reais da Base de Dados do Boi (GAPP - PATRICK PESSOA)
  */
 export interface RealBeefYieldResult {
   cuts: YieldAnalysisCuts[];

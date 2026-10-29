@@ -55,7 +55,7 @@ export const ERPMenuDialogs: React.FC<ERPMenuDialogsProps> = ({
                   ERP Apuração do Boi por Patrick Pessoa
                 </p>
                 <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                  Versão 10.4 (Build Oficial 1.4.0104)
+                  Versão 10.8 (Build Oficial 1.8.0108)
                 </p>
               </div>
             </div>
@@ -67,7 +67,7 @@ export const ERPMenuDialogs: React.FC<ERPMenuDialogsProps> = ({
               </div>
               <div className="flex justify-between border-b border-slate-100 pb-1">
                 <span className="text-slate-500">Corporação:</span>
-                <span className="font-bold text-slate-900">GRUPO GAPP</span>
+                <span className="font-bold text-slate-900">GAPP - PATRICK PESSOA</span>
               </div>
               <div className="flex justify-between border-b border-slate-100 pb-1">
                 <span className="text-slate-500">Rede Ativa:</span>
@@ -79,7 +79,7 @@ export const ERPMenuDialogs: React.FC<ERPMenuDialogsProps> = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Ambiente de Execução:</span>
-                <span className="font-mono text-slate-700">Solidcon Clássico ERP Engine</span>
+                <span className="font-mono text-slate-700">GAPP - PATRICK PESSOA Engine</span>
               </div>
             </div>
 

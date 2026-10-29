@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import { SheetRowData, Store, PurchaseBatch, WasteRecord } from '../types/erp';
 import { calculateSheetTotals } from './calculationService';
+import { ReportBrandingService } from './reportBrandingService';
 
 interface ExportExcelOptions {
   sheetRows: SheetRowData[];
@@ -12,7 +13,7 @@ interface ExportExcelOptions {
 export const ExcelExportService = {
   async exportFullReportToXLSX({ sheetRows, stores = [], batches = [], wasteRecords = [] }: ExportExcelOptions): Promise<void> {
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Grupo GAPP Sistemas - Patrick Pessoa';
+    workbook.creator = 'GAPP - PATRICK PESSOA';
     workbook.lastModifiedBy = 'Patrick Pessoa';
     workbook.created = new Date();
     workbook.modified = new Date();
@@ -30,7 +31,7 @@ export const ExcelExportService = {
     // Title rows
     ws1.mergeCells('A1:AS1');
     const titleCell = ws1.getCell('A1');
-    titleCell.value = 'GRUPO GAPP SISTEMAS • PLANILHA DE COMPRA DE BOI DA DIREÇÃO DA EMPRESA v10.8';
+    titleCell.value = 'GAPP - PATRICK PESSOA • PLANILHA DE COMPRA DE BOI DA DIREÇÃO DA EMPRESA v10.8';
     titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
     titleCell.fill = {
       type: 'pattern',
@@ -447,6 +448,10 @@ export const ExcelExportService = {
     ws3.getColumn(4).width = 22;
     ws3.getColumn(5).width = 46;
 
+    await ReportBrandingService.embedExcelLogoAndFooter(workbook, ws1, 45, 'Planilha Matriz Oficial v10.8 (16 Filiais)');
+    await ReportBrandingService.embedExcelLogoAndFooter(workbook, ws2, 10, 'Histórico de Lotes de Compra');
+    await ReportBrandingService.embedExcelLogoAndFooter(workbook, ws3, 5, 'Controle de Descarte & Subprodutos');
+
     // Generate buffer & trigger download
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
@@ -472,7 +477,7 @@ export const ExcelExportService = {
    */
   async exportExecutiveReportToXLSX(rows: SheetRowData[], stores: Store[] = []): Promise<void> {
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Grupo GAPP Sistemas - Patrick Pessoa';
+    workbook.creator = 'GAPP - PATRICK PESSOA';
     workbook.created = new Date();
 
     const ws = workbook.addWorksheet('Relatório de Pedido (GAPP)', {
@@ -494,7 +499,7 @@ export const ExcelExportService = {
     // Linha 1: Título Geral
     ws.mergeCells('A1:Q1');
     const title = ws.getCell('A1');
-    title.value = 'ERP APURAÇÃO DO BOI • RELATÓRIO OFICIAL DE PEDIDOS (BOVINO & SUÍNO)';
+    title.value = 'GAPP - PATRICK PESSOA • RELATÓRIO OFICIAL DE PEDIDOS (BOVINO & SUÍNO)';
     title.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
     title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004B87' } };
     title.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -503,7 +508,7 @@ export const ExcelExportService = {
     // Linha 2: Subtítulo
     ws.mergeCells('A2:Q2');
     const sub = ws.getCell('A2');
-    sub.value = `Base: Planilha de Compras da Direção • 16 Lojas Consolidadas • Emissão: ${new Date().toLocaleDateString('pt-BR')} • Grupo GAPP Sistemas`;
+    sub.value = `Base: Planilha de Compras da Direção • 16 Lojas Consolidadas • Emissão: ${new Date().toLocaleDateString('pt-BR')} • Desenvolvedor: Patrick Pessoa`;
     sub.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF334155' } };
     sub.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
     sub.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -686,6 +691,8 @@ export const ExcelExportService = {
     for (let c = 2; c <= 17; c++) {
       ws.getColumn(c).width = (c === 6 || c === 8 || c === 12 || c === 17) ? 16 : 13;
     }
+
+    await ReportBrandingService.embedExcelLogoAndFooter(workbook, ws, 17, 'Relatório Oficial de Pedidos (Bovino & Suíno)');
 
     // Trigger download
     const buffer = await workbook.xlsx.writeBuffer();
