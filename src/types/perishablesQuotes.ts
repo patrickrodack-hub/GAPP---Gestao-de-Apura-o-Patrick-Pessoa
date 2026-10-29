@@ -37,20 +37,27 @@ export type TvPromoMediaType =
   | 'TV_SBT_RJ' 
   | 'TABLOIDE_ENCARTE' 
   | 'ENCARTE_DOMINGO' 
+  | 'CLUBE_FIDELIDADE'
+  | 'LAMINA_OFERTA'
+  | 'REDE_SOCIAL'
   | 'APP_OFERTA';
+
+export type PromoChannelType = 'TV' | 'ENCARTE' | 'CLUBE' | 'LAMINA' | 'REDES';
 
 export interface PerishableTvPromoOffer {
   hasActivePromo: boolean;
-  promoPrice: number;            // Preço anunciado na TV / Encarte (R$)
-  regularPrice?: number;         // Preço anterior de gôndola se citado no encarte
-  chainName: string;             // Ex: 'Guanabara', 'Mundial', 'Supermarket', 'Assaí'
-  chainId?: string;              // Ex: 'guanabara', 'mundial', etc.
-  mediaType: TvPromoMediaType;   // Ex: 'TV_GLOBO_RJ'
-  mediaLabel: string;            // Ex: 'Comercial TV Globo RJ'
-  validity: string;              // Ex: 'Até 31/10', 'Válido até Domingo', 'Hoje Somente'
-  highlightTag: string;          // Ex: 'OFERTA TV', 'IMBATÍVEL', 'TABLOIDE RJ', 'FIM DE SEMANA'
-  adBroadcastTime?: string;      // Ex: 'Hoje, 20:42 • Intervalo JN / RJ2'
+  promoPrice: number;            // Preço anunciado na TV / Encarte / Clube / Lâmina / Redes (R$)
+  regularPrice?: number;         // Preço anterior de gôndola se citado no anúncio
+  chainName: string;             // Ex: 'Supermercados Guanabara', 'Supermercados Mundial', 'Assaí Atacadista RJ'
+  chainId?: string;              // Ex: 'guanabara', 'mundial', 'assai', etc.
+  mediaType: TvPromoMediaType;   // Tipo detalhado da mídia
+  mediaChannel?: PromoChannelType; // Canal principal ('TV', 'ENCARTE', 'CLUBE', 'LAMINA', 'REDES')
+  mediaLabel: string;            // Ex: 'Comercial TV Globo RJ (Horário Nobre)', 'Clube Guanabara Card', 'Lâmina Semanal Supermarket'
+  validity: string;              // Ex: '28/10 a 03/11/2026', 'Quarta e Quinta do Horti', 'Válido até Domingo'
+  highlightTag: string;          // Ex: 'OFERTA TV GLOBO', 'CLUBE EXCLUSIVO', 'LÂMINA EXPRESS', 'REDE SOCIAL'
+  adBroadcastTime?: string;      // Ex: 'Hoje, 20:45 • Intervalo Jornal Nacional', 'Post Instagram @supermercadosguanabara'
   auditSource: string;           // Ex: 'Clipping TV aberta RJ / Tabloide Guanabara Card'
+  conditionNotes?: string;       // Ex: 'Preço exclusivo para clientes Clube com CPF cadastrado', 'Limite de 5kg por cliente'
   discountVsAvgPercent?: number; // Desconto % em relação à média das 12 redes
 }
 

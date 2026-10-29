@@ -50,7 +50,8 @@ import {
   BarChart3,
   Printer,
   FileSpreadsheet,
-  RotateCcw
+  RotateCcw,
+  Pin
 } from 'lucide-react';
 
 interface QuotesTabProps {
@@ -1044,31 +1045,38 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
               </div>
             </div>
 
-            {/* Tabela de Logística Interestadual */}
-            <div className="overflow-x-auto">
+            {/* Tabela de Logística Interestadual com Painel Congelado */}
+            <div className="overflow-auto max-h-[68vh] rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative focus:outline-none">
               <table className="w-full text-left text-xs border-collapse font-sans">
-                <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] uppercase font-bold tracking-wider">
+                <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] uppercase font-bold tracking-wider sticky top-0 z-30 shadow-xs">
                   <tr>
-                    <th className="py-3 px-4">Origem / Região Produtora</th>
-                    <th className="py-3 px-3 text-right">Base Origem (@)</th>
-                    <th className="py-3 px-3 text-right">Frete até RJ (@)</th>
-                    <th className="py-3 px-3 text-center">Tempo Viagem</th>
-                    <th className="py-3 px-3 text-center">Gotejo / Quebra</th>
-                    <th className="py-3 px-3 text-right">Custo Posto RJ (@)</th>
-                    <th className="py-3 px-3 text-right">Custo Posto RJ (Kg)</th>
-                    <th className="py-3 px-3 text-center">Share no RJ</th>
-                    <th className="py-3 px-4">Frigoríficos Ofertantes</th>
-                    <th className="py-3 px-3 text-center">Ação</th>
+                    <th className="sticky top-0 left-0 z-40 bg-slate-100 dark:bg-slate-800 py-3 px-4 border-r border-slate-200 dark:border-slate-700 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.06)] min-w-[200px]">
+                      <div className="flex items-center justify-between gap-1.5">
+                        <span>Origem / Região Produtora</span>
+                        <Pin className="w-3 h-3 text-slate-400 rotate-45 shrink-0" />
+                      </div>
+                    </th>
+                    <th className="py-3 px-3 text-right whitespace-nowrap">Base Origem (@)</th>
+                    <th className="py-3 px-3 text-right whitespace-nowrap">Frete até RJ (@)</th>
+                    <th className="py-3 px-3 text-center whitespace-nowrap">Tempo Viagem</th>
+                    <th className="py-3 px-3 text-center whitespace-nowrap">Gotejo / Quebra</th>
+                    <th className="py-3 px-3 text-right whitespace-nowrap">Custo Posto RJ (@)</th>
+                    <th className="py-3 px-3 text-right whitespace-nowrap">Custo Posto RJ (Kg)</th>
+                    <th className="py-3 px-3 text-center whitespace-nowrap">Share no RJ</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Frigoríficos Ofertantes</th>
+                    <th className="py-3 px-3 text-center whitespace-nowrap">Ação</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-150 dark:divide-slate-800 font-mono">
                   {(snapshot.rjLogistics || INITIAL_RJ_LOGISTICS).map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
-                      <td className="py-3 px-4 font-bold font-sans text-slate-900 dark:text-white flex items-center gap-2">
-                        <Truck className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <div>
-                          <span>{log.originRegion}</span>
-                          <span className="text-[10px] text-slate-400 block font-normal">{log.originState}</span>
+                    <tr key={log.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+                      <td className="sticky left-0 z-20 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors py-3 px-4 font-bold font-sans text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.04)] min-w-[200px]">
+                        <div className="flex items-center gap-2">
+                          <Truck className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <div>
+                            <span>{log.originRegion}</span>
+                            <span className="text-[10px] text-slate-400 block font-normal">{log.originState}</span>
+                          </div>
                         </div>
                       </td>
                       <td className="py-3 px-3 text-right font-bold text-slate-800 dark:text-slate-200">
@@ -1384,32 +1392,40 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Tabela de Praças Pecuárias com Painel Congelado */}
+            <div className="overflow-auto max-h-[68vh] rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative focus:outline-none">
               <table className="w-full text-left text-xs border-collapse font-sans">
-                <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] uppercase font-bold tracking-wider">
+                <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] uppercase font-bold tracking-wider sticky top-0 z-30 shadow-xs">
                   <tr>
-                    <th className="py-3 px-4">Praça / Polo Frigorífico</th>
-                    <th className="py-3 px-3 text-center">Estado</th>
-                    <th className="py-3 px-4 text-right">Boi Gordo À Vista (@)</th>
-                    <th className="py-3 px-4 text-right">30 Dias (@)</th>
-                    <th className="py-3 px-4 text-right">Kg Vivo Estimado</th>
-                    <th className="py-3 px-4 text-right">Vaca Gorda (@)</th>
-                    <th className="py-3 px-4 text-right">Novilha (@)</th>
-                    <th className="py-3 px-4 text-right">Spread vs SP</th>
-                    <th className="py-3 px-3 text-center">Escala</th>
-                    <th className="py-3 px-4">Frigoríficos Ofertantes</th>
-                    <th className="py-3 px-3 text-center">Ação</th>
+                    <th className="sticky top-0 left-0 z-40 bg-slate-100 dark:bg-slate-800 py-3 px-4 border-r border-slate-200 dark:border-slate-700 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.06)] min-w-[200px]">
+                      <div className="flex items-center justify-between gap-1.5">
+                        <span>Praça / Polo Frigorífico</span>
+                        <Pin className="w-3 h-3 text-slate-400 rotate-45 shrink-0" />
+                      </div>
+                    </th>
+                    <th className="py-3 px-3 text-center whitespace-nowrap">Estado</th>
+                    <th className="py-3 px-4 text-right whitespace-nowrap">Boi Gordo À Vista (@)</th>
+                    <th className="py-3 px-4 text-right whitespace-nowrap">30 Dias (@)</th>
+                    <th className="py-3 px-4 text-right whitespace-nowrap">Kg Vivo Estimado</th>
+                    <th className="py-3 px-4 text-right whitespace-nowrap">Vaca Gorda (@)</th>
+                    <th className="py-3 px-4 text-right whitespace-nowrap">Novilha (@)</th>
+                    <th className="py-3 px-4 text-right whitespace-nowrap">Spread vs SP</th>
+                    <th className="py-3 px-3 text-center whitespace-nowrap">Escala</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Frigoríficos Ofertantes</th>
+                    <th className="py-3 px-3 text-center whitespace-nowrap">Ação</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-150 dark:divide-slate-800 font-mono">
                   {filteredPracas.map((reg) => (
-                    <tr key={reg.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition ${reg.stateCode === 'RJ' ? 'bg-emerald-50/40 dark:bg-emerald-950/20' : ''}`}>
-                      <td className="py-3 px-4 font-bold font-sans text-slate-900 dark:text-white flex items-center gap-2">
-                        <MapPin className={`w-3.5 h-3.5 shrink-0 ${reg.stateCode === 'RJ' ? 'text-emerald-500' : 'text-slate-400'}`} />
-                        <span>{reg.region}</span>
-                        {reg.stateCode === 'RJ' && (
-                          <span className="text-[9px] font-black bg-emerald-500 text-slate-950 px-1 py-0.2 rounded uppercase">RJ</span>
-                        )}
+                    <tr key={reg.id} className={`group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition ${reg.stateCode === 'RJ' ? 'bg-emerald-50/40 dark:bg-emerald-950/20' : ''}`}>
+                      <td className="sticky left-0 z-20 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors py-3 px-4 font-bold font-sans text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.04)] min-w-[200px]">
+                        <div className="flex items-center gap-2">
+                          <MapPin className={`w-3.5 h-3.5 shrink-0 ${reg.stateCode === 'RJ' ? 'text-emerald-500' : 'text-slate-400'}`} />
+                          <span>{reg.region}</span>
+                          {reg.stateCode === 'RJ' && (
+                            <span className="text-[9px] font-black bg-emerald-500 text-slate-950 px-1 py-0.2 rounded uppercase">RJ</span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-3 text-center">
                         <span className="px-2 py-0.5 rounded font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
@@ -1823,32 +1839,41 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
               </div>
             )}
 
-            {/* Tabela Comparativa de Redes do RJ */}
-            <div className="overflow-x-auto mt-4 rounded-xl border border-slate-200 dark:border-slate-800">
+            {/* Tabela Comparativa de Redes do RJ com Painel Congelado */}
+            <div className="overflow-auto max-h-[72vh] mt-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative focus:outline-none">
               <table className="w-full text-left text-xs border-collapse font-sans">
-                <thead className="bg-[#113829] text-white text-[11px] uppercase font-bold tracking-wider">
+                <thead className="bg-[#113829] text-white text-[11px] uppercase font-bold tracking-wider sticky top-0 z-30 shadow-md">
                   <tr>
-                    <th className="py-3 px-4">Rede Supermercadista RJ</th>
-                    <th className="py-3 px-3 text-center">Perfil</th>
-                    <th className="py-3 px-3 text-right">Picanha</th>
-                    <th className="py-3 px-3 text-right">Contra Filé</th>
-                    <th className="py-3 px-3 text-right">Alcatra</th>
-                    <th className="py-3 px-3 text-right">Coxão Mole</th>
-                    <th className="py-3 px-3 text-right">Patinho</th>
-                    <th className="py-3 px-3 text-right">Acém</th>
-                    <th className="py-3 px-3 text-right">Costela</th>
-                    <th className="py-3 px-3 text-right">Pernil Suíno</th>
-                    <th className="py-3 px-4">Fonte / Pesquisa</th>
+                    <th className="sticky top-0 left-0 z-40 bg-[#113829] py-3.5 px-4 border-r-2 border-emerald-800 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.3)] min-w-[220px]">
+                      <div className="flex items-center justify-between gap-1.5">
+                        <span>Rede Supermercadista RJ</span>
+                        <span title="Coluna de redes fixada horizontalmente">
+                          <Pin className="w-3.5 h-3.5 text-emerald-300 rotate-45 shrink-0" />
+                        </span>
+                      </div>
+                    </th>
+                    <th className="py-3 px-3 text-center whitespace-nowrap">Perfil</th>
+                    <th className="py-3 px-3 text-right whitespace-nowrap">Picanha</th>
+                    <th className="py-3 px-3 text-right whitespace-nowrap">Contra Filé</th>
+                    <th className="py-3 px-3 text-right whitespace-nowrap">Alcatra</th>
+                    <th className="py-3 px-3 text-right whitespace-nowrap">Coxão Mole</th>
+                    <th className="py-3 px-3 text-right whitespace-nowrap">Patinho</th>
+                    <th className="py-3 px-3 text-right whitespace-nowrap">Acém</th>
+                    <th className="py-3 px-3 text-right whitespace-nowrap">Costela</th>
+                    <th className="py-3 px-3 text-right whitespace-nowrap">Pernil Suíno</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Fonte / Pesquisa</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-150 dark:divide-slate-800 font-mono">
                   {snapshot.rjRetailBenchmarks.map((bench) => (
-                    <tr key={bench.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
-                      <td className="py-3 px-4 font-bold font-sans text-slate-900 dark:text-white flex items-center gap-2">
-                        <Store className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>{bench.chainName}</span>
+                    <tr key={bench.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+                      <td className="sticky left-0 z-20 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors py-3 px-4 font-bold font-sans text-slate-900 dark:text-white border-r-2 border-slate-200 dark:border-slate-800 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] min-w-[220px]">
+                        <div className="flex items-center gap-2">
+                          <Store className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>{bench.chainName}</span>
+                        </div>
                       </td>
-                      <td className="py-3 px-3 font-sans text-center">
+                      <td className="py-3 px-3 font-sans text-center whitespace-nowrap">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                           bench.category === 'supermercado_popular' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
                           bench.category === 'atacarejo' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
@@ -1857,31 +1882,31 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                           {bench.category.replace('_', ' ').toUpperCase()}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-right font-bold text-slate-900 dark:text-white">
+                      <td className="py-3 px-3 text-right font-bold text-slate-900 dark:text-white whitespace-nowrap">
                         R$ {bench.sampleCutPrices.picanha.toFixed(2)}
                       </td>
-                      <td className="py-3 px-3 text-right text-slate-800 dark:text-slate-200">
+                      <td className="py-3 px-3 text-right text-slate-800 dark:text-slate-200 whitespace-nowrap">
                         R$ {bench.sampleCutPrices.contraFile.toFixed(2)}
                       </td>
-                      <td className="py-3 px-3 text-right text-slate-800 dark:text-slate-200">
+                      <td className="py-3 px-3 text-right text-slate-800 dark:text-slate-200 whitespace-nowrap">
                         R$ {bench.sampleCutPrices.alcatra.toFixed(2)}
                       </td>
-                      <td className="py-3 px-3 text-right text-slate-800 dark:text-slate-200">
+                      <td className="py-3 px-3 text-right text-slate-800 dark:text-slate-200 whitespace-nowrap">
                         R$ {bench.sampleCutPrices.coxaoMole.toFixed(2)}
                       </td>
-                      <td className="py-3 px-3 text-right text-slate-800 dark:text-slate-200">
+                      <td className="py-3 px-3 text-right text-slate-800 dark:text-slate-200 whitespace-nowrap">
                         R$ {bench.sampleCutPrices.patinho.toFixed(2)}
                       </td>
-                      <td className="py-3 px-3 text-right text-emerald-700 dark:text-emerald-400 font-bold">
+                      <td className="py-3 px-3 text-right text-emerald-700 dark:text-emerald-400 font-bold whitespace-nowrap">
                         R$ {bench.sampleCutPrices.acem.toFixed(2)}
                       </td>
-                      <td className="py-3 px-3 text-right text-slate-800 dark:text-slate-200">
+                      <td className="py-3 px-3 text-right text-slate-800 dark:text-slate-200 whitespace-nowrap">
                         R$ {bench.sampleCutPrices.costela.toFixed(2)}
                       </td>
-                      <td className="py-3 px-3 text-right text-rose-700 dark:text-rose-400 font-bold">
+                      <td className="py-3 px-3 text-right text-rose-700 dark:text-rose-400 font-bold whitespace-nowrap">
                         R$ {bench.sampleCutPrices.pernilSuino.toFixed(2)}
                       </td>
-                      <td className="py-3 px-4 font-sans text-[11px] text-slate-500">
+                      <td className="py-3 px-4 font-sans text-[11px] text-slate-500 whitespace-nowrap">
                         <div className="truncate max-w-[200px]" title={bench.source}>
                           {bench.source}
                         </div>
@@ -1894,67 +1919,78 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                   ))}
                 </tbody>
 
-                {/* Linhas de Fechamento Estatístico da Tabela */}
+                {/* Linhas de Fechamento Estatístico da Tabela com Painel Congelado */}
                 {rjBenchmarkStats && (
-                  <tfoot className="bg-slate-100/90 dark:bg-slate-800/90 border-t-2 border-slate-300 dark:border-slate-700 font-mono text-xs">
+                  <tfoot className="bg-slate-100/95 dark:bg-slate-800/95 border-t-2 border-slate-300 dark:border-slate-700 font-mono text-xs sticky bottom-0 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
                     {/* Linha 1: Média Geral RJ */}
                     <tr className="font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800">
-                      <td className="py-2.5 px-4 font-sans">MÉDIA GERAL RJ (12 Redes)</td>
-                      <td className="py-2.5 px-3 text-center font-sans text-[10px] text-slate-500">MÉDIA</td>
-                      <td className="py-2.5 px-3 text-right">R$ {rjBenchmarkStats.picanha.avg.toFixed(2)}</td>
-                      <td className="py-2.5 px-3 text-right">R$ {rjBenchmarkStats.contraFile.avg.toFixed(2)}</td>
-                      <td className="py-2.5 px-3 text-right">R$ {rjBenchmarkStats.alcatra.avg.toFixed(2)}</td>
-                      <td className="py-2.5 px-3 text-right">R$ {rjBenchmarkStats.coxaoMole.avg.toFixed(2)}</td>
-                      <td className="py-2.5 px-3 text-right">R$ {rjBenchmarkStats.patinho.avg.toFixed(2)}</td>
-                      <td className="py-2.5 px-3 text-right text-emerald-700 dark:text-emerald-400">R$ {rjBenchmarkStats.acem.avg.toFixed(2)}</td>
-                      <td className="py-2.5 px-3 text-right">R$ {rjBenchmarkStats.costela.avg.toFixed(2)}</td>
-                      <td className="py-2.5 px-3 text-right text-rose-700 dark:text-rose-400">R$ {rjBenchmarkStats.pernilSuino.avg.toFixed(2)}</td>
-                      <td className="py-2.5 px-4 font-sans text-[10px] text-slate-500">Média Geral Ponderada</td>
+                      <td className="sticky bottom-0 left-0 z-40 bg-slate-100 dark:bg-slate-800 py-2.5 px-4 font-sans border-r-2 border-slate-300 dark:border-slate-700 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.12)] min-w-[220px]">
+                        <div className="flex items-center justify-between">
+                          <span>MÉDIA GERAL RJ (12 Redes)</span>
+                          <Pin className="w-3 h-3 text-emerald-600 dark:text-emerald-400 rotate-45 shrink-0" />
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 text-center font-sans text-[10px] text-slate-500 whitespace-nowrap">MÉDIA</td>
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.picanha.avg.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.contraFile.avg.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.alcatra.avg.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.coxaoMole.avg.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.patinho.avg.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right text-emerald-700 dark:text-emerald-400 whitespace-nowrap">R$ {rjBenchmarkStats.acem.avg.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.costela.avg.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right text-rose-700 dark:text-rose-400 whitespace-nowrap">R$ {rjBenchmarkStats.pernilSuino.avg.toFixed(2)}</td>
+                      <td className="py-2.5 px-4 font-sans text-[10px] text-slate-500 whitespace-nowrap">Média Geral Ponderada</td>
                     </tr>
 
                     {/* Linha 2: Menor Preço (Mínimo) */}
-                    <tr className="text-emerald-800 dark:text-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/20 font-bold">
-                      <td className="py-2 px-4 font-sans text-[11px]">MENOR PREÇO REGISTRADO RJ</td>
-                      <td className="py-2 px-3 text-center font-sans text-[10px]">MÍNIMO</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.picanha.min.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.contraFile.min.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.alcatra.min.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.coxaoMole.min.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.patinho.min.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.acem.min.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.costela.min.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.pernilSuino.min.toFixed(2)}</td>
-                      <td className="py-2 px-4 font-sans text-[10px] text-emerald-700 dark:text-emerald-400">Piso Atacarejo / Popular</td>
+                    <tr className="text-emerald-800 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/30 font-bold">
+                      <td className="sticky bottom-0 left-0 z-40 bg-emerald-50 dark:bg-slate-800 py-2 px-4 font-sans text-[11px] border-r-2 border-emerald-200 dark:border-slate-700 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.12)] min-w-[220px]">
+                        MENOR PREÇO REGISTRADO RJ
+                      </td>
+                      <td className="py-2 px-3 text-center font-sans text-[10px] whitespace-nowrap">MÍNIMO</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.picanha.min.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.contraFile.min.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.alcatra.min.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.coxaoMole.min.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.patinho.min.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.acem.min.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.costela.min.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.pernilSuino.min.toFixed(2)}</td>
+                      <td className="py-2 px-4 font-sans text-[10px] text-emerald-700 dark:text-emerald-400 whitespace-nowrap">Piso Atacarejo / Popular</td>
                     </tr>
 
                     {/* Linha 3: Maior Preço (Máximo) */}
-                    <tr className="text-rose-800 dark:text-rose-300 bg-rose-50/60 dark:bg-rose-950/20 font-bold">
-                      <td className="py-2 px-4 font-sans text-[11px]">MAIOR PREÇO REGISTRADO RJ</td>
-                      <td className="py-2 px-3 text-center font-sans text-[10px]">MÁXIMO</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.picanha.max.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.contraFile.max.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.alcatra.max.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.coxaoMole.max.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.patinho.max.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.acem.max.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.costela.max.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.pernilSuino.max.toFixed(2)}</td>
-                      <td className="py-2 px-4 font-sans text-[10px] text-rose-700 dark:text-rose-400">Teto Redes Premium</td>
+                    <tr className="text-rose-800 dark:text-rose-300 bg-rose-50/80 dark:bg-rose-950/30 font-bold">
+                      <td className="sticky bottom-0 left-0 z-40 bg-rose-50 dark:bg-slate-800 py-2 px-4 font-sans text-[11px] border-r-2 border-rose-200 dark:border-slate-700 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.12)] min-w-[220px]">
+                        MAIOR PREÇO REGISTRADO RJ
+                      </td>
+                      <td className="py-2 px-3 text-center font-sans text-[10px] whitespace-nowrap">MÁXIMO</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.picanha.max.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.contraFile.max.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.alcatra.max.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.coxaoMole.max.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.patinho.max.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.acem.max.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.costela.max.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.pernilSuino.max.toFixed(2)}</td>
+                      <td className="py-2 px-4 font-sans text-[10px] text-rose-700 dark:text-rose-400 whitespace-nowrap">Teto Redes Premium</td>
                     </tr>
 
                     {/* Linha 4: Spread / Amplitude */}
-                    <tr className="text-amber-800 dark:text-amber-300 bg-amber-50/60 dark:bg-amber-950/20 font-bold">
-                      <td className="py-2 px-4 font-sans text-[11px]">SPREAD DE BALCÃO (MÁX - MÍN)</td>
-                      <td className="py-2 px-3 text-center font-sans text-[10px]">SPREAD</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.picanha.spread.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.contraFile.spread.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.alcatra.spread.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.coxaoMole.spread.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.patinho.spread.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.acem.spread.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.costela.spread.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right">R$ {rjBenchmarkStats.pernilSuino.spread.toFixed(2)}</td>
-                      <td className="py-2 px-4 font-sans text-[10px] text-amber-700 dark:text-amber-400">Amplitude Praticada no RJ</td>
+                    <tr className="text-amber-800 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-950/30 font-bold">
+                      <td className="sticky bottom-0 left-0 z-40 bg-amber-50 dark:bg-slate-800 py-2 px-4 font-sans text-[11px] border-r-2 border-amber-200 dark:border-slate-700 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.12)] min-w-[220px]">
+                        SPREAD DE BALCÃO (MÁX - MÍN)
+                      </td>
+                      <td className="py-2 px-3 text-center font-sans text-[10px] whitespace-nowrap">SPREAD</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.picanha.spread.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.contraFile.spread.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.alcatra.spread.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.coxaoMole.spread.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.patinho.spread.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.acem.spread.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.costela.spread.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">R$ {rjBenchmarkStats.pernilSuino.spread.toFixed(2)}</td>
+                      <td className="py-2 px-4 font-sans text-[10px] text-amber-700 dark:text-amber-400 whitespace-nowrap">Amplitude Praticada no RJ</td>
                     </tr>
                   </tfoot>
                 )}

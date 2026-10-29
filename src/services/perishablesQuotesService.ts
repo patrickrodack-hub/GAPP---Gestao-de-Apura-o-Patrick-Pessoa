@@ -3673,10 +3673,10 @@ export class PerishablesQuotesService {
               map.set(p.id, {
                 ...base,
                 ...p,
-                promoOffer: p.promoOffer || base.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id]
+                promoOffer: OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id] || p.promoOffer || base.promoOffer
               });
             } else {
-              const promo = p.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id];
+              const promo = OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id] || p.promoOffer;
               map.set(p.id, { ...p, promoOffer: promo });
             }
           });
@@ -3688,7 +3688,7 @@ export class PerishablesQuotesService {
     }
     return INITIAL_PERISHABLE_PRODUCTS.map(p => ({
       ...p,
-      promoOffer: p.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id]
+      promoOffer: OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id] || p.promoOffer
     }));
   }
 
@@ -3781,7 +3781,7 @@ export class PerishablesQuotesService {
     }
     return INITIAL_PERISHABLE_PRODUCTS.map(p => ({
       ...p,
-      promoOffer: p.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id]
+      promoOffer: OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id] || p.promoOffer
     }));
   }
 
@@ -3790,7 +3790,7 @@ export class PerishablesQuotesService {
    */
   public static calculateProductStats(item: PerishableProductItem): PerishableProductCalculatedStats {
     const validEntries = Object.entries(item.chainPrices).filter(([_, price]) => price > 0);
-    const promo = item.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[item.id];
+    const promo = OFFICIAL_RJ_TV_PROMO_REGISTRY[item.id] || item.promoOffer;
     
     if (validEntries.length === 0) {
       return {

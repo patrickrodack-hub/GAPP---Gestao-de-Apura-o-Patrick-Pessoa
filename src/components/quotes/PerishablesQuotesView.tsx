@@ -33,7 +33,8 @@ import {
   Tv,
   Radio,
   Tag,
-  TrendingDown
+  TrendingDown,
+  Pin
 } from 'lucide-react';
 
 interface PerishablesQuotesViewProps {
@@ -59,6 +60,7 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [isScanningTv, setIsScanningTv] = useState(false);
+  const [promoChannelFilter, setPromoChannelFilter] = useState<'ALL' | 'TV' | 'ENCARTE' | 'CLUBE' | 'LAMINA' | 'REDES'>('ALL');
   
   // Modal de auditoria de oferta de TV / encarte
   const [selectedTvPromoProduct, setSelectedTvPromoProduct] = useState<{
@@ -93,8 +95,13 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                p.productCode.toLowerCase().includes(q) ||
                p.specification.toLowerCase().includes(q) ||
                (p.flvSubdivision && p.flvSubdivision.toLowerCase().includes(q));
+      })
+      .filter(p => {
+        if (promoChannelFilter === 'ALL') return true;
+        const promo = p.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id];
+        return promo?.mediaChannel === promoChannelFilter;
       });
-  }, [products, activeCategoryId, activeFlvSubdivision, searchQuery]);
+  }, [products, activeCategoryId, activeFlvSubdivision, searchQuery, promoChannelFilter]);
 
   // Resumo estatístico da categoria (considerando subdivisão FLV ativa)
   const categorySummary = useMemo(() => {
@@ -433,6 +440,39 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
             )}
           </div>
 
+          {/* Filtro por Meio de Publicação da Oferta (TV, Encarte, Clube, Lâmina, Redes) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+            <span className="text-[10px] font-bold uppercase text-slate-400 mr-1 hidden sm:inline">
+              Filtro Mídia:
+            </span>
+            {[
+              { id: 'ALL', label: 'Todos os Meios', icon: Flame },
+              { id: 'TV', label: 'TV Aberta RJ', icon: Tv },
+              { id: 'CLUBE', label: 'Clube / App', icon: Tag },
+              { id: 'ENCARTE', label: 'Tabloides', icon: FileSpreadsheet },
+              { id: 'LAMINA', label: 'Lâminas', icon: Layers },
+              { id: 'REDES', label: 'Redes Sociais', icon: Sparkles }
+            ].map((channelItem) => {
+              const Icon = channelItem.icon;
+              const isSelected = promoChannelFilter === channelItem.id;
+              return (
+                <button
+                  key={channelItem.id}
+                  type="button"
+                  onClick={() => setPromoChannelFilter(channelItem.id as any)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
+                    isSelected
+                      ? 'bg-amber-500 text-slate-950 shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  <Icon className="w-3 h-3" />
+                  <span>{channelItem.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* Botões de Ação Executiva */}
           <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
             
@@ -602,13 +642,37 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
           </div>
         </div>
 
-        {/* 5. TABELA COMPARATIVA DE PREÇOS COM PADRÃO ESTATÍSTICO IDENTICO AO VAREJO 12 REDES RJ */}
-        <div className="overflow-x-auto mt-4 rounded-xl border border-slate-200 dark:border-slate-800">
+        {/* Barra Informativa de Navegação e Painel Congelado */}
+        <div className="flex flex-wrap items-center justify-between gap-2 mt-4 px-1">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300/60 shadow-xs">
+              <Pin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 rotate-45" />
+              <span>Painel Congelado Ativo: Redes e Cortes Fixados</span>
+            </span>
+            <span className="text-[11px] text-slate-500 hidden md:inline">
+              Navegue livremente pelas colunas dos concorrentes sem perder a referência do corte e dos supermercados.
+            </span>
+          </div>
+          <span className="text-[11px] font-mono font-bold text-slate-500">
+            {filteredProducts.length} itens auditados
+          </span>
+        </div>
+
+        {/* 5. TABELA COMPARATIVA DE PREÇOS COM PAINEL CONGELADO (SUPERMERCADOS & CORTES) */}
+        <div className="overflow-auto max-h-[72vh] mt-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative focus:outline-none">
           <table className="w-full text-left text-xs border-collapse font-sans">
-            <thead className="bg-[#113829] text-white text-[11px] uppercase font-bold tracking-wider">
+            <thead className="bg-[#113829] text-white text-[11px] uppercase font-bold tracking-wider sticky top-0 z-30 shadow-md">
               <tr>
-                <th className="py-3 px-3">Produto / Corte ({activeCategory.label})</th>
-                <th className="py-3 px-2 text-center">Unid.</th>
+                {/* Cabeçalho Congelado: Produto / Corte (Fixado no topo e na esquerda) */}
+                <th className="sticky top-0 left-0 z-40 bg-[#113829] py-3.5 px-3.5 border-r-2 border-emerald-800 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.3)] min-w-[240px] max-w-[280px]">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span>Produto / Corte ({activeCategory.label})</span>
+                    <span title="Coluna de cortes e produtos fixada horizontalmente">
+                      <Pin className="w-3.5 h-3.5 text-emerald-300 rotate-45 shrink-0" />
+                    </span>
+                  </div>
+                </th>
+                <th className="py-3 px-2 text-center whitespace-nowrap">Unid.</th>
                 {RJ_SUPERMARKET_CHAINS.map(chain => (
                   <th key={chain.id} className="py-3 px-2.5 text-right whitespace-nowrap" title={`${chain.name} (${chain.profile})`}>
                     <div className="flex flex-col items-end">
@@ -624,11 +688,16 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                   </th>
                 ))}
                 
-                {/* Coluna Especial: Cotação do Preço de Promoção de Encartes & TV */}
-                <th className="py-3 px-3 text-center bg-amber-700 text-amber-100 font-black min-w-[145px] shadow-sm" title="Preço anunciado em comerciais de TV aberta RJ (Globo/Record) e tabloides/encartes vigentes">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <Tv className="w-3.5 h-3.5 text-amber-200" />
-                    <span>OFERTA TV / ENCARTE RJ</span>
+                {/* Coluna Especial: Cotação do Preço de Promoção de Encartes, TV, Clube & Redes */}
+                <th className="py-3 px-3 text-center bg-gradient-to-r from-amber-700 to-amber-800 text-amber-100 font-black min-w-[165px] shadow-sm" title="Preço anunciado em comerciais de TV aberta RJ (Globo/Record), encartes, clubes de fidelidade, lâminas e redes sociais vigentes">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="flex items-center justify-center gap-1.5 text-white">
+                      <Flame className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                      <span>PROMOÇÃO EM VIGÊNCIA</span>
+                    </div>
+                    <span className="text-[8px] font-bold text-amber-200 mt-0.5 tracking-tight uppercase">
+                      TV • ENCARTE • CLUBE • LÂMINA • REDES
+                    </span>
                   </div>
                 </th>
 
@@ -644,9 +713,9 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                 const stats = PerishablesQuotesService.calculateProductStats(product);
 
                 return (
-                  <tr key={product.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
-                    {/* Coluna Produto */}
-                    <td className="py-3 px-3 font-bold font-sans text-slate-900 dark:text-white">
+                  <tr key={product.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+                    {/* Coluna Produto Congelada (Fixada na esquerda) */}
+                    <td className="sticky left-0 z-20 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors py-3 px-3.5 font-bold font-sans text-slate-900 dark:text-white border-r-2 border-slate-200 dark:border-slate-800 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.06)] min-w-[240px] max-w-[280px]">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {product.flvSubdivision && (
                           <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/60">
@@ -654,14 +723,17 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                           </span>
                         )}
                         <span className="font-extrabold">{product.name}</span>
+                        <span className="ml-auto text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold border border-slate-200 dark:border-slate-700">
+                          {product.unit.replace('R$/', '')}
+                        </span>
                       </div>
-                      <div className="text-[10px] text-slate-400 font-normal truncate max-w-[260px] font-sans">
+                      <div className="text-[10px] text-slate-400 font-normal truncate max-w-[250px] font-sans mt-0.5">
                         {product.specification}
                       </div>
                     </td>
 
                     {/* Unidade */}
-                    <td className="py-3 px-2 text-center font-sans text-slate-500 text-[11px]">
+                    <td className="py-3 px-2 text-center font-sans text-slate-500 text-[11px] whitespace-nowrap">
                       {product.unit.replace('R$/', '')}
                     </td>
 
@@ -721,45 +793,61 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                       );
                     })}
 
-                    {/* Coluna Especial: Oferta de Promoção de TV / Encarte RJ */}
-                    <td className="py-2.5 px-3 text-center bg-amber-50/70 dark:bg-amber-950/25 border-x border-amber-200/50 dark:border-amber-900/30 font-sans">
-                      {product.promoOffer && product.promoOffer.hasActivePromo ? (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedTvPromoProduct({
-                            product,
-                            promo: product.promoOffer!,
-                            stats
-                          })}
-                          className="w-full text-left p-1 rounded-lg bg-amber-100/90 hover:bg-amber-200/90 dark:bg-amber-900/40 dark:hover:bg-amber-900/60 border border-amber-300 dark:border-amber-700/60 transition group cursor-pointer shadow-xs"
-                          title="Clique para auditar veiculação na TV aberta / Encarte"
-                        >
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="font-mono font-black text-xs text-amber-950 dark:text-amber-100">
-                              R$ {product.promoOffer.promoPrice.toFixed(2)}
-                            </span>
-                            <span className={`text-[8px] font-black uppercase px-1 py-0.5 rounded flex items-center gap-0.5 ${
-                              product.promoOffer.mediaType === 'TV_GLOBO_RJ'
-                                ? 'bg-indigo-700 text-white'
-                                : product.promoOffer.mediaType === 'TV_RECORD_RJ'
-                                ? 'bg-blue-700 text-white'
-                                : 'bg-amber-600 text-white'
-                            }`}>
-                              <Tv className="w-2.5 h-2.5" />
-                              {product.promoOffer.mediaType === 'TV_GLOBO_RJ' ? 'GLOBO' :
-                               product.promoOffer.mediaType === 'TV_RECORD_RJ' ? 'RECORD' : 'ENCARTE'}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-[9px] text-amber-900/80 dark:text-amber-300/80 font-medium mt-0.5">
-                            <span className="truncate max-w-[85px]">{product.promoOffer.chainName.split(' ')[0]}</span>
-                            <span className="text-[8px] font-bold text-emerald-700 dark:text-emerald-400">
-                              -{Math.round(((stats.avgPrice - product.promoOffer.promoPrice) / stats.avgPrice) * 100)}%
-                            </span>
-                          </div>
-                        </button>
-                      ) : (
-                        <span className="text-slate-400 text-xs">-</span>
-                      )}
+                    {/* Coluna Especial: Oferta de Promoção de TV / Encarte / Clube / Lâmina / Redes RJ */}
+                    <td className="py-2 px-2.5 text-center bg-amber-50/70 dark:bg-amber-950/25 border-x border-amber-200/50 dark:border-amber-900/30 font-sans">
+                      {(() => {
+                        const promo = OFFICIAL_RJ_TV_PROMO_REGISTRY[product.id] || product.promoOffer;
+                        if (promo && promo.hasActivePromo && promo.promoPrice > 0) {
+                          const channel = promo.mediaChannel || (promo.mediaType.startsWith('TV') ? 'TV' : 'ENCARTE');
+                          const badgeConfig = {
+                            TV: { bg: 'bg-indigo-600 text-white', label: 'TV RJ', icon: Tv },
+                            CLUBE: { bg: 'bg-purple-600 text-white', label: 'CLUBE', icon: Tag },
+                            ENCARTE: { bg: 'bg-amber-600 text-white', label: 'TABLOIDE', icon: FileSpreadsheet },
+                            LAMINA: { bg: 'bg-teal-700 text-white', label: 'LÂMINA', icon: Layers },
+                            REDES: { bg: 'bg-rose-600 text-white', label: 'REDES', icon: Sparkles }
+                          }[channel] || { bg: 'bg-amber-600 text-white', label: 'PROMO', icon: Tag };
+                          const IconComponent = badgeConfig.icon;
+
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedTvPromoProduct({
+                                product,
+                                promo,
+                                stats
+                              })}
+                              className="w-full text-left p-1.5 rounded-xl bg-white hover:bg-amber-50 dark:bg-slate-900 dark:hover:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 transition group cursor-pointer shadow-xs hover:shadow-md"
+                              title={`Auditar veiculação: ${promo.chainName} (${promo.mediaLabel})`}
+                            >
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="font-mono font-black text-xs text-amber-950 dark:text-amber-100">
+                                  R$ {promo.promoPrice.toFixed(2)}
+                                </span>
+                                <span className={`text-[8px] font-black uppercase px-1.5 py-0.2 rounded-full flex items-center gap-0.5 ${badgeConfig.bg}`}>
+                                  <IconComponent className="w-2.5 h-2.5" />
+                                  <span>{badgeConfig.label}</span>
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between text-[9px] text-slate-600 dark:text-slate-300 font-semibold mt-0.5">
+                                <span className="truncate max-w-[85px] font-bold text-slate-800 dark:text-slate-100">
+                                  {promo.chainName.split(' ')[0]}
+                                </span>
+                                <span className="text-[8px] font-black text-emerald-700 dark:text-emerald-400 font-mono">
+                                  -{Math.round(((stats.avgPrice - promo.promoPrice) / stats.avgPrice) * 100)}%
+                                </span>
+                              </div>
+                              <div className="text-[8px] text-amber-800 dark:text-amber-300 truncate font-sans mt-0.5 font-medium border-t border-amber-100 dark:border-amber-900/40 pt-0.5">
+                                {promo.validity.split('(')[0].trim()}
+                              </div>
+                            </button>
+                          );
+                        }
+                        return (
+                          <span className="text-[10px] text-slate-400 font-mono italic">
+                            Sem oferta
+                          </span>
+                        );
+                      })()}
                     </td>
 
                     {/* Menor RJ */}
@@ -794,95 +882,106 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
               })}
             </tbody>
 
-            {/* Linhas de Fechamento Estatístico da Tabela (Footer Idêntico ao Varejo 12 Redes RJ) */}
-            <tfoot className="bg-slate-100/95 dark:bg-slate-800/95 border-t-2 border-slate-300 dark:border-slate-700 font-mono text-xs">
+            {/* Linhas de Fechamento Estatístico da Tabela com Painel Congelado */}
+            <tfoot className="bg-slate-100/95 dark:bg-slate-800/95 border-t-2 border-slate-300 dark:border-slate-700 font-mono text-xs sticky bottom-0 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
               {/* Linha 1: Média Geral RJ */}
               <tr className="font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800">
-                <td className="py-2.5 px-3 font-sans">MÉDIA GERAL RJ (12 Redes)</td>
-                <td className="py-2.5 px-2 text-center font-sans text-[10px] text-slate-500">MÉDIA</td>
+                <td className="sticky bottom-0 left-0 z-40 bg-slate-100 dark:bg-slate-800 py-2.5 px-3.5 font-sans border-r-2 border-slate-300 dark:border-slate-700 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.12)] min-w-[240px] max-w-[280px]">
+                  <div className="flex items-center justify-between">
+                    <span>MÉDIA GERAL RJ (12 Redes)</span>
+                    <Pin className="w-3 h-3 text-emerald-600 dark:text-emerald-400 rotate-45 shrink-0" />
+                  </div>
+                </td>
+                <td className="py-2.5 px-2 text-center font-sans text-[10px] text-slate-500 whitespace-nowrap">MÉDIA</td>
                 {RJ_SUPERMARKET_CHAINS.map(chain => (
-                  <td key={chain.id} className="py-2.5 px-2.5 text-right font-black">
+                  <td key={chain.id} className="py-2.5 px-2.5 text-right font-black whitespace-nowrap">
                     R$ {chainAverages[chain.id]?.avg.toFixed(2) || '0.00'}
                   </td>
                 ))}
-                <td className="py-2.5 px-3 text-center text-amber-800 dark:text-amber-200 font-black bg-amber-100/60 dark:bg-amber-950/40">
+                <td className="py-2.5 px-3 text-center text-amber-800 dark:text-amber-200 font-black bg-amber-100/60 dark:bg-amber-950/40 whitespace-nowrap">
                   R$ {tvPromoSummary.avgPromo.toFixed(2)}
                 </td>
-                <td className="py-2.5 px-2.5 text-right text-emerald-700 dark:text-emerald-300 font-black">
+                <td className="py-2.5 px-2.5 text-right text-emerald-700 dark:text-emerald-300 font-black whitespace-nowrap">
                   R$ {categorySummary.minPriceCategory.toFixed(2)}
                 </td>
-                <td className="py-2.5 px-2.5 text-right text-rose-700 dark:text-rose-400 font-black">
+                <td className="py-2.5 px-2.5 text-right text-rose-700 dark:text-rose-400 font-black whitespace-nowrap">
                   R$ {categorySummary.maxPriceCategory.toFixed(2)}
                 </td>
-                <td className="py-2.5 px-2.5 text-right text-slate-900 dark:text-white font-black">
+                <td className="py-2.5 px-2.5 text-right text-slate-900 dark:text-white font-black whitespace-nowrap">
                   R$ {categorySummary.avgPriceCategory.toFixed(2)}
                 </td>
-                <td className="py-2.5 px-2.5 text-right text-amber-700 dark:text-amber-300 font-black">
+                <td className="py-2.5 px-2.5 text-right text-amber-700 dark:text-amber-300 font-black whitespace-nowrap">
                   R$ {categorySummary.avgSpread.toFixed(2)}
                 </td>
-                <td className="py-2.5 px-3 font-sans text-center text-[10px] text-slate-500">Média Geral Ponderada</td>
+                <td className="py-2.5 px-3 font-sans text-center text-[10px] text-slate-500 whitespace-nowrap">Média Geral Ponderada</td>
               </tr>
 
               {/* Linha 2: Menor Preço Registrado */}
-              <tr className="text-emerald-800 dark:text-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/20 font-bold">
-                <td className="py-2 px-3 font-sans text-[11px]">MENOR PREÇO REGISTRADO RJ</td>
-                <td className="py-2 px-2 text-center font-sans text-[10px]">MÍNIMO</td>
+              <tr className="text-emerald-800 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/30 font-bold">
+                <td className="sticky bottom-0 left-0 z-40 bg-emerald-50 dark:bg-slate-800 py-2 px-3.5 font-sans text-[11px] border-r-2 border-emerald-200 dark:border-slate-700 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.12)] min-w-[240px] max-w-[280px]">
+                  MENOR PREÇO REGISTRADO RJ
+                </td>
+                <td className="py-2 px-2 text-center font-sans text-[10px] whitespace-nowrap">MÍNIMO</td>
                 {RJ_SUPERMARKET_CHAINS.map(chain => (
-                  <td key={chain.id} className="py-2 px-2.5 text-right">
+                  <td key={chain.id} className="py-2 px-2.5 text-right whitespace-nowrap">
                     R$ {chainAverages[chain.id]?.min.toFixed(2) || '0.00'}
                   </td>
                 ))}
-                <td className="py-2 px-3 text-center text-amber-900 dark:text-amber-300 font-black bg-amber-100/70 dark:bg-amber-950/50">
+                <td className="py-2 px-3 text-center text-amber-900 dark:text-amber-300 font-black bg-amber-100/70 dark:bg-amber-950/50 whitespace-nowrap">
                   R$ {tvPromoSummary.minPromo.toFixed(2)}
                 </td>
-                <td className="py-2 px-2.5 text-right text-emerald-700 font-black">
+                <td className="py-2 px-2.5 text-right text-emerald-700 font-black whitespace-nowrap">
                   R$ {categorySummary.minPriceCategory.toFixed(2)}
                 </td>
-                <td className="py-2 px-2.5 text-right">-</td>
-                <td className="py-2 px-2.5 text-right">-</td>
-                <td className="py-2 px-2.5 text-right">-</td>
-                <td className="py-2 px-3 font-sans text-center text-[10px] text-emerald-700 dark:text-emerald-400">Piso Atacarejo / Popular</td>
+                <td className="py-2 px-2.5 text-right whitespace-nowrap">-</td>
+                <td className="py-2 px-2.5 text-right whitespace-nowrap">-</td>
+                <td className="py-2 px-2.5 text-right whitespace-nowrap">-</td>
+                <td className="py-2 px-3 font-sans text-center text-[10px] text-emerald-700 dark:text-emerald-400 whitespace-nowrap">Piso Atacarejo / Popular</td>
               </tr>
 
               {/* Linha 3: Maior Preço Registrado */}
-              <tr className="text-rose-800 dark:text-rose-300 bg-rose-50/70 dark:bg-rose-950/20 font-bold">
-                <td className="py-2 px-3 font-sans text-[11px]">MAIOR PREÇO REGISTRADO RJ</td>
-                <td className="py-2 px-2 text-center font-sans text-[10px]">MÁXIMO</td>
+              <tr className="text-rose-800 dark:text-rose-300 bg-rose-50/80 dark:bg-rose-950/30 font-bold">
+                <td className="sticky bottom-0 left-0 z-40 bg-rose-50 dark:bg-slate-800 py-2 px-3.5 font-sans text-[11px] border-r-2 border-rose-200 dark:border-slate-700 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.12)] min-w-[240px] max-w-[280px]">
+                  MAIOR PREÇO REGISTRADO RJ
+                </td>
+                <td className="py-2 px-2 text-center font-sans text-[10px] whitespace-nowrap">MÁXIMO</td>
                 {RJ_SUPERMARKET_CHAINS.map(chain => (
-                  <td key={chain.id} className="py-2 px-2.5 text-right">
+                  <td key={chain.id} className="py-2 px-2.5 text-right whitespace-nowrap">
                     R$ {chainAverages[chain.id]?.max.toFixed(2) || '0.00'}
                   </td>
                 ))}
-                <td className="py-2 px-3 text-center text-slate-400">-</td>
-                <td className="py-2 px-2.5 text-right">-</td>
-                <td className="py-2 px-2.5 text-right text-rose-700 font-black">
+                <td className="py-2 px-3 text-center text-slate-400 whitespace-nowrap">-</td>
+                <td className="py-2 px-2.5 text-right whitespace-nowrap">-</td>
+                <td className="py-2 px-2.5 text-right text-rose-700 font-black whitespace-nowrap">
                   R$ {categorySummary.maxPriceCategory.toFixed(2)}
                 </td>
-                <td className="py-2 px-2.5 text-right">-</td>
-                <td className="py-2 px-2.5 text-right">-</td>
-                <td className="py-2 px-3 font-sans text-center text-[10px] text-rose-700 dark:text-rose-400">Teto Redes Premium</td>
+                <td className="py-2 px-2.5 text-right whitespace-nowrap">-</td>
+                <td className="py-2 px-2.5 text-right whitespace-nowrap">-</td>
+                <td className="py-2 px-3 font-sans text-center text-[10px] text-rose-700 dark:text-rose-400 whitespace-nowrap">Teto Redes Premium</td>
               </tr>
 
               {/* Linha 4: Spread / Amplitude */}
-              <tr className="text-amber-800 dark:text-amber-300 bg-amber-50/70 dark:bg-amber-950/20 font-bold">
-                <td className="py-2 px-3 font-sans text-[11px]">SPREAD DE BALCÃO (MÁX - MÍN)</td>
-                <td className="py-2 px-2 text-center font-sans text-[10px]">SPREAD</td>
+              <tr className="text-amber-800 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-950/30 font-bold">
+                <td className="sticky bottom-0 left-0 z-40 bg-amber-50 dark:bg-slate-800 py-2 px-3.5 font-sans text-[11px] border-r-2 border-amber-200 dark:border-slate-700 shadow-[4px_0_8px_-2px_rgba(0,0,0,0.12)] min-w-[240px] max-w-[280px]">
+                  SPREAD DE BALCÃO (MÁX - MÍN)
+                </td>
+                <td className="py-2 px-2 text-center font-sans text-[10px] whitespace-nowrap">SPREAD</td>
                 {RJ_SUPERMARKET_CHAINS.map(chain => {
                   const sp = (chainAverages[chain.id]?.max || 0) - (chainAverages[chain.id]?.min || 0);
                   return (
-                    <td key={chain.id} className="py-2 px-2.5 text-right">
+                    <td key={chain.id} className="py-2 px-2.5 text-right whitespace-nowrap">
                       R$ {sp.toFixed(2)}
                     </td>
                   );
                 })}
-                <td className="py-2 px-3 text-center text-slate-400">-</td>
-                <td className="py-2 px-2.5 text-right">-</td>
-                <td className="py-2 px-2.5 text-right">-</td>
-                <td className="py-2 px-2.5 text-right">-</td>
-                <td className="py-2 px-2.5 text-right text-amber-700 font-black">
+                <td className="py-2 px-3 text-center text-slate-400 whitespace-nowrap">-</td>
+                <td className="py-2 px-2.5 text-right whitespace-nowrap">-</td>
+                <td className="py-2 px-2.5 text-right whitespace-nowrap">-</td>
+                <td className="py-2 px-2.5 text-right whitespace-nowrap">-</td>
+                <td className="py-2 px-2.5 text-right text-amber-700 font-black whitespace-nowrap">
                   R$ {categorySummary.avgSpread.toFixed(2)}
                 </td>
-                <td className="py-2 px-3 font-sans text-center text-[10px] text-amber-700 dark:text-amber-400">Amplitude Praticada no RJ</td>
+                <td className="py-2 px-3 font-sans text-center text-[10px] text-amber-700 dark:text-amber-400 whitespace-nowrap">Amplitude Praticada no RJ</td>
               </tr>
             </tfoot>
           </table>

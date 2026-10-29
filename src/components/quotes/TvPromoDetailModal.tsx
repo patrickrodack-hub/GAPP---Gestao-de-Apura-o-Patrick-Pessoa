@@ -52,14 +52,14 @@ export const TvPromoDetailModal: React.FC<TvPromoDetailModalProps> = ({
               <Tv className="w-5 h-5 text-amber-200" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-black uppercase font-mono tracking-wider bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full">
-                  RADAR DE TV & ENCARTE RJ
+                  RADAR PROMOÇÕES RJ (TV • ENCARTE • CLUBE • REDES)
                 </span>
-                <span className="text-xs text-amber-200 font-bold">Aferição em Tempo Real</span>
+                <span className="text-xs text-amber-200 font-bold">Vigência Verificada</span>
               </div>
               <h3 className="text-base font-black tracking-tight leading-tight mt-0.5">
-                Comprovante de Oferta Publicitária
+                Comprovante de Promoção Publicada
               </h3>
             </div>
           </div>
@@ -97,11 +97,11 @@ export const TvPromoDetailModal: React.FC<TvPromoDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Destaque do Preço de TV vs Balcão */}
+          {/* Destaque do Preço Promocional vs Balcão */}
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-400 dark:border-amber-600/60">
               <span className="text-[10px] font-bold uppercase text-amber-800 dark:text-amber-300 block">
-                Preço Promocional de TV
+                Preço Promocional em Vigência
               </span>
               <div className="text-2xl font-black text-amber-900 dark:text-amber-100 font-mono mt-1">
                 R$ {promo.promoPrice.toFixed(2)}
@@ -121,10 +121,17 @@ export const TvPromoDetailModal: React.FC<TvPromoDetailModalProps> = ({
               </div>
               <span className="text-[10px] text-emerald-800 dark:text-emerald-300 font-semibold flex items-center gap-1 mt-1">
                 <TrendingDown className="w-3 h-3" />
-                Economia de R$ {diffR$ > 0 ? diffR$.toFixed(2) : '0.00'}/kg
+                Economia de R$ {diffR$ > 0 ? diffR$.toFixed(2) : '0.00'}
               </span>
             </div>
           </div>
+
+          {/* Condições & Regras da Promoção */}
+          {promo.conditionNotes && (
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 text-xs">
+              <strong>Regra de Oferta / Condições:</strong> {promo.conditionNotes}
+            </div>
+          )}
 
           {/* Ficha Técnica da Veiculação / Clipping */}
           <div className="border border-slate-200 dark:border-slate-800 rounded-xl divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
@@ -132,7 +139,7 @@ export const TvPromoDetailModal: React.FC<TvPromoDetailModalProps> = ({
             <div className="p-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                 <Building2 className="w-4 h-4 text-emerald-600" />
-                <span className="font-semibold">Rede Supermercadista Anunciante:</span>
+                <span className="font-semibold">Rede Anunciante:</span>
               </div>
               <span className="font-black text-slate-900 dark:text-white">
                 {promo.chainName}
@@ -142,7 +149,7 @@ export const TvPromoDetailModal: React.FC<TvPromoDetailModalProps> = ({
             <div className="p-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                 <Tv className="w-4 h-4 text-indigo-600" />
-                <span className="font-semibold">Veículo / Mídia de Transmissão:</span>
+                <span className="font-semibold">Canal / Meio de Publicação:</span>
               </div>
               <span className="font-bold text-indigo-700 dark:text-indigo-400 text-right">
                 {promo.mediaLabel}
@@ -155,7 +162,7 @@ export const TvPromoDetailModal: React.FC<TvPromoDetailModalProps> = ({
                 <span className="font-semibold">Horário / Registro de Transmissão:</span>
               </div>
               <span className="font-mono text-slate-800 dark:text-slate-200 text-right">
-                {promo.adBroadcastTime || 'Hoje • Intervalo Comercial'}
+                {promo.adBroadcastTime || 'Hoje • Publicação Monitorada'}
               </span>
             </div>
 
