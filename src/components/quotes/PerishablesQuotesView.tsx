@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { 
   PerishableCategoryId, 
   PerishableProductItem,
-  PerishableTvPromoOffer
+  PerishableTvPromoOffer,
+  FlvSubdivision
 } from '../../types/perishablesQuotes';
 import { 
   PERISHABLE_CATEGORIES, 
@@ -39,8 +40,18 @@ interface PerishablesQuotesViewProps {
   showToast?: (message: string) => void;
 }
 
+const FLV_SUBDIVISIONS: { id: FlvSubdivision | 'TODOS'; label: string; badgeColor: string; description: string }[] = [
+  { id: 'FRUTAS', label: 'FRUTAS', badgeColor: 'bg-rose-500/20 text-rose-300', description: 'Banana, Maçã (kg e Pacote 800g), Laranja, Mamão, Melancia, Melão, Abacaxi, Manga, Limão, Maracujá, Abacate, Morango bdj e Uvas (Thompson, Vitória, Rubi, Benitaka e Itália)' },
+  { id: 'LEGUMES', label: 'LEGUMES', badgeColor: 'bg-amber-500/20 text-amber-300', description: 'Batata Inglesa, Batata Doce, Cebola, Tomate, Cenoura, Chuchu, Abobrinha, Pimentão, Beterraba, Abóbora Sergipana, Aipim e Inhame' },
+  { id: 'OVOS', label: 'OVOS', badgeColor: 'bg-yellow-500/20 text-yellow-300', description: 'Ovos Brancos (Bandeja c/ 30 un e Bandeja c/ 20 un), Ovos Vermelhos/Caipira, Dúzia c/ 12 e Ovos de Codorna' },
+  { id: 'ALHO', label: 'ALHO', badgeColor: 'bg-purple-500/20 text-purple-300', description: 'Alho Granel kg, Alho Roxo Nobre a Granel, Descascado a Vácuo 1kg, Cartela 200g e Pasta de Alho' },
+  { id: 'HORTALIÇAS', label: 'HORTALIÇAS', badgeColor: 'bg-emerald-500/20 text-emerald-300', description: 'Alface, Couve Manteiga, Cheiro Verde, Rúcula, Agrião e Brócolis Ninja' },
+  { id: 'TODOS', label: 'TODOS (FLV COMPLETO)', badgeColor: 'bg-slate-500/20 text-slate-300', description: 'Visão consolidada de todas as 5 divisões de Hortifrúti / FLV' }
+];
+
 export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ showToast }) => {
   const [activeCategoryId, setActiveCategoryId] = useState<PerishableCategoryId>('corte_frango');
+  const [activeFlvSubdivision, setActiveFlvSubdivision] = useState<'TODOS' | FlvSubdivision>('FRUTAS');
   const [products, setProducts] = useState<PerishableProductItem[]>(() => PerishablesQuotesService.getProducts());
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -65,27 +76,41 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
     return PERISHABLE_CATEGORIES.find(c => c.id === activeCategoryId) || PERISHABLE_CATEGORIES[0];
   }, [activeCategoryId]);
 
-  // Produtos filtrados por categoria e pesquisa
+  // Produtos filtrados por categoria, subdivisão FLV e pesquisa
   const filteredProducts = useMemo(() => {
     return products
       .filter(p => p.categoryId === activeCategoryId)
+      .filter(p => {
+        if (activeCategoryId === 'hortifruti_flv' && activeFlvSubdivision !== 'TODOS') {
+          return p.flvSubdivision === activeFlvSubdivision;
+        }
+        return true;
+      })
       .filter(p => {
         if (!searchQuery.trim()) return true;
         const q = searchQuery.toLowerCase();
         return p.name.toLowerCase().includes(q) || 
                p.productCode.toLowerCase().includes(q) ||
-               p.specification.toLowerCase().includes(q);
+               p.specification.toLowerCase().includes(q) ||
+               (p.flvSubdivision && p.flvSubdivision.toLowerCase().includes(q));
       });
-  }, [products, activeCategoryId, searchQuery]);
+  }, [products, activeCategoryId, activeFlvSubdivision, searchQuery]);
 
-  // Resumo estatístico da categoria
+  // Resumo estatístico da categoria (considerando subdivisão FLV ativa)
   const categorySummary = useMemo(() => {
-    return PerishablesQuotesService.calculateCategorySummary(activeCategoryId, products);
-  }, [activeCategoryId, products]);
+    return PerishablesQuotesService.calculateCategorySummary(activeCategoryId, products, activeFlvSubdivision);
+  }, [activeCategoryId, products, activeFlvSubdivision]);
 
-  // Médias por rede para a categoria ativa (usadas no footer)
+  // Médias por rede para a categoria/subdivisão ativa (usadas no footer)
   const chainAverages = useMemo(() => {
-    const categoryProds = products.filter(p => p.categoryId === activeCategoryId);
+    const categoryProds = products
+      .filter(p => p.categoryId === activeCategoryId)
+      .filter(p => {
+        if (activeCategoryId === 'hortifruti_flv' && activeFlvSubdivision !== 'TODOS') {
+          return p.flvSubdivision === activeFlvSubdivision;
+        }
+        return true;
+      });
     const result: Record<string, { avg: number; min: number; max: number; count: number }> = {};
 
     RJ_SUPERMARKET_CHAINS.forEach(chain => {
@@ -113,11 +138,18 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
     });
 
     return result;
-  }, [activeCategoryId, products]);
+  }, [activeCategoryId, activeFlvSubdivision, products]);
 
   // Resumo estatístico de Ofertas de TV / Encartes para a sub-aba ativa
   const tvPromoSummary = useMemo(() => {
-    const categoryProds = products.filter(p => p.categoryId === activeCategoryId);
+    const categoryProds = products
+      .filter(p => p.categoryId === activeCategoryId)
+      .filter(p => {
+        if (activeCategoryId === 'hortifruti_flv' && activeFlvSubdivision !== 'TODOS') {
+          return p.flvSubdivision === activeFlvSubdivision;
+        }
+        return true;
+      });
     let count = 0;
     let minPromo = Infinity;
     let sumPromo = 0;
@@ -139,7 +171,7 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
       minPromo: minPromo === Infinity ? 0 : minPromo,
       chains: Array.from(chainsWithOffers).join(', ') || 'Guanabara, Mundial, Supermarket, Assaí'
     };
-  }, [activeCategoryId, products]);
+  }, [activeCategoryId, activeFlvSubdivision, products]);
 
   // Handlers de Ações
   const handleRefresh = async () => {
@@ -186,7 +218,7 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
   const handleExportExcel = async () => {
     setIsExportingExcel(true);
     try {
-      await PerishablesQuotesService.exportCategoryToExcel(activeCategoryId, products);
+      await PerishablesQuotesService.exportCategoryToExcel(activeCategoryId, products, activeFlvSubdivision);
       if (showToast) showToast('Planilha Excel (.xlsx) de Perecíveis gerada com sucesso!');
     } catch (err) {
       console.error('Erro ao exportar Excel:', err);
@@ -199,7 +231,7 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
   const handleDownloadPdf = async () => {
     setIsExportingPdf(true);
     try {
-      await PerishablesQuotesService.generateAndDownloadPdf(activeCategoryId, products);
+      await PerishablesQuotesService.generateAndDownloadPdf(activeCategoryId, products, activeFlvSubdivision);
       if (showToast) showToast('Relatório Oficial em PDF de Perecíveis baixado com sucesso!');
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
@@ -210,11 +242,11 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
   };
 
   const handlePrint = () => {
-    PerishablesQuotesService.printCategoryReport(activeCategoryId, products);
+    PerishablesQuotesService.printCategoryReport(activeCategoryId, products, activeFlvSubdivision);
   };
 
   const handleShareWhatsApp = () => {
-    const encoded = PerishablesQuotesService.generateWhatsAppSummary(activeCategoryId, products);
+    const encoded = PerishablesQuotesService.generateWhatsAppSummary(activeCategoryId, products, activeFlvSubdivision);
     const url = `https://api.whatsapp.com/send?text=${encoded}`;
     window.open(url, '_blank');
   };
@@ -254,7 +286,7 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 uppercase tracking-wider">
-                MÓDULO DE PERECÍVEIS • 8 SUB-ABAS
+                MÓDULO DE PERECÍVEIS • {PERISHABLE_CATEGORIES.length} SUB-ABAS
               </span>
               <span className="text-xs text-slate-500 font-semibold hidden sm:inline">
                 Amostragem em 12 Redes Supermercadistas Fluminenses
@@ -270,7 +302,7 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
           </div>
         </div>
 
-        {/* Linha com as 7 Sub-abas com visual ergonômico */}
+        {/* Linha com as Sub-abas com visual ergonômico */}
         <div className="flex space-x-1.5 overflow-x-auto no-scrollbar pt-3">
           {PERISHABLE_CATEGORIES.map(cat => {
             const isActive = activeCategoryId === cat.id;
@@ -300,6 +332,60 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
             );
           })}
         </div>
+
+        {/* SUB-DIVISÃO DINÂMICA EXCLUSIVA PARA HORTFRUT / FLV: FRUTAS, LEGUMES, OVOS, ALHO, HORTALIÇAS */}
+        {activeCategoryId === 'hortifruti_flv' && (
+          <div className="mt-3 pt-3 border-t border-emerald-200/80 dark:border-emerald-900/50 bg-gradient-to-r from-emerald-50/90 via-teal-50/60 to-amber-50/70 dark:from-emerald-950/40 dark:via-slate-900 dark:to-amber-950/30 rounded-xl p-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[10px] font-black uppercase tracking-wider">
+                  DIVISÃO DINÂMICA HORTFRUT / FLV
+                </span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                  Selecione o grupo de FLV para filtrar cotações, indicadores e relatórios:
+                </span>
+              </div>
+              <span className="text-[11px] font-mono text-emerald-800 dark:text-emerald-300 font-bold">
+                Divisão Ativa: {activeFlvSubdivision} ({filteredProducts.length} itens)
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {FLV_SUBDIVISIONS.map(sub => {
+                const isSubActive = activeFlvSubdivision === sub.id;
+                const countInSub = products
+                  .filter(p => p.categoryId === 'hortifruti_flv')
+                  .filter(p => sub.id === 'TODOS' ? true : p.flvSubdivision === sub.id).length;
+
+                return (
+                  <button
+                    key={sub.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveFlvSubdivision(sub.id);
+                      setEditingCell(null);
+                    }}
+                    title={sub.description}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition cursor-pointer ${
+                      isSubActive
+                        ? 'bg-emerald-700 text-white shadow-md shadow-emerald-950/20 ring-2 ring-amber-400'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    <span>{sub.label}</span>
+                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full font-extrabold ${
+                      isSubActive
+                        ? 'bg-amber-400 text-slate-950'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                    }`}>
+                      {countInSub}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 2. BARRA DE STATUS DE AUDITORIA & METODOLOGIA */}
@@ -561,7 +647,12 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                   <tr key={product.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
                     {/* Coluna Produto */}
                     <td className="py-3 px-3 font-bold font-sans text-slate-900 dark:text-white">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {product.flvSubdivision && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/60">
+                            {product.flvSubdivision}
+                          </span>
+                        )}
                         <span className="font-extrabold">{product.name}</span>
                       </div>
                       <div className="text-[10px] text-slate-400 font-normal truncate max-w-[260px] font-sans">
@@ -804,7 +895,7 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
             <span>Critérios Metodológicos da Cotação de Perecíveis • 12 Redes Supermercadistas RJ</span>
           </div>
           <p className="text-[11px]">
-            • <strong>Sub-abas Normatizadas:</strong> Monitoramento estruturado para <em>CORTE DE FRANGO</em>, <em>CORTE DE CARNE SECA</em>, <em>MIUDO BOVINO</em>, <em>SUINO SALGADO</em>, <em>CHARQUE / CARNE SECA</em>, <em>QUEIJO MUSSARELA / PRATO</em>, <em>LINGÜIÇA DE CHURRASCO</em> e <em>LEITE UHT DE 1LT</em>.
+            • <strong>Sub-abas Normatizadas:</strong> Monitoramento estruturado para <em>CORTE DE FRANGO</em> (Resfriados e Congelados), <em>CORTE DE CARNE SECA</em>, <em>MIUDO BOVINO</em>, <em>SUINO SALGADO</em>, <em>CHARQUE / CARNE SECA</em>, <em>QUEIJO MUSSARELA / PRATO</em>, <em>LINGÜIÇA DE CHURRASCO</em>, <em>LEITE UHT DE 1LT</em>, <em>CORTE CARNE BOV</em>, <em>CORTE CARNE SUINA</em> e <em>HORTFRUT / FLV</em> (com divisão dinâmica entre <strong>FRUTAS, LEGUMES, OVOS, ALHO e HORTALIÇAS</strong>).
           </p>
           <p className="text-[11px]">
             • <strong>Radar de Comerciais de TV e Encartes:</strong> Captura e clipping diário de ofertas veiculadas na TV aberta do RJ (Globo RJ, Record RJ, SBT Rio), tabloides impressos e aplicativos oficiais das maiores redes fluminenses.

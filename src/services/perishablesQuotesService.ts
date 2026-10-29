@@ -81,6 +81,30 @@ export const PERISHABLE_CATEGORIES: PerishableCategoryDef[] = [
     iconName: 'milk',
     description: 'Monitoramento das principais marcas de leite UHT 1 Litro (Integral, Desnatado, Semidesnatado e Zero Lactose) no RJ.',
     benchmarkBenchmark: 'ASSERJ / Procon-RJ / NielsenIQ RJ'
+  },
+  {
+    id: 'corte_carne_bov',
+    label: 'CORTE CARNE BOV',
+    shortLabel: 'Carne Bovina',
+    iconName: 'beef',
+    description: 'Cortes bovinos de primeira, segunda e churrasco in natura, desossados e a vácuo nas 12 redes do RJ.',
+    benchmarkBenchmark: 'Ceasa RJ / ASSERJ / Scot Consultoria'
+  },
+  {
+    id: 'corte_carne_suina',
+    label: 'CORTE CARNE SUINA',
+    shortLabel: 'Carne Suína',
+    iconName: 'pig',
+    description: 'Cortes suínos in natura resfriados e congelados no balcão e gôndola das 12 redes fluminenses.',
+    benchmarkBenchmark: 'ASSERJ / ABPA / Ceasa RJ'
+  },
+  {
+    id: 'hortifruti_flv',
+    label: 'HORTFRUT / FLV',
+    shortLabel: 'Hortifrúti / FLV',
+    iconName: 'apple',
+    description: 'Cotação de Frutas, Legumes, Ovos, Alho e Hortaliças monitoradas no varejo e Ceasa RJ.',
+    benchmarkBenchmark: 'Ceasa RJ (Irajá) / ASSERJ / DITEC'
   }
 ];
 
@@ -299,6 +323,256 @@ export const INITIAL_PERISHABLE_PRODUCTS: PerishableProductItem[] = [
       multi_market: 9.79,
       zona_sul: 13.90,
       hortifruti: 14.50
+    },
+    source: 'Pesquisa Balcão RJ • ASSERJ / Encartes Oficiais',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'frango-peito-osso-cong',
+    categoryId: 'corte_frango',
+    productCode: 'FRG-PEITO-OSSO-CG',
+    name: 'Peito de Frango com Osso Congelado (Pacote)',
+    specification: 'Peito de frango congelado com osso em pacote de 1kg das principais integradoras avícolas',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 10.49,
+      mundial: 10.99,
+      prezunic: 11.90,
+      supermarket: 11.49,
+      economia: 10.99,
+      dom_atacadista: 9.99,
+      assai: 9.89,
+      atacadao: 9.79,
+      princesa: 11.80,
+      multi_market: 11.50,
+      zona_sul: 15.90,
+      hortifruti: 16.50
+    },
+    source: 'Pesquisa Balcão RJ • Encartes Semanais RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'frango-file-peito-cong',
+    categoryId: 'corte_frango',
+    productCode: 'FRG-FILE-PEITO-CG',
+    name: 'Filé de Peito de Frango sem Pele Congelado (IQF / 1kg)',
+    specification: 'Filé de peito congelamento rápido individual IQF pacote 1kg (Seara, Sadia, Pif Paf, Rica)',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 16.99,
+      mundial: 17.49,
+      prezunic: 18.90,
+      supermarket: 17.99,
+      economia: 17.49,
+      dom_atacadista: 15.99,
+      assai: 15.89,
+      atacadao: 15.79,
+      princesa: 18.50,
+      multi_market: 17.90,
+      zona_sul: 23.90,
+      hortifruti: 24.90
+    },
+    source: 'Pesquisa Balcão RJ • Scantec Sell-Out RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'frango-coxa-sobre-cong',
+    categoryId: 'corte_frango',
+    productCode: 'FRG-COXA-SOBRE-CG',
+    name: 'Coxa e Sobrecoxa de Frango com Osso Congelada (1kg)',
+    specification: 'Corte tradicional congelado em pacote 1kg ou caixa de 18kg no atacarejo',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 7.99,
+      mundial: 8.49,
+      prezunic: 9.90,
+      supermarket: 8.99,
+      economia: 8.49,
+      dom_atacadista: 7.49,
+      assai: 7.39,
+      atacadao: 7.29,
+      princesa: 9.40,
+      multi_market: 8.90,
+      zona_sul: 12.90,
+      hortifruti: 13.50
+    },
+    source: 'Pesquisa Balcão RJ • ASSERJ / Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'frango-file-coxa-cong',
+    categoryId: 'corte_frango',
+    productCode: 'FRG-FILE-COXA-CG',
+    name: 'Filé de Coxa e Sobrecoxa sem Pele Desossado Congelado',
+    specification: 'Desossado congelado IQF ou pacote selado, rendimento integral sem desperdício',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 15.99,
+      mundial: 16.49,
+      prezunic: 17.90,
+      supermarket: 16.99,
+      economia: 16.49,
+      dom_atacadista: 14.99,
+      assai: 14.89,
+      atacadao: 14.79,
+      princesa: 17.50,
+      multi_market: 16.90,
+      zona_sul: 21.90,
+      hortifruti: 22.90
+    },
+    source: 'Pesquisa Balcão RJ • Preço da Hora SEFAZ-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'frango-asa-tulipa-cong',
+    categoryId: 'corte_frango',
+    productCode: 'FRG-ASA-TULIPA-CG',
+    name: 'Asa de Frango / Meio da Asa (Tulipa) Congelada (1kg)',
+    specification: 'Tulipa ou meio da asa congelada para churrasco carioca em pacote 1kg',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 16.99,
+      mundial: 17.49,
+      prezunic: 19.90,
+      supermarket: 18.49,
+      economia: 17.99,
+      dom_atacadista: 15.99,
+      assai: 15.89,
+      atacadao: 15.79,
+      princesa: 19.50,
+      multi_market: 18.90,
+      zona_sul: 24.90,
+      hortifruti: 25.90
+    },
+    source: 'Pesquisa Balcão RJ • ASSERJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'frango-coracao-cong',
+    categoryId: 'corte_frango',
+    productCode: 'FRG-CORACAO-CG',
+    name: 'Coração de Frango Congelado (Pacote 1kg)',
+    specification: 'Coração selecionado e limpo em pacote selado 1kg congelado',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 26.90,
+      mundial: 27.90,
+      prezunic: 30.90,
+      supermarket: 29.50,
+      economia: 28.90,
+      dom_atacadista: 24.90,
+      assai: 24.80,
+      atacadao: 24.70,
+      princesa: 30.50,
+      multi_market: 29.90,
+      zona_sul: 36.90,
+      hortifruti: 38.90
+    },
+    source: 'Pesquisa Balcão RJ • Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'frango-moela-cong',
+    categoryId: 'corte_frango',
+    productCode: 'FRG-MOELA-CG',
+    name: 'Moela de Frango Limpa Congelada (Pacote 1kg)',
+    specification: 'Moela amarela higienizada congelada em pacote selado de 1kg',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 9.99,
+      mundial: 10.49,
+      prezunic: 11.90,
+      supermarket: 10.99,
+      economia: 10.49,
+      dom_atacadista: 8.99,
+      assai: 8.89,
+      atacadao: 8.79,
+      princesa: 11.50,
+      multi_market: 10.90,
+      zona_sul: 14.90,
+      hortifruti: 15.50
+    },
+    source: 'Pesquisa Balcão RJ • Preço da Hora SEFAZ-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'frango-passarinho-cong',
+    categoryId: 'corte_frango',
+    productCode: 'FRG-PASSARINHO-CG',
+    name: 'Frango a Passarinho Congelado Temperado Carioca',
+    specification: 'Frango cortado a passarinho congelado com tempero suave carioca (alho/ervas) 1kg',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 9.49,
+      mundial: 9.99,
+      prezunic: 11.49,
+      supermarket: 10.49,
+      economia: 9.99,
+      dom_atacadista: 8.89,
+      assai: 8.79,
+      atacadao: 8.69,
+      princesa: 10.90,
+      multi_market: 10.40,
+      zona_sul: 14.50,
+      hortifruti: 15.20
+    },
+    source: 'Pesquisa Balcão RJ • Encartes Semanais RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'frango-sobrecoxa-desoss-cong',
+    categoryId: 'corte_frango',
+    productCode: 'FRG-SOBRE-DESOSS-CG',
+    name: 'Sobrecoxa de Frango Desossada sem Pele Congelada',
+    specification: 'Sobrecoxa desossada e sem pele congelada IQF para assados e recheados',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 16.49,
+      mundial: 16.99,
+      prezunic: 18.50,
+      supermarket: 17.49,
+      economia: 16.99,
+      dom_atacadista: 15.49,
+      assai: 15.39,
+      atacadao: 15.29,
+      princesa: 17.90,
+      multi_market: 17.40,
+      zona_sul: 22.50,
+      hortifruti: 23.50
+    },
+    source: 'Pesquisa Balcão RJ • ASSERJ / Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'frango-inteiro-cong',
+    categoryId: 'corte_frango',
+    productCode: 'FRG-INTEIRO-CG',
+    name: 'Frango Inteiro Congelado (com Miúdos)',
+    specification: 'Frango eviscerado inteiro congelado padrão com saquinho de miúdos internos',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 7.98,
+      mundial: 8.49,
+      prezunic: 9.69,
+      supermarket: 8.99,
+      economia: 8.69,
+      dom_atacadista: 7.69,
+      assai: 7.59,
+      atacadao: 7.49,
+      princesa: 9.49,
+      multi_market: 8.99,
+      zona_sul: 12.90,
+      hortifruti: 13.90
     },
     source: 'Pesquisa Balcão RJ • ASSERJ / Encartes Oficiais',
     lastSurveyDate: 'Hoje, 17:30'
@@ -1530,6 +1804,1849 @@ export const INITIAL_PERISHABLE_PRODUCTS: PerishableProductItem[] = [
     },
     source: 'Pesquisa Balcão RJ • ASSERJ / Procon-RJ',
     lastSurveyDate: 'Hoje, 17:30'
+  },
+
+  // =========================================================================
+  // 9. CORTE CARNE BOV
+  // =========================================================================
+  {
+    id: 'bov-picanha-vacuo',
+    categoryId: 'corte_carne_bov',
+    productCode: 'BOV-PICANHA-VAC',
+    name: 'Picanha Bovina Peça / Vácuo',
+    specification: 'Picanha bovina tipo A/B resfriada a vácuo (Friboi, Minerva, Marfrig, Frigol)',
+    unit: 'R$/kg',
+    standardPackKg: 1.2,
+    chainPrices: {
+      guanabara: 54.90,
+      mundial: 56.90,
+      prezunic: 64.90,
+      supermarket: 59.90,
+      economia: 58.90,
+      dom_atacadista: 49.99,
+      assai: 49.90,
+      atacadao: 48.90,
+      princesa: 62.90,
+      multi_market: 59.90,
+      zona_sul: 89.90,
+      hortifruti: 94.90
+    },
+    source: 'Pesquisa Balcão RJ • Encartes e Açougue RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'bov-contra-file',
+    categoryId: 'corte_carne_bov',
+    productCode: 'BOV-CONTRA-FILE',
+    name: 'Contra Filé Bovino Resfriado / Peça',
+    specification: 'Contra filé traseiro bovino resfriado peça ou bife no balcão de atendimento',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 36.90,
+      mundial: 37.90,
+      prezunic: 43.90,
+      supermarket: 39.90,
+      economia: 38.90,
+      dom_atacadista: 33.99,
+      assai: 33.90,
+      atacadao: 32.90,
+      princesa: 42.50,
+      multi_market: 39.90,
+      zona_sul: 59.90,
+      hortifruti: 64.90
+    },
+    source: 'Pesquisa Balcão RJ • ASSERJ / Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'bov-alcatra-maminha',
+    categoryId: 'corte_carne_bov',
+    productCode: 'BOV-ALCATRA-MAM',
+    name: 'Alcatra com Maminha Bovina Resfriada',
+    specification: 'Miolo de alcatra com maminha conjunto traseiro especial para bifes e churrasco',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 35.90,
+      mundial: 36.90,
+      prezunic: 42.90,
+      supermarket: 38.90,
+      economia: 37.90,
+      dom_atacadista: 32.99,
+      assai: 32.90,
+      atacadao: 31.90,
+      princesa: 41.50,
+      multi_market: 38.90,
+      zona_sul: 56.90,
+      hortifruti: 61.90
+    },
+    source: 'Pesquisa Balcão RJ • Preço da Hora SEFAZ-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'bov-coxao-mole',
+    categoryId: 'corte_carne_bov',
+    productCode: 'BOV-COXAO-MOLE',
+    name: 'Coxão Mole / Chã de Dentro Resfriado',
+    specification: 'Corte magro de primeira para bifes finos, milanesa e rolês no dia a dia',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 31.90,
+      mundial: 32.90,
+      prezunic: 36.90,
+      supermarket: 34.90,
+      economia: 33.90,
+      dom_atacadista: 28.99,
+      assai: 28.90,
+      atacadao: 28.50,
+      princesa: 35.90,
+      multi_market: 33.90,
+      zona_sul: 48.90,
+      hortifruti: 52.90
+    },
+    source: 'Pesquisa Balcão RJ • ASSERJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'bov-patinho',
+    categoryId: 'corte_carne_bov',
+    productCode: 'BOV-PATINHO',
+    name: 'Patinho Bovino Resfriado',
+    specification: 'Carne magra de primeira excelente para moer na hora e escalopes',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 32.90,
+      mundial: 33.90,
+      prezunic: 37.90,
+      supermarket: 35.90,
+      economia: 34.90,
+      dom_atacadista: 29.99,
+      assai: 29.90,
+      atacadao: 29.50,
+      princesa: 36.90,
+      multi_market: 34.90,
+      zona_sul: 49.90,
+      hortifruti: 54.90
+    },
+    source: 'Pesquisa Balcão RJ • Scantec Sell-Out RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'bov-coxao-duro',
+    categoryId: 'corte_carne_bov',
+    productCode: 'BOV-COXAO-DURO',
+    name: 'Coxão Duro / Chã de Fora Resfriado',
+    specification: 'Corte com fibras firmes para cozidos de panela, bife de panela e carne recheada',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 28.90,
+      mundial: 29.90,
+      prezunic: 34.90,
+      supermarket: 31.90,
+      economia: 30.90,
+      dom_atacadista: 26.99,
+      assai: 26.90,
+      atacadao: 26.50,
+      princesa: 33.90,
+      multi_market: 31.50,
+      zona_sul: 44.90,
+      hortifruti: 48.90
+    },
+    source: 'Pesquisa Balcão RJ • Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'bov-acem',
+    categoryId: 'corte_carne_bov',
+    productCode: 'BOV-ACEM-SO',
+    name: 'Acém Bovino sem Osso Resfriado',
+    specification: 'Corte do dianteiro muito popular no Rio de Janeiro para moer e cozidos com batatas',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 24.90,
+      mundial: 25.90,
+      prezunic: 29.90,
+      supermarket: 27.90,
+      economia: 26.90,
+      dom_atacadista: 22.99,
+      assai: 22.90,
+      atacadao: 22.50,
+      princesa: 28.90,
+      multi_market: 26.90,
+      zona_sul: 38.90,
+      hortifruti: 42.90
+    },
+    source: 'Pesquisa Balcão RJ • Encartes Semanais RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'bov-paleta',
+    categoryId: 'corte_carne_bov',
+    productCode: 'BOV-PALETA-SO',
+    name: 'Paleta Bovina sem Osso Resfriada',
+    specification: 'Paleta dianteira macia e suculenta para bifes de panela e picadinhos cariocas',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 25.90,
+      mundial: 26.90,
+      prezunic: 30.90,
+      supermarket: 28.90,
+      economia: 27.90,
+      dom_atacadista: 23.99,
+      assai: 23.90,
+      atacadao: 23.50,
+      princesa: 29.90,
+      multi_market: 27.90,
+      zona_sul: 39.90,
+      hortifruti: 43.90
+    },
+    source: 'Pesquisa Balcão RJ • Preço da Hora SEFAZ-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'bov-musculo',
+    categoryId: 'corte_carne_bov',
+    productCode: 'BOV-MUSCULO',
+    name: 'Músculo Bovino Resfriado',
+    specification: 'Corte colagenoso e nutritivo para sopas, caldos e ensopados na pressão',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 22.90,
+      mundial: 23.90,
+      prezunic: 27.90,
+      supermarket: 25.90,
+      economia: 24.90,
+      dom_atacadista: 20.99,
+      assai: 20.90,
+      atacadao: 20.50,
+      princesa: 26.90,
+      multi_market: 24.90,
+      zona_sul: 35.90,
+      hortifruti: 39.90
+    },
+    source: 'Pesquisa Balcão RJ • ASSERJ / Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'bov-costela-gaucha',
+    categoryId: 'corte_carne_bov',
+    productCode: 'BOV-COSTELA-GAU',
+    name: 'Costela Bovina Gaúcha / Janela em Tiras',
+    specification: 'Costela janela de ripa ou gaúcha cortada em tiras para churrasqueira e bafo',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 19.90,
+      mundial: 21.49,
+      prezunic: 24.90,
+      supermarket: 22.90,
+      economia: 21.90,
+      dom_atacadista: 18.99,
+      assai: 18.90,
+      atacadao: 18.50,
+      princesa: 23.90,
+      multi_market: 22.50,
+      zona_sul: 32.90,
+      hortifruti: 36.90
+    },
+    source: 'Pesquisa Balcão RJ • Encartes e Feira da Carne RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'bov-fraldinha',
+    categoryId: 'corte_carne_bov',
+    productCode: 'BOV-FRALDINHA',
+    name: 'Fraldinha Bovina Peça / Vácuo',
+    specification: 'Fraldinha marmorizada suculenta para churrasco e grelha a vácuo',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 31.90,
+      mundial: 32.90,
+      prezunic: 37.90,
+      supermarket: 34.90,
+      economia: 33.90,
+      dom_atacadista: 28.99,
+      assai: 28.90,
+      atacadao: 28.50,
+      princesa: 36.50,
+      multi_market: 33.90,
+      zona_sul: 52.90,
+      hortifruti: 56.90
+    },
+    source: 'Pesquisa Balcão RJ • Scantec Sell-Out RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'bov-cupim',
+    categoryId: 'corte_carne_bov',
+    productCode: 'BOV-CUPIM',
+    name: 'Cupim Bovino Resfriado',
+    specification: 'Cupim com alto teor de marmoreio para assados lentos de churrasqueira',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 29.90,
+      mundial: 31.90,
+      prezunic: 35.90,
+      supermarket: 33.90,
+      economia: 32.90,
+      dom_atacadista: 27.99,
+      assai: 27.90,
+      atacadao: 27.50,
+      princesa: 34.90,
+      multi_market: 32.90,
+      zona_sul: 46.90,
+      hortifruti: 49.90
+    },
+    source: 'Pesquisa Balcão RJ • Encartes Oficiais RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'bov-lagarto',
+    categoryId: 'corte_carne_bov',
+    productCode: 'BOV-LAGARTO',
+    name: 'Lagarto Bovino Resfriado',
+    specification: 'Lagarto redondo padrão para rosbife, carpaccio e carne desfiada recheada',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 30.90,
+      mundial: 31.90,
+      prezunic: 35.90,
+      supermarket: 33.90,
+      economia: 32.90,
+      dom_atacadista: 27.99,
+      assai: 27.90,
+      atacadao: 27.50,
+      princesa: 34.90,
+      multi_market: 32.90,
+      zona_sul: 47.90,
+      hortifruti: 51.90
+    },
+    source: 'Pesquisa Balcão RJ • ASSERJ / Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+
+  // =========================================================================
+  // 10. CORTE CARNE SUINA
+  // =========================================================================
+  {
+    id: 'suino-carre-bisteca',
+    categoryId: 'corte_carne_suina',
+    productCode: 'SUI-CARRE-BIST',
+    name: 'Carré Suíno / Bisteca Fresca Resfriada',
+    specification: 'Bisteca / carré suíno com osso cortado em fatias no balcão de açougue',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 13.90,
+      mundial: 14.49,
+      prezunic: 16.90,
+      supermarket: 15.49,
+      economia: 14.90,
+      dom_atacadista: 12.99,
+      assai: 12.90,
+      atacadao: 12.79,
+      princesa: 15.90,
+      multi_market: 14.90,
+      zona_sul: 21.90,
+      hortifruti: 23.90
+    },
+    source: 'Pesquisa Balcão RJ • ASSERJ / Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'suino-pernil-com-osso',
+    categoryId: 'corte_carne_suina',
+    productCode: 'SUI-PERNIL-CO',
+    name: 'Pernil Suíno com Osso e Pele Resfriado',
+    specification: 'Pernil traseiro suíno in natura com osso e pele para assados de fim de semana',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 12.90,
+      mundial: 13.49,
+      prezunic: 15.90,
+      supermarket: 14.49,
+      economia: 13.90,
+      dom_atacadista: 11.99,
+      assai: 11.90,
+      atacadao: 11.79,
+      princesa: 14.90,
+      multi_market: 13.90,
+      zona_sul: 19.90,
+      hortifruti: 21.90
+    },
+    source: 'Pesquisa Balcão RJ • Encartes e Tabloides RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'suino-pernil-desossado',
+    categoryId: 'corte_carne_suina',
+    productCode: 'SUI-PERNIL-DES',
+    name: 'Pernil Suíno Desossado Resfriado',
+    specification: 'Pernil traseiro totalmente desossado limpo sem excesso de gordura',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 17.90,
+      mundial: 18.49,
+      prezunic: 21.90,
+      supermarket: 19.90,
+      economia: 18.90,
+      dom_atacadista: 16.49,
+      assai: 16.40,
+      atacadao: 16.29,
+      princesa: 20.50,
+      multi_market: 19.40,
+      zona_sul: 26.90,
+      hortifruti: 28.90
+    },
+    source: 'Pesquisa Balcão RJ • Preço da Hora SEFAZ-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'suino-costelinha',
+    categoryId: 'corte_carne_suina',
+    productCode: 'SUI-COSTELINHA',
+    name: 'Costelinha Suína in Natura / Resfriada',
+    specification: 'Costelinha de porco in natura fresca para barbecue, feijão e assados',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 22.90,
+      mundial: 23.90,
+      prezunic: 27.90,
+      supermarket: 25.90,
+      economia: 24.90,
+      dom_atacadista: 20.99,
+      assai: 20.90,
+      atacadao: 20.79,
+      princesa: 26.50,
+      multi_market: 24.90,
+      zona_sul: 36.90,
+      hortifruti: 39.90
+    },
+    source: 'Pesquisa Balcão RJ • ASSERJ / Scantec RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'suino-lombo',
+    categoryId: 'corte_carne_suina',
+    productCode: 'SUI-LOMBO-NAT',
+    name: 'Lombo Suíno in Natura / Peça Resfriada',
+    specification: 'Lombo suíno limpo sem osso e sem capa excessiva de gordura',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 18.90,
+      mundial: 19.49,
+      prezunic: 23.90,
+      supermarket: 21.49,
+      economia: 20.90,
+      dom_atacadista: 17.49,
+      assai: 17.40,
+      atacadao: 17.29,
+      princesa: 22.50,
+      multi_market: 20.90,
+      zona_sul: 29.90,
+      hortifruti: 32.90
+    },
+    source: 'Pesquisa Balcão RJ • Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'suino-paleta-com-osso',
+    categoryId: 'corte_carne_suina',
+    productCode: 'SUI-PALETA-CO',
+    name: 'Paleta Suína in Natura com Osso',
+    specification: 'Paleta dianteira com osso e pele, carne suculenta de excelente custo-benefício',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 11.90,
+      mundial: 12.49,
+      prezunic: 14.90,
+      supermarket: 13.49,
+      economia: 12.90,
+      dom_atacadista: 10.99,
+      assai: 10.90,
+      atacadao: 10.79,
+      princesa: 13.90,
+      multi_market: 12.90,
+      zona_sul: 18.90,
+      hortifruti: 20.90
+    },
+    source: 'Pesquisa Balcão RJ • ASSERJ / Encartes Semanais',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'suino-panceta-barriga',
+    categoryId: 'corte_carne_suina',
+    productCode: 'SUI-PANCETA-BAR',
+    name: 'Panceta / Barriga Suína Fresca',
+    specification: 'Barriga de porco fresca com camadas de carne e toucinho ideal para torresmo pururuca',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 21.90,
+      mundial: 22.90,
+      prezunic: 26.90,
+      supermarket: 24.90,
+      economia: 23.90,
+      dom_atacadista: 19.99,
+      assai: 19.90,
+      atacadao: 19.79,
+      princesa: 25.50,
+      multi_market: 23.90,
+      zona_sul: 34.90,
+      hortifruti: 37.90
+    },
+    source: 'Pesquisa Balcão RJ • Preço da Hora SEFAZ-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'suino-file-mignon',
+    categoryId: 'corte_carne_suina',
+    productCode: 'SUI-FILE-MIGNON',
+    name: 'Filé Mignon Suíno Resfriado Peça',
+    specification: 'Corte mais nobre e macio do suíno, baixíssimo teor de gordura e alto rendimento',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 24.90,
+      mundial: 25.90,
+      prezunic: 29.90,
+      supermarket: 27.90,
+      economia: 26.90,
+      dom_atacadista: 22.99,
+      assai: 22.90,
+      atacadao: 22.79,
+      princesa: 28.90,
+      multi_market: 26.90,
+      zona_sul: 38.90,
+      hortifruti: 41.90
+    },
+    source: 'Pesquisa Balcão RJ • Scantec Sell-Out RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'suino-joelho-eisbein',
+    categoryId: 'corte_carne_suina',
+    productCode: 'SUI-JOELHO-EIS',
+    name: 'Joelho de Porco / Eisbein in Natura Fresco',
+    specification: 'Joelho de porco fresco não salgado para assados alemães e feijoadas gourmet',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 14.90,
+      mundial: 15.49,
+      prezunic: 17.90,
+      supermarket: 16.49,
+      economia: 15.90,
+      dom_atacadista: 13.49,
+      assai: 13.40,
+      atacadao: 13.29,
+      princesa: 16.90,
+      multi_market: 15.90,
+      zona_sul: 22.90,
+      hortifruti: 24.90
+    },
+    source: 'Pesquisa Balcão RJ • Encartes Semanais RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'suino-picanha',
+    categoryId: 'corte_carne_suina',
+    productCode: 'SUI-PICANHA',
+    name: 'Picanha Suína Peça Resfriada',
+    specification: 'Picanha suína resfriada temperada ou in natura especial para churrasco',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 23.90,
+      mundial: 24.90,
+      prezunic: 28.90,
+      supermarket: 26.90,
+      economia: 25.90,
+      dom_atacadista: 21.99,
+      assai: 21.90,
+      atacadao: 21.79,
+      princesa: 27.90,
+      multi_market: 25.90,
+      zona_sul: 37.90,
+      hortifruti: 40.90
+    },
+    source: 'Pesquisa Balcão RJ • ASSERJ / Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'suino-costela-tiras',
+    categoryId: 'corte_carne_suina',
+    productCode: 'SUI-COSTELA-TIRAS',
+    name: 'Costela Suína em Tiras para Churrasco',
+    specification: 'Costela suína selecionada cortada em tiras estreitas para grelha e forno rápido',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 23.90,
+      mundial: 24.90,
+      prezunic: 28.90,
+      supermarket: 26.90,
+      economia: 25.90,
+      dom_atacadista: 21.99,
+      assai: 21.90,
+      atacadao: 21.79,
+      princesa: 27.90,
+      multi_market: 25.90,
+      zona_sul: 37.90,
+      hortifruti: 40.90
+    },
+    source: 'Pesquisa Balcão RJ • ASSERJ / Encartes Oficiais',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+
+  // =========================================================================
+  // 11. HORTFRUT / FLV (FRUTAS, LEGUMES, OVOS, ALHO, HORTALIÇAS)
+  // =========================================================================
+  // --- FRUTAS ---
+  {
+    id: 'flv-banana-prata',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-BAN-PRATA',
+    name: 'Banana Prata Especial',
+    specification: 'Banana prata climatizada de primeira para consumo imediato',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 5.99,
+      mundial: 6.49,
+      prezunic: 7.99,
+      supermarket: 6.99,
+      economia: 6.49,
+      dom_atacadista: 5.49,
+      assai: 5.39,
+      atacadao: 5.29,
+      princesa: 7.49,
+      multi_market: 6.89,
+      zona_sul: 9.90,
+      hortifruti: 11.90
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá / ASSERJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-banana-nanica',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-BAN-NANICA',
+    name: "Banana Nanica / d'Água",
+    specification: 'Banana nanica doce e madura para sobremesas e lanches',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 4.99,
+      mundial: 5.49,
+      prezunic: 6.99,
+      supermarket: 5.99,
+      economia: 5.49,
+      dom_atacadista: 4.49,
+      assai: 4.39,
+      atacadao: 4.29,
+      princesa: 6.49,
+      multi_market: 5.89,
+      zona_sul: 8.90,
+      hortifruti: 10.90
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá / Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-maca-gala',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-MACA-GALA',
+    name: 'Maçã Gala Nacional Selecionada',
+    specification: 'Maçã gala vermelha calibrada e crocante CAT-1',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 8.99,
+      mundial: 9.49,
+      prezunic: 11.90,
+      supermarket: 10.49,
+      economia: 9.99,
+      dom_atacadista: 8.49,
+      assai: 8.39,
+      atacadao: 8.29,
+      princesa: 10.90,
+      multi_market: 9.90,
+      zona_sul: 14.90,
+      hortifruti: 16.90
+    },
+    source: 'Pesquisa FLV RJ • ASSERJ / DITEC',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-laranja-pera',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-LAR-PERA',
+    name: 'Laranja Pêra Rio para Suco',
+    specification: 'Laranja fresca com alto rendimento de suco e doçura',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 4.49,
+      mundial: 4.79,
+      prezunic: 5.99,
+      supermarket: 5.29,
+      economia: 4.89,
+      dom_atacadista: 3.99,
+      assai: 3.89,
+      atacadao: 3.79,
+      princesa: 5.49,
+      multi_market: 4.99,
+      zona_sul: 7.90,
+      hortifruti: 8.90
+    },
+    source: 'Pesquisa FLV RJ • Encartes e Balcão RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-mamao-papaya',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-MAM-PAPAYA',
+    name: 'Mamão Papaya Golden',
+    specification: 'Mamão papaya individual doce selecionado de mesa',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 7.99,
+      mundial: 8.49,
+      prezunic: 10.90,
+      supermarket: 9.49,
+      economia: 8.99,
+      dom_atacadista: 7.49,
+      assai: 7.39,
+      atacadao: 7.29,
+      princesa: 9.90,
+      multi_market: 8.90,
+      zona_sul: 13.90,
+      hortifruti: 15.90
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-melancia',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-MELANCIA',
+    name: 'Melancia Inteira / Fatiada',
+    specification: 'Melancia vermelha doce e refrescante padrão Ceasa RJ',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 2.99,
+      mundial: 3.29,
+      prezunic: 3.99,
+      supermarket: 3.49,
+      economia: 3.29,
+      dom_atacadista: 2.69,
+      assai: 2.59,
+      atacadao: 2.49,
+      princesa: 3.79,
+      multi_market: 3.39,
+      zona_sul: 5.90,
+      hortifruti: 6.90
+    },
+    source: 'Pesquisa FLV RJ • Encartes Semanais RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-abacaxi-perola',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-ABACAXI',
+    name: 'Abacaxi Pérola Selecionado',
+    specification: 'Abacaxi maduro doce da região norte fluminense',
+    unit: 'R$/un',
+    standardPackKg: 1.5,
+    chainPrices: {
+      guanabara: 5.99,
+      mundial: 6.49,
+      prezunic: 7.99,
+      supermarket: 6.99,
+      economia: 6.49,
+      dom_atacadista: 5.49,
+      assai: 5.39,
+      atacadao: 5.29,
+      princesa: 7.49,
+      multi_market: 6.90,
+      zona_sul: 9.90,
+      hortifruti: 11.90
+    },
+    source: 'Pesquisa FLV RJ • Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-manga-tommy',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-MANGA-TOMMY',
+    name: 'Manga Tommy Atkins',
+    specification: 'Manga firme colorida e adocicada de primeira qualidade',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 5.49,
+      mundial: 5.99,
+      prezunic: 7.49,
+      supermarket: 6.49,
+      economia: 5.99,
+      dom_atacadista: 4.99,
+      assai: 4.89,
+      atacadao: 4.79,
+      princesa: 6.99,
+      multi_market: 6.29,
+      zona_sul: 9.90,
+      hortifruti: 11.90
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá / ASSERJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-limao-taiti',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-LIM-TAITI',
+    name: 'Limão Taiti Fresco',
+    specification: 'Limão verde com casca fina e suculento para caipirinha e tempero',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 4.99,
+      mundial: 5.49,
+      prezunic: 6.99,
+      supermarket: 5.99,
+      economia: 5.49,
+      dom_atacadista: 4.49,
+      assai: 4.39,
+      atacadao: 4.29,
+      princesa: 6.49,
+      multi_market: 5.79,
+      zona_sul: 8.90,
+      hortifruti: 10.90
+    },
+    source: 'Pesquisa FLV RJ • Preço da Hora SEFAZ-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-uva-thompson',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-UVA-THOMP',
+    name: 'Uva Thompson sem Semente (500g)',
+    specification: 'Uva verde sem semente embalada em cumbuca cristal 500g',
+    unit: 'R$/un',
+    standardPackKg: 0.5,
+    chainPrices: {
+      guanabara: 8.99,
+      mundial: 9.49,
+      prezunic: 11.90,
+      supermarket: 10.49,
+      economia: 9.90,
+      dom_atacadista: 8.49,
+      assai: 8.39,
+      atacadao: 8.29,
+      princesa: 10.90,
+      multi_market: 9.90,
+      zona_sul: 14.90,
+      hortifruti: 16.90
+    },
+    source: 'Pesquisa FLV RJ • Encartes e Tabloides RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-melao-amarelo',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-MELAO-AM',
+    name: 'Melão Amarelo Espanhol / Nacional',
+    specification: 'Melão amarelo doce casca firme safra Nordeste selecionado',
+    unit: 'R$/kg',
+    standardPackKg: 1.8,
+    chainPrices: {
+      guanabara: 4.99,
+      mundial: 5.49,
+      prezunic: 6.99,
+      supermarket: 5.99,
+      economia: 5.49,
+      dom_atacadista: 4.49,
+      assai: 4.39,
+      atacadao: 4.29,
+      princesa: 6.49,
+      multi_market: 5.89,
+      zona_sul: 8.90,
+      hortifruti: 9.90
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá / ASSERJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-uva-vitoria',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-UVA-VIT',
+    name: 'Uva Vitória sem Semente (Bandeja 500g)',
+    specification: 'Uva preta Vitória sem semente extra doce em cumbuca 500g',
+    unit: 'R$/un',
+    standardPackKg: 0.5,
+    chainPrices: {
+      guanabara: 7.99,
+      mundial: 8.49,
+      prezunic: 10.90,
+      supermarket: 9.49,
+      economia: 8.99,
+      dom_atacadista: 7.49,
+      assai: 7.39,
+      atacadao: 7.29,
+      princesa: 9.90,
+      multi_market: 8.90,
+      zona_sul: 13.90,
+      hortifruti: 15.90
+    },
+    source: 'Pesquisa FLV RJ • Encartes e Tabloides RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-uva-rubi',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-UVA-RUBI',
+    name: 'Uva Rubi Selecionada',
+    specification: 'Uva rosada/avermelhada tradicional de mesa em cachos graúdos',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 11.99,
+      mundial: 12.49,
+      prezunic: 15.90,
+      supermarket: 13.90,
+      economia: 12.99,
+      dom_atacadista: 10.99,
+      assai: 10.89,
+      atacadao: 10.79,
+      princesa: 14.90,
+      multi_market: 13.49,
+      zona_sul: 19.90,
+      hortifruti: 22.90
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá / Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-uva-benitaka',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-UVA-BENIT',
+    name: 'Uva Benitaka Graúda Especial',
+    specification: 'Uva roxa rosada de bagos grandes carnudos e polpa crocante',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 12.99,
+      mundial: 13.49,
+      prezunic: 16.90,
+      supermarket: 14.90,
+      economia: 13.99,
+      dom_atacadista: 11.99,
+      assai: 11.89,
+      atacadao: 11.79,
+      princesa: 15.90,
+      multi_market: 14.49,
+      zona_sul: 21.90,
+      hortifruti: 24.90
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá / ASSERJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-uva-italia',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-UVA-ITALIA',
+    name: 'Uva Itália Especial Selecionada',
+    specification: 'Uva verde fina tradicional de cachos selecionados e bagos graúdos',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 12.49,
+      mundial: 12.99,
+      prezunic: 16.50,
+      supermarket: 14.49,
+      economia: 13.49,
+      dom_atacadista: 11.49,
+      assai: 11.39,
+      atacadao: 11.29,
+      princesa: 15.49,
+      multi_market: 13.90,
+      zona_sul: 20.90,
+      hortifruti: 23.90
+    },
+    source: 'Pesquisa FLV RJ • Scantec Sell-Out RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-maracuja-azedo',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-MARACUJA',
+    name: 'Maracujá Azedo Especial para Suco',
+    specification: 'Maracujá amarelo pesado e cheio de polpa selecionado',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 8.99,
+      mundial: 9.49,
+      prezunic: 11.90,
+      supermarket: 10.49,
+      economia: 9.99,
+      dom_atacadista: 8.49,
+      assai: 8.39,
+      atacadao: 8.29,
+      princesa: 10.90,
+      multi_market: 9.90,
+      zona_sul: 14.90,
+      hortifruti: 16.90
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá / ASSERJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-maca-pacote-800g',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-MACA-800G',
+    name: 'Maçã Pacote 800g (Nacional / Turma da Mônica)',
+    specification: 'Pacote fechado de 800g com maçãs Gala calibradas para lancheira',
+    unit: 'R$/pct',
+    standardPackKg: 0.8,
+    chainPrices: {
+      guanabara: 7.99,
+      mundial: 8.49,
+      prezunic: 10.49,
+      supermarket: 8.99,
+      economia: 8.49,
+      dom_atacadista: 7.49,
+      assai: 7.39,
+      atacadao: 7.29,
+      princesa: 9.90,
+      multi_market: 8.89,
+      zona_sul: 12.90,
+      hortifruti: 14.50
+    },
+    source: 'Pesquisa FLV RJ • Preço da Hora SEFAZ-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-abacate',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-ABACATE',
+    name: 'Abacate Manteiga / Fortuna Selecionado',
+    specification: 'Abacate graúdo de polpa cremosa e consistente sem fibras',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 6.99,
+      mundial: 7.49,
+      prezunic: 9.90,
+      supermarket: 8.49,
+      economia: 7.99,
+      dom_atacadista: 6.49,
+      assai: 6.39,
+      atacadao: 6.29,
+      princesa: 8.90,
+      multi_market: 7.90,
+      zona_sul: 12.90,
+      hortifruti: 14.90
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá / Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-morango-bdj',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'FRUTAS',
+    productCode: 'FLV-MORANGO-BDJ',
+    name: 'Morango Bandeja (bdj 250g)',
+    specification: 'Bandeja de morangos vermelhos frescos selecionados da Serra',
+    unit: 'R$/bdj',
+    standardPackKg: 0.25,
+    chainPrices: {
+      guanabara: 6.99,
+      mundial: 7.49,
+      prezunic: 9.49,
+      supermarket: 8.49,
+      economia: 7.99,
+      dom_atacadista: 6.49,
+      assai: 6.39,
+      atacadao: 6.29,
+      princesa: 8.90,
+      multi_market: 7.99,
+      zona_sul: 11.90,
+      hortifruti: 13.90
+    },
+    source: 'Pesquisa FLV RJ • Encartes e Tabloides RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+
+  // --- LEGUMES ---
+  {
+    id: 'flv-batata-inglesa',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'LEGUMES',
+    productCode: 'FLV-BAT-ING',
+    name: 'Batata Inglesa Lavada Especial',
+    specification: 'Batata lavada lisa padrão graúda especial para fritura e purê',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 5.99,
+      mundial: 6.49,
+      prezunic: 7.99,
+      supermarket: 6.99,
+      economia: 6.49,
+      dom_atacadista: 5.49,
+      assai: 5.39,
+      atacadao: 5.29,
+      princesa: 7.49,
+      multi_market: 6.89,
+      zona_sul: 9.90,
+      hortifruti: 11.90
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá / ASSERJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-cebola-nacional',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'LEGUMES',
+    productCode: 'FLV-CEB-NAC',
+    name: 'Cebola Amarela Nacional',
+    specification: 'Cebola de primeira linha seca e firme para refogados',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 4.99,
+      mundial: 5.49,
+      prezunic: 6.99,
+      supermarket: 5.99,
+      economia: 5.49,
+      dom_atacadista: 4.49,
+      assai: 4.39,
+      atacadao: 4.29,
+      princesa: 6.49,
+      multi_market: 5.89,
+      zona_sul: 8.90,
+      hortifruti: 10.90
+    },
+    source: 'Pesquisa FLV RJ • ASSERJ / Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-tomate-longa-vida',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'LEGUMES',
+    productCode: 'FLV-TOM-LONG',
+    name: 'Tomate Longa Vida / Carmem Especial',
+    specification: 'Tomate vermelho firme ideal para saladas e molhos',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 7.99,
+      mundial: 8.49,
+      prezunic: 10.90,
+      supermarket: 9.49,
+      economia: 8.99,
+      dom_atacadista: 7.49,
+      assai: 7.39,
+      atacadao: 7.29,
+      princesa: 9.90,
+      multi_market: 8.90,
+      zona_sul: 13.90,
+      hortifruti: 15.90
+    },
+    source: 'Pesquisa FLV RJ • Scantec Sell-Out RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-cenoura-especial',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'LEGUMES',
+    productCode: 'FLV-CENOURA',
+    name: 'Cenoura Especial Selecionada',
+    specification: 'Cenoura lavada sem folhas padrão AA crocante e fresca',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 5.49,
+      mundial: 5.99,
+      prezunic: 7.49,
+      supermarket: 6.49,
+      economia: 5.99,
+      dom_atacadista: 4.99,
+      assai: 4.89,
+      atacadao: 4.79,
+      princesa: 6.99,
+      multi_market: 6.29,
+      zona_sul: 9.90,
+      hortifruti: 11.90
+    },
+    source: 'Pesquisa FLV RJ • Preço da Hora SEFAZ-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-chuchu-carioca',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'LEGUMES',
+    productCode: 'FLV-CHUCHU',
+    name: 'Chuchu Paulista / Carioca',
+    specification: 'Chuchu fresco verde claro macio para refogados com camarão ou carne',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 3.49,
+      mundial: 3.99,
+      prezunic: 4.99,
+      supermarket: 4.29,
+      economia: 3.99,
+      dom_atacadista: 2.99,
+      assai: 2.89,
+      atacadao: 2.79,
+      princesa: 4.49,
+      multi_market: 3.99,
+      zona_sul: 6.90,
+      hortifruti: 7.90
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-abobrinha-italiana',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'LEGUMES',
+    productCode: 'FLV-ABOBRINHA',
+    name: 'Abobrinha Italiana Selecionada',
+    specification: 'Abobrinha verde listrada macia e fresca de primeira',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 4.99,
+      mundial: 5.49,
+      prezunic: 6.99,
+      supermarket: 5.99,
+      economia: 5.49,
+      dom_atacadista: 4.49,
+      assai: 4.39,
+      atacadao: 4.29,
+      princesa: 6.49,
+      multi_market: 5.79,
+      zona_sul: 8.90,
+      hortifruti: 10.90
+    },
+    source: 'Pesquisa FLV RJ • Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-pimentao-verde',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'LEGUMES',
+    productCode: 'FLV-PIMENTAO',
+    name: 'Pimentão Verde Especial',
+    specification: 'Pimentão verde carnudo para vinagrete e ensopados de peixe',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 6.99,
+      mundial: 7.49,
+      prezunic: 9.49,
+      supermarket: 8.49,
+      economia: 7.99,
+      dom_atacadista: 6.49,
+      assai: 6.39,
+      atacadao: 6.29,
+      princesa: 8.90,
+      multi_market: 7.99,
+      zona_sul: 12.90,
+      hortifruti: 14.90
+    },
+    source: 'Pesquisa FLV RJ • Encartes e Tabloides RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-beterraba',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'LEGUMES',
+    productCode: 'FLV-BETERRABA',
+    name: 'Beterraba Extra Selecionada',
+    specification: 'Beterraba lisa e roxa escura rica em nutrientes e açúcares naturais',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 4.49,
+      mundial: 4.99,
+      prezunic: 6.49,
+      supermarket: 5.49,
+      economia: 4.99,
+      dom_atacadista: 3.99,
+      assai: 3.89,
+      atacadao: 3.79,
+      princesa: 5.99,
+      multi_market: 5.29,
+      zona_sul: 7.90,
+      hortifruti: 9.90
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá / ASSERJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-abobora-sergipana',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'LEGUMES',
+    productCode: 'FLV-ABOB-SERG',
+    name: 'Abóbora Sergipana Selecionada',
+    specification: 'Abóbora sergipana / cabotiá madura enxuta de polpa alaranjada',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 3.99,
+      mundial: 4.49,
+      prezunic: 5.99,
+      supermarket: 4.99,
+      economia: 4.49,
+      dom_atacadista: 3.49,
+      assai: 3.39,
+      atacadao: 3.29,
+      princesa: 5.49,
+      multi_market: 4.79,
+      zona_sul: 7.90,
+      hortifruti: 8.90
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá / ASSERJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-aipim',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'LEGUMES',
+    productCode: 'FLV-AIPIM',
+    name: 'Aipim / Mandioca Manteca Especial',
+    specification: 'Aipim amarelo macio de cozimento rápido tradicional carioca',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 3.99,
+      mundial: 4.49,
+      prezunic: 5.99,
+      supermarket: 4.99,
+      economia: 4.49,
+      dom_atacadista: 3.59,
+      assai: 3.49,
+      atacadao: 3.39,
+      princesa: 5.49,
+      multi_market: 4.89,
+      zona_sul: 7.90,
+      hortifruti: 9.50
+    },
+    source: 'Pesquisa FLV RJ • Preço da Hora SEFAZ-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-batata-doce',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'LEGUMES',
+    productCode: 'FLV-BAT-DOCE',
+    name: 'Batata Doce Rosada Especial',
+    specification: 'Batata doce rosada lavada lisa ideal para dieta e assados',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 3.99,
+      mundial: 4.29,
+      prezunic: 5.79,
+      supermarket: 4.79,
+      economia: 4.39,
+      dom_atacadista: 3.49,
+      assai: 3.39,
+      atacadao: 3.29,
+      princesa: 5.29,
+      multi_market: 4.59,
+      zona_sul: 7.50,
+      hortifruti: 8.90
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá / Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-inhame',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'LEGUMES',
+    productCode: 'FLV-INHAME',
+    name: 'Inhame Dedo / Cará Selecionado',
+    specification: 'Inhame fresco enxuto de primeira linha para sopas e vitaminas',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 6.99,
+      mundial: 7.49,
+      prezunic: 9.49,
+      supermarket: 8.49,
+      economia: 7.99,
+      dom_atacadista: 6.49,
+      assai: 6.39,
+      atacadao: 6.29,
+      princesa: 8.90,
+      multi_market: 7.99,
+      zona_sul: 11.90,
+      hortifruti: 13.90
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá / ASSERJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+
+  // --- OVOS ---
+  {
+    id: 'flv-ovos-brancos-30',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'OVOS',
+    productCode: 'FLV-OVO-BR-30',
+    name: 'Ovos Brancos Grandes (Bandeja c/ 30 un)',
+    specification: 'Cartela com 30 ovos brancos tipo grande inspecionados',
+    unit: 'R$/un',
+    standardPackKg: 1.8,
+    chainPrices: {
+      guanabara: 16.99,
+      mundial: 17.49,
+      prezunic: 19.90,
+      supermarket: 18.49,
+      economia: 17.99,
+      dom_atacadista: 15.99,
+      assai: 15.89,
+      atacadao: 15.79,
+      princesa: 19.49,
+      multi_market: 18.29,
+      zona_sul: 24.90,
+      hortifruti: 26.90
+    },
+    source: 'Pesquisa Granja RJ • ASSERJ / Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-ovos-vermelhos-12',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'OVOS',
+    productCode: 'FLV-OVO-VM-12',
+    name: 'Ovos Vermelhos / Caipira (Dúzia c/ 12 un)',
+    specification: 'Dúzia de ovos vermelhos selecionados com gema reforçada',
+    unit: 'R$/un',
+    standardPackKg: 0.7,
+    chainPrices: {
+      guanabara: 9.99,
+      mundial: 10.49,
+      prezunic: 11.90,
+      supermarket: 10.99,
+      economia: 10.49,
+      dom_atacadista: 9.49,
+      assai: 9.39,
+      atacadao: 9.29,
+      princesa: 11.50,
+      multi_market: 10.90,
+      zona_sul: 14.90,
+      hortifruti: 16.90
+    },
+    source: 'Pesquisa Granja RJ • Encartes Semanais RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-ovos-brancos-12',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'OVOS',
+    productCode: 'FLV-OVO-BR-12',
+    name: 'Ovos Brancos Selecionados (Dúzia c/ 12 un)',
+    specification: 'Embalagem cartonada com 12 ovos brancos tipo grande',
+    unit: 'R$/un',
+    standardPackKg: 0.7,
+    chainPrices: {
+      guanabara: 7.99,
+      mundial: 8.49,
+      prezunic: 9.90,
+      supermarket: 8.99,
+      economia: 8.49,
+      dom_atacadista: 7.49,
+      assai: 7.39,
+      atacadao: 7.29,
+      princesa: 9.49,
+      multi_market: 8.90,
+      zona_sul: 12.90,
+      hortifruti: 13.90
+    },
+    source: 'Pesquisa Granja RJ • Preço da Hora SEFAZ-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-ovos-codorna-30',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'OVOS',
+    productCode: 'FLV-OVO-COD-30',
+    name: 'Ovos de Codorna Higienizados (Estojo c/ 30 un)',
+    specification: 'Estojo transparente com 30 ovos de codorna frescos para petiscos',
+    unit: 'R$/un',
+    standardPackKg: 0.35,
+    chainPrices: {
+      guanabara: 6.99,
+      mundial: 7.49,
+      prezunic: 8.99,
+      supermarket: 7.99,
+      economia: 7.49,
+      dom_atacadista: 6.49,
+      assai: 6.39,
+      atacadao: 6.29,
+      princesa: 8.49,
+      multi_market: 7.90,
+      zona_sul: 11.90,
+      hortifruti: 12.90
+    },
+    source: 'Pesquisa Granja RJ • ASSERJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-ovos-brancos-20',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'OVOS',
+    productCode: 'FLV-OVO-BR-20',
+    name: 'Ovos Branco (Bandeja c/20 un)',
+    specification: 'Bandeja / estojo com 20 ovos brancos grandes selecionados tipo A',
+    unit: 'R$/bdj',
+    standardPackKg: 1.2,
+    chainPrices: {
+      guanabara: 11.99,
+      mundial: 12.49,
+      prezunic: 14.90,
+      supermarket: 13.49,
+      economia: 12.99,
+      dom_atacadista: 11.49,
+      assai: 11.39,
+      atacadao: 11.29,
+      princesa: 13.90,
+      multi_market: 12.90,
+      zona_sul: 17.90,
+      hortifruti: 19.90
+    },
+    source: 'Pesquisa Granja RJ • Encartes e Tabloides RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+
+  // --- ALHO ---
+  {
+    id: 'flv-alho-roxo-granel',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'ALHO',
+    productCode: 'FLV-ALHO-GRANEL',
+    name: 'Alho Roxo Nobre a Granel',
+    specification: 'Alho roxo graúdo nacional e importado selecionado tipo 6/7',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 29.90,
+      mundial: 31.90,
+      prezunic: 36.90,
+      supermarket: 33.90,
+      economia: 32.90,
+      dom_atacadista: 28.99,
+      assai: 28.90,
+      atacadao: 28.50,
+      princesa: 35.90,
+      multi_market: 33.90,
+      zona_sul: 48.90,
+      hortifruti: 52.90
+    },
+    source: 'Pesquisa Ceasa Irajá • DITEC / ASSERJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-alho-descascado-1kg',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'ALHO',
+    productCode: 'FLV-ALHO-DESC-1KG',
+    name: 'Alho Roxo Descascado a Vácuo (Pacote 1kg)',
+    specification: 'Dentes de alho 100% descascados e higienizados sem conservantes',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 34.90,
+      mundial: 36.90,
+      prezunic: 42.90,
+      supermarket: 38.90,
+      economia: 37.90,
+      dom_atacadista: 32.99,
+      assai: 32.90,
+      atacadao: 32.50,
+      princesa: 41.90,
+      multi_market: 38.90,
+      zona_sul: 56.90,
+      hortifruti: 59.90
+    },
+    source: 'Pesquisa Balcão RJ • Scantec Sell-Out RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-alho-cartela-200g',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'ALHO',
+    productCode: 'FLV-ALHO-CART-200G',
+    name: 'Alho Roxo Cartela / Trança 200g',
+    specification: 'Embalagem fracionada com cabeças selecionadas de alho roxo',
+    unit: 'R$/un',
+    standardPackKg: 0.2,
+    chainPrices: {
+      guanabara: 7.99,
+      mundial: 8.49,
+      prezunic: 9.90,
+      supermarket: 8.99,
+      economia: 8.49,
+      dom_atacadista: 7.49,
+      assai: 7.39,
+      atacadao: 7.29,
+      princesa: 9.49,
+      multi_market: 8.90,
+      zona_sul: 12.90,
+      hortifruti: 13.90
+    },
+    source: 'Pesquisa Balcão RJ • Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-pasta-alho-500g',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'ALHO',
+    productCode: 'FLV-PASTA-ALHO-500',
+    name: 'Pasta de Alho Puro Pote 500g',
+    specification: 'Alho triturado puro com sal refinado sem pimenta para tempero prático',
+    unit: 'R$/un',
+    standardPackKg: 0.5,
+    chainPrices: {
+      guanabara: 8.99,
+      mundial: 9.49,
+      prezunic: 11.90,
+      supermarket: 10.49,
+      economia: 9.90,
+      dom_atacadista: 8.49,
+      assai: 8.39,
+      atacadao: 8.29,
+      princesa: 10.90,
+      multi_market: 9.90,
+      zona_sul: 14.90,
+      hortifruti: 15.90
+    },
+    source: 'Pesquisa Balcão RJ • Encartes e Tabloides RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-alho-granel-kg',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'ALHO',
+    productCode: 'FLV-ALHO-GR-KG',
+    name: 'Alho Granel kg',
+    specification: 'Alho comercial a granel cabeças firmes para venda por quilo no balcão',
+    unit: 'R$/kg',
+    standardPackKg: 1.0,
+    chainPrices: {
+      guanabara: 26.90,
+      mundial: 28.90,
+      prezunic: 33.90,
+      supermarket: 29.90,
+      economia: 28.90,
+      dom_atacadista: 25.90,
+      assai: 25.50,
+      atacadao: 24.90,
+      princesa: 32.90,
+      multi_market: 29.90,
+      zona_sul: 42.90,
+      hortifruti: 46.90
+    },
+    source: 'Pesquisa Ceasa Irajá • Preço da Hora SEFAZ-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+
+  // --- HORTALIÇAS ---
+  {
+    id: 'flv-alface-crespa',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'HORTALIÇAS',
+    productCode: 'FLV-ALFACE-CRES',
+    name: 'Alface Crespa Hidropônica / Tradicional',
+    specification: 'Maço fresco de alface crespa verde e crocante colheita do dia',
+    unit: 'R$/un',
+    standardPackKg: 0.3,
+    chainPrices: {
+      guanabara: 2.99,
+      mundial: 3.29,
+      prezunic: 4.49,
+      supermarket: 3.79,
+      economia: 3.49,
+      dom_atacadista: 2.79,
+      assai: 2.69,
+      atacadao: 2.59,
+      princesa: 3.99,
+      multi_market: 3.49,
+      zona_sul: 5.90,
+      hortifruti: 6.90
+    },
+    source: 'Pesquisa FLV RJ • Região Serrana / Ceasa Irajá',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-couve-manteiga',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'HORTALIÇAS',
+    productCode: 'FLV-COUVE-MANT',
+    name: 'Couve Manteiga Fresca em Maço / Picada',
+    specification: 'Couve verde escura macia tradicional para acompanhar feijoada',
+    unit: 'R$/un',
+    standardPackKg: 0.35,
+    chainPrices: {
+      guanabara: 2.99,
+      mundial: 3.29,
+      prezunic: 4.49,
+      supermarket: 3.79,
+      economia: 3.49,
+      dom_atacadista: 2.79,
+      assai: 2.69,
+      atacadao: 2.59,
+      princesa: 3.99,
+      multi_market: 3.49,
+      zona_sul: 5.90,
+      hortifruti: 6.90
+    },
+    source: 'Pesquisa FLV RJ • ASSERJ / Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-cheiro-verde',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'HORTALIÇAS',
+    productCode: 'FLV-CHEIRO-VERDE',
+    name: 'Cheiro Verde Carioca (Coentro e Cebolinha)',
+    specification: 'Maço aromático composto por coentro/salsa fresca e cebolinha verde',
+    unit: 'R$/un',
+    standardPackKg: 0.2,
+    chainPrices: {
+      guanabara: 2.49,
+      mundial: 2.79,
+      prezunic: 3.99,
+      supermarket: 3.29,
+      economia: 2.99,
+      dom_atacadista: 2.29,
+      assai: 2.19,
+      atacadao: 2.09,
+      princesa: 3.49,
+      multi_market: 2.99,
+      zona_sul: 4.90,
+      hortifruti: 5.90
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá / SEFAZ-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-rucula',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'HORTALIÇAS',
+    productCode: 'FLV-RUCULA',
+    name: 'Rúcula Hidropônica Selecionada',
+    specification: 'Folhas tenras e picantes ideais para saladas finas e pizzas',
+    unit: 'R$/un',
+    standardPackKg: 0.25,
+    chainPrices: {
+      guanabara: 3.99,
+      mundial: 4.29,
+      prezunic: 5.49,
+      supermarket: 4.79,
+      economia: 4.49,
+      dom_atacadista: 3.69,
+      assai: 3.59,
+      atacadao: 3.49,
+      princesa: 4.99,
+      multi_market: 4.49,
+      zona_sul: 6.90,
+      hortifruti: 7.90
+    },
+    source: 'Pesquisa FLV RJ • Encartes e Hortifrútis RJ',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-agriao',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'HORTALIÇAS',
+    productCode: 'FLV-AGRIAO',
+    name: 'Agrião Fresco de Água / Hidropônico',
+    specification: 'Maço de agrião com talos tenros para rabada e saladas',
+    unit: 'R$/un',
+    standardPackKg: 0.3,
+    chainPrices: {
+      guanabara: 3.49,
+      mundial: 3.79,
+      prezunic: 4.99,
+      supermarket: 4.29,
+      economia: 3.99,
+      dom_atacadista: 3.19,
+      assai: 3.09,
+      atacadao: 2.99,
+      princesa: 4.49,
+      multi_market: 3.99,
+      zona_sul: 6.40,
+      hortifruti: 7.40
+    },
+    source: 'Pesquisa FLV RJ • Ceasa Irajá',
+    lastSurveyDate: 'Hoje, 17:30'
+  },
+  {
+    id: 'flv-brocolis-ninja',
+    categoryId: 'hortifruti_flv',
+    flvSubdivision: 'HORTALIÇAS',
+    productCode: 'FLV-BROCOLIS',
+    name: 'Brócolis Ninja Fresco Nacional',
+    specification: 'Cabeça compacta verde escura sem folhas soltas tipo ninja',
+    unit: 'R$/un',
+    standardPackKg: 0.5,
+    chainPrices: {
+      guanabara: 5.99,
+      mundial: 6.49,
+      prezunic: 7.99,
+      supermarket: 6.99,
+      economia: 6.49,
+      dom_atacadista: 5.49,
+      assai: 5.39,
+      atacadao: 5.29,
+      princesa: 7.49,
+      multi_market: 6.89,
+      zona_sul: 9.90,
+      hortifruti: 11.90
+    },
+    source: 'Pesquisa FLV RJ • ASSERJ / Procon-RJ',
+    lastSurveyDate: 'Hoje, 17:30'
   }
 ];
 
@@ -1731,10 +3848,18 @@ export class PerishablesQuotesService {
   }
 
   /**
-   * Calcula o resumo executivo para uma categoria inteira
+   * Calcula o resumo executivo para uma categoria inteira (com suporte a subdivisão FLV)
    */
-  public static calculateCategorySummary(categoryId: PerishableCategoryId, products: PerishableProductItem[]): CategorySummaryStats {
-    const categoryProducts = products.filter(p => p.categoryId === categoryId);
+  public static calculateCategorySummary(
+    categoryId: PerishableCategoryId, 
+    products: PerishableProductItem[],
+    flvSubdivision?: 'TODOS' | import('../types/perishablesQuotes').FlvSubdivision
+  ): CategorySummaryStats {
+    let categoryProducts = products.filter(p => p.categoryId === categoryId);
+    if (categoryId === 'hortifruti_flv' && flvSubdivision && flvSubdivision !== 'TODOS') {
+      categoryProducts = categoryProducts.filter(p => p.flvSubdivision === flvSubdivision);
+    }
+
     if (categoryProducts.length === 0) {
       return {
         categoryId,
@@ -1787,10 +3912,18 @@ export class PerishablesQuotesService {
   /**
    * Exporta a tabela da categoria ou de todas as abas para Excel (.xlsx) com formatação profissional
    */
-  public static async exportCategoryToExcel(categoryId: PerishableCategoryId, products: PerishableProductItem[]): Promise<void> {
+  public static async exportCategoryToExcel(
+    categoryId: PerishableCategoryId, 
+    products: PerishableProductItem[],
+    flvSubdivision?: 'TODOS' | import('../types/perishablesQuotes').FlvSubdivision
+  ): Promise<void> {
     const category = PERISHABLE_CATEGORIES.find(c => c.id === categoryId);
-    const categoryName = category ? category.label : 'PERECIVEIS';
-    const items = products.filter(p => p.categoryId === categoryId);
+    const subLabel = categoryId === 'hortifruti_flv' && flvSubdivision && flvSubdivision !== 'TODOS' ? ` - ${flvSubdivision}` : '';
+    const categoryName = (category ? category.label : 'PERECIVEIS') + subLabel;
+    let items = products.filter(p => p.categoryId === categoryId);
+    if (categoryId === 'hortifruti_flv' && flvSubdivision && flvSubdivision !== 'TODOS') {
+      items = items.filter(p => p.flvSubdivision === flvSubdivision);
+    }
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'GAPP - PATRICK PESSOA • Apuração do Boi RJ';
@@ -1856,7 +3989,7 @@ export class PerishablesQuotesService {
       const promo = item.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[item.id];
       const rowValues: any = {
         code: item.productCode,
-        product: item.name,
+        product: item.flvSubdivision ? `[${item.flvSubdivision}] ${item.name}` : item.name,
         unit: item.unit.replace('R$/', ''),
         promoPrice: promo && promo.hasActivePromo ? promo.promoPrice : null,
         promoMedia: promo && promo.hasActivePromo ? `${promo.chainName} (${promo.mediaLabel})` : 'Sem oferta ativa',
@@ -1940,10 +4073,18 @@ export class PerishablesQuotesService {
   /**
    * Gera e faz o download de um relatório completo em PDF em formato Paisagem com Logo e Cabeçalho/Rodapé Padrão
    */
-  public static async generateAndDownloadPdf(categoryId: PerishableCategoryId, products: PerishableProductItem[]): Promise<void> {
+  public static async generateAndDownloadPdf(
+    categoryId: PerishableCategoryId, 
+    products: PerishableProductItem[],
+    flvSubdivision?: 'TODOS' | import('../types/perishablesQuotes').FlvSubdivision
+  ): Promise<void> {
     const category = PERISHABLE_CATEGORIES.find(c => c.id === categoryId);
-    const categoryName = category ? category.label : 'PERECÍVEIS';
-    const items = products.filter(p => p.categoryId === categoryId);
+    const subLabel = categoryId === 'hortifruti_flv' && flvSubdivision && flvSubdivision !== 'TODOS' ? ` • ${flvSubdivision}` : '';
+    const categoryName = (category ? category.label : 'PERECÍVEIS') + subLabel;
+    let items = products.filter(p => p.categoryId === categoryId);
+    if (categoryId === 'hortifruti_flv' && flvSubdivision && flvSubdivision !== 'TODOS') {
+      items = items.filter(p => p.flvSubdivision === flvSubdivision);
+    }
 
     const doc = new jsPDF({
       orientation: 'landscape',
@@ -1985,7 +4126,7 @@ export class PerishablesQuotesService {
         : '-';
 
       return [
-        item.name,
+        item.flvSubdivision ? `[${item.flvSubdivision}] ${item.name}` : item.name,
         item.unit.replace('R$/', ''),
         ...RJ_SUPERMARKET_CHAINS.map(c => {
           const val = item.chainPrices[c.id];
@@ -2079,10 +4220,18 @@ export class PerishablesQuotesService {
   /**
    * Imprime o relatório da categoria de perecíveis com Cabeçalho e Rodapé Padronizados e Logo Oficial
    */
-  public static printCategoryReport(categoryId: PerishableCategoryId, products: PerishableProductItem[]): void {
+  public static printCategoryReport(
+    categoryId: PerishableCategoryId, 
+    products: PerishableProductItem[],
+    flvSubdivision?: 'TODOS' | import('../types/perishablesQuotes').FlvSubdivision
+  ): void {
     const category = PERISHABLE_CATEGORIES.find(c => c.id === categoryId);
-    const categoryName = category ? category.label : 'PERECÍVEIS';
-    const items = products.filter(p => p.categoryId === categoryId);
+    const subLabel = categoryId === 'hortifruti_flv' && flvSubdivision && flvSubdivision !== 'TODOS' ? ` • ${flvSubdivision}` : '';
+    const categoryName = (category ? category.label : 'PERECÍVEIS') + subLabel;
+    let items = products.filter(p => p.categoryId === categoryId);
+    if (categoryId === 'hortifruti_flv' && flvSubdivision && flvSubdivision !== 'TODOS') {
+      items = items.filter(p => p.flvSubdivision === flvSubdivision);
+    }
 
     const headerHtml = ReportBrandingService.getHtmlHeader({
       title: `COTAÇÃO OFICIAL DE PERECÍVEIS NO VAREJO RJ • ${categoryName}`,
@@ -2121,7 +4270,7 @@ export class PerishablesQuotesService {
 
       return `
         <tr style="background:${bg};">
-          <td style="padding:4px 6px;border:1px solid #cbd5e1;font-weight:700;color:#0f172a;">${item.name}</td>
+          <td style="padding:4px 6px;border:1px solid #cbd5e1;font-weight:700;color:#0f172a;">${item.flvSubdivision ? `<span style="color:#047857;font-size:6.5pt;">[${item.flvSubdivision}]</span> ` : ''}${item.name}</td>
           <td style="padding:4px 4px;border:1px solid #cbd5e1;text-align:center;font-weight:700;color:#475569;">${item.unit.replace('R$/', '')}</td>
           ${chainCells}
           ${promoCellHtml}
@@ -2178,21 +4327,30 @@ export class PerishablesQuotesService {
   /**
    * Gera texto formatado para envio no WhatsApp
    */
-  public static generateWhatsAppSummary(categoryId: PerishableCategoryId, products: PerishableProductItem[]): string {
+  public static generateWhatsAppSummary(
+    categoryId: PerishableCategoryId, 
+    products: PerishableProductItem[],
+    flvSubdivision?: 'TODOS' | import('../types/perishablesQuotes').FlvSubdivision
+  ): string {
     const category = PERISHABLE_CATEGORIES.find(c => c.id === categoryId);
-    const categoryName = category ? category.label : 'PERECÍVEIS';
-    const items = products.filter(p => p.categoryId === categoryId);
-    const summary = this.calculateCategorySummary(categoryId, products);
+    const subLabel = categoryId === 'hortifruti_flv' && flvSubdivision && flvSubdivision !== 'TODOS' ? ` • ${flvSubdivision}` : '';
+    const categoryName = (category ? category.label : 'PERECÍVEIS') + subLabel;
+    let items = products.filter(p => p.categoryId === categoryId);
+    if (categoryId === 'hortifruti_flv' && flvSubdivision && flvSubdivision !== 'TODOS') {
+      items = items.filter(p => p.flvSubdivision === flvSubdivision);
+    }
+    const summary = this.calculateCategorySummary(categoryId, products, flvSubdivision);
 
     let text = `*📊 GAPP - PATRICK PESSOA • COTAÇÃO DE PERECÍVEIS RJ • ${categoryName}*\n`;
     text += `*Base:* 12 Redes Supermercadistas + Radar de Comerciais de TV e Encartes RJ (ASSERJ / Procon-RJ / SEFAZ)\n`;
-    text += `*Média do Segmento:* R$ ${summary.avgPriceCategory.toFixed(2)}/kg\n`;
+    text += `*Média do Segmento:* R$ ${summary.avgPriceCategory.toFixed(2)}\n`;
     text += `*Rede Mais Competitiva:* ${summary.cheapestChainOverall}\n\n`;
 
     items.forEach(item => {
       const stats = this.calculateProductStats(item);
       const promo = item.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[item.id];
-      text += `🥩 *${item.name}*\n`;
+      const prefix = item.flvSubdivision ? `[${item.flvSubdivision}] ` : '';
+      text += `🥩 *${prefix}${item.name}*\n`;
       if (promo && promo.hasActivePromo) {
         text += `📺 *OFERTA TV/ENCARTE:* R$ ${promo.promoPrice.toFixed(2)} (${promo.chainName} • ${promo.mediaLabel})\n`;
       }

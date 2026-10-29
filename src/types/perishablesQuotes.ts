@@ -6,7 +6,12 @@ export type PerishableCategoryId =
   | 'charque_carne_seca'
   | 'queijo_mussarela_prato'
   | 'linguica_churrasco'
-  | 'leite_uht_1l';
+  | 'leite_uht_1l'
+  | 'corte_carne_bov'
+  | 'corte_carne_suina'
+  | 'hortifruti_flv';
+
+export type FlvSubdivision = 'FRUTAS' | 'LEGUMES' | 'OVOS' | 'ALHO' | 'HORTALIÇAS';
 
 export interface PerishableCategoryDef {
   id: PerishableCategoryId;
@@ -61,6 +66,8 @@ export interface PerishableProductItem {
   chainPrices: Record<string, number>;
   source: string;
   lastSurveyDate: string;
+  // Subdivisão dinâmica do setor HORTFRUT / FLV (Frutas, Legumes, Ovos, Alho, Hortaliças)
+  flvSubdivision?: FlvSubdivision;
   // Rastreamento de Comercial de TV e Encartes de Oferta RJ
   promoOffer?: PerishableTvPromoOffer;
 }
