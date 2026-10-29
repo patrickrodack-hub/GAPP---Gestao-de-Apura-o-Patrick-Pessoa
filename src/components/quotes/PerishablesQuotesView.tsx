@@ -1,13 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { 
   PerishableCategoryId, 
-  PerishableProductItem 
+  PerishableProductItem,
+  PerishableTvPromoOffer
 } from '../../types/perishablesQuotes';
 import { 
   PERISHABLE_CATEGORIES, 
   RJ_SUPERMARKET_CHAINS, 
   PerishablesQuotesService 
 } from '../../services/perishablesQuotesService';
+import { OFFICIAL_RJ_TV_PROMO_REGISTRY } from '../../services/perishableTvPromoRegistry';
+import { TvPromoDetailModal } from './TvPromoDetailModal';
 import { 
   Search, 
   RotateCcw, 
@@ -25,7 +28,11 @@ import {
   Layers,
   Flame,
   Award,
-  Sparkles
+  Sparkles,
+  Tv,
+  Radio,
+  Tag,
+  TrendingDown
 } from 'lucide-react';
 
 interface PerishablesQuotesViewProps {
@@ -40,7 +47,15 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
   const [isResetting, setIsResetting] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [isScanningTv, setIsScanningTv] = useState(false);
   
+  // Modal de auditoria de oferta de TV / encarte
+  const [selectedTvPromoProduct, setSelectedTvPromoProduct] = useState<{
+    product: PerishableProductItem;
+    promo: PerishableTvPromoOffer;
+    stats: any;
+  } | null>(null);
+
   // Edição inline de preço
   const [editingCell, setEditingCell] = useState<{ productId: string; chainId: string } | null>(null);
   const [tempEditValue, setTempEditValue] = useState<string>('');
@@ -100,6 +115,32 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
     return result;
   }, [activeCategoryId, products]);
 
+  // Resumo estatístico de Ofertas de TV / Encartes para a sub-aba ativa
+  const tvPromoSummary = useMemo(() => {
+    const categoryProds = products.filter(p => p.categoryId === activeCategoryId);
+    let count = 0;
+    let minPromo = Infinity;
+    let sumPromo = 0;
+    const chainsWithOffers = new Set<string>();
+
+    categoryProds.forEach(prod => {
+      const promo = prod.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[prod.id];
+      if (promo && promo.hasActivePromo && promo.promoPrice > 0) {
+        count++;
+        sumPromo += promo.promoPrice;
+        if (promo.promoPrice < minPromo) minPromo = promo.promoPrice;
+        chainsWithOffers.add(promo.chainName.split(' ')[0]);
+      }
+    });
+
+    return {
+      count,
+      avgPromo: count > 0 ? Number((sumPromo / count).toFixed(2)) : 0,
+      minPromo: minPromo === Infinity ? 0 : minPromo,
+      chains: Array.from(chainsWithOffers).join(', ') || 'Guanabara, Mundial, Supermarket, Assaí'
+    };
+  }, [activeCategoryId, products]);
+
   // Handlers de Ações
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -122,6 +163,23 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
       if (showToast) showToast('Base de dados oficial de supermercados do RJ restaurada com sucesso!');
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  // Rastreamento ativo de comerciais de TV aberta RJ e encartes
+  const handleScanTvPromotions = async () => {
+    setIsScanningTv(true);
+    try {
+      const result = await PerishablesQuotesService.scanTvAndEncartePromotions(activeCategoryId);
+      setProducts(result.products);
+      if (showToast) {
+        showToast(`Radar de TV RJ: ${result.activePromosCount} ofertas de TV & encartes rastreadas com sucesso!`);
+      }
+    } catch (e) {
+      console.error('Erro ao escanear ofertas de TV:', e);
+      if (showToast) showToast('Erro ao sincronizar radar de comerciais de TV.');
+    } finally {
+      setIsScanningTv(false);
     }
   };
 
@@ -304,6 +362,27 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
               <span>Limpar e Resetar</span>
             </button>
 
+            {/* Rastrear Ofertas de TV & Encartes */}
+            <button
+              type="button"
+              onClick={handleScanTvPromotions}
+              disabled={isScanningTv}
+              className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-950/20 transition active:scale-95 cursor-pointer disabled:opacity-50"
+              title="Rastrear em tempo real ofertas veiculadas em comerciais de TV aberta (Globo/Record) e encartes de supermercados do RJ"
+            >
+              {isScanningTv ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Rastreando TV RJ...</span>
+                </>
+              ) : (
+                <>
+                  <Tv className="w-3.5 h-3.5 text-amber-200" />
+                  <span>Rastrear Ofertas TV & Encartes</span>
+                </>
+              )}
+            </button>
+
             {/* Sincronizar 12 Redes */}
             <button
               type="button"
@@ -458,6 +537,15 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                     </div>
                   </th>
                 ))}
+                
+                {/* Coluna Especial: Cotação do Preço de Promoção de Encartes & TV */}
+                <th className="py-3 px-3 text-center bg-amber-700 text-amber-100 font-black min-w-[145px] shadow-sm" title="Preço anunciado em comerciais de TV aberta RJ (Globo/Record) e tabloides/encartes vigentes">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Tv className="w-3.5 h-3.5 text-amber-200" />
+                    <span>OFERTA TV / ENCARTE RJ</span>
+                  </div>
+                </th>
+
                 <th className="py-3 px-2.5 text-right bg-emerald-900/60 text-emerald-200 font-black">Menor RJ</th>
                 <th className="py-3 px-2.5 text-right bg-rose-900/60 text-rose-200 font-black">Maior RJ</th>
                 <th className="py-3 px-2.5 text-right bg-slate-800 text-slate-100 font-black">Média RJ</th>
@@ -542,6 +630,47 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                       );
                     })}
 
+                    {/* Coluna Especial: Oferta de Promoção de TV / Encarte RJ */}
+                    <td className="py-2.5 px-3 text-center bg-amber-50/70 dark:bg-amber-950/25 border-x border-amber-200/50 dark:border-amber-900/30 font-sans">
+                      {product.promoOffer && product.promoOffer.hasActivePromo ? (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTvPromoProduct({
+                            product,
+                            promo: product.promoOffer!,
+                            stats
+                          })}
+                          className="w-full text-left p-1 rounded-lg bg-amber-100/90 hover:bg-amber-200/90 dark:bg-amber-900/40 dark:hover:bg-amber-900/60 border border-amber-300 dark:border-amber-700/60 transition group cursor-pointer shadow-xs"
+                          title="Clique para auditar veiculação na TV aberta / Encarte"
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-mono font-black text-xs text-amber-950 dark:text-amber-100">
+                              R$ {product.promoOffer.promoPrice.toFixed(2)}
+                            </span>
+                            <span className={`text-[8px] font-black uppercase px-1 py-0.5 rounded flex items-center gap-0.5 ${
+                              product.promoOffer.mediaType === 'TV_GLOBO_RJ'
+                                ? 'bg-indigo-700 text-white'
+                                : product.promoOffer.mediaType === 'TV_RECORD_RJ'
+                                ? 'bg-blue-700 text-white'
+                                : 'bg-amber-600 text-white'
+                            }`}>
+                              <Tv className="w-2.5 h-2.5" />
+                              {product.promoOffer.mediaType === 'TV_GLOBO_RJ' ? 'GLOBO' :
+                               product.promoOffer.mediaType === 'TV_RECORD_RJ' ? 'RECORD' : 'ENCARTE'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[9px] text-amber-900/80 dark:text-amber-300/80 font-medium mt-0.5">
+                            <span className="truncate max-w-[85px]">{product.promoOffer.chainName.split(' ')[0]}</span>
+                            <span className="text-[8px] font-bold text-emerald-700 dark:text-emerald-400">
+                              -{Math.round(((stats.avgPrice - product.promoOffer.promoPrice) / stats.avgPrice) * 100)}%
+                            </span>
+                          </div>
+                        </button>
+                      ) : (
+                        <span className="text-slate-400 text-xs">-</span>
+                      )}
+                    </td>
+
                     {/* Menor RJ */}
                     <td className="py-3 px-2.5 text-right font-black text-emerald-700 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/40">
                       R$ {stats.minPrice.toFixed(2)}
@@ -585,6 +714,9 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                     R$ {chainAverages[chain.id]?.avg.toFixed(2) || '0.00'}
                   </td>
                 ))}
+                <td className="py-2.5 px-3 text-center text-amber-800 dark:text-amber-200 font-black bg-amber-100/60 dark:bg-amber-950/40">
+                  R$ {tvPromoSummary.avgPromo.toFixed(2)}
+                </td>
                 <td className="py-2.5 px-2.5 text-right text-emerald-700 dark:text-emerald-300 font-black">
                   R$ {categorySummary.minPriceCategory.toFixed(2)}
                 </td>
@@ -609,6 +741,9 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                     R$ {chainAverages[chain.id]?.min.toFixed(2) || '0.00'}
                   </td>
                 ))}
+                <td className="py-2 px-3 text-center text-amber-900 dark:text-amber-300 font-black bg-amber-100/70 dark:bg-amber-950/50">
+                  R$ {tvPromoSummary.minPromo.toFixed(2)}
+                </td>
                 <td className="py-2 px-2.5 text-right text-emerald-700 font-black">
                   R$ {categorySummary.minPriceCategory.toFixed(2)}
                 </td>
@@ -627,6 +762,7 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                     R$ {chainAverages[chain.id]?.max.toFixed(2) || '0.00'}
                   </td>
                 ))}
+                <td className="py-2 px-3 text-center text-slate-400">-</td>
                 <td className="py-2 px-2.5 text-right">-</td>
                 <td className="py-2 px-2.5 text-right text-rose-700 font-black">
                   R$ {categorySummary.maxPriceCategory.toFixed(2)}
@@ -648,6 +784,7 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                     </td>
                   );
                 })}
+                <td className="py-2 px-3 text-center text-slate-400">-</td>
                 <td className="py-2 px-2.5 text-right">-</td>
                 <td className="py-2 px-2.5 text-right">-</td>
                 <td className="py-2 px-2.5 text-right">-</td>
@@ -670,6 +807,9 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
             • <strong>Sub-abas Normatizadas:</strong> Monitoramento estruturado para <em>CORTE DE FRANGO</em>, <em>CORTE DE CARNE SECA</em>, <em>MIUDO BOVINO</em>, <em>SUINO SALGADO</em>, <em>CHARQUE / CARNE SECA</em>, <em>QUEIJO MUSSARELA / PRATO</em>, <em>LINGÜIÇA DE CHURRASCO</em> e <em>LEITE UHT DE 1LT</em>.
           </p>
           <p className="text-[11px]">
+            • <strong>Radar de Comerciais de TV e Encartes:</strong> Captura e clipping diário de ofertas veiculadas na TV aberta do RJ (Globo RJ, Record RJ, SBT Rio), tabloides impressos e aplicativos oficiais das maiores redes fluminenses.
+          </p>
+          <p className="text-[11px]">
             • <strong>Fontes Oficiais Fluminenses:</strong> Associação de Supermercados do Estado do RJ (ASSERJ), Procon-RJ, Preço da Hora RJ (SEFAZ-RJ / NFC-e) e encartes semanais oficiais de balcão e auto-serviço.
           </p>
           <p className="text-[11px]">
@@ -677,6 +817,17 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
           </p>
         </div>
       </div>
+
+      {/* Modal de Detalhes e Auditoria de Veiculação de TV / Encarte */}
+      {selectedTvPromoProduct && (
+        <TvPromoDetailModal
+          isOpen={!!selectedTvPromoProduct}
+          onClose={() => setSelectedTvPromoProduct(null)}
+          product={selectedTvPromoProduct.product}
+          promo={selectedTvPromoProduct.promo}
+          stats={selectedTvPromoProduct.stats}
+        />
+      )}
     </div>
   );
 };

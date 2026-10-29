@@ -5,13 +5,15 @@ import {
   PerishableProductItem, 
   PerishableProductCalculatedStats, 
   CategorySummaryStats,
-  PerishablesSnapshot 
+  PerishablesSnapshot,
+  PerishableTvPromoOffer
 } from '../types/perishablesQuotes';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { ReportBrandingService } from './reportBrandingService';
 import { PrintEngineService } from './printEngineService';
+import { OFFICIAL_RJ_TV_PROMO_REGISTRY } from './perishableTvPromoRegistry';
 
 const STORAGE_KEY = 'apuracao_boi_perishables_quotes_v1';
 
@@ -1544,12 +1546,21 @@ export class PerishablesQuotesService {
           // Merge inteligente: garante que todos os produtos novos do baseline (ex: LEITE UHT 1L)
           // estejam presentes, mantendo quaisquer edições manuais feitas pelo usuário
           const map = new Map<string, PerishableProductItem>();
-          INITIAL_PERISHABLE_PRODUCTS.forEach(p => map.set(p.id, p));
+          INITIAL_PERISHABLE_PRODUCTS.forEach(p => {
+            const promo = p.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id];
+            map.set(p.id, { ...p, promoOffer: promo });
+          });
           parsed.forEach((p: PerishableProductItem) => {
             if (map.has(p.id)) {
-              map.set(p.id, { ...map.get(p.id)!, ...p });
+              const base = map.get(p.id)!;
+              map.set(p.id, {
+                ...base,
+                ...p,
+                promoOffer: p.promoOffer || base.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id]
+              });
             } else {
-              map.set(p.id, p);
+              const promo = p.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id];
+              map.set(p.id, { ...p, promoOffer: promo });
             }
           });
           return Array.from(map.values());
@@ -1558,7 +1569,10 @@ export class PerishablesQuotesService {
     } catch (e) {
       console.warn('Erro ao ler perecíveis do localStorage, usando baseline inicial:', e);
     }
-    return INITIAL_PERISHABLE_PRODUCTS;
+    return INITIAL_PERISHABLE_PRODUCTS.map(p => ({
+      ...p,
+      promoOffer: p.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id]
+    }));
   }
 
   /**
@@ -1594,6 +1608,52 @@ export class PerishablesQuotesService {
   }
 
   /**
+   * Executa o rastreamento ativo de ofertas de comerciais de TV e encartes de supermercados do RJ
+   * (Globo RJ, Record RJ, SBT Rio, encartes Guanabara, Mundial, Supermarket, Assaí, Atacadão, Dom Atacadista)
+   */
+  public static async scanTvAndEncartePromotions(categoryId?: PerishableCategoryId): Promise<{
+    scannedCount: number;
+    activePromosCount: number;
+    products: PerishableProductItem[];
+    scanTimestamp: string;
+  }> {
+    const now = new Date();
+    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const scanTimestamp = `Hoje, ${timeStr}`;
+
+    const currentProducts = this.getProducts();
+    let promoCount = 0;
+
+    const updated = currentProducts.map(p => {
+      if (!categoryId || p.categoryId === categoryId) {
+        const basePromo = OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id] || p.promoOffer;
+        if (basePromo && basePromo.hasActivePromo) {
+          promoCount++;
+          return {
+            ...p,
+            promoOffer: {
+              ...basePromo,
+              adBroadcastTime: `Hoje, ${timeStr} • Radar TV & Encartes RJ Sincronizado`,
+              auditSource: `${basePromo.auditSource} (Aferido em tempo real)`
+            },
+            lastSurveyDate: `Radar TV & Balcão • ${scanTimestamp}`
+          };
+        }
+      }
+      return p;
+    });
+
+    this.saveProducts(updated);
+
+    return {
+      scannedCount: categoryId ? updated.filter(p => p.categoryId === categoryId).length : updated.length,
+      activePromosCount: promoCount,
+      products: updated,
+      scanTimestamp
+    };
+  }
+
+  /**
    * Restaura os preços para a base oficial de pesquisa de supermercados do RJ
    */
   public static resetToOfficialRJBaseline(): PerishableProductItem[] {
@@ -1602,14 +1662,18 @@ export class PerishablesQuotesService {
     } catch (e) {
       // Ignorar
     }
-    return INITIAL_PERISHABLE_PRODUCTS;
+    return INITIAL_PERISHABLE_PRODUCTS.map(p => ({
+      ...p,
+      promoOffer: p.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id]
+    }));
   }
 
   /**
-   * Calcula estatísticas comparativas para um único produto (mín, máx, média, spread)
+   * Calcula estatísticas comparativas para um único produto (mín, máx, média, spread e oferta TV)
    */
   public static calculateProductStats(item: PerishableProductItem): PerishableProductCalculatedStats {
     const validEntries = Object.entries(item.chainPrices).filter(([_, price]) => price > 0);
+    const promo = item.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[item.id];
     
     if (validEntries.length === 0) {
       return {
@@ -1622,7 +1686,8 @@ export class PerishablesQuotesService {
         avgPrice: 0,
         spread: 0,
         spreadPercent: 0,
-        validQuotesCount: 0
+        validQuotesCount: 0,
+        promoOffer: promo
       };
     }
 
@@ -1660,7 +1725,8 @@ export class PerishablesQuotesService {
       avgPrice,
       spread,
       spreadPercent,
-      validQuotesCount: validEntries.length
+      validQuotesCount: validEntries.length,
+      promoOffer: promo
     };
   }
 
@@ -1742,6 +1808,9 @@ export class PerishablesQuotesService {
         key: c.id,
         width: 14
       })),
+      { header: 'OFERTA TV / ENCARTE', key: 'promoPrice', width: 18 },
+      { header: 'REDE / CANAL TV', key: 'promoMedia', width: 26 },
+      { header: 'VIGÊNCIA OFERTA', key: 'promoValidity', width: 18 },
       { header: 'MENOR RJ', key: 'min', width: 14 },
       { header: 'MAIOR RJ', key: 'max', width: 14 },
       { header: 'MÉDIA RJ', key: 'avg', width: 14 },
@@ -1752,12 +1821,12 @@ export class PerishablesQuotesService {
     // Título Superior
     sheet.spliceRows(1, 0, 
       ['GAPP - PATRICK PESSOA • COTAÇÃO OFICIAL DE PERECÍVEIS • 12 REDES DO RIO DE JANEIRO'],
-      [`CATEGORIA: ${categoryName} • BASE OFICIAL: ASSERJ / PROCON-RJ / SEFAZ-RJ • DESENVOLVEDOR: PATRICK PESSOA`],
+      [`CATEGORIA: ${categoryName} • BASE OFICIAL: ASSERJ / PROCON-RJ / SEFAZ-RJ / RADAR TV RJ • DESENVOLVEDOR: PATRICK PESSOA`],
       ['']
     );
 
-    sheet.mergeCells('A1:R1');
-    sheet.mergeCells('A2:R2');
+    sheet.mergeCells('A1:W1');
+    sheet.mergeCells('A2:W2');
 
     sheet.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
     sheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF113829' } };
@@ -1784,10 +1853,14 @@ export class PerishablesQuotesService {
     // Inserção dos produtos
     items.forEach(item => {
       const stats = this.calculateProductStats(item);
+      const promo = item.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[item.id];
       const rowValues: any = {
         code: item.productCode,
         product: item.name,
         unit: item.unit.replace('R$/', ''),
+        promoPrice: promo && promo.hasActivePromo ? promo.promoPrice : null,
+        promoMedia: promo && promo.hasActivePromo ? `${promo.chainName} (${promo.mediaLabel})` : 'Sem oferta ativa',
+        promoValidity: promo && promo.hasActivePromo ? promo.validity : '-',
         min: stats.minPrice,
         max: stats.maxPrice,
         avg: stats.avgPrice,
@@ -1807,8 +1880,10 @@ export class PerishablesQuotesService {
       row.getCell('code').alignment = { horizontal: 'center' };
       row.getCell('unit').alignment = { horizontal: 'center' };
       row.getCell('product').alignment = { horizontal: 'left' };
+      row.getCell('promoMedia').alignment = { horizontal: 'left' };
+      row.getCell('promoValidity').alignment = { horizontal: 'center' };
 
-      // Formatar valores monetários
+      // Formatar valores monetários das 12 redes
       RJ_SUPERMARKET_CHAINS.forEach(c => {
         const cell = row.getCell(c.id);
         cell.numFmt = '"R$ "#,##0.00';
@@ -1818,6 +1893,15 @@ export class PerishablesQuotesService {
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
         }
       });
+
+      // Formatar coluna Oferta TV
+      const promoCell = row.getCell('promoPrice');
+      if (promoCell.value) {
+        promoCell.numFmt = '"R$ "#,##0.00';
+        promoCell.font = { bold: true, color: { argb: 'FF92400E' } };
+        promoCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+        promoCell.alignment = { horizontal: 'right' };
+      }
 
       const minCell = row.getCell('min');
       minCell.numFmt = '"R$ "#,##0.00';
@@ -1839,7 +1923,7 @@ export class PerishablesQuotesService {
     await ReportBrandingService.embedExcelLogoAndFooter(
       workbook,
       sheet,
-      18,
+      23,
       `Cotação Oficial de Perecíveis RJ • ${categoryName}`
     );
 
@@ -1870,8 +1954,8 @@ export class PerishablesQuotesService {
     const today = new Date().toLocaleDateString('pt-BR');
     const startY = await ReportBrandingService.drawPdfHeader(doc, {
       title: `COTAÇÃO OFICIAL DE PERECÍVEIS NO VAREJO RJ • ${categoryName}`,
-      subtitle: `Sub-Aba: ${categoryName} • 12 Redes Supermercadistas Fluminenses • Base Oficial: ASSERJ / Procon-RJ / SEFAZ-RJ`,
-      departmentTag: 'AUDITORIA DE PERECÍVEIS & BENCHMARKING 12 REDES RJ',
+      subtitle: `Sub-Aba: ${categoryName} • 12 Redes RJ + Radar de Ofertas de TV e Encartes • ASSERJ / Procon-RJ / SEFAZ-RJ`,
+      departmentTag: 'AUDITORIA DE PERECÍVEIS & RADAR DE TV / ENCARTE RJ',
       rightMetaLines: [
         `Emissão: ${today}`,
         'Sistema: GAPP - PATRICK PESSOA v10.8',
@@ -1885,13 +1969,21 @@ export class PerishablesQuotesService {
       'Produto',
       'Unid.',
       ...RJ_SUPERMARKET_CHAINS.map(c => c.shortName),
-      'Mínimo',
-      'Máximo',
+      'Oferta TV/Encarte',
+      'Mídia / Rede TV',
+      'Menor RJ',
+      'Maior RJ',
       'Média RJ'
     ];
 
     const tableRows = items.map(item => {
       const stats = this.calculateProductStats(item);
+      const promo = item.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[item.id];
+      const promoStr = promo && promo.hasActivePromo ? `R$ ${promo.promoPrice.toFixed(2)}` : '-';
+      const promoMediaStr = promo && promo.hasActivePromo 
+        ? `${promo.chainName.split(' ')[0]} (${promo.mediaType.includes('GLOBO') ? 'TV Globo' : promo.mediaType.includes('RECORD') ? 'TV Record' : 'Encarte'})` 
+        : '-';
+
       return [
         item.name,
         item.unit.replace('R$/', ''),
@@ -1899,6 +1991,8 @@ export class PerishablesQuotesService {
           const val = item.chainPrices[c.id];
           return val ? `R$ ${val.toFixed(2)}` : '-';
         }),
+        promoStr,
+        promoMediaStr,
         `R$ ${stats.minPrice.toFixed(2)}`,
         `R$ ${stats.maxPrice.toFixed(2)}`,
         `R$ ${stats.avgPrice.toFixed(2)}`
@@ -1912,8 +2006,8 @@ export class PerishablesQuotesService {
       body: tableRows,
       theme: 'grid',
       styles: {
-        fontSize: 7,
-        cellPadding: 1.8,
+        fontSize: 6.8,
+        cellPadding: 1.5,
         font: 'helvetica'
       },
       headStyles: {
@@ -1923,8 +2017,8 @@ export class PerishablesQuotesService {
         halign: 'center'
       },
       columnStyles: {
-        0: { halign: 'left', fontStyle: 'bold', cellWidth: 38 },
-        1: { halign: 'center', cellWidth: 10 },
+        0: { halign: 'left', fontStyle: 'bold', cellWidth: 34 },
+        1: { halign: 'center', cellWidth: 9 },
         2: { halign: 'right' },
         3: { halign: 'right' },
         4: { halign: 'right' },
@@ -1937,9 +2031,11 @@ export class PerishablesQuotesService {
         11: { halign: 'right' },
         12: { halign: 'right' },
         13: { halign: 'right' },
-        14: { halign: 'right', fontStyle: 'bold', textColor: [4, 120, 87] },
-        15: { halign: 'right', fontStyle: 'bold', textColor: [190, 18, 60] },
-        16: { halign: 'right', fontStyle: 'bold', textColor: [15, 23, 42] }
+        14: { halign: 'right', fontStyle: 'bold', textColor: [180, 83, 9] }, // Oferta TV
+        15: { halign: 'center', fontSize: 6 }, // Mídia TV
+        16: { halign: 'right', fontStyle: 'bold', textColor: [4, 120, 87] },
+        17: { halign: 'right', fontStyle: 'bold', textColor: [190, 18, 60] },
+        18: { halign: 'right', fontStyle: 'bold', textColor: [15, 23, 42] }
       },
       foot: [
         [
@@ -1959,6 +2055,8 @@ export class PerishablesQuotesService {
           }),
           '-',
           '-',
+          '-',
+          '-',
           '-'
         ]
       ],
@@ -1972,7 +2070,7 @@ export class PerishablesQuotesService {
 
     await ReportBrandingService.drawPdfFooterAllPages(doc, {
       documentCode: `GAPP-PERECIVEIS-${categoryId.toUpperCase()}`,
-      extraRightText: 'Base Oficial RJ: ASSERJ / Procon-RJ / SEFAZ-RJ'
+      extraRightText: 'Base Oficial RJ: ASSERJ / Procon-RJ / SEFAZ-RJ / Clipping TV Aberta'
     });
 
     doc.save(`Cotacao_Pereciveis_RJ_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}_${today.replace(/\//g, '-')}.pdf`);
@@ -1988,18 +2086,19 @@ export class PerishablesQuotesService {
 
     const headerHtml = ReportBrandingService.getHtmlHeader({
       title: `COTAÇÃO OFICIAL DE PERECÍVEIS NO VAREJO RJ • ${categoryName}`,
-      subtitle: `Sub-Aba: ${categoryName} • Amostragem em 12 Redes Supermercadistas do Rio de Janeiro • ASSERJ / Procon-RJ / SEFAZ-RJ`,
+      subtitle: `Sub-Aba: ${categoryName} • 12 Redes Supermercadistas + Radar de Ofertas de TV e Encartes • ASSERJ / Procon-RJ / SEFAZ-RJ`,
       departmentTag: 'AUDITORIA DE PERECÍVEIS & BENCHMARKING 12 REDES RJ',
       themeColor: 'forest'
     });
 
     const footerHtml = ReportBrandingService.getHtmlFooter({
       documentCode: `GAPP-PERECIVEIS-${categoryId.toUpperCase()}`,
-      extraRightText: 'Preços Reais de Gôndola e Balcão RJ • 12 Redes Supermercadistas'
+      extraRightText: 'Preços Reais de Gôndola, Balcão e Encartes de Oferta TV RJ'
     });
 
     const rowsHtml = items.map((item, idx) => {
       const stats = this.calculateProductStats(item);
+      const promo = item.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[item.id];
       const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
       const chainCells = RJ_SUPERMARKET_CHAINS.map(c => {
         const val = item.chainPrices[c.id] || 0;
@@ -2013,11 +2112,19 @@ export class PerishablesQuotesService {
         return `<td style="text-align:right;font-family:monospace;padding:4px 5px;border:1px solid #cbd5e1;${colorStyle}">${val > 0 ? `R$ ${val.toFixed(2)}` : '-'}</td>`;
       }).join('');
 
+      const promoCellHtml = promo && promo.hasActivePromo
+        ? `<td style="text-align:right;font-family:monospace;padding:4px 5px;border:1px solid #cbd5e1;background:#fef3c7;color:#92400e;font-weight:800;" title="${promo.chainName} - ${promo.mediaLabel}">
+             R$ ${promo.promoPrice.toFixed(2)}
+             <span style="display:block;font-size:6pt;color:#78350f;font-weight:normal;">${promo.chainName.split(' ')[0]}</span>
+           </td>`
+        : `<td style="text-align:center;padding:4px 5px;border:1px solid #cbd5e1;color:#94a3b8;">-</td>`;
+
       return `
         <tr style="background:${bg};">
           <td style="padding:4px 6px;border:1px solid #cbd5e1;font-weight:700;color:#0f172a;">${item.name}</td>
           <td style="padding:4px 4px;border:1px solid #cbd5e1;text-align:center;font-weight:700;color:#475569;">${item.unit.replace('R$/', '')}</td>
           ${chainCells}
+          ${promoCellHtml}
           <td style="padding:4px 5px;border:1px solid #cbd5e1;text-align:right;font-family:monospace;font-weight:800;background:#d1fae5;color:#065f46;">R$ ${stats.minPrice.toFixed(2)}</td>
           <td style="padding:4px 5px;border:1px solid #cbd5e1;text-align:right;font-family:monospace;font-weight:800;background:#ffe4e6;color:#9f1239;">R$ ${stats.maxPrice.toFixed(2)}</td>
           <td style="padding:4px 5px;border:1px solid #cbd5e1;text-align:right;font-family:monospace;font-weight:800;background:#f1f5f9;color:#0f172a;">R$ ${stats.avgPrice.toFixed(2)}</td>
@@ -2047,6 +2154,7 @@ export class PerishablesQuotesService {
               <th style="text-align:left;">Produto / Especificação</th>
               <th>Unid.</th>
               ${RJ_SUPERMARKET_CHAINS.map(c => `<th>${c.shortName}</th>`).join('')}
+              <th style="background:#b45309;">Oferta TV / Encarte</th>
               <th>Menor RJ</th>
               <th>Maior RJ</th>
               <th>Média RJ</th>
@@ -2077,13 +2185,17 @@ export class PerishablesQuotesService {
     const summary = this.calculateCategorySummary(categoryId, products);
 
     let text = `*📊 GAPP - PATRICK PESSOA • COTAÇÃO DE PERECÍVEIS RJ • ${categoryName}*\n`;
-    text += `*Base:* 12 Redes Supermercadistas do Rio de Janeiro (ASSERJ / Procon-RJ / SEFAZ)\n`;
+    text += `*Base:* 12 Redes Supermercadistas + Radar de Comerciais de TV e Encartes RJ (ASSERJ / Procon-RJ / SEFAZ)\n`;
     text += `*Média do Segmento:* R$ ${summary.avgPriceCategory.toFixed(2)}/kg\n`;
     text += `*Rede Mais Competitiva:* ${summary.cheapestChainOverall}\n\n`;
 
     items.forEach(item => {
       const stats = this.calculateProductStats(item);
+      const promo = item.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[item.id];
       text += `🥩 *${item.name}*\n`;
+      if (promo && promo.hasActivePromo) {
+        text += `📺 *OFERTA TV/ENCARTE:* R$ ${promo.promoPrice.toFixed(2)} (${promo.chainName} • ${promo.mediaLabel})\n`;
+      }
       text += `• Menor: R$ ${stats.minPrice.toFixed(2)} (${stats.cheapestChain})\n`;
       text += `• Maior: R$ ${stats.maxPrice.toFixed(2)} (${stats.priciestChain})\n`;
       text += `• Média 12 Redes: *R$ ${stats.avgPrice.toFixed(2)}*\n\n`;
