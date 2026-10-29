@@ -318,7 +318,7 @@ export interface SystemUser {
   email?: string;
   avatar?: string;
   active: boolean;          // Ativo / Inativo
-  allowedModules: string[]; // IDs dos módulos permitidos: 'dashboard', 'sheet', 'quotes', 'yield', 'results', 'inventory', 'purchases', 'waste', 'devices', 'parameters', 'backup', 'users', 'portal'
+  allowedModules: string[]; // IDs dos módulos permitidos: 'dashboard', 'parameters', 'sheet', 'purchases', 'yield', 'quotes', 'perishables', 'inventory', 'portal', 'results', 'waste', 'devices', 'backup', 'users'
   preferredTheme?: 'solidcon' | 'light' | 'dark' | 'gapp-new'; // Tema padrão preferido pelo usuário
   createdAt: number;
   lastLoginAt?: number;

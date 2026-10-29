@@ -984,22 +984,157 @@ export const INITIAL_SUPPLIERS: Supplier[] = [
 ];
 
 // ==========================================
-// USUÁRIOS E MÓDULOS DO SISTEMA
+// USUÁRIOS E MÓDULOS DO SISTEMA (ATUALIZADO v10.8)
 // ==========================================
-export const ALL_SYSTEM_MODULES = [
-  { id: 'dashboard', label: 'Painel Geral', description: 'Visão executiva, tendências D3.js e KPIs em tempo real' },
-  { id: 'sheet', label: 'Planilha Direção v10.8', description: 'Planilha matriz oficial de compras (16 filiais)' },
-  { id: 'quotes', label: 'Cotação em Tempo Real', description: 'Cotações oficiais de mercado (CEPEA/B3, carcaça e desossa)' },
-  { id: 'yield', label: 'Desossa & Rendimento', description: 'Simulador zootécnico e apuração de carne limpa' },
-  { id: 'results', label: 'Apuração & Margens', description: 'Demonstrativo de Resultados (DRE), CMV e Markups' },
-  { id: 'inventory', label: 'Estoque & Câmaras', description: 'Lançamentos de balcão e câmaras frigoríficas' },
-  { id: 'purchases', label: 'Compras & Lotes', description: 'Histórico de lotes, notas fiscais e cotação da arroba' },
-  { id: 'waste', label: 'Descarte (Sebo & Osso)', description: 'Apuração de quebra e subprodutos vendidos para graxarias' },
-  { id: 'devices', label: 'Aparelhos Conectados', description: 'Auditoria de conexões, controle de IP/MAC e bloqueio de acessos' },
-  { id: 'parameters', label: 'Módulo 1: Cadastros', description: 'Tabela de produtos, filiais e frigoríficos' },
-  { id: 'backup', label: 'Backup Online Nuvem', description: 'Central de backup e agendamento no Firestore' },
-  { id: 'users', label: 'Gestão de Usuários', description: 'Controle de acessos, senhas e permissões do sistema' },
-  { id: 'portal', label: 'Portal Mobile de Filiais', description: 'Lançamento diário de estoque nas 16 lojas' },
+export interface SystemModuleItem {
+  id: string;
+  label: string;
+  shortLabel: string;
+  description: string;
+  category: 'COMPRAS' | 'MERCADO' | 'OPERACIONAL' | 'FINANCAS' | 'GESTAO' | 'SEGURANCA';
+  categoryLabel: string;
+  badge?: string;
+  iconName?: string;
+}
+
+export const ALL_SYSTEM_MODULES: SystemModuleItem[] = [
+  // --- GESTÃO & EXECUTIVO ---
+  { 
+    id: 'dashboard', 
+    label: 'Painel Geral', 
+    shortLabel: 'Dashboard',
+    description: 'Visão executiva, tendências D3.js, alertas e KPIs em tempo real',
+    category: 'GESTAO',
+    categoryLabel: 'Gestão Executiva',
+    badge: 'Executivo'
+  },
+  { 
+    id: 'parameters', 
+    label: 'Módulo 1: Cadastros & Setup', 
+    shortLabel: 'Cadastros',
+    description: 'Tabela de produtos e cortes, 16 filiais, frigoríficos parceiros e parâmetros',
+    category: 'GESTAO',
+    categoryLabel: 'Gestão Executiva',
+    badge: 'Setup'
+  },
+
+  // --- MESA DE COMPRAS & CARNE BOVINA ---
+  { 
+    id: 'sheet', 
+    label: 'Planilha Direção v10.8', 
+    shortLabel: 'Planilha 16 Lojas',
+    description: 'Planilha matriz oficial de compras (16 filiais, 17 colunas de cortes e câmaras)',
+    category: 'COMPRAS',
+    categoryLabel: 'Mesa de Compras Matriz',
+    badge: '16 Filiais'
+  },
+  { 
+    id: 'purchases', 
+    label: 'Compras & Lotes', 
+    shortLabel: 'Compras / Lotes',
+    description: 'Histórico de pedidos matriz, cotação da arroba (@), notas fiscais e frigoríficos',
+    category: 'COMPRAS',
+    categoryLabel: 'Mesa de Compras Matriz',
+    badge: 'Pedidos'
+  },
+  { 
+    id: 'yield', 
+    label: 'Desossa & Rendimento', 
+    shortLabel: 'Desossa & Rendimento',
+    description: 'Simulador zootécnico de desossa, apuração de carne limpa e formação de custos',
+    category: 'COMPRAS',
+    categoryLabel: 'Mesa de Compras Matriz',
+    badge: 'Calculadora'
+  },
+
+  // --- COTAÇÕES & INTELIGÊNCIA DE MERCADO RJ ---
+  { 
+    id: 'quotes', 
+    label: 'Cotação em Tempo Real', 
+    shortLabel: 'Cotação Atacado RJ',
+    description: 'Cotações de mercado CEPEA/B3, carcaça casada, desossa atacado e balcão',
+    category: 'MERCADO',
+    categoryLabel: 'Inteligência de Mercado RJ',
+    badge: 'Ao Vivo'
+  },
+  { 
+    id: 'perishables', 
+    label: 'Cotação de Perecíveis (12 Redes RJ)', 
+    shortLabel: 'Perecíveis 12 Redes',
+    description: '8 abas RJ: Frango, Carnes Bov/Suína, Salgados, Charque, Queijos, Linguiça, Leite UHT, FLV e Ofertas TV',
+    category: 'MERCADO',
+    categoryLabel: 'Inteligência de Mercado RJ',
+    badge: '8 Abas RJ'
+  },
+
+  // --- OPERAÇÃO DE FILIAIS & CÂMARAS FRIGORÍFICAS ---
+  { 
+    id: 'inventory', 
+    label: 'Estoque & Câmaras', 
+    shortLabel: 'Estoque / Câmaras',
+    description: 'Lançamentos de balcão e conferência de câmaras frigoríficas das 16 lojas',
+    category: 'OPERACIONAL',
+    categoryLabel: 'Operações de Loja & Câmaras',
+    badge: 'Câmaras'
+  },
+  { 
+    id: 'portal', 
+    label: 'Portal Mobile de Filiais', 
+    shortLabel: 'Portal Mobile',
+    description: 'Lançamento diário de estoque e câmaras pelos encarregados das 16 lojas',
+    category: 'OPERACIONAL',
+    categoryLabel: 'Operações de Loja & Câmaras',
+    badge: 'Mobile'
+  },
+
+  // --- CONTROLADORIA & RESULTADOS ---
+  { 
+    id: 'results', 
+    label: 'Apuração & Margens (DRE)', 
+    shortLabel: 'Apuração & Margens',
+    description: 'Demonstrativo financeiro de resultados, CMV e Markups por filial',
+    category: 'FINANCAS',
+    categoryLabel: 'Controladoria & Finanças',
+    badge: 'DRE'
+  },
+  { 
+    id: 'waste', 
+    label: 'Descarte (Sebo & Osso)', 
+    shortLabel: 'Descarte / Graxaria',
+    description: 'Apuração de quebra total, receita de graxaria e rendimento de subprodutos',
+    category: 'FINANCAS',
+    categoryLabel: 'Controladoria & Finanças',
+    badge: 'Graxaria'
+  },
+
+  // --- SEGURANÇA & AUDITORIA DO SISTEMA ---
+  { 
+    id: 'devices', 
+    label: 'Aparelhos Conectados', 
+    shortLabel: 'Aparelhos Conectados',
+    description: 'Auditoria de conexões, controle de IP/MAC e bloqueio de sessões ativas',
+    category: 'SEGURANCA',
+    categoryLabel: 'Segurança & Infraestrutura',
+    badge: 'Sessões'
+  },
+  { 
+    id: 'backup', 
+    label: 'Backup Online Nuvem', 
+    shortLabel: 'Backup Nuvem',
+    description: 'Central de snapshots e agendador automático em nuvem Firestore',
+    category: 'SEGURANCA',
+    categoryLabel: 'Segurança & Infraestrutura',
+    badge: 'Firestore'
+  },
+  { 
+    id: 'users', 
+    label: 'Gestão de Usuários', 
+    shortLabel: 'Gestão de Usuários',
+    description: 'Controle de acessos, senhas, filiais vinculadas e permissões granulares',
+    category: 'SEGURANCA',
+    categoryLabel: 'Segurança & Infraestrutura',
+    badge: 'Acessos'
+  },
 ];
 
 export const INITIAL_USERS: import('../types/erp').SystemUser[] = [
@@ -1011,8 +1146,24 @@ export const INITIAL_USERS: import('../types/erp').SystemUser[] = [
     role: 'DESENVOLVEDOR',
     roleTitle: 'Desenvolvedor do Software',
     email: 'patrickrodack@gmail.com',
+    storeId: 'matriz',
     active: true,
-    allowedModules: ['dashboard', 'sheet', 'quotes', 'yield', 'results', 'inventory', 'purchases', 'waste', 'devices', 'parameters', 'backup', 'users', 'portal'],
+    allowedModules: [
+      'dashboard', 
+      'parameters', 
+      'sheet', 
+      'purchases', 
+      'yield', 
+      'quotes', 
+      'perishables', 
+      'inventory', 
+      'portal', 
+      'results', 
+      'waste', 
+      'devices', 
+      'backup', 
+      'users'
+    ],
     createdAt: 1727740800000, // Outubro 2026
   },
   {
@@ -1023,8 +1174,23 @@ export const INITIAL_USERS: import('../types/erp').SystemUser[] = [
     role: 'DIRETOR',
     roleTitle: 'Diretor Geral de Carnes',
     email: 'diretoria@grupogapp.com.br',
+    storeId: 'matriz',
     active: true,
-    allowedModules: ['dashboard', 'sheet', 'quotes', 'yield', 'results', 'inventory', 'purchases', 'waste', 'devices', 'parameters', 'backup', 'portal'],
+    allowedModules: [
+      'dashboard', 
+      'parameters', 
+      'sheet', 
+      'purchases', 
+      'yield', 
+      'quotes', 
+      'perishables', 
+      'inventory', 
+      'portal', 
+      'results', 
+      'waste', 
+      'devices', 
+      'backup'
+    ],
     createdAt: 1727740800000,
   },
   {
@@ -1035,8 +1201,17 @@ export const INITIAL_USERS: import('../types/erp').SystemUser[] = [
     role: 'COMPRADOR',
     roleTitle: 'Comprador de Carcaça e Arroba',
     email: 'compras@grupogapp.com.br',
+    storeId: 'matriz',
     active: true,
-    allowedModules: ['dashboard', 'sheet', 'quotes', 'yield', 'purchases', 'parameters'],
+    allowedModules: [
+      'dashboard', 
+      'parameters', 
+      'sheet', 
+      'purchases', 
+      'yield', 
+      'quotes', 
+      'perishables'
+    ],
     createdAt: 1727740800000,
   },
   {
@@ -1047,8 +1222,16 @@ export const INITIAL_USERS: import('../types/erp').SystemUser[] = [
     role: 'OPERACIONAL',
     roleTitle: 'Encarregado de Câmaras & Açougue',
     email: 'operador@grupogapp.com.br',
+    storeId: 'str_1',
     active: true,
-    allowedModules: ['dashboard', 'inventory', 'yield', 'waste', 'portal'],
+    allowedModules: [
+      'dashboard', 
+      'inventory', 
+      'portal', 
+      'yield', 
+      'waste', 
+      'perishables'
+    ],
     createdAt: 1727740800000,
   },
   {
@@ -1059,8 +1242,15 @@ export const INITIAL_USERS: import('../types/erp').SystemUser[] = [
     role: 'VISUALIZADOR',
     roleTitle: 'Auditor Fiscal e Contábil',
     email: 'auditoria@grupogapp.com.br',
+    storeId: 'matriz',
     active: true,
-    allowedModules: ['dashboard', 'results', 'sheet', 'quotes'],
+    allowedModules: [
+      'dashboard', 
+      'results', 
+      'sheet', 
+      'quotes', 
+      'perishables'
+    ],
     createdAt: 1727740800000,
   }
 ];

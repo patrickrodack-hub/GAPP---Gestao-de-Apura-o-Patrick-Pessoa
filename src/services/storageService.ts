@@ -798,14 +798,14 @@ export const StorageService = {
   },
 
   // ==========================================
-  // GESTÃO DE USUÁRIOS E SESSÃO DO MÓDULO DE GESTÃO
+  // GESTÃO DE USUÁRIOS E SESSÃO DO MÓDULO DE GESTÃO (v10.8)
   // ==========================================
   getUsers(): SystemUser[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.USERS);
       let users: SystemUser[] = data ? JSON.parse(data) : INITIAL_USERS;
       
-      // Garante que o usuário desenvolvedor "patrick pessoa" sempre exista com senha "190996"
+      // Garante que o usuário desenvolvedor "patrick pessoa" sempre exista com senha "190996" e 100% dos módulos
       const hasDev = users.some(u => u.username.toLowerCase() === 'desenvolvedor' || u.role === 'DESENVOLVEDOR');
       if (!hasDev) {
         users = [INITIAL_USERS[0], ...users];
@@ -813,7 +813,7 @@ export const StorageService = {
           localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
         } catch {}
       } else {
-        // Assegura que o desenvolvedor tenha senha e acesso 100% íntegros
+        // Assegura que o desenvolvedor tenha senha e acesso 100% íntegros a todos os 14 módulos
         const devIdx = users.findIndex(u => u.username.toLowerCase() === 'desenvolvedor' || u.role === 'DESENVOLVEDOR');
         if (devIdx >= 0) {
           users[devIdx] = {
@@ -821,11 +821,41 @@ export const StorageService = {
             name: 'Patrick Pessoa',
             username: 'desenvolvedor',
             role: 'DESENVOLVEDOR',
+            roleTitle: 'Desenvolvedor do Software',
+            storeId: users[devIdx].storeId || 'matriz',
             active: true,
             allowedModules: ALL_SYSTEM_MODULES.map(m => m.id)
           };
         }
       }
+
+      // Migração suave: adiciona automaticamente 'perishables' aos usuários cujo perfil já contempla cotações ou compras
+      let hasChanges = false;
+      users = users.map(user => {
+        if (user.role === 'DESENVOLVEDOR') {
+          return {
+            ...user,
+            allowedModules: ALL_SYSTEM_MODULES.map(m => m.id)
+          };
+        }
+        if (!user.allowedModules.includes('perishables')) {
+          if (user.role === 'DIRETOR' || user.role === 'COMPRADOR' || user.role === 'OPERACIONAL' || user.role === 'VISUALIZADOR') {
+            hasChanges = true;
+            return {
+              ...user,
+              allowedModules: [...user.allowedModules, 'perishables']
+            };
+          }
+        }
+        return user;
+      });
+
+      if (hasChanges) {
+        try {
+          localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+        } catch {}
+      }
+
       return users;
     } catch {
       return INITIAL_USERS;
