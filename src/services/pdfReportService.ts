@@ -1169,25 +1169,165 @@ export class PdfReportService {
       doc.text(kpi.desc, x + 2.5, kpiY + 12);
     });
 
-    // 3. Tabela 1: Mesas de Desmembramento Primário (As 4 Peças Solicitadas)
-    const table1Y = kpiY + kpiHeight + 4;
+    // 2.5. GRÁFICO DE ROSCA VETORIAL • DISTRIBUIÇÃO ZOOTÉCNICA DO PESO DA CARCAÇA
+    const chartCardY = kpiY + kpiHeight + 3.5;
+    const chartCardHeight = 35;
+    const chartCardWidth = pageWidth - 2 * margin;
+
+    // Container de fundo suave para o gráfico de rosca
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.2);
+    doc.roundedRect(margin, chartCardY, chartCardWidth, chartCardHeight, 2, 2, 'FD');
+
+    // Desenho do Gráfico de Rosca (Donut Chart) em Alta Resolução Vetorial
+    const donutCenterX = margin + 26;
+    const donutCenterY = chartCardY + chartCardHeight / 2;
+    const donutOuterR = 13.5;
+    const donutInnerR = 7.0;
+
+    // Fatias zootécnicas do boi casado
+    const donutSlices: { label: string; percent: number; color: [number, number, number]; factor: string; cost: number }[] = [
+      { label: 'Dianteiro', percent: 39.0, color: [245, 158, 11], factor: '0.810x', cost: costPerKg * 0.81 },
+      { label: 'Coxão', percent: 30.0, color: [59, 130, 246], factor: '1.160x', cost: costPerKg * 1.16 },
+      { label: 'Alcatrão', percent: 18.0, color: [16, 185, 129], factor: '1.390x', cost: costPerKg * 1.39 },
+      { label: 'Ponta de Agulha', percent: 13.0, color: [139, 92, 246], factor: '0.730x', cost: costPerKg * 0.73 }
+    ];
+
+    // Helper interno para desenhar setor circular preenchido
+    const drawDonutSector = (
+      pdfDoc: jsPDF,
+      cx: number,
+      cy: number,
+      r: number,
+      startAngle: number,
+      endAngle: number,
+      fillColor: [number, number, number]
+    ) => {
+      const steps = Math.max(12, Math.ceil(Math.abs(endAngle - startAngle) * 24));
+      const points: { x: number; y: number }[] = [{ x: cx, y: cy }];
+      for (let i = 0; i <= steps; i++) {
+        const angle = startAngle + (i / steps) * (endAngle - startAngle);
+        points.push({
+          x: cx + r * Math.cos(angle),
+          y: cy + r * Math.sin(angle)
+        });
+      }
+      pdfDoc.setFillColor(fillColor[0], fillColor[1], fillColor[2]);
+      pdfDoc.setDrawColor(255, 255, 255);
+      pdfDoc.setLineWidth(0.3);
+
+      const linesDelta: [number, number][] = [];
+      for (let i = 1; i < points.length; i++) {
+        linesDelta.push([points[i].x - points[i - 1].x, points[i].y - points[i - 1].y]);
+      }
+      linesDelta.push([points[0].x - points[points.length - 1].x, points[0].y - points[points.length - 1].y]);
+      pdfDoc.lines(linesDelta, points[0].x, points[0].y, [1, 1], 'FD', true);
+    };
+
+    // Desenha cada fatia do gráfico de rosca
+    let currentAngle = -Math.PI / 2; // Início no topo (12 horas)
+    donutSlices.forEach(slice => {
+      const sliceAngle = (slice.percent / 100) * 2 * Math.PI;
+      drawDonutSector(doc, donutCenterX, donutCenterY, donutOuterR, currentAngle, currentAngle + sliceAngle, slice.color);
+      currentAngle += sliceAngle;
+    });
+
+    // Furo central branco do Donut
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.2);
+    doc.circle(donutCenterX, donutCenterY, donutInnerR, 'FD');
+
+    // Texto central do Donut
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(17, 56, 41);
+    doc.text(`${Math.round(carcassWeight)} kg`, donutCenterX, donutCenterY - 1.2, { align: 'center' });
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(5.0);
+    doc.setTextColor(100, 116, 139);
+    doc.text('100% Carcaça', donutCenterX, donutCenterY + 1.6, { align: 'center' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(4.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`${(carcassWeight / 15).toFixed(1)} @`, donutCenterX, donutCenterY + 4.2, { align: 'center' });
+
+    // Painel de Legenda e Indicadores Zootécnicos ao lado da Rosca
+    const legendStartX = margin + 50;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.0);
+    doc.setTextColor(17, 56, 41);
+    doc.text('DISTRIBUIÇÃO ZOOTÉCNICA DO PESO DA CARCAÇA (GRÁFICO DE ROSCA ANALÍTICO)', legendStartX, chartCardY + 5.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.0);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Proporção oficial de rendimento por mesa primária com formação analítica de custo s/ boi casado:', legendStartX, chartCardY + 9.5);
+
+    // Cards das 4 Mesas Primárias ao lado da Rosca
+    const cardGap = 3.5;
+    const cardW = (chartCardWidth - 54 - 3 * cardGap) / 4;
+    donutSlices.forEach((slice, sIdx) => {
+      const cardX = legendStartX + sIdx * (cardW + cardGap);
+      const cardY = chartCardY + 12;
+      const cardH = 14;
+
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(cardX, cardY, cardW, cardH, 1, 1, 'FD');
+
+      // Ponto de cor
+      doc.setFillColor(slice.color[0], slice.color[1], slice.color[2]);
+      doc.rect(cardX + 2, cardY + 2.5, 2.5, 2.5, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.2);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${slice.label} (${slice.percent.toFixed(1)}%)`, cardX + 6, cardY + 4.5);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(17, 56, 41);
+      doc.text(`${(carcassWeight * slice.percent / 100).toFixed(1)} kg`, cardX + 2, cardY + 8.8);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Custo: R$ ${slice.cost.toFixed(2)}/kg (${slice.factor})`, cardX + 2, cardY + 12.2);
+    });
+
+    // Faixa Inferior de Balanço Zootécnico
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.0);
+    doc.setTextColor(17, 56, 41);
+    const balanceText = `Balanço Zootécnico Varejo: 75,0% Carne Limpa Comercializável (${(carcassWeight * 0.75).toFixed(1)} kg) • 25,0% Quebra Técnica (${(carcassWeight * 0.25).toFixed(1)} kg: Osso 17,0%, Sebo 6,5%, Quebra 1,5%)`;
+    doc.text(balanceText, legendStartX, chartCardY + chartCardHeight - 3);
+
+    // 3. Tabela 1: Mesas de Desmembramento Primário (As 4 Peças Solicitadas com Preços Calculados)
+    const table1Y = chartCardY + chartCardHeight + 4;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(17, 56, 41);
-    doc.text('1. MESAS DE DESMEMBRAMENTO PRIMÁRIO (FORMAÇÃO DE CUSTO & PREÇO DE VENDA POR RENTABILIDADE)', margin, table1Y);
+    doc.text('1. TABELA TÉCNICA DE FORMAÇÃO DE PREÇO DE VENDA POR RENTABILIDADE DE MERCADO PREDEFINIDA', margin, table1Y);
 
     const mesaTableRows = primaryMesas.map(m => [
       m.alias,
       m.name,
       `${m.carcassPercent.toFixed(1)}%`,
       `${m.marketCostFactor.toFixed(3)}x`,
+      `R$ ${costPerKg.toFixed(2)}`,
       `R$ ${m.calculatedCostKg.toFixed(2)}`,
       `${m.weightKg.toFixed(1)} kg`,
       formatCurrencyBRL(m.calculatedCostKg * m.weightKg),
-      `R$ ${(m.targetSellingPriceKg || m.sellingPriceKg).toFixed(2)}`,
-      `+${m.marginOnCostPercent}%`,
       `${(m.targetMarginPercent || m.marginOnSalePercent).toFixed(1)}%`,
+      `+${m.marginOnCostPercent}%`,
+      `R$ ${(m.targetSellingPriceKg || m.sellingPriceKg).toFixed(2)}`,
       formatCurrencyBRL((m.targetSellingPriceKg || m.sellingPriceKg) * m.weightKg),
+      formatCurrencyBRL(((m.targetSellingPriceKg || m.sellingPriceKg) - m.calculatedCostKg) * m.weightKg),
       m.derivedCutNames.slice(0, 3).join(', ') + (m.derivedCutNames.length > 3 ? '...' : '')
     ]);
 
@@ -1199,27 +1339,32 @@ export class PdfReportService {
         'DESCRIÇÃO / MESA',
         '% CARCAÇA',
         'FATOR MERCADO',
-        'CUSTO R$/KG',
+        'BOI BASE',
+        'CUSTO ANALÍTICO',
         'PESO LOTE',
         'CUSTO TOTAL',
-        'PREÇO VENDA R$/KG',
-        'MARKUP',
         'MARGEM %',
+        'MARKUP %',
+        'PREÇO SUGERIDO (R$/KG)',
         'FATURAMENTO',
-        'CORTES DERIVADOS GERADOS'
+        'LUCRO BRUTO',
+        'CORTES DERIVADOS'
       ]],
       body: mesaTableRows,
       theme: 'grid',
       styles: {
-        fontSize: 6.2,
-        cellPadding: 1.5,
+        fontSize: 5.8,
+        cellPadding: 1.3,
         valign: 'middle'
       },
       headStyles: {
         fillColor: [17, 56, 41],
         textColor: [255, 255, 255],
         fontStyle: 'bold',
-        fontSize: 6.2
+        fontSize: 5.8
+      },
+      columnStyles: {
+        10: { fontStyle: 'bold', textColor: [6, 95, 70], fillColor: [209, 250, 229] } // Destaque verde no preço sugerido
       },
       alternateRowStyles: {
         fillColor: [248, 250, 252]

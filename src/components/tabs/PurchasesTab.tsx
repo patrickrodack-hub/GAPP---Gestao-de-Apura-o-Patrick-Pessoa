@@ -20,12 +20,17 @@ import {
   Search,
   AlertTriangle,
   FileSpreadsheet,
-  Link2
+  Link2,
+  ChevronDown,
+  ChevronUp,
+  Calculator,
+  Sparkles
 } from 'lucide-react';
 import { ViewPurchaseBatchModal } from '../modals/ViewPurchaseBatchModal';
 import { EditPurchaseBatchModal } from '../modals/EditPurchaseBatchModal';
 import { PrintPurchaseOrderModal } from '../modals/PrintPurchaseOrderModal';
 import { PrintSpreadsheetModal } from '../modals/PrintSpreadsheetModal';
+import { BatchYieldDrillDownView } from '../purchases/BatchYieldDrillDownView';
 
 interface PurchasesTabProps {
   batches: PurchaseBatch[];
@@ -91,6 +96,13 @@ export const PurchasesTab: React.FC<PurchasesTabProps> = ({
   const [printingBatch, setPrintingBatch] = useState<PurchaseBatch | null>(null);
   const [deletingBatch, setDeletingBatch] = useState<PurchaseBatch | null>(null);
   const [isSpreadsheetPdfOpen, setIsSpreadsheetPdfOpen] = useState(false);
+
+  // Drill-down view selection for each purchase batch
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+
+  const toggleBatchSelect = (batchId: string) => {
+    setSelectedBatchId(prev => prev === batchId ? null : batchId);
+  };
 
   const costPerKg = arrobaPrice / 15;
   const totalCost = totalGrossWeightKg * costPerKg;
@@ -313,13 +325,19 @@ export const PurchasesTab: React.FC<PurchasesTabProps> = ({
       {/* Batches Table with Search & Actions (Visualizar, Editar, Excluir, Imprimir) */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-md overflow-hidden transition-colors">
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <FileText className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-            <span>Histórico de Lotes & Entradas de Frigoríficos</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-              {filteredBatches.length} registros
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <FileText className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+              <span>Histórico de Lotes & Entradas de Frigoríficos</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                {filteredBatches.length} registros
+              </span>
+            </h3>
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 flex items-center gap-1">
+              <Calculator className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+              <span>Drill-down de Custo Efetivo Disponível</span>
             </span>
-          </h3>
+          </div>
 
           <div className="relative w-full sm:w-64">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -337,6 +355,7 @@ export const PurchasesTab: React.FC<PurchasesTabProps> = ({
           <table className="w-full text-xs text-left border-collapse">
             <thead className="bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-800 font-semibold">
               <tr>
+                <th className="w-8 px-2 py-3 text-center" title="Drill-down de Rendimento"></th>
                 <th className="px-4 py-3">Data / NF</th>
                 <th className="px-4 py-3">Frigorífico Fornecedor</th>
                 <th className="px-3 py-3 text-center">Bois / Cabeças</th>
@@ -351,106 +370,180 @@ export const PurchasesTab: React.FC<PurchasesTabProps> = ({
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800/80 font-mono">
               {filteredBatches.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-500 font-sans text-xs">
+                  <td colSpan={10} className="py-8 text-center text-slate-500 font-sans text-xs">
                     Nenhum pedido ou lote encontrado com o termo informado.
                   </td>
                 </tr>
               ) : (
-                filteredBatches.map((batch) => (
-                  <tr key={batch.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-                    <td className="px-4 py-3 font-sans">
-                      <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                        <span>{batch.invoiceNumber}</span>
-                        {batch.invoiceNumber.startsWith('PC-') && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">
-                            Pedido
+                filteredBatches.map((batch) => {
+                  const isSelected = selectedBatchId === batch.id;
+
+                  return (
+                    <React.Fragment key={batch.id}>
+                      <tr 
+                        onClick={() => toggleBatchSelect(batch.id)}
+                        className={`transition-colors cursor-pointer group ${
+                          isSelected
+                            ? 'bg-emerald-500/10 dark:bg-emerald-950/40 border-l-4 border-l-emerald-500'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                        }`}
+                      >
+                        {/* Toggle Expand / Drill-Down Button */}
+                        <td className="px-2 py-3 text-center" onClick={(e) => { e.stopPropagation(); toggleBatchSelect(batch.id); }}>
+                          <button
+                            type="button"
+                            className={`p-1.5 rounded-lg transition ${
+                              isSelected
+                                ? 'bg-emerald-600 text-white shadow-xs'
+                                : 'text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            }`}
+                            title={isSelected ? 'Ocultar drill-down de rendimento' : 'Abrir drill-down de custo efetivo líquido'}
+                          >
+                            <ChevronDown className={`w-3.5 h-3.5 transform transition-transform duration-200 ${isSelected ? 'rotate-180' : ''}`} />
+                          </button>
+                        </td>
+
+                        <td className="px-4 py-3 font-sans">
+                          <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                            <span>{batch.invoiceNumber}</span>
+                            {batch.invoiceNumber.startsWith('PC-') && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">
+                                Pedido
+                              </span>
+                            )}
+                            {isSelected && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-emerald-600 text-white">
+                                Ativo
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500">{batch.date}</div>
+                        </td>
+
+                        <td className="px-4 py-3 font-sans font-medium text-slate-700 dark:text-slate-300 max-w-xs truncate">
+                          <div className="truncate font-semibold">{batch.supplier}</div>
+                          {batch.notes && <div className="text-[10px] text-slate-500 truncate">{batch.notes}</div>}
+                        </td>
+
+                        <td className="px-3 py-3 text-center text-slate-900 dark:text-white font-bold">
+                          {batch.headsCount}
+                        </td>
+
+                        <td className="px-3 py-3 text-right text-slate-800 dark:text-slate-200 font-bold">
+                          {formatNumberBR(batch.totalGrossWeightKg, 0)} kg
+                        </td>
+
+                        <td className="px-3 py-3 text-right text-slate-700 dark:text-slate-300">
+                          {formatCurrencyBRL(batch.arrobaPrice)}
+                        </td>
+
+                        <td className="px-3 py-3 text-right text-slate-700 dark:text-slate-300">
+                          {formatCurrencyBRL(batch.costPerKg)}
+                        </td>
+
+                        <td className="px-3 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                          {formatCurrencyBRL(batch.totalCostR$)}
+                        </td>
+
+                        <td className="px-3 py-3 text-center font-sans">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
+                            batch.status === 'RECEBIDO'
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                              : batch.status === 'PENDENTE'
+                              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                              : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30'
+                          }`}>
+                            {batch.status === 'RECEBIDO' && <CheckCircle className="w-3 h-3" />}
+                            {batch.status === 'PENDENTE' && <Clock className="w-3 h-3" />}
+                            {batch.status}
                           </span>
-                        )}
-                      </div>
-                      <div className="text-[10px] text-slate-500">{batch.date}</div>
-                    </td>
+                        </td>
 
-                    <td className="px-4 py-3 font-sans font-medium text-slate-700 dark:text-slate-300 max-w-xs truncate">
-                      <div className="truncate font-semibold">{batch.supplier}</div>
-                      {batch.notes && <div className="text-[10px] text-slate-500 truncate">{batch.notes}</div>}
-                    </td>
+                        {/* Action Buttons: Drill-down, Visualizar, Editar, Imprimir, Excluir */}
+                        <td className="px-4 py-3 text-center font-sans" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1">
+                            {/* 0. Drill-Down / Custo Efetivo */}
+                            <button
+                              type="button"
+                              onClick={() => toggleBatchSelect(batch.id)}
+                              className={`p-1.5 rounded-lg transition ${
+                                isSelected
+                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                  : 'text-slate-600 dark:text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 dark:hover:text-emerald-400'
+                              }`}
+                              title="Drill-down: Apuração de Custo Efetivo Líquido com Parâmetros de Rendimento"
+                            >
+                              <Calculator className="w-4 h-4" />
+                            </button>
 
-                    <td className="px-3 py-3 text-center text-slate-900 dark:text-white font-bold">
-                      {batch.headsCount}
-                    </td>
+                            {/* 1. Visualizar */}
+                            <button
+                              type="button"
+                              onClick={() => setViewingBatch(batch)}
+                              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/60 dark:hover:text-blue-400 transition"
+                              title="Visualizar detalhes do pedido e distribuição por filial"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
 
-                    <td className="px-3 py-3 text-right text-slate-800 dark:text-slate-200 font-bold">
-                      {formatNumberBR(batch.totalGrossWeightKg, 0)} kg
-                    </td>
+                            {/* 2. Editar */}
+                            <button
+                              type="button"
+                              onClick={() => setEditingBatch(batch)}
+                              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/60 dark:hover:text-amber-400 transition"
+                              title="Editar dados e quantidades deste pedido/lote"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
 
-                    <td className="px-3 py-3 text-right text-slate-700 dark:text-slate-300">
-                      {formatCurrencyBRL(batch.arrobaPrice)}
-                    </td>
+                            {/* 3. Imprimir */}
+                            <button
+                              type="button"
+                              onClick={() => setPrintingBatch(batch)}
+                              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 dark:hover:text-indigo-400 transition"
+                              title="Imprimir documento oficial do pedido (PDF)"
+                            >
+                              <Printer className="w-4 h-4" />
+                            </button>
 
-                    <td className="px-3 py-3 text-right text-slate-700 dark:text-slate-300">
-                      {formatCurrencyBRL(batch.costPerKg)}
-                    </td>
+                            {/* 4. Excluir */}
+                            <button
+                              type="button"
+                              onClick={() => setDeletingBatch(batch)}
+                              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 dark:hover:text-rose-400 transition"
+                              title="Excluir este pedido / lote do histórico"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
 
-                    <td className="px-3 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                      {formatCurrencyBRL(batch.totalCostR$)}
-                    </td>
-
-                    <td className="px-3 py-3 text-center font-sans">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
-                        batch.status === 'RECEBIDO'
-                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                          : batch.status === 'PENDENTE'
-                          ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
-                          : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30'
-                      }`}>
-                        {batch.status === 'RECEBIDO' && <CheckCircle className="w-3 h-3" />}
-                        {batch.status === 'PENDENTE' && <Clock className="w-3 h-3" />}
-                        {batch.status}
-                      </span>
-                    </td>
-
-                    {/* 4 Action Buttons: Visualizar, Editar, Imprimir, Excluir */}
-                    <td className="px-4 py-3 text-center font-sans">
-                      <div className="flex items-center justify-center gap-1">
-                        {/* 1. Visualizar */}
-                        <button
-                          onClick={() => setViewingBatch(batch)}
-                          className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/60 dark:hover:text-blue-400 transition"
-                          title="Visualizar detalhes do pedido e distribuição por filial"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-
-                        {/* 2. Editar */}
-                        <button
-                          onClick={() => setEditingBatch(batch)}
-                          className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/60 dark:hover:text-amber-400 transition"
-                          title="Editar dados e quantidades deste pedido/lote"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-
-                        {/* 3. Imprimir */}
-                        <button
-                          onClick={() => setPrintingBatch(batch)}
-                          className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 dark:hover:text-indigo-400 transition"
-                          title="Imprimir documento oficial do pedido (PDF)"
-                        >
-                          <Printer className="w-4 h-4" />
-                        </button>
-
-                        {/* 4. Excluir */}
-                        <button
-                          onClick={() => setDeletingBatch(batch)}
-                          className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 dark:hover:text-rose-400 transition"
-                          title="Excluir este pedido / lote do histórico"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      {/* DRILL-DOWN EXPANDED VIEW FOR SELECTED BATCH */}
+                      {isSelected && (
+                        <tr key={`${batch.id}-drilldown`}>
+                          <td colSpan={10} className="p-2 sm:p-4 bg-slate-950/40 border-y-2 border-emerald-500/40">
+                            <BatchYieldDrillDownView
+                              batch={batch}
+                              yieldParams={yieldParams}
+                              onClose={() => setSelectedBatchId(null)}
+                              onApplyBatchToYieldParams={(b) => {
+                                if (onUpdateYieldParams) {
+                                  const p = StorageService.getYieldParams();
+                                  onUpdateYieldParams({
+                                    ...p,
+                                    carcassWeight: Math.round(b.totalGrossWeightKg / (b.headsCount || 1)),
+                                    costPerKg: b.costPerKg || (b.arrobaPrice / 15)
+                                  });
+                                }
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })
               )}
             </tbody>
           </table>
