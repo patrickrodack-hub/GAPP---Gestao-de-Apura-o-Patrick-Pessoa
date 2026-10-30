@@ -237,7 +237,23 @@ export const StorageService = {
     } catch {}
   },
 
-  getYieldParams(): { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; breakagePercent?: number; costFormationMode?: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR'; basis: 'carcass' | 'piece'; recoverGraxaria?: boolean; alcatraoCostKg?: number; costelaCostKg?: number; bandaCostKg?: number } {
+  getYieldParams(): { 
+    carcassWeight: number; 
+    costPerKg: number; 
+    fatPriceKg: number; 
+    bonePriceKg: number; 
+    targetMargin: number; 
+    breakagePercent?: number; 
+    costFormationMode?: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR'; 
+    basis: 'carcass' | 'piece'; 
+    recoverGraxaria?: boolean; 
+    alcatraoCostKg?: number; 
+    costelaCostKg?: number; 
+    bandaCostKg?: number;
+    mesaProfitMargins?: Record<string, number>;
+    mesaCarcassPercents?: Record<string, number>;
+    mesaCostFactors?: Record<string, number>;
+  } {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.YIELD_PARAMS);
       return data 
@@ -248,7 +264,23 @@ export const StorageService = {
     }
   },
 
-  saveYieldParams(params: { carcassWeight: number; costPerKg: number; fatPriceKg: number; bonePriceKg: number; targetMargin: number; breakagePercent?: number; costFormationMode?: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR'; basis: 'carcass' | 'piece'; recoverGraxaria?: boolean; alcatraoCostKg?: number; costelaCostKg?: number; bandaCostKg?: number }) {
+  saveYieldParams(params: { 
+    carcassWeight: number; 
+    costPerKg: number; 
+    fatPriceKg: number; 
+    bonePriceKg: number; 
+    targetMargin: number; 
+    breakagePercent?: number; 
+    costFormationMode?: 'VAREJO_PADRAO' | 'COM_GRAXARIA_AUXILIAR'; 
+    basis: 'carcass' | 'piece'; 
+    recoverGraxaria?: boolean; 
+    alcatraoCostKg?: number; 
+    costelaCostKg?: number; 
+    bandaCostKg?: number;
+    mesaProfitMargins?: Record<string, number>;
+    mesaCarcassPercents?: Record<string, number>;
+    mesaCostFactors?: Record<string, number>;
+  }) {
     localStorage.setItem(STORAGE_KEYS.YIELD_PARAMS, JSON.stringify(params));
     FirebaseService.saveYieldParams(params).catch(() => {});
   },

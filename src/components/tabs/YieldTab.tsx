@@ -4,7 +4,9 @@ import {
   formatCurrencyBRL, 
   formatNumberBR, 
   arrobaToKg, 
-  kgToArroba 
+  kgToArroba,
+  DEFAULT_MESA_CARCASS_PERCENTS,
+  DEFAULT_MESA_COST_FACTORS
 } from '../../services/calculationService';
 import { StorageService } from '../../services/storageService';
 import { PurchaseBatch, Product, YieldParams, PrimaryDesmembramentoMesa } from '../../types/erp';
@@ -131,17 +133,43 @@ export const YieldTab: React.FC<YieldTabProps> = ({
   const [profitabilityPreset, setProfitabilityPreset] = useState<'COMPETITIVO' | 'PADRAO' | 'PREMIUM' | 'CUSTOM'>('PADRAO');
 
   // Margens de lucro desejadas sobre venda (%) para cada mesa primária
-  const [mesaProfitMargins, setMesaProfitMargins] = useState<Record<string, number>>({
-    'BOI-DIANT': 25.0,     // Dianteiro: 25% (giro comercial)
-    'BOI-TRAS': 30.0,      // Traseiro: 30%
-    'BOI-COXAO': 28.0,     // Coxão: 28%
-    'BOI-ALCAT': 34.0,     // Alcatrão: 34% (cortes nobres de lombo)
-    'BOI-COST-GAU': 22.0   // Ponta de Agulha / Costela: 22%
+  const [mesaProfitMargins, setMesaProfitMargins] = useState<Record<string, number>>(() => {
+    const saved = yieldParams?.mesaProfitMargins || StorageService.getYieldParams().mesaProfitMargins;
+    return saved || {
+      'BOI-DIANT': 25.0,     // Dianteiro: 25% (giro comercial)
+      'BOI-TRAS': 30.0,      // Traseiro: 30%
+      'BOI-COXAO': 28.0,     // Coxão: 28%
+      'BOI-ALCAT': 34.0,     // Alcatrão: 34% (cortes nobres de lombo)
+      'BOI-COST-GAU': 22.0   // Ponta de Agulha / Costela: 22%
+    };
   });
+
+  // Percentuais de participação na carcaça (% Carcaça) editáveis por mesa primária
+  const [mesaCarcassPercents, setMesaCarcassPercents] = useState<Record<string, number>>(() => {
+    const saved = yieldParams?.mesaCarcassPercents || StorageService.getYieldParams().mesaCarcassPercents;
+    return saved ? { ...DEFAULT_MESA_CARCASS_PERCENTS, ...saved } : { ...DEFAULT_MESA_CARCASS_PERCENTS };
+  });
+
+  // Fatores de paridade zootécnica (Fator Paridade) editáveis por mesa primária
+  const [mesaCostFactors, setMesaCostFactors] = useState<Record<string, number>>(() => {
+    const saved = yieldParams?.mesaCostFactors || StorageService.getYieldParams().mesaCostFactors;
+    return saved ? { ...DEFAULT_MESA_COST_FACTORS, ...saved } : { ...DEFAULT_MESA_COST_FACTORS };
+  });
+
+  // Verifica se algum percentual de carcaça ou fator de paridade foi customizado
+  const hasCustomMesaParams = useMemo(() => {
+    const codes = Object.keys(DEFAULT_MESA_CARCASS_PERCENTS);
+    return codes.some(
+      code =>
+        Number(mesaCarcassPercents[code]) !== DEFAULT_MESA_CARCASS_PERCENTS[code] ||
+        Number(mesaCostFactors[code]) !== DEFAULT_MESA_COST_FACTORS[code]
+    );
+  }, [mesaCarcassPercents, mesaCostFactors]);
 
   // Estado de geração do PDF Técnico com Rosca e Tabela de Preços
   const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
   const [pdfSuccess, setPdfSuccess] = useState<boolean>(false);
+  const [equalizedAppliedSuccess, setEqualizedAppliedSuccess] = useState<boolean>(false);
 
   // Sincroniza dinamicamente se yieldParams mudar externamente
   useEffect(() => {
@@ -153,6 +181,9 @@ export const YieldTab: React.FC<YieldTabProps> = ({
       if (yieldParams.targetMargin > 0) setTargetMargin(yieldParams.targetMargin);
       if (yieldParams.breakagePercent) setBreakagePercent(yieldParams.breakagePercent);
       if (yieldParams.costFormationMode) setCostFormationMode(yieldParams.costFormationMode);
+      if (yieldParams.mesaProfitMargins) setMesaProfitMargins(prev => ({ ...prev, ...yieldParams.mesaProfitMargins }));
+      if (yieldParams.mesaCarcassPercents) setMesaCarcassPercents(prev => ({ ...prev, ...yieldParams.mesaCarcassPercents }));
+      if (yieldParams.mesaCostFactors) setMesaCostFactors(prev => ({ ...prev, ...yieldParams.mesaCostFactors }));
     }
   }, [yieldParams]);
 
@@ -176,9 +207,24 @@ export const YieldTab: React.FC<YieldTabProps> = ({
       bonePriceKg,
       targetMargin,
       breakagePercent,
-      costFormationMode
+      costFormationMode,
+      mesaCarcassPercents,
+      mesaCostFactors,
+      mesaProfitMargins
     );
-  }, [carcassWeight, costPerKg, effectiveCatalog, fatPriceKg, bonePriceKg, targetMargin, breakagePercent, costFormationMode]);
+  }, [
+    carcassWeight,
+    costPerKg,
+    effectiveCatalog,
+    fatPriceKg,
+    bonePriceKg,
+    targetMargin,
+    breakagePercent,
+    costFormationMode,
+    mesaCarcassPercents,
+    mesaCostFactors,
+    mesaProfitMargins
+  ]);
 
   // Filtro de exibição na tabela de cortes por Mesa de Desmembramento
   const [selectedMesaFilter, setSelectedMesaFilter] = useState<'ALL' | 'MESAS_ONLY' | 'BOI-ALCAT' | 'BOI-COXAO' | 'BOI-DIANT' | 'BOI-COST-GAU' | 'WASTE'>('ALL');
@@ -259,60 +305,136 @@ export const YieldTab: React.FC<YieldTabProps> = ({
   // Alterna o preset de rentabilidade de mercado
   const handlePresetChange = (preset: 'COMPETITIVO' | 'PADRAO' | 'PREMIUM' | 'CUSTOM') => {
     setProfitabilityPreset(preset);
+    let nextMargins = { ...mesaProfitMargins };
     if (preset === 'COMPETITIVO') {
-      setMesaProfitMargins({
+      nextMargins = {
         'BOI-DIANT': 18.0,
         'BOI-TRAS': 24.0,
         'BOI-COXAO': 22.0,
         'BOI-ALCAT': 28.0,
         'BOI-COST-GAU': 16.0
-      });
+      };
     } else if (preset === 'PADRAO') {
-      setMesaProfitMargins({
+      nextMargins = {
         'BOI-DIANT': 25.0,
         'BOI-TRAS': 30.0,
         'BOI-COXAO': 28.0,
         'BOI-ALCAT': 34.0,
         'BOI-COST-GAU': 22.0
-      });
+      };
     } else if (preset === 'PREMIUM') {
-      setMesaProfitMargins({
+      nextMargins = {
         'BOI-DIANT': 30.0,
         'BOI-TRAS': 38.0,
         'BOI-COXAO': 34.0,
         'BOI-ALCAT': 42.0,
         'BOI-COST-GAU': 28.0
-      });
+      };
     }
+    setMesaProfitMargins(nextMargins);
+    const currentParams = StorageService.getYieldParams();
+    StorageService.saveYieldParams({
+      ...currentParams,
+      mesaProfitMargins: nextMargins,
+      mesaCarcassPercents,
+      mesaCostFactors
+    });
   };
 
   // Atualiza margem individual de uma mesa
   const handleMesaMarginChange = (mesaCode: string, newMargin: number) => {
     setProfitabilityPreset('CUSTOM');
-    setMesaProfitMargins(prev => ({
-      ...prev,
+    const updatedMargins = {
+      ...mesaProfitMargins,
       [mesaCode]: Math.max(0, Math.min(80, newMargin))
-    }));
+    };
+    setMesaProfitMargins(updatedMargins);
+    const currentParams = StorageService.getYieldParams();
+    StorageService.saveYieldParams({
+      ...currentParams,
+      mesaProfitMargins: updatedMargins,
+      mesaCarcassPercents,
+      mesaCostFactors
+    });
   };
 
-  // Aplica todos os preços calculados com rentabilidade de mercado ao catálogo do ERP
-  const handleApplyAllSuggestedPrices = () => {
-    const updatedPrices: Record<string, number> = { ...customSellingPrices };
-    
-    realYield.primaryMesas.forEach(m => {
-      const marg = mesaProfitMargins[m.code] ?? 28;
-      const suggestedPrice = Number((m.calculatedCostKg / (1 - marg / 100)).toFixed(2));
-      updatedPrices[m.code] = suggestedPrice;
+  // Atualiza % da Carcaça de uma mesa primária
+  const handleMesaCarcassPercentChange = (mesaCode: string, newPercent: number) => {
+    const sanitized = Math.max(0.1, Math.min(100, newPercent));
+    const updatedPercents = {
+      ...mesaCarcassPercents,
+      [mesaCode]: sanitized
+    };
+    setMesaCarcassPercents(updatedPercents);
+    const currentParams = StorageService.getYieldParams();
+    StorageService.saveYieldParams({
+      ...currentParams,
+      mesaCarcassPercents: updatedPercents,
+      mesaCostFactors,
+      mesaProfitMargins
+    });
+  };
+
+  // Atualiza Fator de Paridade de uma mesa primária
+  const handleMesaCostFactorChange = (mesaCode: string, newFactor: number) => {
+    const sanitized = Math.max(0.01, Math.min(10, newFactor));
+    const updatedFactors = {
+      ...mesaCostFactors,
+      [mesaCode]: sanitized
+    };
+    setMesaCostFactors(updatedFactors);
+    const currentParams = StorageService.getYieldParams();
+    StorageService.saveYieldParams({
+      ...currentParams,
+      mesaCostFactors: updatedFactors,
+      mesaCarcassPercents,
+      mesaProfitMargins
+    });
+  };
+
+  // Restaura % Carcaça e Fator Paridade para o padrão zootécnico de mercado
+  const handleResetMesaParams = () => {
+    const defaultMargins = {
+      'BOI-DIANT': 25.0,
+      'BOI-TRAS': 30.0,
+      'BOI-COXAO': 28.0,
+      'BOI-ALCAT': 34.0,
+      'BOI-COST-GAU': 22.0
+    };
+    setProfitabilityPreset('PADRAO');
+    setMesaCarcassPercents({ ...DEFAULT_MESA_CARCASS_PERCENTS });
+    setMesaCostFactors({ ...DEFAULT_MESA_COST_FACTORS });
+    setMesaProfitMargins(defaultMargins);
+    const currentParams = StorageService.getYieldParams();
+    StorageService.saveYieldParams({
+      ...currentParams,
+      mesaCarcassPercents: { ...DEFAULT_MESA_CARCASS_PERCENTS },
+      mesaCostFactors: { ...DEFAULT_MESA_COST_FACTORS },
+      mesaProfitMargins: defaultMargins
+    });
+  };
+
+  // Aplica a alteração de Custo Equalizado e parâmetros da Tabela Técnica tanto nas Peças Primárias quanto nos Cortes da Tabela
+  const handleApplyTableParametersToCuts = () => {
+    const equalizedCostsByCode: Record<string, { costPriceKg: number; yieldPercent: number; marginOnSalePercent: number }> = {};
+    realYield.cuts.forEach(cut => {
+      if (cut.productCode && !cut.isWaste) {
+        equalizedCostsByCode[cut.productCode] = {
+          costPriceKg: cut.costPriceKg,
+          yieldPercent: cut.yieldPercent,
+          marginOnSalePercent: cut.marginOnSalePercent
+        };
+      }
     });
 
-    setCustomSellingPrices(updatedPrices);
-
     const updatedProducts = realCatalog.map(p => {
-      if (updatedPrices[p.code] !== undefined) {
+      const eq = equalizedCostsByCode[p.code];
+      if (eq) {
         return {
           ...p,
-          sellingPriceKg: updatedPrices[p.code],
-          targetMarginPercent: mesaProfitMargins[p.code] ?? p.targetMarginPercent
+          defaultPriceKg: eq.costPriceKg,
+          yieldPercentStandard: eq.yieldPercent,
+          targetMarginPercent: eq.marginOnSalePercent
         };
       }
       return p;
@@ -322,11 +444,72 @@ export const YieldTab: React.FC<YieldTabProps> = ({
     if (onUpdateProducts) {
       onUpdateProducts(updatedProducts);
     }
-    setSavedProductsSuccess(true);
-    setTimeout(() => setSavedProductsSuccess(false), 3500);
+
+    const updatedParams = {
+      carcassWeight,
+      costPerKg: Number(costPerKg.toFixed(2)),
+      fatPriceKg: Number(fatPriceKg.toFixed(2)),
+      bonePriceKg: Number(bonePriceKg.toFixed(2)),
+      targetMargin: Number(targetMargin),
+      breakagePercent: Number(breakagePercent),
+      costFormationMode,
+      basis: 'carcass' as const,
+      mesaProfitMargins,
+      mesaCarcassPercents,
+      mesaCostFactors
+    };
+    StorageService.saveYieldParams(updatedParams);
+    if (onSaveYieldParams) {
+      onSaveYieldParams(updatedParams);
+    }
+
+    setEqualizedAppliedSuccess(true);
+    setTimeout(() => setEqualizedAppliedSuccess(false), 4000);
   };
 
-  // Aplica preço sugerido de uma mesa primária individual
+  // Aplica todos os preços calculados e custos equalizados (Peças Primárias + Cortes Derivados) ao catálogo do ERP
+  const handleApplyAllSuggestedPrices = () => {
+    const updatedPrices: Record<string, number> = { ...customSellingPrices };
+    const equalizedCostsByCode: Record<string, number> = {};
+
+    realYield.primaryMesas.forEach(m => {
+      const marg = mesaProfitMargins[m.code] ?? 28;
+      const suggestedPrice = Number((m.calculatedCostKg / (1 - marg / 100)).toFixed(2));
+      updatedPrices[m.code] = suggestedPrice;
+    });
+
+    realYield.cuts.forEach(cut => {
+      if (cut.productCode && !cut.isWaste) {
+        equalizedCostsByCode[cut.productCode] = cut.costPriceKg;
+      }
+    });
+
+    setCustomSellingPrices(updatedPrices);
+
+    const updatedProducts = realCatalog.map(p => {
+      const nextSellingPrice = updatedPrices[p.code] !== undefined ? updatedPrices[p.code] : p.sellingPriceKg;
+      const nextCostPrice = equalizedCostsByCode[p.code] !== undefined ? equalizedCostsByCode[p.code] : p.defaultPriceKg;
+      return {
+        ...p,
+        defaultPriceKg: nextCostPrice,
+        sellingPriceKg: nextSellingPrice,
+        targetMarginPercent: mesaProfitMargins[p.code] ?? p.targetMarginPercent
+      };
+    });
+
+    StorageService.saveProducts(updatedProducts);
+    if (onUpdateProducts) {
+      onUpdateProducts(updatedProducts);
+    }
+    setSavedProductsSuccess(true);
+    setEqualizedAppliedSuccess(true);
+    setTimeout(() => {
+      setSavedProductsSuccess(false);
+      setEqualizedAppliedSuccess(false);
+    }, 3500);
+  };
+
+  // Aplica preço sugerido e custo equalizado de uma mesa primária individual e seus cortes
   const handleApplySingleSuggestedPrice = (mesaCode: string, suggestedPrice: number) => {
     const updatedPrices = {
       ...customSellingPrices,
@@ -334,12 +517,26 @@ export const YieldTab: React.FC<YieldTabProps> = ({
     };
     setCustomSellingPrices(updatedPrices);
 
+    const equalizedCostsByCode: Record<string, number> = {};
+    realYield.cuts.forEach(cut => {
+      if (cut.productCode && !cut.isWaste && (cut.productCode === mesaCode || cut.parentMesaCode === mesaCode)) {
+        equalizedCostsByCode[cut.productCode] = cut.costPriceKg;
+      }
+    });
+
     const updatedProducts = realCatalog.map(p => {
       if (p.code === mesaCode) {
         return {
           ...p,
+          defaultPriceKg: equalizedCostsByCode[p.code] ?? p.defaultPriceKg,
           sellingPriceKg: suggestedPrice,
           targetMarginPercent: mesaProfitMargins[mesaCode] ?? p.targetMarginPercent
+        };
+      }
+      if (equalizedCostsByCode[p.code] !== undefined) {
+        return {
+          ...p,
+          defaultPriceKg: equalizedCostsByCode[p.code]
         };
       }
       return p;
@@ -350,7 +547,11 @@ export const YieldTab: React.FC<YieldTabProps> = ({
       onUpdateProducts(updatedProducts);
     }
     setSavedProductsSuccess(true);
-    setTimeout(() => setSavedProductsSuccess(false), 3500);
+    setEqualizedAppliedSuccess(true);
+    setTimeout(() => {
+      setSavedProductsSuccess(false);
+      setEqualizedAppliedSuccess(false);
+    }, 3500);
   };
 
   // Exporta diretamente o PDF Técnico com Gráfico de Rosca e Tabela de Preços Calculados
@@ -420,7 +621,10 @@ export const YieldTab: React.FC<YieldTabProps> = ({
       targetMargin: Number(targetMargin),
       breakagePercent: Number(breakagePercent),
       costFormationMode,
-      basis: 'carcass' as const
+      basis: 'carcass' as const,
+      mesaProfitMargins,
+      mesaCarcassPercents,
+      mesaCostFactors
     };
     StorageService.saveYieldParams(updated);
     if (onSaveYieldParams) {
@@ -1229,6 +1433,18 @@ export const YieldTab: React.FC<YieldTabProps> = ({
               </span>
             )}
 
+            {hasCustomMesaParams && (
+              <button
+                type="button"
+                onClick={handleResetMesaParams}
+                className="px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                title="Restaurar % Carcaça e Fator Paridade para os valores zootécnicos padrão de mercado"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Restaurar Paridade Padrão</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleDownloadTechnicalPdf}
@@ -1292,14 +1508,38 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                       </div>
                     </td>
 
-                    {/* % da Carcaça */}
-                    <td className="px-3 py-3 text-center font-bold text-slate-800 dark:text-slate-200">
-                      {mesa.carcassPercent.toFixed(1)}%
+                    {/* % da Carcaça (Editável) */}
+                    <td className="px-3 py-3 text-center">
+                      <div className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/30 transition">
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0.5"
+                          max="100"
+                          value={mesaCarcassPercents[mesa.code] ?? mesa.carcassPercent}
+                          onChange={(e) => handleMesaCarcassPercentChange(mesa.code, parseFloat(e.target.value) || 0)}
+                          className="w-12 text-center font-bold text-slate-900 dark:text-white bg-transparent focus:outline-none text-xs"
+                          title="Percentual de participação da peça na carcaça (editável)"
+                        />
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">%</span>
+                      </div>
                     </td>
 
-                    {/* Fator de Paridade */}
-                    <td className="px-3 py-3 text-center font-bold text-slate-600 dark:text-slate-300">
-                      {mesa.marketCostFactor.toFixed(3)}x
+                    {/* Fator de Paridade (Editável) */}
+                    <td className="px-3 py-3 text-center">
+                      <div className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/30 transition">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.1"
+                          max="5"
+                          value={mesaCostFactors[mesa.code] ?? mesa.marketCostFactor}
+                          onChange={(e) => handleMesaCostFactorChange(mesa.code, parseFloat(e.target.value) || 0)}
+                          className="w-14 text-center font-bold text-emerald-700 dark:text-emerald-300 bg-transparent focus:outline-none text-xs"
+                          title="Fator de paridade zootécnica sobre o custo do boi base (editável)"
+                        />
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">x</span>
+                      </div>
                     </td>
 
                     {/* Custo Boi Base */}
@@ -1400,12 +1640,31 @@ export const YieldTab: React.FC<YieldTabProps> = ({
             Fórmula técnica: <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono text-emerald-600 dark:text-emerald-400">Preço Sugerido = Custo Analítico / (1 - Margem% / 100)</code>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleApplyTableParametersToCuts}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold flex items-center gap-2 transition cursor-pointer active:scale-95 shadow-sm"
+              title="Aplica e grava as alterações de Custo Equalizado (% Carcaça, Fator Paridade e Rentabilidade) nas Peças Primárias e nos Cortes da Tabela"
+            >
+              {equalizedAppliedSuccess ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-amber-100" />
+                  <span>Custo Equalizado Aplicado na Tabela!</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 text-amber-100" />
+                  <span>Aplicar Alteração na Tabela (Peças e Cortes)</span>
+                </>
+              )}
+            </button>
+
             <button
               type="button"
               onClick={handleApplyAllSuggestedPrices}
               className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-2 transition cursor-pointer active:scale-95 shadow-sm"
-              title="Aplica todos os preços sugeridos calculados na tabela de produtos do ERP de forma definitiva"
+              title="Aplica todos os preços sugeridos e custos equalizados na tabela de produtos do ERP de forma definitiva"
             >
               <CheckCircle2 className="w-4 h-4 text-emerald-200" />
               <span>Aplicar Todos os Preços Sugeridos ao ERP</span>
@@ -1449,15 +1708,27 @@ export const YieldTab: React.FC<YieldTabProps> = ({
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden transition-colors">
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
               <Scissors className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               <span>Detalhamento dos Cortes & Peças de Desmembramento • Base Oficial do ERP</span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                Custo Equalizado Sincronizado c/ Tabela Técnica
+              </span>
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              Custo equalizado proporcional ao valor comercial de balcão. As peças primárias (Dianteiro, Traseiro, Coxão e Alcatrão) atuam como base geradora dos cortes derivados.
+              Custo equalizado atualizado automaticamente a partir do <strong>% Carcaça</strong>, <strong>Fator Paridade</strong> e <strong>Rentabilidade</strong> da Tabela Técnica (tanto para as Peças Primárias quanto para os Cortes Derivados).
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <button
+              type="button"
+              onClick={handleApplyTableParametersToCuts}
+              className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer active:scale-95 shadow-xs"
+              title="Aplicar e gravar o Custo Equalizado atualizado nas Peças Primárias e Cortes do ERP"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{equalizedAppliedSuccess ? 'Custo Equalizado Gravado!' : 'Aplicar Custo Equalizado'}</span>
+            </button>
             <button
               type="button"
               onClick={handleDownloadTechnicalPdf}
@@ -1700,21 +1971,29 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                     </td>
 
                     {/* Custo equalizado R$/kg */}
-                    <td className="px-3 py-2.5 text-right font-medium">
+                    <td className={`px-3 py-2.5 text-right font-medium transition-colors ${
+                      equalizedAppliedSuccess && !isWaste
+                        ? 'bg-emerald-50/80 dark:bg-emerald-950/30 ring-1 ring-inset ring-emerald-500/30'
+                        : ''
+                    }`}>
                       {isWaste ? (
                         <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-sans font-bold bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-800">
                           Crédito Graxaria
                         </span>
                       ) : (
                         <div>
-                          <span className={`font-bold ${isPrimary ? 'text-amber-800 dark:text-amber-300 text-xs' : 'text-slate-700 dark:text-slate-300'}`}>
+                          <span className={`font-bold ${isPrimary ? 'text-amber-800 dark:text-amber-300 text-xs' : 'text-slate-800 dark:text-slate-200'}`}>
                             {formatCurrencyBRL(cut.costPriceKg)}
                           </span>
-                          {isPrimary && (
+                          {isPrimary ? (
                             <span className="block text-[9px] text-amber-600 dark:text-amber-400 font-sans font-normal">
                               Fator Zootécnico
                             </span>
-                          )}
+                          ) : cut.parentMesaName ? (
+                            <span className="block text-[9px] text-emerald-600 dark:text-emerald-400 font-sans font-normal">
+                              Eq. {cut.parentMesaName}
+                            </span>
+                          ) : null}
                         </div>
                       )}
                     </td>

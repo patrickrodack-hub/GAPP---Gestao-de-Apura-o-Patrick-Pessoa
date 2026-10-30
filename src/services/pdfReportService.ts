@@ -1186,12 +1186,17 @@ export class PdfReportService {
     const donutOuterR = 13.5;
     const donutInnerR = 7.0;
 
-    // Fatias zootécnicas do boi casado
+    const dianteiroMesa = primaryMesas.find(m => m.code === 'BOI-DIANT');
+    const coxaoMesa = primaryMesas.find(m => m.code === 'BOI-COXAO');
+    const alcatraoMesa = primaryMesas.find(m => m.code === 'BOI-ALCAT');
+    const costelaMesa = primaryMesas.find(m => m.code === 'BOI-COST-GAU');
+
+    // Fatias zootécnicas do boi casado (dinamicamente alinhadas com as mesas primárias)
     const donutSlices: { label: string; percent: number; color: [number, number, number]; factor: string; cost: number }[] = [
-      { label: 'Dianteiro', percent: 39.0, color: [245, 158, 11], factor: '0.810x', cost: costPerKg * 0.81 },
-      { label: 'Coxão', percent: 30.0, color: [59, 130, 246], factor: '1.160x', cost: costPerKg * 1.16 },
-      { label: 'Alcatrão', percent: 18.0, color: [16, 185, 129], factor: '1.390x', cost: costPerKg * 1.39 },
-      { label: 'Ponta de Agulha', percent: 13.0, color: [139, 92, 246], factor: '0.730x', cost: costPerKg * 0.73 }
+      { label: 'Dianteiro', percent: dianteiroMesa ? dianteiroMesa.carcassPercent : 39.0, color: [245, 158, 11], factor: `${(dianteiroMesa ? dianteiroMesa.marketCostFactor : 0.81).toFixed(3)}x`, cost: dianteiroMesa ? dianteiroMesa.calculatedCostKg : costPerKg * 0.81 },
+      { label: 'Coxão', percent: coxaoMesa ? coxaoMesa.carcassPercent : 30.0, color: [59, 130, 246], factor: `${(coxaoMesa ? coxaoMesa.marketCostFactor : 1.16).toFixed(3)}x`, cost: coxaoMesa ? coxaoMesa.calculatedCostKg : costPerKg * 1.16 },
+      { label: 'Alcatrão', percent: alcatraoMesa ? alcatraoMesa.carcassPercent : 18.0, color: [16, 185, 129], factor: `${(alcatraoMesa ? alcatraoMesa.marketCostFactor : 1.39).toFixed(3)}x`, cost: alcatraoMesa ? alcatraoMesa.calculatedCostKg : costPerKg * 1.39 },
+      { label: 'Ponta de Agulha', percent: costelaMesa ? costelaMesa.carcassPercent : 13.0, color: [139, 92, 246], factor: `${(costelaMesa ? costelaMesa.marketCostFactor : 0.73).toFixed(3)}x`, cost: costelaMesa ? costelaMesa.calculatedCostKg : costPerKg * 0.73 }
     ];
 
     // Helper interno para desenhar setor circular preenchido
