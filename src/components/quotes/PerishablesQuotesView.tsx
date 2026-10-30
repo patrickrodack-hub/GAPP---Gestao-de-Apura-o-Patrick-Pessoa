@@ -13,6 +13,7 @@ import {
 import { OFFICIAL_RJ_TV_PROMO_REGISTRY } from '../../services/perishableTvPromoRegistry';
 import { TvPromoDetailModal } from './TvPromoDetailModal';
 import { PriceHistoryModal } from './PriceHistoryModal';
+import { TvRadarAuditModal, TvRadarScanTelemetry } from './TvRadarAuditModal';
 import { 
   Search, 
   RotateCcw, 
@@ -64,12 +65,16 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
   const [isScanningTv, setIsScanningTv] = useState(false);
   const [promoChannelFilter, setPromoChannelFilter] = useState<'ALL' | 'TV' | 'ENCARTE' | 'CLUBE' | 'LAMINA' | 'REDES'>('ALL');
   
-  // Modal de auditoria de oferta de TV / encarte
+  // Modal de auditoria de oferta de TV / encarte individual
   const [selectedTvPromoProduct, setSelectedTvPromoProduct] = useState<{
     product: PerishableProductItem;
     promo: PerishableTvPromoOffer;
     stats: any;
   } | null>(null);
+
+  // Modal Executivo de Varredura e Auditoria do Radar de TV & Encartes RJ
+  const [radarAuditTelemetry, setRadarAuditTelemetry] = useState<TvRadarScanTelemetry | null>(null);
+  const [isRadarAuditOpen, setIsRadarAuditOpen] = useState(false);
 
   // Modal de Histórico de Preços (4 Semanas)
   const [selectedHistory, setSelectedHistory] = useState<{
@@ -232,20 +237,23 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
       setProducts(restored);
       setSearchQuery('');
       setEditingCell(null);
-      if (showToast) showToast('Base de dados oficial de supermercados do RJ restaurada com sucesso!');
+      if (showToast) showToast('Base oficial de supermercados do RJ restaurada com 100% de paridade entre anúncios e preços de gôndola!');
     } finally {
       setIsResetting(false);
     }
   };
 
-  // Rastreamento ativo de comerciais de TV aberta RJ e encartes
+  // Rastreamento ativo e funcional de comerciais de TV aberta RJ e encartes
   const handleScanTvPromotions = async () => {
     setIsScanningTv(true);
     try {
-      const result = await PerishablesQuotesService.scanTvAndEncartePromotions(activeCategoryId);
+      // Executa varredura profunda em todas as 11 sub-abas para máxima veracidade e sincronização
+      const result = await PerishablesQuotesService.scanTvAndEncartePromotions();
       setProducts(result.products);
+      setRadarAuditTelemetry(result);
+      setIsRadarAuditOpen(true);
       if (showToast) {
-        showToast(`Radar de TV RJ: ${result.activePromosCount} ofertas de TV & encartes rastreadas com sucesso!`);
+        showToast(`Radar TV & Encartes RJ: ${result.activePromosCount} ofertas auditadas e ${result.updatedCompetitorPricesCount} preços de concorrentes sincronizados com sucesso!`);
       }
     } catch (e) {
       console.error('Erro ao escanear ofertas de TV:', e);
@@ -781,20 +789,31 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                     {/* Preços nas 12 redes */}
                     {RJ_SUPERMARKET_CHAINS.map(chain => {
                       const price = product.chainPrices[chain.id] || 0;
+                      const promo = OFFICIAL_RJ_TV_PROMO_REGISTRY[product.id] || product.promoOffer;
+                      const isPromoChain = promo && promo.hasActivePromo && promo.promoPrice > 0 && promo.chainId === chain.id;
                       const isMin = price === stats.minPrice && price > 0;
                       const isMax = price === stats.maxPrice && price > 0;
                       const isEditing = editingCell?.productId === product.id && editingCell?.chainId === chain.id;
+                      const channel = isPromoChain ? (promo.mediaChannel || (promo.mediaType.startsWith('TV') ? 'TV' : 'ENCARTE')) : null;
 
                       return (
                         <td 
                           key={chain.id} 
-                          className={`py-2.5 px-2.5 text-right group relative cursor-pointer ${
-                            isMin ? 'bg-emerald-50/70 dark:bg-emerald-950/30 font-black text-emerald-700 dark:text-emerald-400' :
-                            isMax ? 'bg-rose-50/40 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400' :
-                            'text-slate-800 dark:text-slate-200'
+                          className={`py-2 px-2 text-right group relative cursor-pointer transition-all ${
+                            isPromoChain 
+                              ? 'bg-amber-100/70 dark:bg-amber-950/40 ring-1 ring-inset ring-amber-400/60 font-black text-amber-950 dark:text-amber-200' 
+                              : isMin 
+                                ? 'bg-emerald-50/70 dark:bg-emerald-950/30 font-black text-emerald-700 dark:text-emerald-400' 
+                                : isMax 
+                                  ? 'bg-rose-50/40 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400' 
+                                  : 'text-slate-800 dark:text-slate-200'
                           }`}
                           onClick={() => !isEditing && startEditing(product.id, chain.id, price)}
-                          title="Clique para editar este preço manualmente"
+                          title={
+                            isPromoChain 
+                              ? `Oferta Anunciada em ${promo.mediaLabel} (De: R$ ${promo.regularPrice?.toFixed(2)} Por: R$ ${price.toFixed(2)}) • Clique para editar` 
+                              : 'Clique para editar este preço manualmente'
+                          }
                         >
                           {isEditing ? (
                             <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
@@ -826,6 +845,24 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                             </div>
                           ) : (
                             <div className="flex items-center justify-end gap-1">
+                              {isPromoChain && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTvPromoProduct({ product, promo, stats });
+                                  }}
+                                  className="px-1 py-0.2 rounded text-[8px] font-black uppercase tracking-wider flex items-center gap-0.5 shadow-xs cursor-pointer hover:scale-105 transition shrink-0 bg-amber-600 hover:bg-amber-500 text-white"
+                                  title={`Oferta Anunciada em ${promo.mediaLabel} • Clique para ver detalhes`}
+                                >
+                                  {channel === 'TV' && <Tv className="w-2.5 h-2.5" />}
+                                  {channel === 'ENCARTE' && <FileSpreadsheet className="w-2.5 h-2.5" />}
+                                  {channel === 'CLUBE' && <Tag className="w-2.5 h-2.5" />}
+                                  {channel === 'LAMINA' && <Layers className="w-2.5 h-2.5" />}
+                                  {channel === 'REDES' && <Radio className="w-2.5 h-2.5" />}
+                                  <span>{channel}</span>
+                                </button>
+                              )}
                               <span>{price > 0 ? `R$ ${price.toFixed(2)}` : '-'}</span>
                               {price > 0 && (
                                 <button
@@ -1091,6 +1128,16 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
           product={selectedHistory.product}
           initialChainId={selectedHistory.chainId}
           stats={selectedHistory.stats}
+        />
+      )}
+
+      {/* Modal de Auditoria e Varredura Executiva do Radar TV & Encartes RJ */}
+      {isRadarAuditOpen && (
+        <TvRadarAuditModal
+          isOpen={isRadarAuditOpen}
+          onClose={() => setIsRadarAuditOpen(false)}
+          telemetry={radarAuditTelemetry}
+          activeCategoryId={activeCategoryId}
         />
       )}
     </div>

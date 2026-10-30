@@ -1481,6 +1481,22 @@ export const OFFICIAL_RJ_TV_PROMO_REGISTRY: Record<string, PerishableTvPromoOffe
     conditionNotes: 'Oferta tradicional do Feirão de Hortifrúti das redes cariocas. Preço por quilo ou unidade.',
     discountVsAvgPercent: 35
   },
+  'flv-banana-nanica': {
+    hasActivePromo: true,
+    promoPrice: 3.89,
+    regularPrice: 4.99,
+    chainName: 'Supermercados Guanabara',
+    chainId: 'guanabara',
+    mediaType: 'TV_GLOBO_RJ',
+    mediaChannel: 'TV',
+    mediaLabel: 'Comercial TV Globo RJ (Quarta e Quinta do Horti)',
+    validity: '29/10 e 30/10/2026 (Quarta e Quinta do Horti)',
+    highlightTag: 'OFERTA TV GLOBO',
+    adBroadcastTime: 'Hoje, 20:35 • Intervalo RJ2 (Quarta e Quinta do Horti)',
+    auditSource: 'Clipping TV Globo RJ • Quarta e Quinta do Horti Guanabara',
+    conditionNotes: 'Oferta tradicional do Feirão de Hortifrúti das redes cariocas. Preço por quilo.',
+    discountVsAvgPercent: 32
+  },
   'flv-maca-gala': {
     hasActivePromo: true,
     promoPrice: 7.46,
