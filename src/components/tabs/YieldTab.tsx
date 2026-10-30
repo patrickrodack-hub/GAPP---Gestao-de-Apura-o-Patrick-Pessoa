@@ -7,7 +7,7 @@ import {
   kgToArroba 
 } from '../../services/calculationService';
 import { StorageService } from '../../services/storageService';
-import { PurchaseBatch, Product, YieldParams } from '../../types/erp';
+import { PurchaseBatch, Product, YieldParams, PrimaryDesmembramentoMesa } from '../../types/erp';
 import { 
   Scissors, 
   Scale, 
@@ -29,8 +29,20 @@ import {
   Info,
   ShieldCheck,
   Check,
-  Building2
+  Building2,
+  Boxes,
+  Split,
+  Filter,
+  HelpCircle,
+  ArrowUpRight,
+  Tag,
+  FileText,
+  Calculator,
+  Percent,
+  Printer
 } from 'lucide-react';
+import { BeefYieldDonutChart } from '../charts/BeefYieldDonutChart';
+import { YieldReportModal } from '../modals/YieldReportModal';
 
 interface YieldTabProps {
   yieldParams?: YieldParams;
@@ -110,6 +122,21 @@ export const YieldTab: React.FC<YieldTabProps> = ({
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
   const [savedProductsSuccess, setSavedProductsSuccess] = useState<boolean>(false);
 
+  // Estado do Modal de Relatório Executivo Oficial de Desossa
+  const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
+
+  // Presets de rentabilidade de mercado para as peças primárias (Dianteiro, Traseiro, Coxão, Alcatrão)
+  const [profitabilityPreset, setProfitabilityPreset] = useState<'COMPETITIVO' | 'PADRAO' | 'PREMIUM' | 'CUSTOM'>('PADRAO');
+
+  // Margens de lucro desejadas sobre venda (%) para cada mesa primária
+  const [mesaProfitMargins, setMesaProfitMargins] = useState<Record<string, number>>({
+    'BOI-DIANT': 25.0,     // Dianteiro: 25% (giro comercial)
+    'BOI-TRAS': 30.0,      // Traseiro: 30%
+    'BOI-COXAO': 28.0,     // Coxão: 28%
+    'BOI-ALCAT': 34.0,     // Alcatrão: 34% (cortes nobres de lombo)
+    'BOI-COST-GAU': 22.0   // Ponta de Agulha / Costela: 22%
+  });
+
   // Sincroniza dinamicamente se yieldParams mudar externamente
   useEffect(() => {
     if (yieldParams) {
@@ -146,6 +173,22 @@ export const YieldTab: React.FC<YieldTabProps> = ({
       costFormationMode
     );
   }, [carcassWeight, costPerKg, effectiveCatalog, fatPriceKg, bonePriceKg, targetMargin, breakagePercent, costFormationMode]);
+
+  // Filtro de exibição na tabela de cortes por Mesa de Desmembramento
+  const [selectedMesaFilter, setSelectedMesaFilter] = useState<'ALL' | 'MESAS_ONLY' | 'BOI-ALCAT' | 'BOI-COXAO' | 'BOI-DIANT' | 'BOI-COST-GAU' | 'WASTE'>('ALL');
+  const [isMesaGuideOpen, setIsMesaGuideOpen] = useState<boolean>(false);
+
+  // Lista de cortes filtrados
+  const displayedCuts = useMemo(() => {
+    if (selectedMesaFilter === 'ALL') return realYield.cuts;
+    if (selectedMesaFilter === 'MESAS_ONLY') return realYield.cuts.filter(c => c.isPrimaryPiece);
+    if (selectedMesaFilter === 'WASTE') return realYield.cuts.filter(c => c.isWaste);
+    return realYield.cuts.filter(c => 
+      c.isPrimaryPiece 
+        ? c.productCode === selectedMesaFilter 
+        : c.parentMesaCode === selectedMesaFilter
+    );
+  }, [realYield.cuts, selectedMesaFilter]);
 
   const arrobaPrice = kgToArroba(costPerKg);
 
@@ -204,6 +247,103 @@ export const YieldTab: React.FC<YieldTabProps> = ({
     }
     setSavedProductsSuccess(true);
     setEditingPriceCode(null);
+    setTimeout(() => setSavedProductsSuccess(false), 3500);
+  };
+
+  // Alterna o preset de rentabilidade de mercado
+  const handlePresetChange = (preset: 'COMPETITIVO' | 'PADRAO' | 'PREMIUM' | 'CUSTOM') => {
+    setProfitabilityPreset(preset);
+    if (preset === 'COMPETITIVO') {
+      setMesaProfitMargins({
+        'BOI-DIANT': 18.0,
+        'BOI-TRAS': 24.0,
+        'BOI-COXAO': 22.0,
+        'BOI-ALCAT': 28.0,
+        'BOI-COST-GAU': 16.0
+      });
+    } else if (preset === 'PADRAO') {
+      setMesaProfitMargins({
+        'BOI-DIANT': 25.0,
+        'BOI-TRAS': 30.0,
+        'BOI-COXAO': 28.0,
+        'BOI-ALCAT': 34.0,
+        'BOI-COST-GAU': 22.0
+      });
+    } else if (preset === 'PREMIUM') {
+      setMesaProfitMargins({
+        'BOI-DIANT': 30.0,
+        'BOI-TRAS': 38.0,
+        'BOI-COXAO': 34.0,
+        'BOI-ALCAT': 42.0,
+        'BOI-COST-GAU': 28.0
+      });
+    }
+  };
+
+  // Atualiza margem individual de uma mesa
+  const handleMesaMarginChange = (mesaCode: string, newMargin: number) => {
+    setProfitabilityPreset('CUSTOM');
+    setMesaProfitMargins(prev => ({
+      ...prev,
+      [mesaCode]: Math.max(0, Math.min(80, newMargin))
+    }));
+  };
+
+  // Aplica todos os preços calculados com rentabilidade de mercado ao catálogo do ERP
+  const handleApplyAllSuggestedPrices = () => {
+    const updatedPrices: Record<string, number> = { ...customSellingPrices };
+    
+    realYield.primaryMesas.forEach(m => {
+      const marg = mesaProfitMargins[m.code] ?? 28;
+      const suggestedPrice = Number((m.calculatedCostKg / (1 - marg / 100)).toFixed(2));
+      updatedPrices[m.code] = suggestedPrice;
+    });
+
+    setCustomSellingPrices(updatedPrices);
+
+    const updatedProducts = realCatalog.map(p => {
+      if (updatedPrices[p.code] !== undefined) {
+        return {
+          ...p,
+          sellingPriceKg: updatedPrices[p.code],
+          targetMarginPercent: mesaProfitMargins[p.code] ?? p.targetMarginPercent
+        };
+      }
+      return p;
+    });
+
+    StorageService.saveProducts(updatedProducts);
+    if (onUpdateProducts) {
+      onUpdateProducts(updatedProducts);
+    }
+    setSavedProductsSuccess(true);
+    setTimeout(() => setSavedProductsSuccess(false), 3500);
+  };
+
+  // Aplica preço sugerido de uma mesa primária individual
+  const handleApplySingleSuggestedPrice = (mesaCode: string, suggestedPrice: number) => {
+    const updatedPrices = {
+      ...customSellingPrices,
+      [mesaCode]: suggestedPrice
+    };
+    setCustomSellingPrices(updatedPrices);
+
+    const updatedProducts = realCatalog.map(p => {
+      if (p.code === mesaCode) {
+        return {
+          ...p,
+          sellingPriceKg: suggestedPrice,
+          targetMarginPercent: mesaProfitMargins[mesaCode] ?? p.targetMarginPercent
+        };
+      }
+      return p;
+    });
+
+    StorageService.saveProducts(updatedProducts);
+    if (onUpdateProducts) {
+      onUpdateProducts(updatedProducts);
+    }
+    setSavedProductsSuccess(true);
     setTimeout(() => setSavedProductsSuccess(false), 3500);
   };
 
@@ -353,6 +493,16 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                   <span>Salvar Parâmetros da Desossa</span>
                 </>
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsReportModalOpen(true)}
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#113829] to-slate-800 hover:from-[#1a4e3a] hover:to-slate-750 text-white text-xs font-bold flex items-center gap-2 transition shadow-sm border border-emerald-500/40 active:scale-95 cursor-pointer"
+              title="Abrir Relatório Executivo Oficial de Desossa com download de PDF, impressão e compartilhamento via WhatsApp"
+            >
+              <FileText className="w-4 h-4 text-emerald-400" />
+              <span>Gerar Relatório Executivo</span>
             </button>
           </div>
         </div>
@@ -713,21 +863,489 @@ export const YieldTab: React.FC<YieldTabProps> = ({
 
       </div>
 
+      {/* 3.4. GRÁFICO DE ROSCA VISUAL • DISTRIBUIÇÃO DE PESO DA DESOSSA */}
+      <BeefYieldDonutChart
+        carcassWeight={carcassWeight}
+        costPerKg={costPerKg}
+        primaryMesas={realYield.primaryMesas}
+        cuts={realYield.cuts}
+        breakagePercent={breakagePercent}
+        selectedMesaFilter={selectedMesaFilter}
+        onSelectMesaFilter={(filter) => setSelectedMesaFilter(filter)}
+      />
+
+      {/* 3.5. PAINEL ANALÍTICO DAS MESAS DE DESMEMBRAMENTO PRIMÁRIO (PEÇAS INTEIRAS) */}
+      <div className="bg-gradient-to-br from-slate-900 via-[#113829] to-slate-950 text-white rounded-2xl p-5 shadow-xl border border-emerald-500/30">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-emerald-500/20">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-inner">
+              <Boxes className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-black text-white tracking-tight flex items-center gap-2">
+                  <span>Mesas de Desmembramento da Carcaça Bovina</span>
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    4 Grandes Peças Frigoríficas
+                  </span>
+                </h3>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5 max-w-3xl leading-relaxed">
+                Formação analítica de custos gerada automaticamente a partir do <strong>Custo do Boi (R$ {costPerKg.toFixed(2)}/kg)</strong>. Balizamento zootécnico oficial de mercado (Dianteiro, Traseiro, Coxão e Alcatrão) para equalização contábil e formação dos preços dos cortes de balcão.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsMesaGuideOpen(!isMesaGuideOpen)}
+            className="self-start md:self-auto px-3.5 py-1.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-400/40 text-emerald-200 text-xs font-bold flex items-center gap-2 transition cursor-pointer"
+          >
+            <HelpCircle className="w-4 h-4 text-emerald-400" />
+            <span>{isMesaGuideOpen ? 'Ocultar Paridade' : 'Fórmula de Paridade'}</span>
+          </button>
+        </div>
+
+        {/* Guia Metodológico de Paridade de Mercado se ativo */}
+        {isMesaGuideOpen && (
+          <div className="mt-4 p-4 rounded-xl bg-slate-950/80 border border-emerald-500/30 text-xs text-slate-300 grid grid-cols-1 md:grid-cols-4 gap-4 animate-fadeIn">
+            <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
+              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">1. PEÇA DIANTEIRO (39%)</span>
+              <p className="mt-1 text-[11px] text-slate-400">
+                Fator: <strong>0,81x do Boi Casado</strong> (~81%). Compõe 39% do peso da carcaça e abastece a desossa de segunda com Paleta, Acém, Peito e Músculo.
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
+              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">2. PEÇA TRAZEIRO (48%)</span>
+              <p className="mt-1 text-[11px] text-slate-400">
+                Fator: <strong>1,246x do Boi Casado</strong> (~125%). Traseiro Especial (Serrote c/ osso). Subdivide-se nas mesas de Coxão (62,5%) e Alcatrão (37,5%).
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
+              <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider block">3. PEÇA COXAO (30%)</span>
+              <p className="mt-1 text-[11px] text-slate-400">
+                Fator: <strong>1,16x do Boi Casado</strong> (~116%). Mesa de perna (30% da carcaça) que gera Coxão Mole, Coxão Duro, Patinho e Lagarto.
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
+              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">4. PEÇA ALCATRAO (18%)</span>
+              <p className="mt-1 text-[11px] text-slate-400">
+                Fator: <strong>1,39x do Boi Casado</strong> (~139%). Mesa nobre de lombo (18% da carcaça) que gera Picanha, Mignon, Alcatra e Contra Filé.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* 4 Cards das Mesas Solicitadas pelo Usuário */}
+        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {realYield.primaryMesas.filter(m => ['BOI-DIANT', 'BOI-TRAS', 'BOI-COXAO', 'BOI-ALCAT'].includes(m.code)).map((mesa) => {
+            const isFilterActive = selectedMesaFilter === mesa.code;
+            const isTraseiro = mesa.code === 'BOI-TRAS';
+            const isAlcatrao = mesa.code === 'BOI-ALCAT';
+            const isCoxao = mesa.code === 'BOI-COXAO';
+
+            return (
+              <div 
+                key={mesa.id}
+                className={`rounded-xl p-4 transition-all duration-200 border flex flex-col justify-between ${
+                  isFilterActive 
+                    ? 'bg-emerald-950/90 border-emerald-400 ring-2 ring-emerald-400/50 shadow-lg' 
+                    : 'bg-slate-900/90 hover:bg-slate-850 border-slate-800 hover:border-emerald-500/50'
+                }`}
+              >
+                <div>
+                  {/* Card Header */}
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                      isAlcatrao ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' :
+                      isCoxao ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' :
+                      isTraseiro ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' :
+                      'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                    }`}>
+                      {mesa.carcassPercent.toFixed(1)}% Carcaça
+                    </span>
+                    <span className="font-mono text-[10px] text-slate-400">
+                      Fator: {mesa.marketCostFactor}x
+                    </span>
+                  </div>
+
+                  {/* Nome da Peça Solicitada */}
+                  <h4 className="text-base font-black text-white tracking-tight flex items-center gap-1.5">
+                    <span>{mesa.alias}</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
+                    {mesa.name}
+                  </p>
+
+                  {/* Custo Analítico Gerado a partir do Custo do Boi */}
+                  <div className="mt-3 p-2.5 rounded-lg bg-slate-950/70 border border-slate-800">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Custo Analítico:</span>
+                      <span className="text-[10px] text-emerald-400 font-bold font-mono">
+                        ({(mesa.marketCostFactor * 100).toFixed(0)}% s/ boi)
+                      </span>
+                    </div>
+                    <div className="text-xl font-black font-mono text-emerald-400 mt-0.5">
+                      {formatCurrencyBRL(mesa.calculatedCostKg)}
+                      <span className="text-xs font-normal text-slate-400">/kg</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1 pt-1 border-t border-slate-850">
+                      <span>Peso no Lote:</span>
+                      <strong className="text-white font-mono">{mesa.weightKg.toFixed(1)} kg</strong>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                      <span>Custo Total Peça:</span>
+                      <strong className="text-slate-200 font-mono">{formatCurrencyBRL(mesa.totalCostR$)}</strong>
+                    </div>
+                  </div>
+
+                  {/* Preço de Venda Praticado no ERP */}
+                  <div className="mt-3 space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-slate-300 font-semibold">Preço Venda Peça:</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-slate-400">R$</span>
+                        <input
+                          type="number"
+                          step="0.50"
+                          min="1"
+                          value={mesa.sellingPriceKg}
+                          onChange={(e) => handlePriceChange(mesa.code, Number(e.target.value) || 0)}
+                          className="w-16 px-1 py-0.5 text-right font-mono font-bold text-white bg-slate-950 border border-slate-700 rounded focus:outline-none focus:border-emerald-400 text-xs"
+                          title="Preço de venda da peça inteira no catálogo (editável)"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400">Média Cortes Desossados:</span>
+                      <strong className="text-amber-300 font-mono">{formatCurrencyBRL(mesa.averageDerivedPriceKg)}/kg</strong>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400">Margem da Desossa:</span>
+                      <span className="font-mono font-bold text-emerald-400">
+                        +{mesa.marginOnCostPercent}% ({mesa.marginOnSalePercent}% margem)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Cortes que Saem Desta Peça */}
+                  <div className="mt-3 pt-2.5 border-t border-slate-800">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                      Cortes que saem da peça:
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {mesa.derivedCutNames.map((cutName, cIdx) => (
+                        <span 
+                          key={cIdx}
+                          className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-slate-800 text-slate-300 border border-slate-700"
+                        >
+                          {cutName}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Botão de Filtragem de Cortes */}
+                <div className="mt-4 pt-3 border-t border-slate-800/80">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMesaFilter(selectedMesaFilter === mesa.code ? 'ALL' : (mesa.code as any))}
+                    className={`w-full py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      isFilterActive
+                        ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                        : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700'
+                    }`}
+                  >
+                    <Filter className="w-3.5 h-3.5" />
+                    <span>{isFilterActive ? 'Remover Filtro' : `Ver Cortes do ${mesa.alias.replace('PEÇA ', '')}`}</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 3.6. TABELA TÉCNICA DETALHADA • FORMAÇÃO AUTOMÁTICA DE PREÇOS POR RENTABILIDADE DE MERCADO */}
+      <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/30 dark:border-emerald-500/20 rounded-2xl p-5 shadow-xl transition-colors">
+        
+        {/* Header da Tabela Técnica */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-sm shrink-0">
+              <Calculator className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                  <span>Tabela Técnica de Formação de Preço de Venda • Rentabilidade de Mercado</span>
+                </h3>
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-600/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                  Cálculo Automatizado p/ Dianteiro, Traseiro, Coxão e Alcatrão
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                Calcula automaticamente o preço de venda a partir do <strong>Custo do Boi ({formatCurrencyBRL(costPerKg)}/kg)</strong> aplicando fatores zootécnicos e percentuais de rentabilidade predefinidos (margens e markups de mercado).
+              </p>
+            </div>
+          </div>
+
+          {/* Seletor de Presets de Rentabilidade de Mercado */}
+          <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
+            <span className="text-xs font-bold text-slate-600 dark:text-slate-400 mr-1 flex items-center gap-1">
+              <Percent className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Preset Rentabilidade:</span>
+            </span>
+
+            <button
+              type="button"
+              onClick={() => handlePresetChange('COMPETITIVO')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                profitabilityPreset === 'COMPETITIVO'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+              }`}
+              title="Margem agressiva de giro rápido (18% a 28%)"
+            >
+              <span>⚡ Competitivo (Giro)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handlePresetChange('PADRAO')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                profitabilityPreset === 'PADRAO'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+              }`}
+              title="Padrão oficial do varejo supermercadista (25% a 34%)"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>🎯 Padrão Varejo (Recomendado)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handlePresetChange('PREMIUM')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                profitabilityPreset === 'PREMIUM'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+              }`}
+              title="Margem nobre para carnes de alta qualidade / boutique (30% a 42%)"
+            >
+              <span>💎 Nobre / Premium</span>
+            </button>
+
+            {profitabilityPreset === 'CUSTOM' && (
+              <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800">
+                ⚙️ Customizado
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Tabela Técnica Completa */}
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-xs text-left border-collapse">
+            <thead className="bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-[10px] uppercase font-bold border-b border-slate-200 dark:border-slate-800">
+              <tr>
+                <th className="px-4 py-3">Peça Primária (Mesa Frigorífica)</th>
+                <th className="px-3 py-3 text-center">% Carcaça</th>
+                <th className="px-3 py-3 text-center">Fator Paridade</th>
+                <th className="px-3 py-3 text-right">Custo Boi Base</th>
+                <th className="px-3 py-3 text-right bg-emerald-50/50 dark:bg-emerald-950/20">Custo Analítico (R$/kg)</th>
+                <th className="px-3 py-3 text-right">Peso no Lote</th>
+                <th className="px-3 py-3 text-center">Rentabilidade s/ Venda</th>
+                <th className="px-3 py-3 text-right">Markup s/ Compra</th>
+                <th className="px-3 py-3 text-right bg-emerald-100/50 dark:bg-emerald-900/30 font-black">Preço Sugerido (R$/kg)</th>
+                <th className="px-3 py-3 text-right">Preço Praticado ERP</th>
+                <th className="px-3 py-3 text-center">Status / Ação</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-mono text-xs">
+              {realYield.primaryMesas.map((mesa) => {
+                const targetMarg = mesaProfitMargins[mesa.code] ?? (mesa.marginOnSalePercent || 28);
+                const suggestedSellingPrice = Number((mesa.calculatedCostKg / (1 - targetMarg / 100)).toFixed(2));
+                const markupOnCost = Number((((suggestedSellingPrice - mesa.calculatedCostKg) / mesa.calculatedCostKg) * 100).toFixed(1));
+                const currentErpPrice = mesa.sellingPriceKg;
+                const priceDiff = currentErpPrice - suggestedSellingPrice;
+                const isExact = Math.abs(priceDiff) < 0.10;
+                const isAbove = priceDiff >= 0.10;
+
+                return (
+                  <tr key={mesa.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors">
+                    {/* Nome da Peça */}
+                    <td className="px-4 py-3 font-sans">
+                      <div className="flex items-center gap-2">
+                        <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0 font-bold">
+                          <Boxes className="w-4 h-4" />
+                        </span>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-black text-slate-900 dark:text-white text-xs">
+                              {mesa.alias}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">({mesa.code})</span>
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                            {mesa.name}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* % da Carcaça */}
+                    <td className="px-3 py-3 text-center font-bold text-slate-800 dark:text-slate-200">
+                      {mesa.carcassPercent.toFixed(1)}%
+                    </td>
+
+                    {/* Fator de Paridade */}
+                    <td className="px-3 py-3 text-center font-bold text-slate-600 dark:text-slate-300">
+                      {mesa.marketCostFactor.toFixed(3)}x
+                    </td>
+
+                    {/* Custo Boi Base */}
+                    <td className="px-3 py-3 text-right text-slate-600 dark:text-slate-400">
+                      {formatCurrencyBRL(costPerKg)}
+                    </td>
+
+                    {/* Custo Analítico da Peça */}
+                    <td className="px-3 py-3 text-right font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 text-sm">
+                      {formatCurrencyBRL(mesa.calculatedCostKg)}
+                      <span className="text-[10px] text-slate-400 font-normal">/kg</span>
+                    </td>
+
+                    {/* Peso no Lote */}
+                    <td className="px-3 py-3 text-right font-medium text-slate-800 dark:text-slate-200">
+                      {mesa.weightKg.toFixed(1)} kg
+                    </td>
+
+                    {/* Rentabilidade Desejada s/ Venda (%) */}
+                    <td className="px-3 py-3 text-center">
+                      <div className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700">
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="5"
+                          max="80"
+                          value={targetMarg}
+                          onChange={(e) => handleMesaMarginChange(mesa.code, Number(e.target.value) || 0)}
+                          className="w-12 text-center font-bold text-purple-700 dark:text-purple-300 bg-transparent focus:outline-none text-xs"
+                          title="Margem sobre venda predefinida (editável)"
+                        />
+                        <span className="text-[10px] font-bold text-purple-600">%</span>
+                      </div>
+                    </td>
+
+                    {/* Markup s/ Compra */}
+                    <td className="px-3 py-3 text-right font-bold text-purple-600 dark:text-purple-400">
+                      +{markupOnCost.toFixed(1)}%
+                    </td>
+
+                    {/* Preço de Venda Sugerido */}
+                    <td className="px-3 py-3 text-right bg-emerald-100/60 dark:bg-emerald-900/40 text-sm font-black text-emerald-800 dark:text-emerald-300">
+                      {formatCurrencyBRL(suggestedSellingPrice)}
+                      <span className="text-[10px] font-normal text-emerald-700 dark:text-emerald-400">/kg</span>
+                    </td>
+
+                    {/* Preço Praticado ERP (editável) */}
+                    <td className="px-3 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <span className="text-[10px] text-slate-400">R$</span>
+                        <input
+                          type="number"
+                          step="0.50"
+                          min="1"
+                          value={currentErpPrice}
+                          onChange={(e) => handlePriceChange(mesa.code, Number(e.target.value) || 0)}
+                          className="w-20 px-1.5 py-1 text-right font-mono font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded focus:outline-none focus:border-emerald-500 text-xs shadow-2xs"
+                          title="Preço praticado atualmente no cadastro do ERP (editável)"
+                        />
+                      </div>
+                    </td>
+
+                    {/* Status & Ação Individual */}
+                    <td className="px-3 py-3 text-center font-sans">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap ${
+                          isExact
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                            : isAbove
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
+                            : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
+                        }`}>
+                          {isExact ? '🟢 Alinhado' : isAbove ? `🔵 +R$ ${priceDiff.toFixed(2)}` : `🟡 -R$ ${Math.abs(priceDiff).toFixed(2)}`}
+                        </span>
+
+                        {!isExact && (
+                          <button
+                            type="button"
+                            onClick={() => handleApplySingleSuggestedPrice(mesa.code, suggestedSellingPrice)}
+                            className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold transition cursor-pointer active:scale-95 shadow-2xs"
+                            title={`Aplicar R$ ${suggestedSellingPrice.toFixed(2)} diretamente na tabela de produtos do ERP`}
+                          >
+                            Aplicar
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Rodapé de Ações da Tabela Técnica */}
+        <div className="mt-4 pt-3.5 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            Fórmula técnica: <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono text-emerald-600 dark:text-emerald-400">Preço Sugerido = Custo Analítico / (1 - Margem% / 100)</code>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleApplyAllSuggestedPrices}
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-2 transition cursor-pointer active:scale-95 shadow-sm"
+              title="Aplica todos os preços sugeridos calculados na tabela de produtos do ERP de forma definitiva"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+              <span>Aplicar Todos os Preços Sugeridos ao ERP</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsReportModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-[#113829] hover:bg-[#1a4e3a] text-white text-xs font-bold flex items-center gap-2 transition border border-emerald-500/30 cursor-pointer active:scale-95 shadow-sm"
+              title="Gerar relatório executivo com tabelas e indicadores de desossa"
+            >
+              <FileText className="w-4 h-4 text-emerald-400" />
+              <span>Relatório Executivo</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
       {/* 4. REAL CUTS DETAIL TABLE */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden transition-colors">
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Scissors className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              <span>Detalhamento dos Cortes • Base de Dados Oficial de Produtos & Quebra Técnica</span>
+              <span>Detalhamento dos Cortes & Peças de Desmembramento • Base Oficial do ERP</span>
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              Custo equalizado proporcional ao valor comercial de balcão (Standard Butchery Accounting). Clique no preço de venda para editar e gravar no ERP.
+              Custo equalizado proporcional ao valor comercial de balcão. As peças primárias (Dianteiro, Traseiro, Coxão e Alcatrão) atuam como base geradora dos cortes derivados.
             </p>
           </div>
           <div className="flex items-center gap-2 text-xs">
             <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono font-semibold">
-              {realYield.cuts.length} itens no ERP
+              {displayedCuts.length} exibidos de {realYield.cuts.length} itens
             </span>
             {Object.keys(customSellingPrices).length > 0 && (
               <button
@@ -743,11 +1361,104 @@ export const YieldTab: React.FC<YieldTabProps> = ({
           </div>
         </div>
 
+        {/* Toolbar de Filtros por Mesa e Tipo de Corte */}
+        <div className="px-4 py-2 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1 mr-1">
+              <Filter className="w-3.5 h-3.5" />
+              <span>Filtrar Visão:</span>
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setSelectedMesaFilter('ALL')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                selectedMesaFilter === 'ALL'
+                  ? 'bg-[#113829] text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'
+              }`}
+            >
+              Todos ({realYield.cuts.length})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedMesaFilter('MESAS_ONLY')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                selectedMesaFilter === 'MESAS_ONLY'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800 hover:bg-amber-50'
+              }`}
+            >
+              <Boxes className="w-3 h-3" />
+              <span>Apenas Peças Primárias (4 Mesas)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedMesaFilter('BOI-ALCAT')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                selectedMesaFilter === 'BOI-ALCAT'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'
+              }`}
+            >
+              Mesa Alcatrão
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedMesaFilter('BOI-COXAO')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                selectedMesaFilter === 'BOI-COXAO'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'
+              }`}
+            >
+              Mesa Coxão
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedMesaFilter('BOI-DIANT')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                selectedMesaFilter === 'BOI-DIANT'
+                  ? 'bg-amber-700 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'
+              }`}
+            >
+              Mesa Dianteiro
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedMesaFilter('WASTE')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                selectedMesaFilter === 'WASTE'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-100'
+              }`}
+            >
+              Graxaria & Quebra
+            </button>
+          </div>
+
+          {selectedMesaFilter !== 'ALL' && (
+            <button
+              type="button"
+              onClick={() => setSelectedMesaFilter('ALL')}
+              className="text-[11px] text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline cursor-pointer"
+            >
+              Limpar filtro
+            </button>
+          )}
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left border-collapse">
             <thead className="bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-800">
               <tr>
-                <th className="px-4 py-3">Corte / Código ERP</th>
+                <th className="px-4 py-3">Corte / Peça / Código ERP</th>
                 <th className="px-3 py-3 text-center">Classificação</th>
                 <th className="px-3 py-3 text-right">Rendimento %</th>
                 <th className="px-3 py-3 text-right">Peso Obtido (kg)</th>
@@ -759,21 +1470,30 @@ export const YieldTab: React.FC<YieldTabProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800/80 font-mono">
-              {realYield.cuts.map((cut, idx) => {
+              {displayedCuts.map((cut, idx) => {
                 const isWaste = cut.isWaste;
+                const isPrimary = cut.isPrimaryPiece;
                 const isCustomized = cut.productCode && customSellingPrices[cut.productCode] !== undefined;
 
                 return (
                   <tr 
                     key={idx}
-                    className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${
-                      isWaste ? 'bg-rose-50/50 dark:bg-rose-950/10 text-slate-500 dark:text-slate-400' : 'text-slate-800 dark:text-slate-200'
+                    className={`transition-colors ${
+                      isPrimary
+                        ? 'bg-amber-50/80 dark:bg-amber-950/25 border-l-4 border-l-amber-500 text-slate-900 dark:text-amber-100 font-semibold'
+                        : isWaste 
+                        ? 'bg-rose-50/50 dark:bg-rose-950/10 text-slate-500 dark:text-slate-400 hover:bg-rose-50' 
+                        : 'text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'
                     }`}
                   >
                     {/* Name & Product Code */}
                     <td className="px-4 py-2.5 font-sans font-medium">
                       <div className="flex items-center gap-2">
-                        {isWaste ? (
+                        {isPrimary ? (
+                          <div className="p-1 rounded-md bg-amber-500/20 text-amber-700 dark:text-amber-300 shrink-0">
+                            <Boxes className="w-4 h-4" />
+                          </div>
+                        ) : isWaste ? (
                           <Bone className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
                         ) : cut.category === 'NOBRE' ? (
                           <Flame className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -781,19 +1501,47 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                           <span className="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500 shrink-0" />
                         )}
                         <div>
-                          <div className={`font-semibold ${isWaste ? 'text-rose-700 dark:text-rose-300' : cut.category === 'NOBRE' ? 'text-amber-800 dark:text-amber-300 font-bold' : ''}`}>
-                            {cut.name}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`font-bold ${
+                              isPrimary 
+                                ? 'text-amber-950 dark:text-amber-200 text-[13px] tracking-tight uppercase' 
+                                : isWaste 
+                                ? 'text-rose-700 dark:text-rose-300 font-semibold' 
+                                : cut.category === 'NOBRE' 
+                                ? 'text-amber-800 dark:text-amber-300 font-bold' 
+                                : ''
+                            }`}>
+                              {cut.name}
+                            </span>
+
+                            {isPrimary && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500 text-slate-950 shadow-2xs">
+                                PEÇA PRIMÁRIA • MESA
+                              </span>
+                            )}
+
+                            {cut.parentMesaName && !isPrimary && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                Mesa: {cut.parentMesaName}
+                              </span>
+                            )}
                           </div>
-                          {cut.productCode && (
-                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono flex items-center gap-1">
+
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono flex items-center gap-1 mt-0.5">
+                            {cut.productCode && (
                               <span className="text-[9px] bg-slate-200 dark:bg-slate-800 px-1 rounded">
                                 {cut.productCode}
                               </span>
-                              {isCustomized && (
-                                <span className="text-amber-600 dark:text-amber-400 font-bold text-[9px]">• editado</span>
-                              )}
-                            </div>
-                          )}
+                            )}
+                            {isPrimary && cut.derivedCutsList && (
+                              <span className="text-[10px] text-slate-600 dark:text-slate-400 italic">
+                                • Gera: {cut.derivedCutsList.slice(0, 3).join(', ')}{cut.derivedCutsList.length > 3 ? '...' : ''}
+                              </span>
+                            )}
+                            {isCustomized && (
+                              <span className="text-amber-600 dark:text-amber-400 font-bold text-[9px]">• editado</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -801,7 +1549,9 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                     {/* Category */}
                     <td className="px-3 py-2.5 text-center font-sans">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                        isWaste 
+                        isPrimary
+                          ? 'bg-amber-600 text-white font-bold'
+                          : isWaste 
                           ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30' 
                           : cut.category === 'NOBRE' 
                           ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30' 
@@ -809,13 +1559,15 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                           ? 'bg-blue-500/15 text-blue-800 dark:text-blue-300 border border-blue-500/30'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700'
                       }`}>
-                        {cut.category}
+                        {cut.category === 'MESA_PRIMARIA' ? 'MESA PRIMÁRIA' : cut.category}
                       </span>
                     </td>
 
                     {/* Rendimento % */}
                     <td className="px-3 py-2.5 text-right font-medium">
-                      {cut.yieldPercent.toFixed(1)}%
+                      <span className={isPrimary ? 'font-bold text-amber-700 dark:text-amber-300' : ''}>
+                        {cut.yieldPercent.toFixed(1)}%
+                      </span>
                     </td>
 
                     {/* Peso kg */}
@@ -830,9 +1582,16 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                           Crédito Graxaria
                         </span>
                       ) : (
-                        <span className="text-slate-700 dark:text-slate-300 font-bold">
-                          {formatCurrencyBRL(cut.costPriceKg)}
-                        </span>
+                        <div>
+                          <span className={`font-bold ${isPrimary ? 'text-amber-800 dark:text-amber-300 text-xs' : 'text-slate-700 dark:text-slate-300'}`}>
+                            {formatCurrencyBRL(cut.costPriceKg)}
+                          </span>
+                          {isPrimary && (
+                            <span className="block text-[9px] text-amber-600 dark:text-amber-400 font-sans font-normal">
+                              Fator Zootécnico
+                            </span>
+                          )}
+                        </div>
                       )}
                     </td>
 
@@ -846,7 +1605,11 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                             min="1"
                             value={cut.sellingPriceKg}
                             onChange={(e) => handlePriceChange(cut.productCode!, Number(e.target.value) || 0)}
-                            className="w-20 px-1.5 py-0.5 text-right font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            className={`w-20 px-1.5 py-0.5 text-right font-mono font-bold rounded focus:outline-none focus:ring-1 ${
+                              isPrimary
+                                ? 'text-amber-900 dark:text-amber-200 bg-amber-100/80 dark:bg-amber-900/40 border border-amber-400 dark:border-amber-700 focus:ring-amber-500'
+                                : 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 focus:ring-emerald-500'
+                            }`}
                             title="Preço praticado na base de dados (editável)"
                           />
                         </div>
@@ -913,7 +1676,7 @@ export const YieldTab: React.FC<YieldTabProps> = ({
       </div>
 
       {/* 5. EXPLANATORY BOX ON RETAIL BEEF YIELD & BREAKAGE ECONOMICS */}
-      <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-5 grid grid-cols-1 md:grid-cols-2 gap-5 text-xs text-slate-700 dark:text-slate-300 transition-colors">
+      <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-5 grid grid-cols-1 md:grid-cols-3 gap-5 text-xs text-slate-700 dark:text-slate-300 transition-colors">
         <div className="space-y-2">
           <h4 className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
             <Bone className="w-4 h-4" />
@@ -924,6 +1687,22 @@ export const YieldTab: React.FC<YieldTabProps> = ({
           </p>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
             • <strong>Fator Multiplicador de Quebra:</strong> Para cobrir a perda de peso dos 25%, o multiplicador é de <strong>1,3333x (+33,33%)</strong>, formando o <strong>Custo Base Varejo de {formatCurrencyBRL(realYield.baseCleanMeatCostPerKg)}/kg</strong>.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <h4 className="font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+            <Boxes className="w-4 h-4" />
+            <span>Paridade de Mercado das 4 Peças Primárias</span>
+          </h4>
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+            • <strong>Dianteiro (39% • 0,81x):</strong> R$ {(costPerKg * 0.81).toFixed(2)}/kg para formação de Paleta, Acém, Peito e Músculo.
+          </p>
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+            • <strong>Traseiro Especial (48% • 1,246x):</strong> R$ {(costPerKg * 1.246).toFixed(2)}/kg. Subdividido analiticamente em <strong>Coxão (30% • 1,16x = R$ {(costPerKg * 1.16).toFixed(2)}/kg)</strong> e <strong>Alcatrão (18% • 1,39x = R$ {(costPerKg * 1.39).toFixed(2)}/kg)</strong>.
+          </p>
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+            • <strong>Equalização Contábil:</strong> A soma ponderada das peças fecha rigorosamente em 100% do custo pago pelo boi casado.
           </p>
         </div>
 
@@ -940,6 +1719,23 @@ export const YieldTab: React.FC<YieldTabProps> = ({
           </p>
         </div>
       </div>
+
+      {/* 6. MODAL DO RELATÓRIO EXECUTIVO OFICIAL DE DESOSSA */}
+      {isReportModalOpen && (
+        <YieldReportModal
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          carcassWeight={carcassWeight}
+          costPerKg={costPerKg}
+          breakagePercent={breakagePercent}
+          costFormationMode={costFormationMode}
+          targetMargin={targetMargin}
+          selectedBatchName={selectedBatchInfo ? `Lote ${selectedBatchInfo.invoiceNumber} - ${selectedBatchInfo.supplier}` : 'Catálogo Oficial ERP'}
+          realYield={realYield}
+          presetProfitableMode={profitabilityPreset}
+          mesaProfitMargins={mesaProfitMargins}
+        />
+      )}
 
     </div>
   );

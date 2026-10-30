@@ -113,3 +113,41 @@ export interface PerishablesSnapshot {
   lastSyncTimestamp: number;
   cacheTtlSeconds: number;
 }
+
+export interface PriceDiscrepancyItem {
+  id: string;
+  productId: string;
+  productCode: string;
+  productName: string;
+  categoryId: PerishableCategoryId;
+  flvSubdivision?: FlvSubdivision;
+  chainId: string;
+  chainName: string;
+  announcedPrice: number;
+  processedPrice: number;
+  diffValue: number;
+  diffPercent: number;
+  mediaChannel: PromoChannelType;
+  mediaLabel: string;
+  validity: string;
+  adBroadcastTime: string;
+  auditSource: string;
+  severity: 'CRITICAL' | 'WARNING';
+  timestamp: string;
+  resolved: boolean;
+}
+
+export interface PerishablesAuditReport {
+  timestamp: string;
+  latencyMs: number;
+  status: 'AUDITED_CONFORMANT' | 'DISCREPANCIES_FOUND';
+  totalProductsAudited: number;
+  promosAudited: number;
+  parityCount: number;
+  discrepancyCount: number;
+  integrityScore: number; // 0 a 100%
+  discrepancies: PriceDiscrepancyItem[];
+  auditHash: string;
+  verifiedSources: string[];
+}
+

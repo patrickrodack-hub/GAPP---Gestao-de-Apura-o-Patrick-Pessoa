@@ -82,7 +82,11 @@
             if (
               text.indexOf('WebSocket closed without opened') !== -1 ||
               (text.indexOf('[vite]') !== -1 && text.indexOf('WebSocket') !== -1) ||
-              text.indexOf('WebSocket is closed') !== -1
+              text.indexOf('WebSocket is closed') !== -1 ||
+              text.indexOf('Disconnecting idle stream') !== -1 ||
+              text.indexOf('Timed out waiting for new targets') !== -1 ||
+              text.indexOf("RPC 'Listen' stream") !== -1 ||
+              text.indexOf('GrpcConnection') !== -1
             ) {
               return;
             }
@@ -90,11 +94,14 @@
           };
 
           window.addEventListener('error', function(event) {
+            var msg = (event && (event.message || (event.error && event.error.message))) || '';
             if (
-              event &&
-              (event.message?.indexOf('WebSocket') !== -1 ||
-               event.filename?.indexOf('@vite/client') !== -1 ||
-               event.error?.message?.indexOf('WebSocket') !== -1)
+              msg.indexOf('WebSocket') !== -1 ||
+              msg.indexOf('Disconnecting idle stream') !== -1 ||
+              msg.indexOf('Timed out waiting for new targets') !== -1 ||
+              msg.indexOf("RPC 'Listen' stream") !== -1 ||
+              msg.indexOf('GrpcConnection') !== -1 ||
+              (event.filename && event.filename.indexOf('@vite/client') !== -1)
             ) {
               event.stopImmediatePropagation();
               event.preventDefault();
@@ -103,10 +110,13 @@
           }, true);
 
           window.addEventListener('unhandledrejection', function(event) {
+            var reason = (event && (event.reason && (event.reason.message || String(event.reason)))) || '';
             if (
-              event &&
-              (event.reason?.message?.indexOf('WebSocket') !== -1 ||
-               String(event.reason).indexOf('WebSocket') !== -1)
+              reason.indexOf('WebSocket') !== -1 ||
+              reason.indexOf('Disconnecting idle stream') !== -1 ||
+              reason.indexOf('Timed out waiting for new targets') !== -1 ||
+              reason.indexOf("RPC 'Listen' stream") !== -1 ||
+              reason.indexOf('GrpcConnection') !== -1
             ) {
               event.stopImmediatePropagation();
               event.preventDefault();

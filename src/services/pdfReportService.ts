@@ -53,6 +53,56 @@ export interface GeneratePurchaseOrderPdfOptions {
   currentUser?: string;
 }
 
+export interface GenerateBeefYieldPdfOptions {
+  title?: string;
+  emissionDate?: Date;
+  currentUser?: string;
+  carcassWeight: number;
+  costPerKg: number;
+  arrobaPrice: number;
+  breakagePercent: number;
+  cleanMeatYieldPercent: number;
+  effectiveCleanMeatCostPerKg: number;
+  costFormationMode: string;
+  totalRevenue: number;
+  grossProfit: number;
+  globalMarginSalePercent: number;
+  globalMarginCostPercent: number;
+  wasteRevenue: number;
+  selectedBatchName?: string;
+  primaryMesas: {
+    alias: string;
+    code: string;
+    name: string;
+    carcassPercent: number;
+    marketCostFactor: number;
+    calculatedCostKg: number;
+    weightKg: number;
+    sellingPriceKg: number;
+    targetSellingPriceKg?: number;
+    targetMarginPercent?: number;
+    averageDerivedPriceKg: number;
+    derivedRevenueR$: number;
+    marginOnCostPercent: number;
+    marginOnSalePercent: number;
+    derivedCutNames: string[];
+  }[];
+  cuts: {
+    name: string;
+    category: string;
+    yieldPercent: number;
+    weightKg: number;
+    costPriceKg: number;
+    sellingPriceKg: number;
+    revenueR$: number;
+    marginOnCostPercent: number;
+    marginOnSalePercent: number;
+    isPrimaryPiece?: boolean;
+    isWaste?: boolean;
+    parentMesaName?: string;
+  }[];
+}
+
 export class PdfReportService {
   /**
    * Converte a imagem do logo local para base64 data URL
@@ -1024,6 +1074,223 @@ export class PdfReportService {
    */
   public static async generateAndDownloadPurchaseOrderPdf(options: GeneratePurchaseOrderPdfOptions): Promise<void> {
     const { doc, fileName } = await this.getPurchaseOrderPdfDoc(options);
+    doc.save(fileName);
+  }
+
+  /**
+   * Constrói e retorna o documento PDF do Relatório Técnico de Desossa, Mesas e Rendimento
+   */
+  public static async getBeefYieldPdfDoc(options: GenerateBeefYieldPdfOptions): Promise<{ doc: jsPDF; fileName: string }> {
+    const {
+      carcassWeight,
+      costPerKg,
+      arrobaPrice,
+      breakagePercent,
+      cleanMeatYieldPercent,
+      effectiveCleanMeatCostPerKg,
+      totalRevenue,
+      globalMarginSalePercent,
+      globalMarginCostPercent,
+      wasteRevenue,
+      selectedBatchName = 'Catálogo Oficial de Produtos (ERP)',
+      primaryMesas,
+      cuts,
+      title = 'RELATÓRIO TÉCNICO DE RENDIMENTO, DESOSSA E MESAS PRIMÁRIAS',
+      emissionDate = new Date(),
+      currentUser = 'Diretoria de Carnes • GAPP'
+    } = options;
+
+    const emissionDateFormatted = emissionDate.toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const emissionTimeFormatted = emissionDate.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const hashAuth = `GAPP-DESOSSA-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4',
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth(); // 297mm
+    const margin = 8;
+
+    // 1. Cabeçalho Corporativo
+    await ReportBrandingService.drawPdfHeader(doc, {
+      title,
+      subtitle: `Apuração Real de Desossa • Lote: ${selectedBatchName} • Responsável: ${currentUser}`,
+      departmentTag: 'DEPARTAMENTO DE RENDIMENTO, CUSTOS & FORMAÇÃO DE PREÇOS',
+      rightMetaLines: [
+        `Emissão: ${emissionDateFormatted} às ${emissionTimeFormatted}`,
+        `Autenticação: ${hashAuth}`,
+        `Padrão Varejo: Quebra ${breakagePercent.toFixed(1)}% | Carne Limpa ${cleanMeatYieldPercent.toFixed(1)}%`
+      ],
+      themeColor: 'forest'
+    });
+
+    // 2. Cards de KPIs Resumidos
+    const kpiY = margin + 24;
+    const kpiHeight = 14;
+    const kpiGap = 4;
+    const kpiWidth = (pageWidth - 2 * margin - 4 * kpiGap) / 5;
+
+    const kpis = [
+      { label: 'PESO CARCAÇA', val: `${carcassWeight.toFixed(1)} kg (${(carcassWeight / 15).toFixed(1)} @)`, desc: 'Boi Casado Mestre' },
+      { label: 'CUSTO COMPRA', val: `R$ ${costPerKg.toFixed(2)}/kg`, desc: `R$ ${arrobaPrice.toFixed(2)} por @` },
+      { label: 'CUSTO CARNE LIMPA', val: `R$ ${effectiveCleanMeatCostPerKg.toFixed(2)}/kg`, desc: `Quebra ${breakagePercent.toFixed(1)}%` },
+      { label: 'FATURAMENTO BALCÃO', val: formatCurrencyBRL(totalRevenue), desc: `Graxaria: ${formatCurrencyBRL(wasteRevenue)}` },
+      { label: 'MARGEM GLOBAL', val: `${globalMarginSalePercent}% s/ venda`, desc: `Markup: +${globalMarginCostPercent}%` }
+    ];
+
+    kpis.forEach((kpi, idx) => {
+      const x = margin + idx * (kpiWidth + kpiGap);
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(203, 213, 225);
+      doc.roundedRect(x, kpiY, kpiWidth, kpiHeight, 1.5, 1.5, 'FD');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(kpi.label, x + 2.5, kpiY + 4);
+
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(kpi.val, x + 2.5, kpiY + 8.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.8);
+      doc.setTextColor(148, 163, 184);
+      doc.text(kpi.desc, x + 2.5, kpiY + 12);
+    });
+
+    // 3. Tabela 1: Mesas de Desmembramento Primário (As 4 Peças Solicitadas)
+    const table1Y = kpiY + kpiHeight + 4;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(17, 56, 41);
+    doc.text('1. MESAS DE DESMEMBRAMENTO PRIMÁRIO (FORMAÇÃO DE CUSTO & PREÇO DE VENDA POR RENTABILIDADE)', margin, table1Y);
+
+    const mesaTableRows = primaryMesas.map(m => [
+      m.alias,
+      m.name,
+      `${m.carcassPercent.toFixed(1)}%`,
+      `${m.marketCostFactor.toFixed(3)}x`,
+      `R$ ${m.calculatedCostKg.toFixed(2)}`,
+      `${m.weightKg.toFixed(1)} kg`,
+      formatCurrencyBRL(m.calculatedCostKg * m.weightKg),
+      `R$ ${(m.targetSellingPriceKg || m.sellingPriceKg).toFixed(2)}`,
+      `+${m.marginOnCostPercent}%`,
+      `${(m.targetMarginPercent || m.marginOnSalePercent).toFixed(1)}%`,
+      formatCurrencyBRL((m.targetSellingPriceKg || m.sellingPriceKg) * m.weightKg),
+      m.derivedCutNames.slice(0, 3).join(', ') + (m.derivedCutNames.length > 3 ? '...' : '')
+    ]);
+
+    autoTable(doc, {
+      startY: table1Y + 2,
+      margin: { left: margin, right: margin },
+      head: [[
+        'PEÇA PRIMÁRIA',
+        'DESCRIÇÃO / MESA',
+        '% CARCAÇA',
+        'FATOR MERCADO',
+        'CUSTO R$/KG',
+        'PESO LOTE',
+        'CUSTO TOTAL',
+        'PREÇO VENDA R$/KG',
+        'MARKUP',
+        'MARGEM %',
+        'FATURAMENTO',
+        'CORTES DERIVADOS GERADOS'
+      ]],
+      body: mesaTableRows,
+      theme: 'grid',
+      styles: {
+        fontSize: 6.2,
+        cellPadding: 1.5,
+        valign: 'middle'
+      },
+      headStyles: {
+        fillColor: [17, 56, 41],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 6.2
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      }
+    });
+
+    // 4. Tabela 2: Detalhamento dos Cortes de Balcão e Rendimento da Desossa
+    const lastY = (doc as any).lastAutoTable.finalY + 5;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(17, 56, 41);
+    doc.text('2. DETALHAMENTO DOS CORTES DE BALCÃO & SUBPRODUTOS DE GRAXARIA', margin, lastY);
+
+    const cutsTableRows = cuts.filter(c => !c.isPrimaryPiece).map(c => [
+      c.name,
+      c.parentMesaName ? `Mesa ${c.parentMesaName.replace('PEÇA ', '')}` : c.category,
+      `${c.yieldPercent.toFixed(1)}%`,
+      `${c.weightKg.toFixed(2)} kg`,
+      c.isWaste ? 'Crédito Graxaria' : `R$ ${c.costPriceKg.toFixed(2)}`,
+      `R$ ${c.sellingPriceKg.toFixed(2)}`,
+      formatCurrencyBRL(c.revenueR$),
+      c.isWaste ? '+100%' : `+${c.marginOnCostPercent}%`,
+      c.isWaste ? 'Graxaria' : `${c.marginOnSalePercent}%`
+    ]);
+
+    autoTable(doc, {
+      startY: lastY + 2,
+      margin: { left: margin, right: margin },
+      head: [[
+        'CORTE / SUBPRODUTO',
+        'MESA DE ORIGEM',
+        'RENDIMENTO %',
+        'PESO OBTIDO (KG)',
+        'CUSTO EQUALIZADO (R$/KG)',
+        'PREÇO VENDA (R$/KG)',
+        'FATURAMENTO TOTAL',
+        'MARKUP S/ COMPRA',
+        'MARGEM S/ VENDA'
+      ]],
+      body: cutsTableRows,
+      theme: 'grid',
+      styles: {
+        fontSize: 6.0,
+        cellPadding: 1.3,
+        valign: 'middle'
+      },
+      headStyles: {
+        fillColor: [30, 41, 59],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 6.0
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      }
+    });
+
+    await ReportBrandingService.drawPdfFooterAllPages(doc, {
+      documentCode: `DESOSSA-GAPP-${Math.round(carcassWeight)}KG`,
+      extraRightText: `Relatório Técnico de Desossa • ${emissionDateFormatted}`
+    });
+
+    const fileName = `Relatorio_Tecnico_Desossa_GAPP_${Math.round(carcassWeight)}kg.pdf`;
+    return { doc, fileName };
+  }
+
+  /**
+   * Gera e baixa diretamente o Relatório Técnico de Desossa em PDF
+   */
+  public static async generateAndDownloadBeefYieldPdf(options: GenerateBeefYieldPdfOptions): Promise<void> {
+    const { doc, fileName } = await this.getBeefYieldPdfDoc(options);
     doc.save(fileName);
   }
 }

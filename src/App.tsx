@@ -396,7 +396,19 @@ export default function App() {
       console.warn('Ouvinte de usuários não iniciado:', e);
     }
 
-    // 5. Inicia o registro e o heartbeat do dispositivo real (somente no modo Desktop ERP)
+    return () => {
+      isMounted = false;
+      if (unsubscribeRows) unsubscribeRows();
+      if (unsubscribeLock) unsubscribeLock();
+      if (unsubscribeUsers) unsubscribeUsers();
+      if (unsubscribeBatches) unsubscribeBatches();
+      if (unsubscribeWaste) unsubscribeWaste();
+      if (unsubscribeSuppliers) unsubscribeSuppliers();
+    };
+  }, []);
+
+  // Inicia o registro e o heartbeat do dispositivo real (somente no modo Desktop ERP)
+  useEffect(() => {
     if (!isPortalMode) {
       startRealDeviceHeartbeat({
         storeId: currentUser?.storeId || 'matriz',
@@ -407,16 +419,9 @@ export default function App() {
     }
 
     return () => {
-      isMounted = false;
       stopRealDeviceHeartbeat();
-      if (unsubscribeRows) unsubscribeRows();
-      if (unsubscribeLock) unsubscribeLock();
-      if (unsubscribeUsers) unsubscribeUsers();
-      if (unsubscribeBatches) unsubscribeBatches();
-      if (unsubscribeWaste) unsubscribeWaste();
-      if (unsubscribeSuppliers) unsubscribeSuppliers();
     };
-  }, [currentUser]);
+  }, [currentUser, isPortalMode, stores]);
 
   const handleSavePortalLockConfig = (config: PortalLockConfig) => {
     StorageService.savePortalLockConfig(config);

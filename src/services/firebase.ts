@@ -16,7 +16,8 @@ import {
   limit,
   initializeFirestore,
   persistentLocalCache,
-  persistentMultipleTabManager
+  persistentMultipleTabManager,
+  setLogLevel
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { SheetRowData, SheetSnapshotRecord, StockLaunchRecord, Store, Supplier, Product, PortalLockConfig, SystemUser, PurchaseBatch, WasteRecord, StandardPurchaseOrder, ConnectedDevice } from '../types/erp';
@@ -25,17 +26,52 @@ import { SheetRowData, SheetSnapshotRecord, StockLaunchRecord, Store, Supplier, 
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Inicializa Firestore com Cache Persistente em IndexedDB para múltiplos navegadores/abas
-// Isso impede que perda de conexão ou limite de cota apague ou redefina dados locais!
+// Configura nível de log do Firestore para 'silent' (desativa logs de ruído interno do WebChannel)
+try {
+  setLogLevel('silent');
+} catch {}
+
+// Suprime mensagens benignas de ciclo de vida interno do WebChannel do Firestore
+// (ex: cancelamento normal de stream ociosa por timeout de inatividade)
+if (typeof window !== 'undefined') {
+  const originalConsoleError = console.error;
+  console.error = function (...args: any[]) {
+    const firstArg = args[0] ? String(args[0]) : '';
+    const fullLog = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+    if (
+      firstArg.includes('Disconnecting idle stream') ||
+      firstArg.includes('Timed out waiting for new targets') ||
+      firstArg.includes("RPC 'Listen' stream") ||
+      firstArg.includes('GrpcConnection') ||
+      fullLog.includes('Disconnecting idle stream') ||
+      fullLog.includes('Timed out waiting for new targets') ||
+      fullLog.includes("RPC 'Listen' stream") ||
+      fullLog.includes('GrpcConnection')
+    ) {
+      return;
+    }
+    originalConsoleError.apply(console, args);
+  };
+}
+
+// Inicializa Firestore com Cache Persistente em IndexedDB e Long Polling estável
+// Long Polling impede que o stream gRPC ocioso feche inesperadamente em iframes ou abas em segundo plano
 let firestoreInstance;
 try {
   firestoreInstance = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
     localCache: persistentLocalCache({
       tabManager: persistentMultipleTabManager()
     })
   }, firebaseConfig.firestoreDatabaseId);
 } catch {
-  firestoreInstance = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+  try {
+    firestoreInstance = initializeFirestore(app, {
+      experimentalForceLongPolling: true
+    }, firebaseConfig.firestoreDatabaseId);
+  } catch {
+    firestoreInstance = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+  }
 }
 export const db = firestoreInstance; /* CRITICAL: The app will break without this line */
 

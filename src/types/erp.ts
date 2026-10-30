@@ -182,10 +182,31 @@ export interface YieldParams {
   bandaCostKg?: number;    // Custo de compra Banda Suína (R$/kg)
 }
 
+export interface PrimaryDesmembramentoMesa {
+  id: string;
+  code: string;
+  name: string;
+  alias: 'PEÇA DIANTEIRO' | 'PEÇA TRAZEIRO' | 'PEÇA COXAO' | 'PEÇA ALCATRAO' | 'PONTA DE AGULHA';
+  carcassPercent: number; // % zootécnico sobre o boi casado (ex: 39%, 48%, 30%, 18%, 13%)
+  marketCostFactor: number; // Multiplicador de mercado vs boi casado (ex: 0.81x, 1.246x, 1.16x, 1.39x, 0.73x)
+  calculatedCostKg: number; // Custo por kg calculado pelo sistema
+  weightKg: number; // Peso da peça no lote/carcaça
+  totalCostR$: number; // Custo total da peça no lote
+  sellingPriceKg: number; // Preço de venda da peça inteira
+  averageDerivedPriceKg: number; // Preço médio de venda dos cortes desossados que saem da peça
+  derivedCleanWeightKg: number; // Peso líquido dos cortes que saem da peça
+  derivedRevenueR$: number; // Faturamento gerado no balcão pela desossa dessa peça
+  marginOnCostPercent: number; // Markup s/ compra da peça
+  marginOnSalePercent: number; // Margem s/ venda da peça desossada
+  derivedCutCodes: string[];
+  derivedCutNames: string[];
+  description: string;
+}
+
 export interface YieldAnalysisCuts {
   productCode?: string;     // Código oficial do produto na base do ERP (ex: COR-PICANHA)
   name: string;
-  category: 'NOBRE' | 'SEGUNDA' | 'COXAO' | 'COSTELA' | 'DESCARTE';
+  category: 'NOBRE' | 'SEGUNDA' | 'COXAO' | 'COSTELA' | 'DESCARTE' | 'MESA_PRIMARIA';
   weightKg: number;
   yieldPercent: number;     // % do corte em relação à carcaça
   costPriceKg: number;      // Custo atribuído
@@ -194,6 +215,10 @@ export interface YieldAnalysisCuts {
   marginOnSalePercent: number; // Margem s/ venda %
   marginOnCostPercent: number; // Margem s/ compra (markup) %
   isWaste?: boolean;
+  isPrimaryPiece?: boolean;  // Identifica PEÇA DIANTEIRO, PEÇA TRAZEIRO, PEÇA COXAO, PEÇA ALCATRAO
+  parentMesaCode?: string;   // Código da mesa de desmembramento de origem (ex: BOI-DIANT, BOI-ALCAT, BOI-COXAO)
+  parentMesaName?: string;   // Nome da mesa de desmembramento
+  derivedCutsList?: string[]; // Cortes derivados que compõem a mesa
 }
 
 export interface WasteRecord {

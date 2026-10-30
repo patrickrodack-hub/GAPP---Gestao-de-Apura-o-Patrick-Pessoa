@@ -1,4 +1,4 @@
-import { SheetRowData, Product, YieldAnalysisCuts } from '../types/erp';
+import { SheetRowData, Product, YieldAnalysisCuts, PrimaryDesmembramentoMesa } from '../types/erp';
 import { INITIAL_PRODUCTS } from '../data/initialData';
 
 export interface ColumnTotals {
@@ -481,6 +481,7 @@ export function kgToArroba(kgPrice: number): number {
  */
 export interface RealBeefYieldResult {
   cuts: YieldAnalysisCuts[];
+  primaryMesas: PrimaryDesmembramentoMesa[];
   totalCleanMeatKg: number;
   totalWasteKg: number;
   breakagePercent: number; // % de quebra total padrão (padrão 25.0%, faixa 20% a 30%)
@@ -541,25 +542,27 @@ export function calculateRealBeefYield(
     category: YieldAnalysisCuts['category'];
     defaultPercent: number;
     fallbackSellingPrice: number;
+    parentMesaCode?: string;
+    parentMesaName?: string;
     isWaste?: boolean;
   }[] = [
-    // Traseiro Nobre (~16.2% com quebra 25%)
-    { code: 'COR-PICANHA', name: 'Picanha', category: 'NOBRE', defaultPercent: 1.5 * baseScaleFactor, fallbackSellingPrice: 79.90 },
-    { code: 'COR-MIGNON', name: 'Filé Mignon', category: 'NOBRE', defaultPercent: 1.7 * baseScaleFactor, fallbackSellingPrice: 74.90 },
-    { code: 'COR-CONTRA', name: 'Contra Filé', category: 'NOBRE', defaultPercent: 6.8 * baseScaleFactor, fallbackSellingPrice: 54.90 },
-    { code: 'COR-ALCATRA', name: 'Alcatra c/ Maminha', category: 'NOBRE', defaultPercent: 6.2 * baseScaleFactor, fallbackSellingPrice: 52.90 },
-    // Coxão (~23.0% com quebra 25%)
-    { code: 'COR-CHA', name: 'Chã de Dentro (Coxão Mole)', category: 'COXAO', defaultPercent: 8.3 * baseScaleFactor, fallbackSellingPrice: 42.90 },
-    { code: 'COR-PATINHO', name: 'Patinho', category: 'COXAO', defaultPercent: 6.4 * baseScaleFactor, fallbackSellingPrice: 43.90 },
-    { code: 'COR-LAG-RED', name: 'Lagarto Redondo', category: 'COXAO', defaultPercent: 2.9 * baseScaleFactor, fallbackSellingPrice: 42.50 },
-    { code: 'COR-LAG-PLA', name: 'Lagarto Plano (Coxão Duro)', category: 'COXAO', defaultPercent: 5.4 * baseScaleFactor, fallbackSellingPrice: 41.90 },
-    // Dianteiro (~30.0% com quebra 25%)
-    { code: 'COR-PALETA', name: 'Paleta Desossada', category: 'SEGUNDA', defaultPercent: 8.8 * baseScaleFactor, fallbackSellingPrice: 35.90 },
-    { code: 'COR-ACEM', name: 'Acém', category: 'SEGUNDA', defaultPercent: 10.8 * baseScaleFactor, fallbackSellingPrice: 33.90 },
-    { code: 'COR-PEITO', name: 'Peito Bovino', category: 'SEGUNDA', defaultPercent: 5.9 * baseScaleFactor, fallbackSellingPrice: 32.90 },
-    { code: 'COR-MUSCULO', name: 'Músculo', category: 'SEGUNDA', defaultPercent: 4.4 * baseScaleFactor, fallbackSellingPrice: 33.50 },
+    // Mesa Alcatrão / Traseiro Nobre (~16.2% com quebra 25%)
+    { code: 'COR-PICANHA', name: 'Picanha', category: 'NOBRE', defaultPercent: 1.5 * baseScaleFactor, fallbackSellingPrice: 79.90, parentMesaCode: 'BOI-ALCAT', parentMesaName: 'PEÇA ALCATRAO' },
+    { code: 'COR-MIGNON', name: 'Filé Mignon', category: 'NOBRE', defaultPercent: 1.7 * baseScaleFactor, fallbackSellingPrice: 74.90, parentMesaCode: 'BOI-ALCAT', parentMesaName: 'PEÇA ALCATRAO' },
+    { code: 'COR-CONTRA', name: 'Contra Filé', category: 'NOBRE', defaultPercent: 6.8 * baseScaleFactor, fallbackSellingPrice: 54.90, parentMesaCode: 'BOI-ALCAT', parentMesaName: 'PEÇA ALCATRAO' },
+    { code: 'COR-ALCATRA', name: 'Alcatra c/ Maminha', category: 'NOBRE', defaultPercent: 6.2 * baseScaleFactor, fallbackSellingPrice: 52.90, parentMesaCode: 'BOI-ALCAT', parentMesaName: 'PEÇA ALCATRAO' },
+    // Mesa Coxão (~23.0% com quebra 25%)
+    { code: 'COR-CHA', name: 'Chã de Dentro (Coxão Mole)', category: 'COXAO', defaultPercent: 8.3 * baseScaleFactor, fallbackSellingPrice: 42.90, parentMesaCode: 'BOI-COXAO', parentMesaName: 'PEÇA COXAO' },
+    { code: 'COR-PATINHO', name: 'Patinho', category: 'COXAO', defaultPercent: 6.4 * baseScaleFactor, fallbackSellingPrice: 43.90, parentMesaCode: 'BOI-COXAO', parentMesaName: 'PEÇA COXAO' },
+    { code: 'COR-LAG-RED', name: 'Lagarto Redondo', category: 'COXAO', defaultPercent: 2.9 * baseScaleFactor, fallbackSellingPrice: 42.50, parentMesaCode: 'BOI-COXAO', parentMesaName: 'PEÇA COXAO' },
+    { code: 'COR-LAG-PLA', name: 'Lagarto Plano (Coxão Duro)', category: 'COXAO', defaultPercent: 5.4 * baseScaleFactor, fallbackSellingPrice: 41.90, parentMesaCode: 'BOI-COXAO', parentMesaName: 'PEÇA COXAO' },
+    // Mesa Dianteiro (~30.0% com quebra 25%)
+    { code: 'COR-PALETA', name: 'Paleta Desossada', category: 'SEGUNDA', defaultPercent: 8.8 * baseScaleFactor, fallbackSellingPrice: 35.90, parentMesaCode: 'BOI-DIANT', parentMesaName: 'PEÇA DIANTEIRO' },
+    { code: 'COR-ACEM', name: 'Acém', category: 'SEGUNDA', defaultPercent: 10.8 * baseScaleFactor, fallbackSellingPrice: 33.90, parentMesaCode: 'BOI-DIANT', parentMesaName: 'PEÇA DIANTEIRO' },
+    { code: 'COR-PEITO', name: 'Peito Bovino', category: 'SEGUNDA', defaultPercent: 5.9 * baseScaleFactor, fallbackSellingPrice: 32.90, parentMesaCode: 'BOI-DIANT', parentMesaName: 'PEÇA DIANTEIRO' },
+    { code: 'COR-MUSCULO', name: 'Músculo', category: 'SEGUNDA', defaultPercent: 4.4 * baseScaleFactor, fallbackSellingPrice: 33.50, parentMesaCode: 'BOI-DIANT', parentMesaName: 'PEÇA DIANTEIRO' },
     // Costela / Ponta de Agulha (~5.7% com quebra 25%)
-    { code: 'BOI-COST-GAU', name: 'Costela Gaúcha', category: 'COSTELA', defaultPercent: 5.7 * baseScaleFactor, fallbackSellingPrice: 34.90 },
+    { code: 'BOI-COST-GAU', name: 'Costela Gaúcha', category: 'COSTELA', defaultPercent: 5.7 * baseScaleFactor, fallbackSellingPrice: 34.90, parentMesaCode: 'BOI-COST-GAU', parentMesaName: 'PONTA DE AGULHA' },
     // Descarte & Subprodutos de Graxaria (Quebra Técnica Padrão 25.0%)
     { code: 'SUB-SEBO', name: 'Sebo / Gordura Industrial', category: 'DESCARTE', defaultPercent: fatYieldPercent, fallbackSellingPrice: fatSalePriceKg || 4.85, isWaste: true },
     { code: 'SUB-OSSO', name: 'Osso para Graxaria / Rendering', category: 'DESCARTE', defaultPercent: boneYieldPercent, fallbackSellingPrice: boneSalePriceKg || 0.90, isWaste: true },
@@ -622,7 +625,6 @@ export function calculateRealBeefYield(
   });
 
   // 1. Custo Base Varejo (Formação Padrão pela Quebra Técnica de 25%)
-  // Custo por kg de carne limpa antes do crédito de graxaria
   const baseCleanMeatCostPerKg = totalCleanMeatKg > 0 
     ? Number((totalCarcassCost / totalCleanMeatKg).toFixed(2)) 
     : Number((costPerKg * breakageMultiplier).toFixed(2));
@@ -651,7 +653,7 @@ export function calculateRealBeefYield(
   // Equalização Contábil de Custo por Valor Comercial de Balcão (Standard Butchery Accounting Allocation)
   const activeCostToAllocate = costFormationMode === 'COM_GRAXARIA_AUXILIAR' ? netCleanCost : totalCarcassCost;
 
-  const cuts: YieldAnalysisCuts[] = resolvedSpecs.map(spec => {
+  const standardCuts: YieldAnalysisCuts[] = resolvedSpecs.map(spec => {
     let costPriceKg = 0;
     const revenueR$ = Number((spec.weightKg * spec.sellingPriceKg).toFixed(2));
 
@@ -681,9 +683,138 @@ export function calculateRealBeefYield(
       revenueR$,
       marginOnCostPercent,
       marginOnSalePercent,
-      isWaste: spec.isWaste
+      isWaste: spec.isWaste,
+      isPrimaryPiece: false,
+      parentMesaCode: spec.parentMesaCode,
+      parentMesaName: spec.parentMesaName
     };
   });
+
+  // =========================================================================
+  // FORMAÇÃO ANALÍTICA DAS MESAS DE DESMEMBRAMENTO (PEÇAS INTEIRAS DA CARCAÇA)
+  // Percentuais zootécnicos e fatores de paridade de mercado no frigorífico/açougue
+  // =========================================================================
+  const primaryMesasDefinitions = [
+    {
+      id: 'BOI-DIANT',
+      code: 'BOI-DIANT',
+      name: 'Peça Dianteiro c/ Osso (Mesa Dianteiro)',
+      alias: 'PEÇA DIANTEIRO' as const,
+      carcassPercent: 39.0, // 39% da carcaça do boi casado
+      marketCostFactor: 0.81, // 81.0% do custo do boi casado no atacado
+      derivedCutCodes: ['COR-PALETA', 'COR-ACEM', 'COR-PEITO', 'COR-MUSCULO'],
+      derivedCutNames: ['Paleta Desossada', 'Acém', 'Peito Bovino', 'Músculo Dianteiro'],
+      description: 'Mesa do Dianteiro: Desossa de Paleta, Acém, Peito e Músculo do Dianteiro'
+    },
+    {
+      id: 'BOI-TRAS',
+      code: 'BOI-TRAS',
+      name: 'Peça Traseiro c/ Osso (Serrote / Traseiro Especial)',
+      alias: 'PEÇA TRAZEIRO' as const,
+      carcassPercent: 48.0, // 48% da carcaça do boi casado
+      marketCostFactor: 1.246, // 124.6% do custo do boi casado (ponderação Traseiro Alto + Perna)
+      derivedCutCodes: ['COR-PICANHA', 'COR-MIGNON', 'COR-CONTRA', 'COR-ALCATRA', 'COR-CHA', 'COR-PATINHO', 'COR-LAG-RED', 'COR-LAG-PLA'],
+      derivedCutNames: ['Picanha', 'Filé Mignon', 'Contra Filé', 'Alcatra c/ Maminha', 'Coxão Mole', 'Patinho', 'Lagarto Redondo', 'Coxão Duro'],
+      description: 'Mesa do Traseiro Especial: Cortes nobres de lombo e perna (Alcatrão + Coxão)'
+    },
+    {
+      id: 'BOI-COXAO',
+      code: 'BOI-COXAO',
+      name: 'Peça Coxão Completo (Mesa de Coxão / Perna)',
+      alias: 'PEÇA COXAO' as const,
+      carcassPercent: 30.0, // 30% da carcaça do boi casado (62.5% do Traseiro Especial)
+      marketCostFactor: 1.16, // 116.0% do custo do boi casado
+      derivedCutCodes: ['COR-CHA', 'COR-PATINHO', 'COR-LAG-RED', 'COR-LAG-PLA'],
+      derivedCutNames: ['Chã de Dentro (Coxão Mole)', 'Patinho', 'Lagarto Redondo', 'Lagarto Plano (Coxão Duro)'],
+      description: 'Mesa de Coxão: Chã de Dentro, Chã de Fora, Patinho e Lagarto'
+    },
+    {
+      id: 'BOI-ALCAT',
+      code: 'BOI-ALCAT',
+      name: 'Peça Alcatrão c/ Osso (Mesa de Alcatrão / Traseiro Alto)',
+      alias: 'PEÇA ALCATRAO' as const,
+      carcassPercent: 18.0, // 18% da carcaça do boi casado (37.5% do Traseiro Especial)
+      marketCostFactor: 1.39, // 139.0% do custo do boi casado
+      derivedCutCodes: ['COR-PICANHA', 'COR-MIGNON', 'COR-CONTRA', 'COR-ALCATRA'],
+      derivedCutNames: ['Picanha', 'Filé Mignon', 'Contra Filé', 'Alcatra c/ Maminha'],
+      description: 'Mesa de Alcatrão: Cortes nobres de grelha (Picanha, Filé Mignon, Alcatra e Contra Filé)'
+    },
+    {
+      id: 'BOI-COST-GAU',
+      code: 'BOI-COST-GAU',
+      name: 'Costela Gaúcha / Ponta de Agulha',
+      alias: 'PONTA DE AGULHA' as const,
+      carcassPercent: 13.0, // 13% da carcaça do boi casado
+      marketCostFactor: 0.73, // 73.0% do custo do boi casado
+      derivedCutCodes: ['BOI-COST-GAU'],
+      derivedCutNames: ['Costela Gaúcha'],
+      description: 'Ponta de Agulha: Costela Gaúcha com osso e entrecosto'
+    }
+  ];
+
+  const primaryMesas: PrimaryDesmembramentoMesa[] = primaryMesasDefinitions.map(def => {
+    const calculatedCostKg = Number((costPerKg * def.marketCostFactor).toFixed(2));
+    const weightKg = Number(((carcassWeightKg * def.carcassPercent) / 100).toFixed(2));
+    const totalCostR$ = Number((weightKg * calculatedCostKg).toFixed(2));
+
+    const prod = findProduct(def.code);
+    const sellingPriceKg = (prod && prod.sellingPriceKg && prod.sellingPriceKg > 0) 
+      ? prod.sellingPriceKg 
+      : Number((calculatedCostKg * 1.28).toFixed(2));
+
+    // Soma os cortes derivados que saem dessa mesa
+    const derivedSpecs = resolvedSpecs.filter(s => def.derivedCutCodes.includes(s.code || ''));
+    const derivedCleanWeightKg = Number(derivedSpecs.reduce((sum, s) => sum + s.weightKg, 0).toFixed(2));
+    const derivedRevenueR$ = Number(derivedSpecs.reduce((sum, s) => sum + (s.weightKg * s.sellingPriceKg), 0).toFixed(2));
+    const averageDerivedPriceKg = derivedCleanWeightKg > 0 ? Number((derivedRevenueR$ / derivedCleanWeightKg).toFixed(2)) : 0;
+
+    const marginOnCostPercent = calculatedCostKg > 0
+      ? Number((((averageDerivedPriceKg - calculatedCostKg) / calculatedCostKg) * 100).toFixed(1))
+      : 0;
+    const marginOnSalePercent = averageDerivedPriceKg > 0
+      ? Number((((averageDerivedPriceKg - calculatedCostKg) / averageDerivedPriceKg) * 100).toFixed(1))
+      : 0;
+
+    return {
+      id: def.id,
+      code: def.code,
+      name: def.name,
+      alias: def.alias,
+      carcassPercent: def.carcassPercent,
+      marketCostFactor: def.marketCostFactor,
+      calculatedCostKg,
+      weightKg,
+      totalCostR$,
+      sellingPriceKg,
+      averageDerivedPriceKg,
+      derivedCleanWeightKg,
+      derivedRevenueR$,
+      marginOnCostPercent,
+      marginOnSalePercent,
+      derivedCutCodes: def.derivedCutCodes,
+      derivedCutNames: def.derivedCutNames,
+      description: def.description
+    };
+  });
+
+  // Linhas das 4 Mesas / Peças Primárias para inclusão direta na tabela de apuração
+  const primaryPieceCuts: YieldAnalysisCuts[] = primaryMesas.map(mesa => ({
+    productCode: mesa.code,
+    name: mesa.alias, // "PEÇA DIANTEIRO", "PEÇA TRAZEIRO", "PEÇA COXAO", "PEÇA ALCATRAO"
+    category: 'MESA_PRIMARIA' as const,
+    weightKg: mesa.weightKg,
+    yieldPercent: mesa.carcassPercent,
+    costPriceKg: mesa.calculatedCostKg,
+    sellingPriceKg: mesa.sellingPriceKg,
+    revenueR$: Number((mesa.weightKg * mesa.sellingPriceKg).toFixed(2)),
+    marginOnCostPercent: Number((((mesa.sellingPriceKg - mesa.calculatedCostKg) / mesa.calculatedCostKg) * 100).toFixed(1)),
+    marginOnSalePercent: Number((((mesa.sellingPriceKg - mesa.calculatedCostKg) / mesa.sellingPriceKg) * 100).toFixed(1)),
+    isPrimaryPiece: true,
+    derivedCutsList: mesa.derivedCutNames
+  }));
+
+  // Monta a lista completa de cortes integrando as Peças Primárias / Mesas no topo da tabela
+  const cuts: YieldAnalysisCuts[] = [...primaryPieceCuts, ...standardCuts];
 
   const totalRevenue = cleanMeatRevenue + wasteRevenue;
   const grossProfit = totalRevenue - totalCarcassCost;
@@ -692,6 +823,7 @@ export function calculateRealBeefYield(
 
   return {
     cuts,
+    primaryMesas,
     totalCleanMeatKg: Number(totalCleanMeatKg.toFixed(2)),
     totalWasteKg: Number(totalWasteKg.toFixed(2)),
     breakagePercent: clampedBreakage,

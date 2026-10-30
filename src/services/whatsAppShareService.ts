@@ -1,6 +1,6 @@
 import { SheetRowData, Store, Supplier } from '../types/erp';
 import { calculateSheetTotals, formatCurrencyBRL } from './calculationService';
-import { PdfReportService, GeneratePurchaseOrderPdfOptions } from './pdfReportService';
+import { PdfReportService, GeneratePurchaseOrderPdfOptions, GenerateBeefYieldPdfOptions } from './pdfReportService';
 
 export class WhatsAppShareService {
   /**
@@ -337,6 +337,82 @@ export class WhatsAppShareService {
           return { success: true, sharedViaWebShare: true };
         }
         console.warn('Web Share falhou ou cancelado, acionando fallback WhatsApp Web:', err);
+      }
+    }
+
+    // 4. Fallback: Baixa o PDF no dispositivo e abre o WhatsApp com o texto pré-preenchido
+    doc.save(fileName);
+
+    const sanitizedPhone = this.sanitizePhone(targetPhone);
+    const phoneParam = sanitizedPhone ? `phone=${sanitizedPhone}&` : '';
+    const whatsappUrl = `https://api.whatsapp.com/send?${phoneParam}text=${encodeURIComponent(messageText)}`;
+
+    window.open(whatsappUrl, '_blank');
+    return { success: true, sharedViaWebShare: false };
+  }
+
+  /**
+   * Compartilha o RELATÓRIO TÉCNICO DE DESOSSA & FORMAÇÃO DE PREÇO EM PDF via WhatsApp
+   */
+  public static async shareBeefYieldViaWhatsApp(
+    options: GenerateBeefYieldPdfOptions,
+    targetPhone: string = ''
+  ): Promise<{ success: boolean; sharedViaWebShare: boolean }> {
+    const emissionDate = options.emissionDate || new Date();
+    const dateFormatted = emissionDate.toLocaleDateString('pt-BR');
+    const timeFormatted = emissionDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    // 1. Gera o documento PDF real em memória
+    const { doc, fileName } = await PdfReportService.getBeefYieldPdfDoc(options);
+    const pdfBlob = doc.output('blob');
+    const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+    // 2. Monta a mensagem de WhatsApp formatada com balanço zootécnico e financeiro
+    const messageLines = [
+      `🥩 *RELATÓRIO TÉCNICO DE DESOSSA & FORMAÇÃO DE PREÇOS*`,
+      `🏢 *GRUPO GAPP • DIREÇÃO DE CARNES & PERECÍVEIS*`,
+      `📅 *Emissão:* ${dateFormatted} às ${timeFormatted}`,
+      options.selectedBatchName ? `🏷️ *Lote:* ${options.selectedBatchName}` : '',
+      ``,
+      `⚖️ *PARÂMETROS ZOOTÉCNICOS & CUSTO BASE:*`,
+      `• *Peso Carcaça:* ${options.carcassWeight.toFixed(1)} kg (${(options.carcassWeight / 15).toFixed(1)} @)`,
+      `• *Custo Boi:* ${formatCurrencyBRL(options.costPerKg)}/kg (R$ ${options.arrobaPrice.toFixed(2)}/@)`,
+      `• *Quebra Técnica:* ${options.breakagePercent.toFixed(1)}% (Carne Limpa: ${options.cleanMeatYieldPercent.toFixed(1)}%)`,
+      `• *Custo Carne Limpa:* ${formatCurrencyBRL(options.effectiveCleanMeatCostPerKg)}/kg`,
+      ``,
+      `📋 *FORMAÇÃO DE PREÇO DAS 4 PEÇAS PRIMÁRIAS:*`,
+      ...options.primaryMesas.map(m => 
+        `• *${m.alias}:* Custo ${formatCurrencyBRL(m.calculatedCostKg)}/kg ➔ Venda *${formatCurrencyBRL(m.targetSellingPriceKg || m.sellingPriceKg)}/kg* (Margem: ${(m.targetMarginPercent || m.marginOnSalePercent).toFixed(1)}% | Markup: +${m.marginOnCostPercent}%)`
+      ),
+      ``,
+      `💰 *RESULTADO FINANCEIRO GLOBAL:*`,
+      `• *Faturamento Projetado:* ${formatCurrencyBRL(options.totalRevenue)}`,
+      `• *Lucro Bruto Projetado:* +${formatCurrencyBRL(options.grossProfit)}`,
+      `• *Margem Global:* ${options.globalMarginSalePercent}% s/ venda (Markup: +${options.globalMarginCostPercent}%)`,
+      `• *Crédito Graxaria Auxiliar:* +${formatCurrencyBRL(options.wasteRevenue)}/boi`,
+      ``,
+      `📄 _O relatório executivo em PDF de Desossa está anexado._`,
+      `🔒 _Autenticação Oficial Grupo GAPP Sistemas • v10.8_`
+    ].filter(Boolean);
+
+    const messageText = messageLines.join('\n');
+    let sharedViaWebShare = false;
+
+    // 3. Tenta compartilhamento nativo com o arquivo PDF anexado via Web Share API
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+      try {
+        await navigator.share({
+          files: [pdfFile],
+          title: `Relatorio_Desossa_${Math.round(options.carcassWeight)}kg`,
+          text: messageText,
+        });
+        sharedViaWebShare = true;
+        return { success: true, sharedViaWebShare: true };
+      } catch (err: any) {
+        if (err?.name === 'AbortError') {
+          return { success: true, sharedViaWebShare: true };
+        }
+        console.warn('Web Share de desossa falhou ou foi cancelado, acionando fallback WhatsApp Web:', err);
       }
     }
 

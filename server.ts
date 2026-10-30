@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { scrapeCepeaRealTime } from './src/services/cepeaScraper';
 import { marketQuotesCacheService } from './src/services/marketQuotesCacheService';
+import { perishablesTvPromoScraperService } from './src/services/perishablesTvPromoScraper';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -73,6 +74,62 @@ async function startServer() {
           message: fallbackErr?.message || 'Falha de comunicação'
         });
       }
+    }
+  });
+
+  // =========================================================================
+  // ENDPOINTS DE SCRAPING REAL & AUDITORIA DE OFERTAS TV / ENCARTES RJ
+  // =========================================================================
+
+  // Endpoint de Scraping Verificável em Tempo Real das Ofertas de TV, Encartes, Apps e Redes Sociais do RJ
+  app.get('/api/perishables/tv-promos/scrape', async (req, res) => {
+    try {
+      const forceFresh = req.query.fresh === 'true';
+      const data = await perishablesTvPromoScraperService.scrapeTvPromosRealTime(forceFresh);
+      res.setHeader('Cache-Control', 'public, max-age=30');
+      res.json(data);
+    } catch (err: any) {
+      console.error('[API /api/perishables/tv-promos/scrape] Erro:', err);
+      res.status(500).json({
+        error: 'Erro ao executar scraping de ofertas de TV e Encartes RJ',
+        message: err?.message || 'Falha de comunicação'
+      });
+    }
+  });
+
+  // Endpoint de Auditoria de Integridade e Detecção de Discrepâncias de Preço
+  app.post('/api/perishables/tv-promos/audit', async (req, res) => {
+    try {
+      const products = req.body?.products;
+      if (!Array.isArray(products)) {
+        return res.status(400).json({ error: 'Array de produtos é obrigatório para auditoria' });
+      }
+      const report = perishablesTvPromoScraperService.auditProductParity(products);
+      res.json(report);
+    } catch (err: any) {
+      console.error('[API /api/perishables/tv-promos/audit] Erro:', err);
+      res.status(500).json({
+        error: 'Erro ao executar auditoria de dados de perecíveis',
+        message: err?.message || 'Falha de processamento'
+      });
+    }
+  });
+
+  // Endpoint de Harmonização Automática para Restaurar Paridade de 100%
+  app.post('/api/perishables/tv-promos/harmonize', async (req, res) => {
+    try {
+      const products = req.body?.products;
+      if (!Array.isArray(products)) {
+        return res.status(400).json({ error: 'Array de produtos é obrigatório para harmonização' });
+      }
+      const result = perishablesTvPromoScraperService.harmonizeProducts(products);
+      res.json(result);
+    } catch (err: any) {
+      console.error('[API /api/perishables/tv-promos/harmonize] Erro:', err);
+      res.status(500).json({
+        error: 'Erro ao harmonizar preços de perecíveis',
+        message: err?.message || 'Falha de processamento'
+      });
     }
   });
 
