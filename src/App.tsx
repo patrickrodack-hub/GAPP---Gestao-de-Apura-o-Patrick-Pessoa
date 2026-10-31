@@ -708,7 +708,7 @@ export default function App() {
       handleTabSelect(tab);
       const tabNames: Record<NavigationTab, string> = {
         dashboard: 'Painel Geral (Alt+1)',
-        sheet: 'Planilha Direção v10.8 (Alt+2)',
+        sheet: 'Planilha Direção v10.9 (Alt+2)',
         quotes: 'Cotação em Tempo Real (Alt+0)',
         perishables: 'Cotação de Perecíveis (Alt+P)',
         yield: 'Desossa & Rendimento (Alt+3)',
@@ -751,7 +751,7 @@ export default function App() {
 
   const getActiveTabTitle = () => {
     switch (activeTab) {
-      case 'sheet': return 'Planilha de Compra da Direção v10.8 (Matriz 16 Filiais)';
+      case 'sheet': return 'Planilha de Compra da Direção v10.9 (Matriz 16 Filiais)';
       case 'dashboard': return 'Painel Executivo Geral';
       case 'quotes': return 'Cotações em Tempo Real (CEPEA, B3 & Hub RJ)';
       case 'perishables': return 'Cotação de Perecíveis • 12 Redes Supermercadistas RJ (8 Sub-abas)';
@@ -787,7 +787,7 @@ export default function App() {
                 <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950">
                   Nova Versão Disponível
                 </span>
-                <span className="text-[10px] text-emerald-400 font-mono">v10.8</span>
+                <span className="text-[10px] text-emerald-400 font-mono">v10.9</span>
               </div>
               <h3 className="text-sm font-bold text-white tracking-tight leading-snug">
                 Atualização Pronta: Gestão Apuração do Boi
@@ -970,7 +970,7 @@ export default function App() {
                 <div className="shrink-0 bg-[#f1f5f9] border-b border-slate-300 px-3 py-1 flex items-center justify-between text-xs select-none">
                   <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar py-0.5">
                     {[
-                      { id: 'sheet', label: 'Planilha v10.8' },
+                      { id: 'sheet', label: 'Planilha v10.9' },
                       { id: 'dashboard', label: 'Dashboard' },
                       { id: 'yield', label: 'Rendimento & Desossa' },
                       { id: 'results', label: 'DRE & Margens' },
@@ -1676,7 +1676,7 @@ export default function App() {
                 </span>
               </div>
               <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                Planilha Matriz Oficial da Direção v10.8 • 16 Filiais Integradas
+                Planilha Matriz Oficial da Direção v10.9 • 16 Filiais Integradas
               </div>
             </div>
           </footer>

@@ -180,6 +180,9 @@ export interface YieldParams {
   alcatraoCostKg?: number; // Custo de compra Alcatrão (R$/kg)
   costelaCostKg?: number;  // Custo de compra Costela Gaúcha (R$/kg)
   bandaCostKg?: number;    // Custo de compra Banda Suína (R$/kg)
+  mesaProfitMargins?: Record<string, number>;
+  mesaCarcassPercents?: Record<string, number>;
+  mesaCostFactors?: Record<string, number>;
 }
 
 export interface PrimaryDesmembramentoMesa {

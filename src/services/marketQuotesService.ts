@@ -2478,7 +2478,7 @@ export class MarketQuotesService {
       departmentTag: 'BOLETIM OFICIAL DE COTAÇÃO EM TEMPO REAL',
       rightMetaLines: [
         `Data: ${snapshot.lastUpdatedDate}`,
-        'Sistema: GAPP - PATRICK PESSOA v10.8',
+        'Sistema: GAPP - PATRICK PESSOA v10.9',
         'Desenvolvedor: Patrick Pessoa'
       ],
       themeColor: 'forest'
@@ -2702,7 +2702,7 @@ export class MarketQuotesService {
       `• *Suíno Vivo Produtor:* R$ ${suinoVivo.avgPriceKg.toFixed(2)}/kg vivo (CEPEA/ASEMG)`,
       ``,
       `📊 *Fontes Oficiais:* CEPEA/ESALQ • B3 • Scot • IMEA • Ceasa Irajá RJ • ASSERJ • Scantec RJ • NielsenIQ`,
-      `🔒 _ERP Gestão Apuração do Boi v10.8 • Patrick Pessoa_`
+      `🔒 _ERP Gestão Apuração do Boi v10.9 • Patrick Pessoa_`
     ];
 
     const messageText = lines.join('\n');
@@ -2993,7 +2993,7 @@ export class MarketQuotesService {
     doc.setTextColor(71, 85, 105);
     const note1 = '• Coleta de Preços: Levantamento semanal em lojas físicas, tabloides promocionais e sell-out das 12 principais redes supermercadistas e atacarejos do Estado do Rio de Janeiro.';
     const note2 = '• Fontes de Balizamento: NielsenIQ Retail Index, Scantec Sell-Out RJ e monitoramento oficial da ASSERJ (Associação de Supermercados do Estado do Rio de Janeiro).';
-    const note3 = '• Finalidade ERP: Calibração de metas de margem comercial, precificação de balcão e estratégia de desossa no Módulo de Gestão e Apuração do Boi v10.8.';
+    const note3 = '• Finalidade ERP: Calibração de metas de margem comercial, precificação de balcão e estratégia de desossa no Módulo de Gestão e Apuração do Boi v10.9.';
     doc.text(note1, margin + 3, finalY + 8);
     doc.text(note2, margin + 3, finalY + 11.5);
     doc.text(note3, margin + 3, finalY + 15);
@@ -3637,7 +3637,7 @@ export class MarketQuotesService {
         `  - Costela: R$ ${b.sampleCutPrices.costela.toFixed(2)} | *Pernil Suíno:* R$ ${b.sampleCutPrices.pernilSuino.toFixed(2)}`
       ),
       ``,
-      `🔒 _Relatório Oficial GAPP - PATRICK PESSOA • ERP v10.8 • Patrick Pessoa_`
+      `🔒 _Relatório Oficial GAPP - PATRICK PESSOA • ERP v10.9 • Patrick Pessoa_`
     ];
 
     const messageText = lines.join('\n');

@@ -316,7 +316,7 @@ export class PrintEngineService {
   <!-- Header Oficial Padronizado com Logo -->
   ${ReportBrandingService.getHtmlHeader({
     title: `PEDIDO DE COMPRA Nº ${orderNumber} • ${supplierName}`,
-    subtitle: 'ERP Apuração do Boi v10.8 • Documento Oficial de Fornecimento • Matriz Operacional 16 Lojas',
+    subtitle: 'ERP Apuração do Boi v10.9 • Documento Oficial de Fornecimento • Matriz Operacional 16 Lojas',
     departmentTag: 'DIRETORIA DE COMPRAS & SUPRIMENTOS FRIGORÍFICOS',
     rightMetaHtml: `
       <div><strong>Pedido Nº:</strong> <span style="font-family:monospace;color:#b5e550;font-weight:900;">${orderNumber}</span></div>
@@ -634,7 +634,7 @@ export class PrintEngineService {
     departmentTag: 'RELATÓRIO GERENCIAL DE PEDIDOS DA MATRIZ',
     rightMetaHtml: `
       <div><strong>Data de Emissão:</strong> ${emissionDateFormatted} às ${emissionTimeFormatted}</div>
-      <div><strong>Sistema:</strong> GAPP - PATRICK PESSOA (v10.8)</div>
+      <div><strong>Sistema:</strong> GAPP - PATRICK PESSOA (v10.9)</div>
       <div style="font-family: monospace; font-size: 6pt; color: #b5e550;">Autenticação: ${hashAuth}</div>
     `,
     themeColor: 'forest'
@@ -955,7 +955,7 @@ export class PrintEngineService {
 <body>
   ${ReportBrandingService.getHtmlHeader({
     title: title,
-    subtitle: 'Matriz Oficial Consolidada de 16 Filiais • v10.8 • Validação de Compra & Apuração',
+    subtitle: 'Matriz Oficial Consolidada de 16 Filiais • v10.9 • Validação de Compra & Apuração',
     departmentTag: 'PLANILHA MATRIZ DE COMPRAS DA DIREÇÃO',
     rightMetaHtml: `
       <div><strong>Emissão:</strong> ${emissionDateFormatted} às ${emissionTimeFormatted}</div>

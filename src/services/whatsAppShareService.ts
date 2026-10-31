@@ -81,7 +81,7 @@ export class WhatsAppShareService {
       ``,
       totalBandas > 0 ? `🐖 *SUÍNO (CÂMARA / BALCÃO):* ${totalBandas} bandas (${(totalBandas * 36).toLocaleString('pt-BR')} kg)\n` : '',
       `📄 _O arquivo PDF completo em formato A4 Paisagem foi gerado para anexo._`,
-      `🔒 _Autenticação Oficial Grupo GAPP • v10.8_`
+      `🔒 _Autenticação Oficial Grupo GAPP • v10.9_`
     ].filter(Boolean);
 
     const messageText = messageLines.join('\n');
@@ -316,7 +316,7 @@ export class WhatsAppShareService {
       `• *PEDIDO DE SUÍNO (Bandas):* *${totalPedidoSuino} peças*`,
       ``,
       `📄 _O relatório executivo em PDF (A4 Paisagem) com a tabela detalhada das 16 filiais está em anexo._`,
-      `🔒 _Autenticação Oficial Grupo GAPP Sistemas • v10.8_`
+      `🔒 _Autenticação Oficial Grupo GAPP Sistemas • v10.9_`
     ].filter(Boolean);
 
     const messageText = messageLines.join('\n');
@@ -392,7 +392,7 @@ export class WhatsAppShareService {
       `• *Crédito Graxaria Auxiliar:* +${formatCurrencyBRL(options.wasteRevenue)}/boi`,
       ``,
       `📄 _O relatório executivo em PDF de Desossa está anexado._`,
-      `🔒 _Autenticação Oficial Grupo GAPP Sistemas • v10.8_`
+      `🔒 _Autenticação Oficial Grupo GAPP Sistemas • v10.9_`
     ].filter(Boolean);
 
     const messageText = messageLines.join('\n');

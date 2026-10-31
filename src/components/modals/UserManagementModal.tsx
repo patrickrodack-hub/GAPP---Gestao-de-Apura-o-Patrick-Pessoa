@@ -463,7 +463,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
         <div class="header-box">
           <div>
             <div class="brand-title">GAPP - PATRICK PESSOA • GESTÃO INTEGRAL DE COMPRA PERSONALIZADO</div>
-            <div class="sub-title">RELATÓRIO AUDITADO DE USUÁRIOS & MATRIZ DE PERMISSÕES DOS 14 MÓDULOS (v10.8)</div>
+            <div class="sub-title">RELATÓRIO AUDITADO DE USUÁRIOS & MATRIZ DE PERMISSÕES DOS 14 MÓDULOS (v10.9)</div>
           </div>
           <div class="meta-box">
             <div><strong>Emissão:</strong> ${emissionStr}</div>
@@ -552,7 +552,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
         </div>
 
         <div class="footer">
-          Documento gerado automaticamente pelo Sistema ERP GAPP - PATRICK PESSOA v10.8 • Impresso em ${emissionStr}
+          Documento gerado automaticamente pelo Sistema ERP GAPP - PATRICK PESSOA v10.9 • Impresso em ${emissionStr}
         </div>
 
         <script>
@@ -623,7 +623,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-400 text-slate-950 tracking-wider">
-                  GAPP - PATRICK PESSOA v10.8
+                  GAPP - PATRICK PESSOA v10.9
                 </span>
                 <span className="text-xs font-mono text-emerald-300">
                   • Módulo Central de Gestão & Permissões

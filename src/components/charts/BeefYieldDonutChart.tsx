@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { PrimaryDesmembramentoMesa, YieldAnalysisCuts } from '../../types/erp';
 import { formatCurrencyBRL, formatNumberBR } from '../../services/calculationService';
-import { PieChart, Boxes, Layers, Scale, Bone, Flame } from 'lucide-react';
+import { PieChart, Boxes, Layers, Scale, Bone, Flame, FlaskConical } from 'lucide-react';
 
 interface BeefYieldDonutChartProps {
   carcassWeight: number;
@@ -11,6 +11,8 @@ interface BeefYieldDonutChartProps {
   breakagePercent: number;
   selectedMesaFilter?: string;
   onSelectMesaFilter?: (filter: any) => void;
+  isSimulated?: boolean;
+  originalCarcassWeight?: number;
 }
 
 interface DonutSlice {
@@ -34,7 +36,9 @@ export const BeefYieldDonutChart: React.FC<BeefYieldDonutChartProps> = ({
   cuts,
   breakagePercent,
   selectedMesaFilter,
-  onSelectMesaFilter
+  onSelectMesaFilter,
+  isSimulated = false,
+  originalCarcassWeight
 }) => {
   const [viewMode, setViewMode] = useState<'MESAS' | 'COMPOSICAO'>('MESAS');
   const [hoveredSliceId, setHoveredSliceId] = useState<string | null>(null);
@@ -169,18 +173,27 @@ export const BeefYieldDonutChart: React.FC<BeefYieldDonutChartProps> = ({
       {/* Header do Gráfico */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-            <PieChart className="w-5 h-5" />
+          <div className={`p-2 rounded-xl ${isSimulated ? 'bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/30' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'}`}>
+            {isSimulated ? <FlaskConical className="w-5 h-5 animate-pulse" /> : <PieChart className="w-5 h-5" />}
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
               <span>Distribuição de Peso da Desossa • Rendimento por Peça</span>
               <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-600/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
                 Gráfico de Rosca Analítico
               </span>
+              {isSimulated && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-purple-600 text-white shadow-2xs flex items-center gap-1">
+                  <FlaskConical className="w-3 h-3" />
+                  Cenário Simulado: {formatNumberBR(carcassWeight, 1)} kg
+                </span>
+              )}
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              Proporção zootécnica de cada peça sobre o peso total da carcaça ({formatNumberBR(carcassWeight, 1)} kg)
+              {isSimulated 
+                ? `Proporção zootécnica recalculada para o cenário de ${formatNumberBR(carcassWeight, 1)} kg (Original do ERP mantido em ${formatNumberBR(originalCarcassWeight || 240, 1)} kg)`
+                : `Proporção zootécnica de cada peça sobre o peso total da carcaça (${formatNumberBR(carcassWeight, 1)} kg)`
+              }
             </p>
           </div>
         </div>
@@ -289,14 +302,14 @@ export const BeefYieldDonutChart: React.FC<BeefYieldDonutChartProps> = ({
                 </div>
               ) : (
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                    PESO TOTAL
+                  <span className={`text-[10px] font-bold uppercase tracking-wider block ${isSimulated ? 'text-purple-600 dark:text-purple-400 font-black' : 'text-slate-400'}`}>
+                    {isSimulated ? '🧪 PESO SIMULADO' : 'PESO TOTAL'}
                   </span>
-                  <div className="text-2xl font-black font-mono text-slate-900 dark:text-white mt-0.5">
+                  <div className={`text-2xl font-black font-mono mt-0.5 ${isSimulated ? 'text-purple-700 dark:text-purple-300' : 'text-slate-900 dark:text-white'}`}>
                     {formatNumberBR(carcassWeight, 1)}
                     <span className="text-xs font-semibold text-slate-500"> kg</span>
                   </div>
-                  <span className="text-[11px] font-mono text-amber-600 dark:text-amber-400 font-bold block">
+                  <span className={`text-[11px] font-mono font-bold block ${isSimulated ? 'text-purple-600 dark:text-purple-400' : 'text-amber-600 dark:text-amber-400'}`}>
                     100.0% carcaça
                   </span>
                   <span className="text-[9px] text-slate-400 font-mono mt-0.5 block">

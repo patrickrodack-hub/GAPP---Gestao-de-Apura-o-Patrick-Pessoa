@@ -315,7 +315,7 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
                     PEDIDO DE COMPRA DE BOI PADRÃO • Nº {orderNumber}
                   </h1>
                   <p className="text-[11px] text-slate-300">
-                    ERP Apuração do Boi v10.8 • Direção de Operações & Suprimentos • Desenvolvedor: Patrick Pessoa
+                    ERP Apuração do Boi v10.9 • Direção de Operações & Suprimentos • Desenvolvedor: Patrick Pessoa
                   </p>
                 </div>
               </div>
@@ -531,7 +531,7 @@ export const PrintPurchaseOrderModal: React.FC<PrintPurchaseOrderModalProps> = (
                 />
                 <div className="text-left">
                   <div className="font-extrabold text-[#113829]">
-                    GAPP - PATRICK PESSOA • Sistema ERP Apuração do Boi v10.8 • Gestão Integral de Compra Personalizado
+                    GAPP - PATRICK PESSOA • Sistema ERP Apuração do Boi v10.9 • Gestão Integral de Compra Personalizado
                   </div>
                   <div className="text-[9px] text-slate-500">
                     Desenvolvedor & Direção do Sistema: <strong>Patrick Pessoa</strong> • Documento Oficial Padronizado

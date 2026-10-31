@@ -55,7 +55,7 @@ export class ManualPdfService {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8);
       doc.setTextColor(181, 229, 80);
-      doc.text('GAPP - PATRICK PESSOA • ERP GESTÃO APURAÇÃO DO BOI v10.8', margin + 18, 8);
+      doc.text('GAPP - PATRICK PESSOA • ERP GESTÃO APURAÇÃO DO BOI v10.9', margin + 18, 8);
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
@@ -86,7 +86,7 @@ export class ManualPdfService {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7);
       doc.setTextColor(17, 56, 41);
-      doc.text('GAPP - PATRICK PESSOA • Manual Oficial do Sistema ERP Gestão Apuração do Boi v10.8 • Desenvolvedor: Patrick Pessoa', textX, pageHeight - 5.5);
+      doc.text('GAPP - PATRICK PESSOA • Manual Oficial do Sistema ERP Gestão Apuração do Boi v10.9 • Desenvolvedor: Patrick Pessoa', textX, pageHeight - 5.5);
       doc.text(`Página ${pageNum} de ${totalPages}`, pageWidth - margin, pageHeight - 5.5, { align: 'right' });
     };
 
@@ -141,7 +141,7 @@ export class ManualPdfService {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(241, 245, 249);
-    doc.text('• Versão do Sistema: v10.8 (Build Oficial 1.8.0108)', margin + 15, 137);
+    doc.text('• Versão do Sistema: v10.9 (Build Oficial 1.9.0109)', margin + 15, 137);
     doc.text('• Arquitetura: GAPP - PATRICK PESSOA • Motor ERP & Gestão Integrada', margin + 15, 143);
     doc.text('• Abrangência da Rede: Matriz Consolidada de 16 Filiais', margin + 15, 149);
     doc.text('• Banco de Dados & Nuvem: PostgreSQL / Firestore Cloud Backup', margin + 15, 155);

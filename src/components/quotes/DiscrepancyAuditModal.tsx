@@ -337,7 +337,7 @@ export const DiscrepancyAuditModal: React.FC<DiscrepancyAuditModalProps> = ({
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
               <h5 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Protocolo de Credibilidade Comercial GAPP v10.8</span>
+                <span>Protocolo de Credibilidade Comercial GAPP v10.9</span>
               </h5>
               <p>
                 O sistema de cotações de perecíveis do ERP possui um mecanismo de auditoria contínua que garante a conformidade entre o que os concorrentes anunciam na televisão aberta e tabloides e o que é computado nas tabelas analíticas.

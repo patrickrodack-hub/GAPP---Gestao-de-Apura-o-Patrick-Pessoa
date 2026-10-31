@@ -1,7 +1,7 @@
 import { PerishableTvPromoOffer } from '../types/perishablesQuotes';
 
 /**
- * REGISTRO CENTRAL DE OFERTAS VERÍDICAS DE PROMOÇÃO DO RIO DE JANEIRO (v10.8)
+ * REGISTRO CENTRAL DE OFERTAS VERÍDICAS DE PROMOÇÃO DO RIO DE JANEIRO (v10.9)
  * 
  * Fontes Oficiais Auditadas & Monitoradas:
  * 1. Televisão Aberta RJ:

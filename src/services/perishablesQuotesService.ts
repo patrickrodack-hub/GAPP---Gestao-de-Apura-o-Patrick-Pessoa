@@ -4379,7 +4379,7 @@ export class PerishablesQuotesService {
       departmentTag: 'AUDITORIA DE PERECÍVEIS & RADAR DE TV / ENCARTE RJ',
       rightMetaLines: [
         `Emissão: ${today}`,
-        'Sistema: GAPP - PATRICK PESSOA v10.8',
+        'Sistema: GAPP - PATRICK PESSOA v10.9',
         'Desenvolvedor: Patrick Pessoa'
       ],
       themeColor: 'forest'
@@ -4639,7 +4639,7 @@ export class PerishablesQuotesService {
       text += `• Média 12 Redes: *R$ ${stats.avgPrice.toFixed(2)}*\n\n`;
     });
 
-    text += `_Gerado via GAPP - PATRICK PESSOA • Gestão Apuração do Boi v10.8 • Patrick Pessoa_`;
+    text += `_Gerado via GAPP - PATRICK PESSOA • Gestão Apuração do Boi v10.9 • Patrick Pessoa_`;
     return encodeURIComponent(text);
   }
 }

@@ -42,7 +42,13 @@ import {
   Percent,
   Printer,
   Download,
-  FileDown
+  FileDown,
+  FlaskConical,
+  AlertTriangle,
+  AlertCircle,
+  RefreshCw,
+  X,
+  CheckCheck
 } from 'lucide-react';
 import { BeefYieldDonutChart } from '../charts/BeefYieldDonutChart';
 import { YieldReportModal } from '../modals/YieldReportModal';
@@ -171,6 +177,81 @@ export const YieldTab: React.FC<YieldTabProps> = ({
   const [pdfSuccess, setPdfSuccess] = useState<boolean>(false);
   const [equalizedAppliedSuccess, setEqualizedAppliedSuccess] = useState<boolean>(false);
 
+  // =========================================================================
+  // SIMULADOR DE CENÁRIOS DE 'PESO DA CARCAÇA'
+  // Permite simular diferentes pesos (kg) e recalcular automaticamente a Tabela
+  // Técnica e o Gráfico de Rosca, mantendo o valor original do ERP intacto até a aplicação.
+  // =========================================================================
+  const [simulationWeight, setSimulationWeight] = useState<number | ''>('');
+  const [isSimulating, setIsSimulating] = useState<boolean>(false);
+  const [simulationAppliedSuccess, setSimulationAppliedSuccess] = useState<boolean>(false);
+
+  // Peso efetivo da carcaça utilizado para todos os cálculos analíticos em tempo real
+  const effectiveCarcassWeight = useMemo(() => {
+    if (isSimulating && typeof simulationWeight === 'number' && simulationWeight > 0) {
+      return simulationWeight;
+    }
+    return carcassWeight;
+  }, [isSimulating, simulationWeight, carcassWeight]);
+
+  // Ativa a simulação com um peso específico
+  const handleStartSimulation = (newWeight: number) => {
+    const sanitized = Math.max(10, Math.min(1000, newWeight));
+    setSimulationWeight(sanitized);
+    setIsSimulating(true);
+  };
+
+  // Atualiza o valor do input de simulação em tempo real
+  const handleSimulationInputChange = (val: string) => {
+    if (val === '') {
+      setSimulationWeight('');
+      return;
+    }
+    const num = parseFloat(val);
+    if (!isNaN(num) && num > 0) {
+      setSimulationWeight(num);
+      setIsSimulating(true);
+    } else {
+      setSimulationWeight('');
+    }
+  };
+
+  // Cancela / Desiste da simulação restaurando imediatamente o peso original intacto
+  const handleCancelSimulation = () => {
+    setIsSimulating(false);
+    setSimulationWeight('');
+  };
+
+  // Aplica o cenário simulado de forma definitiva ao ERP (sobrescrevendo carcassWeight)
+  const handleApplySimulation = () => {
+    if (isSimulating && typeof simulationWeight === 'number' && simulationWeight > 0) {
+      const finalWeight = simulationWeight;
+      setCarcassWeight(finalWeight);
+      setIsSimulating(false);
+      setSimulationWeight('');
+      
+      const currentParams = StorageService.getYieldParams();
+      const updated = {
+        ...currentParams,
+        carcassWeight: finalWeight
+      };
+      StorageService.saveYieldParams(updated);
+      if (onSaveYieldParams) {
+        onSaveYieldParams(updated);
+      }
+      
+      setSimulationAppliedSuccess(true);
+      setTimeout(() => setSimulationAppliedSuccess(false), 3500);
+    }
+  };
+
+  // =========================================================================
+  // SISTEMA DE ALERTAS VISUAIS DE RENTABILIDADE (DIANTEIRO, TRASEIRO, COXÃO, ALCATRÃO)
+  // Monitora as 4 peças primárias e dispara alertas em vermelho se a margem calculada
+  // com o preço praticado ficar abaixo da meta definida na configuração.
+  // =========================================================================
+  const TARGET_ALERT_PIECES = ['BOI-DIANT', 'BOI-TRAS', 'BOI-COXAO', 'BOI-ALCAT'];
+
   // Sincroniza dinamicamente se yieldParams mudar externamente
   useEffect(() => {
     if (yieldParams) {
@@ -198,9 +279,10 @@ export const YieldTab: React.FC<YieldTabProps> = ({
   }, [realCatalog, customSellingPrices]);
 
   // Apuração REAL de rendimento e desossa com dados do ERP e quebra de varejo
+  // Recalcula AUTOMATICAMENTE com effectiveCarcassWeight (simulado ou original)
   const realYield = useMemo(() => {
     return calculateRealBeefYield(
-      carcassWeight,
+      effectiveCarcassWeight,
       costPerKg,
       effectiveCatalog,
       fatPriceKg,
@@ -213,7 +295,7 @@ export const YieldTab: React.FC<YieldTabProps> = ({
       mesaProfitMargins
     );
   }, [
-    carcassWeight,
+    effectiveCarcassWeight,
     costPerKg,
     effectiveCatalog,
     fatPriceKg,
@@ -225,6 +307,55 @@ export const YieldTab: React.FC<YieldTabProps> = ({
     mesaCostFactors,
     mesaProfitMargins
   ]);
+
+  // Análise consolidada das peças com rentabilidade abaixo da meta definida na configuração
+  const belowTargetAnalysis = useMemo(() => {
+    const items: {
+      code: string;
+      alias: string;
+      name: string;
+      targetMargin: number;
+      calculatedMargin: number;
+      suggestedPrice: number;
+      currentPrice: number;
+      deficitMargin: number;
+      priceDiff: number;
+    }[] = [];
+
+    realYield.primaryMesas.forEach(mesa => {
+      if (TARGET_ALERT_PIECES.includes(mesa.code)) {
+        const targetMarg = mesaProfitMargins[mesa.code] ?? (mesa.marginOnSalePercent || 28);
+        const suggestedPrice = Number((mesa.calculatedCostKg / (1 - targetMarg / 100)).toFixed(2));
+        const currentPrice = mesa.sellingPriceKg;
+        const calculatedMargin = currentPrice > 0 
+          ? Number((((currentPrice - mesa.calculatedCostKg) / currentPrice) * 100).toFixed(1))
+          : 0;
+        const priceDiff = currentPrice - suggestedPrice;
+        const isBelow = calculatedMargin < targetMarg || priceDiff < -0.05;
+
+        if (isBelow) {
+          items.push({
+            code: mesa.code,
+            alias: mesa.alias,
+            name: mesa.name,
+            targetMargin: targetMarg,
+            calculatedMargin,
+            suggestedPrice,
+            currentPrice,
+            deficitMargin: Number((targetMarg - calculatedMargin).toFixed(1)),
+            priceDiff
+          });
+        }
+      }
+    });
+
+    return {
+      hasAlert: items.length > 0,
+      count: items.length,
+      items,
+      names: items.map(item => item.alias)
+    };
+  }, [realYield.primaryMesas, mesaProfitMargins]);
 
   // Filtro de exibição na tabela de cortes por Mesa de Desmembramento
   const [selectedMesaFilter, setSelectedMesaFilter] = useState<'ALL' | 'MESAS_ONLY' | 'BOI-ALCAT' | 'BOI-COXAO' | 'BOI-DIANT' | 'BOI-COST-GAU' | 'WASTE'>('ALL');
@@ -837,31 +968,71 @@ export const YieldTab: React.FC<YieldTabProps> = ({
         {/* Input parameters grid */}
         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
           
-          {/* 1. Peso da Carcaça - Campo Mestre Real */}
-          <div className="bg-amber-50/70 dark:bg-amber-950/30 p-3 rounded-lg border-2 border-amber-300 dark:border-amber-700 shadow-xs">
+          {/* 1. Peso da Carcaça - Campo Mestre Real & Simulação */}
+          <div className={`p-3 rounded-lg border-2 shadow-xs transition-colors ${
+            isSimulating
+              ? 'bg-amber-100/80 dark:bg-amber-950/40 border-amber-500 ring-2 ring-amber-400/30'
+              : 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700'
+          }`}>
             <div className="flex items-center justify-between mb-1">
               <label className="text-[11px] font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wider block">
                 Peso Carcaça / Lote
               </label>
-              <span className="flex items-center gap-0.5 text-[9px] text-amber-700 dark:text-amber-300 font-bold bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.5 rounded">
-                <Link2 className="w-2.5 h-2.5" />
-                <span>MESTRE</span>
-              </span>
+              {isSimulating ? (
+                <span className="flex items-center gap-1 text-[9px] text-amber-950 font-black bg-amber-400 px-1.5 py-0.5 rounded shadow-xs animate-pulse">
+                  <FlaskConical className="w-2.5 h-2.5" />
+                  <span>SIMULADO</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-0.5 text-[9px] text-amber-700 dark:text-amber-300 font-bold bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.5 rounded">
+                  <Link2 className="w-2.5 h-2.5" />
+                  <span>MESTRE</span>
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <input
                 type="number"
                 min="50"
                 step="1"
-                value={carcassWeight}
-                onChange={(e) => setCarcassWeight(Number(e.target.value) || 0)}
+                value={isSimulating ? simulationWeight : carcassWeight}
+                onChange={(e) => {
+                  if (isSimulating) {
+                    handleSimulationInputChange(e.target.value);
+                  } else {
+                    const val = Number(e.target.value) || 0;
+                    setCarcassWeight(val);
+                  }
+                }}
                 className="w-full bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded px-2 py-1.5 text-sm font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 shadow-2xs"
               />
               <span className="text-xs text-amber-900 dark:text-amber-200 font-bold">kg</span>
             </div>
-            <span className="text-[10px] text-amber-700 dark:text-amber-400 mt-1 block font-medium">
-              Equivale a {(carcassWeight / 15).toFixed(1)} @
-            </span>
+            {isSimulating ? (
+              <div className="mt-1 flex items-center justify-between text-[10px]">
+                <span className="text-amber-800 dark:text-amber-300 font-bold">
+                  Original: {carcassWeight} kg
+                </span>
+                <span className="text-amber-700 dark:text-amber-400 font-medium">
+                  {(effectiveCarcassWeight / 15).toFixed(1)} @
+                </span>
+              </div>
+            ) : (
+              <div className="mt-1 flex items-center justify-between text-[10px]">
+                <span className="text-amber-700 dark:text-amber-400 font-medium">
+                  Equivale a {(carcassWeight / 15).toFixed(1)} @
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleStartSimulation(carcassWeight)}
+                  className="text-amber-800 dark:text-amber-300 hover:underline font-bold flex items-center gap-0.5 cursor-pointer"
+                  title="Simular novos cenários de peso da carcaça sem alterar os dados oficiais do ERP"
+                >
+                  <FlaskConical className="w-2.5 h-2.5" />
+                  <span>Simular</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 2. Custo de Compra por Kg Real */}
@@ -1150,15 +1321,155 @@ export const YieldTab: React.FC<YieldTabProps> = ({
 
       </div>
 
+      {/* 3.3. SIMULADOR INTERATIVO DE CENÁRIOS DE 'PESO DA CARCAÇA' */}
+      <div className={`p-4 rounded-2xl border-2 transition-all ${
+        isSimulating 
+          ? 'bg-gradient-to-r from-purple-500/15 via-indigo-500/10 to-blue-500/15 dark:from-purple-950/50 dark:via-indigo-950/40 dark:to-blue-950/50 border-purple-500/60 ring-2 ring-purple-500/30 shadow-lg' 
+          : 'bg-gradient-to-r from-slate-50 via-white to-slate-50 dark:from-slate-900/90 dark:via-slate-900 dark:to-slate-900/90 border-slate-200 dark:border-slate-800 shadow-sm'
+      }`}>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-2.5 rounded-xl shrink-0 ${
+              isSimulating 
+                ? 'bg-purple-600 text-white shadow-md animate-pulse' 
+                : 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30'
+            }`}>
+              <FlaskConical className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Simulador de Cenários de Peso da Carcaça</span>
+                </h3>
+                {isSimulating ? (
+                  <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-purple-600 text-white shadow-xs flex items-center gap-1">
+                    <FlaskConical className="w-3 h-3" />
+                    Simulação Ativa ({effectiveCarcassWeight} kg)
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                    Base Oficial: {carcassWeight} kg ({(carcassWeight / 15).toFixed(1)} @)
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                {isSimulating ? (
+                  <span className="text-purple-800 dark:text-purple-300 font-medium">
+                    Simulando carcaça de <strong>{effectiveCarcassWeight} kg</strong> ({(effectiveCarcassWeight / 15).toFixed(1)} @). A <strong>Tabela Técnica</strong> e o <strong>Gráfico de Rosca</strong> foram recalculados automaticamente. O peso original do ERP (<strong>{carcassWeight} kg</strong>) permanece <strong>100% intacto</strong> até você clicar em aplicar.
+                  </span>
+                ) : (
+                  <span>
+                    Digite um novo peso ou clique nos atalhos para simular diferentes animais. A tabela técnica e o gráfico de rosca recalculam instantaneamente sem alterar a base de dados.
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* Controles de Simulação: Input + Presets Rápidos + Ações */}
+          <div className="flex flex-wrap items-center gap-2.5 self-start lg:self-auto">
+            {/* Input Campo de Simulação */}
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition shadow-2xs ${
+              isSimulating 
+                ? 'bg-white dark:bg-slate-900 border-purple-400 dark:border-purple-600 ring-2 ring-purple-500/20' 
+                : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700'
+            }`}>
+              <label className="text-[10px] font-black uppercase text-purple-700 dark:text-purple-300 tracking-wider">
+                Simular Peso:
+              </label>
+              <input
+                type="number"
+                min="50"
+                max="600"
+                step="1"
+                placeholder={carcassWeight.toString()}
+                value={isSimulating ? (simulationWeight || '') : ''}
+                onChange={(e) => handleSimulationInputChange(e.target.value)}
+                className="w-16 text-center font-mono font-black text-sm text-purple-900 dark:text-purple-100 bg-transparent focus:outline-none"
+                title="Digite o peso da carcaça em kg para simular (ex: 260)"
+              />
+              <span className="text-xs font-bold text-purple-700 dark:text-purple-300">kg</span>
+            </div>
+
+            {/* Cenários Rápidos de Boi */}
+            <div className="hidden sm:flex items-center gap-1">
+              {[
+                { w: 210, label: '210 kg (Novilho)' },
+                { w: 240, label: '240 kg (Médio)' },
+                { w: 270, label: '270 kg (Pesado)' },
+                { w: 300, label: '300 kg (Gordo)' }
+              ].map(item => (
+                <button
+                  key={item.w}
+                  type="button"
+                  onClick={() => handleStartSimulation(item.w)}
+                  className={`px-2 py-1.5 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                    effectiveCarcassWeight === item.w && isSimulating
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-purple-50 dark:hover:bg-purple-950/40'
+                  }`}
+                  title={`Simular cenário de ${item.w} kg (${(item.w/15).toFixed(1)} @)`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Ações de Simulação */}
+            {isSimulating ? (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleApplySimulation}
+                  className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm active:scale-95"
+                  title="Aplica este cenário simulado tornando-o o peso oficial da carcaça no ERP"
+                >
+                  <CheckCheck className="w-3.5 h-3.5 text-emerald-200" />
+                  <span>Aplicar Cenário ao ERP</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelSimulation}
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1 transition cursor-pointer shadow-xs active:scale-95"
+                  title="Descartar simulação e restaurar o peso oficial intacto"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Descartar</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleStartSimulation(carcassWeight + 20)}
+                className="px-3 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                title="Simular com acréscimo de +20 kg"
+              >
+                <FlaskConical className="w-3.5 h-3.5" />
+                <span>Simular Cenário (+20 kg)</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {simulationAppliedSuccess && (
+          <div className="mt-2.5 pt-2 border-t border-purple-200 dark:border-purple-800 text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 animate-fadeIn">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>Cenário simulado de {carcassWeight} kg foi aplicado e gravado com sucesso no ERP!</span>
+          </div>
+        )}
+      </div>
+
       {/* 3.4. GRÁFICO DE ROSCA VISUAL • DISTRIBUIÇÃO DE PESO DA DESOSSA */}
       <BeefYieldDonutChart
-        carcassWeight={carcassWeight}
+        carcassWeight={effectiveCarcassWeight}
         costPerKg={costPerKg}
         primaryMesas={realYield.primaryMesas}
         cuts={realYield.cuts}
         breakagePercent={breakagePercent}
         selectedMesaFilter={selectedMesaFilter}
         onSelectMesaFilter={(filter) => setSelectedMesaFilter(filter)}
+        isSimulated={isSimulating && typeof simulationWeight === 'number' && simulationWeight !== carcassWeight}
+        originalCarcassWeight={carcassWeight}
       />
 
       {/* 3.5. PAINEL ANALÍTICO DAS MESAS DE DESMEMBRAMENTO PRIMÁRIO (PEÇAS INTEIRAS) */}
@@ -1231,19 +1542,36 @@ export const YieldTab: React.FC<YieldTabProps> = ({
             const isAlcatrao = mesa.code === 'BOI-ALCAT';
             const isCoxao = mesa.code === 'BOI-COXAO';
 
+            // Alerta de rentabilidade calculada vs meta definida
+            const targetMarg = mesaProfitMargins[mesa.code] ?? (mesa.marginOnSalePercent || 28);
+            const suggestedSellingPrice = Number((mesa.calculatedCostKg / (1 - targetMarg / 100)).toFixed(2));
+            const currentErpPrice = mesa.sellingPriceKg;
+            const calculatedMarginSalePercent = currentErpPrice > 0 
+              ? Number((((currentErpPrice - mesa.calculatedCostKg) / currentErpPrice) * 100).toFixed(1))
+              : 0;
+            const priceDiff = currentErpPrice - suggestedSellingPrice;
+            const isMonitoredPiece = TARGET_ALERT_PIECES.includes(mesa.code);
+            const isBelowTarget = isMonitoredPiece && (calculatedMarginSalePercent < targetMarg || priceDiff < -0.05);
+            const marginDeficitPercent = Number((targetMarg - calculatedMarginSalePercent).toFixed(1));
+
             return (
               <div 
                 key={mesa.id}
                 className={`rounded-xl p-4 transition-all duration-200 border flex flex-col justify-between ${
-                  isFilterActive 
-                    ? 'bg-emerald-950/90 border-emerald-400 ring-2 ring-emerald-400/50 shadow-lg' 
-                    : 'bg-slate-900/90 hover:bg-slate-850 border-slate-800 hover:border-emerald-500/50'
+                  isBelowTarget
+                    ? isFilterActive
+                      ? 'bg-red-950 border-red-400 ring-2 ring-red-400/80 shadow-lg shadow-red-950/60'
+                      : 'bg-gradient-to-b from-red-950/80 via-slate-900 to-slate-950 border-red-500/80 ring-1 ring-red-500/50 shadow-md shadow-red-950/40'
+                    : isFilterActive 
+                      ? 'bg-emerald-950/90 border-emerald-400 ring-2 ring-emerald-400/50 shadow-lg' 
+                      : 'bg-slate-900/90 hover:bg-slate-850 border-slate-800 hover:border-emerald-500/50'
                 }`}
               >
                 <div>
                   {/* Card Header */}
-                  <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                      isBelowTarget ? 'bg-red-600 text-white shadow-2xs' :
                       isAlcatrao ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' :
                       isCoxao ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' :
                       isTraseiro ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' :
@@ -1251,9 +1579,17 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                     }`}>
                       {mesa.carcassPercent.toFixed(1)}% Carcaça
                     </span>
-                    <span className="font-mono text-[10px] text-slate-400">
-                      Fator: {mesa.marketCostFactor}x
-                    </span>
+                    
+                    {isBelowTarget ? (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-red-600 text-white shadow-2xs flex items-center gap-1 animate-pulse">
+                        <AlertTriangle className="w-3 h-3" />
+                        Abaixo Meta
+                      </span>
+                    ) : (
+                      <span className="font-mono text-[10px] text-slate-400">
+                        Fator: {mesa.marketCostFactor}x
+                      </span>
+                    )}
                   </div>
 
                   {/* Nome da Peça Solicitada */}
@@ -1265,7 +1601,11 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                   </p>
 
                   {/* Custo Analítico Gerado a partir do Custo do Boi */}
-                  <div className="mt-3 p-2.5 rounded-lg bg-slate-950/70 border border-slate-800">
+                  <div className={`mt-3 p-2.5 rounded-lg border ${
+                    isBelowTarget 
+                      ? 'bg-red-950/60 border-red-500/50' 
+                      : 'bg-slate-950/70 border-slate-800'
+                  }`}>
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] uppercase font-bold text-slate-400">Custo Analítico:</span>
                       <span className="text-[10px] text-emerald-400 font-bold font-mono">
@@ -1298,7 +1638,11 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                           min="1"
                           value={mesa.sellingPriceKg}
                           onChange={(e) => handlePriceChange(mesa.code, Number(e.target.value) || 0)}
-                          className="w-16 px-1 py-0.5 text-right font-mono font-bold text-white bg-slate-950 border border-slate-700 rounded focus:outline-none focus:border-emerald-400 text-xs"
+                          className={`w-16 px-1 py-0.5 text-right font-mono font-bold rounded focus:outline-none text-xs ${
+                            isBelowTarget 
+                              ? 'bg-red-950 border-2 border-red-500 text-red-200 focus:border-red-400' 
+                              : 'bg-slate-950 border border-slate-700 text-white focus:border-emerald-400'
+                          }`}
                           title="Preço de venda da peça inteira no catálogo (editável)"
                         />
                       </div>
@@ -1315,6 +1659,34 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                         +{mesa.marginOnCostPercent}% ({mesa.marginOnSalePercent}% margem)
                       </span>
                     </div>
+
+                    {/* Alerta de Déficit de Margem e Ação Rápida */}
+                    {isBelowTarget && (
+                      <div className="p-2 rounded-lg bg-red-900/60 border border-red-500/60 text-[11px] text-red-100 space-y-1 animate-fadeIn">
+                        <div className="flex items-center justify-between font-bold">
+                          <span>Margem Realizada:</span>
+                          <span className="font-mono font-black text-red-200">{calculatedMarginSalePercent}%</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-red-300">
+                          <span>Meta Predefinida:</span>
+                          <span className="font-mono font-bold">{targetMarg}%</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] pt-1 border-t border-red-800/80 font-bold">
+                          <span>Déficit de Margem:</span>
+                          <span className="font-mono text-white bg-red-600 px-1 py-0.2 rounded text-[9px]">
+                            -{marginDeficitPercent}% (-R$ {Math.abs(priceDiff).toFixed(2)})
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleApplySingleSuggestedPrice(mesa.code, suggestedSellingPrice)}
+                          className="w-full mt-1.5 py-1 rounded bg-red-600 hover:bg-red-500 text-white text-[10px] font-black uppercase tracking-wider transition cursor-pointer active:scale-95 shadow-2xs"
+                          title={`Aplicar R$ ${suggestedSellingPrice.toFixed(2)} para normalizar a margem em ${targetMarg}%`}
+                        >
+                          Equalizar para R$ {suggestedSellingPrice.toFixed(2)}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Cortes que Saem Desta Peça */}
@@ -1373,6 +1745,12 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-600/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
                   Cálculo Automatizado p/ Dianteiro, Traseiro, Coxão e Alcatrão
                 </span>
+                {isSimulating && (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-purple-600 text-white shadow-2xs flex items-center gap-1">
+                    <FlaskConical className="w-3 h-3" />
+                    Cenário: {effectiveCarcassWeight} kg
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                 Calcula automaticamente o preço de venda a partir do <strong>Custo do Boi ({formatCurrencyBRL(costPerKg)}/kg)</strong> aplicando fatores zootécnicos e percentuais de rentabilidade predefinidos (margens e markups de mercado).
@@ -1380,30 +1758,64 @@ export const YieldTab: React.FC<YieldTabProps> = ({
             </div>
           </div>
 
-          {/* Seletor de Presets de Rentabilidade de Mercado */}
+          {/* Seletor de Presets de Rentabilidade de Mercado & Campo de Simulação Integrado */}
           <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
+            {/* Campo Pequeno de Simulação Integrado na Tabela */}
+            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs shadow-2xs transition ${
+              isSimulating
+                ? 'bg-purple-50 dark:bg-purple-950/50 border-purple-400 dark:border-purple-600 ring-1 ring-purple-400/30'
+                : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700'
+            }`}>
+              <FlaskConical className={`w-3.5 h-3.5 ${isSimulating ? 'text-purple-600 dark:text-purple-400 animate-pulse' : 'text-slate-500'}`} />
+              <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">
+                Simular Carcaça:
+              </span>
+              <input
+                type="number"
+                min="50"
+                max="600"
+                step="1"
+                placeholder={carcassWeight.toString()}
+                value={isSimulating ? (simulationWeight || '') : ''}
+                onChange={(e) => handleSimulationInputChange(e.target.value)}
+                className="w-14 text-center font-mono font-bold text-xs bg-transparent focus:outline-none text-purple-900 dark:text-purple-100"
+                title="Simule um peso de carcaça diferente (a tabela técnica e a rosca recalculam automaticamente, mantendo o oficial intacto)"
+              />
+              <span className="text-[10px] font-bold text-slate-500">kg</span>
+              {isSimulating && (
+                <button
+                  type="button"
+                  onClick={handleCancelSimulation}
+                  className="text-[10px] font-bold text-rose-500 hover:text-rose-700 ml-1 cursor-pointer"
+                  title="Descartar simulação e voltar ao peso oficial intacto"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
             <span className="text-xs font-bold text-slate-600 dark:text-slate-400 mr-1 flex items-center gap-1">
               <Percent className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Preset Rentabilidade:</span>
+              <span>Preset:</span>
             </span>
 
             <button
               type="button"
               onClick={() => handlePresetChange('COMPETITIVO')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
                 profitabilityPreset === 'COMPETITIVO'
                   ? 'bg-amber-600 text-white shadow-xs'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
               }`}
               title="Margem agressiva de giro rápido (18% a 28%)"
             >
-              <span>⚡ Competitivo (Giro)</span>
+              <span>⚡ Competitivo</span>
             </button>
 
             <button
               type="button"
               onClick={() => handlePresetChange('PADRAO')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
                 profitabilityPreset === 'PADRAO'
                   ? 'bg-emerald-600 text-white shadow-xs'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
@@ -1411,37 +1823,31 @@ export const YieldTab: React.FC<YieldTabProps> = ({
               title="Padrão oficial do varejo supermercadista (25% a 34%)"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>🎯 Padrão Varejo (Recomendado)</span>
+              <span>🎯 Padrão</span>
             </button>
 
             <button
               type="button"
               onClick={() => handlePresetChange('PREMIUM')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
                 profitabilityPreset === 'PREMIUM'
                   ? 'bg-purple-600 text-white shadow-xs'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
               }`}
               title="Margem nobre para carnes de alta qualidade / boutique (30% a 42%)"
             >
-              <span>💎 Nobre / Premium</span>
+              <span>💎 Premium</span>
             </button>
-
-            {profitabilityPreset === 'CUSTOM' && (
-              <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800">
-                ⚙️ Customizado
-              </span>
-            )}
 
             {hasCustomMesaParams && (
               <button
                 type="button"
                 onClick={handleResetMesaParams}
-                className="px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                className="px-2.5 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
                 title="Restaurar % Carcaça e Fator Paridade para os valores zootécnicos padrão de mercado"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Restaurar Paridade Padrão</span>
+                <span>Restaurar</span>
               </button>
             )}
 
@@ -1457,6 +1863,40 @@ export const YieldTab: React.FC<YieldTabProps> = ({
             </button>
           </div>
         </div>
+
+        {/* BANNER DE ALERTA VISUAL DE RENTABILIDADE (LINHAS ABAIXO DA META) */}
+        {belowTargetAnalysis.hasAlert && (
+          <div className="mt-4 p-3.5 rounded-xl bg-red-50 dark:bg-red-950/50 border-2 border-red-500/80 dark:border-red-600 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-fadeIn">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-red-600 text-white shrink-0 shadow-sm">
+                <AlertTriangle className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-black text-red-900 dark:text-red-200 text-xs uppercase tracking-wide">
+                    🚨 ALERTA DE RENTABILIDADE: {belowTargetAnalysis.count} {belowTargetAnalysis.count === 1 ? 'Peça Primária Abaixo da Meta' : 'Peças Primárias Abaixo da Meta'}
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-red-600 text-white shadow-2xs">
+                    Linhas Destacadas em Vermelho
+                  </span>
+                </div>
+                <p className="text-red-700 dark:text-red-300 text-[11px] mt-0.5 leading-relaxed">
+                  As peças <strong>{belowTargetAnalysis.names.join(', ')}</strong> estão com a rentabilidade calculada inferior à meta configurada. Ajuste o preço praticado ou clique em "Equalizar Margens" para restabelecer a lucratividade projetada.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleApplyAllSuggestedPrices}
+              className="px-3.5 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm active:scale-95 shrink-0 self-start sm:self-auto"
+              title="Aplica todos os preços sugeridos para restaurar as margens de rentabilidade"
+            >
+              <CheckCircle2 className="w-4 h-4 text-red-100" />
+              <span>Equalizar Margens no ERP</span>
+            </button>
+          </div>
+        )}
 
         {/* Tabela Técnica Completa */}
         <div className="mt-4 overflow-x-auto">
@@ -1486,22 +1926,49 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                 const isExact = Math.abs(priceDiff) < 0.10;
                 const isAbove = priceDiff >= 0.10;
 
+                // Rentabilidade calculada sobre a venda baseada no Preço Praticado ERP
+                const calculatedMarginSalePercent = currentErpPrice > 0
+                  ? Number((((currentErpPrice - mesa.calculatedCostKg) / currentErpPrice) * 100).toFixed(1))
+                  : 0;
+
+                // Alerta visual: destaca em vermelho se a rentabilidade de Dianteiro, Traseiro, Coxão ou Alcatrão ficar abaixo da meta
+                const isMonitoredPiece = TARGET_ALERT_PIECES.includes(mesa.code);
+                const isBelowTarget = isMonitoredPiece && (calculatedMarginSalePercent < targetMarg || priceDiff < -0.05);
+                const marginDeficitPercent = Number((targetMarg - calculatedMarginSalePercent).toFixed(1));
+
                 return (
-                  <tr key={mesa.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors">
+                  <tr 
+                    key={mesa.id} 
+                    className={`transition-colors border-b ${
+                      isBelowTarget 
+                        ? 'bg-rose-50/95 dark:bg-rose-950/45 hover:bg-rose-100/90 dark:hover:bg-rose-900/60 border-l-4 border-l-rose-600 text-rose-950 dark:text-rose-100 ring-1 ring-inset ring-rose-500/20' 
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-850/50 text-slate-800 dark:text-slate-200'
+                    }`}
+                  >
                     {/* Nome da Peça */}
                     <td className="px-4 py-3 font-sans">
                       <div className="flex items-center gap-2">
-                        <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0 font-bold">
-                          <Boxes className="w-4 h-4" />
+                        <span className={`p-1.5 rounded-lg shrink-0 font-bold ${
+                          isBelowTarget 
+                            ? 'bg-rose-600 text-white shadow-xs' 
+                            : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                        }`}>
+                          {isBelowTarget ? <AlertTriangle className="w-4 h-4 animate-pulse" /> : <Boxes className="w-4 h-4" />}
                         </span>
                         <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-black text-slate-900 dark:text-white text-xs">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`font-black text-xs ${isBelowTarget ? 'text-rose-950 dark:text-rose-100 font-black' : 'text-slate-900 dark:text-white'}`}>
                               {mesa.alias}
                             </span>
                             <span className="text-[10px] text-slate-400 font-mono">({mesa.code})</span>
+                            {isBelowTarget && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-2xs flex items-center gap-1">
+                                <AlertCircle className="w-2.5 h-2.5" />
+                                Abaixo da Meta
+                              </span>
+                            )}
                           </div>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                          <p className={`text-[10px] ${isBelowTarget ? 'text-rose-700 dark:text-rose-300 font-medium' : 'text-slate-500 dark:text-slate-400'}`}>
                             {mesa.name}
                           </p>
                         </div>
@@ -1558,9 +2025,13 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                       {mesa.weightKg.toFixed(1)} kg
                     </td>
 
-                    {/* Rentabilidade Desejada s/ Venda (%) */}
+                    {/* Rentabilidade Desejada s/ Venda (%) & Alerta de Déficit */}
                     <td className="px-3 py-3 text-center">
-                      <div className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700">
+                      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border ${
+                        isBelowTarget
+                          ? 'bg-rose-100/90 dark:bg-rose-900/50 border-rose-400 dark:border-rose-600'
+                          : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700'
+                      }`}>
                         <input
                           type="number"
                           step="0.5"
@@ -1573,6 +2044,17 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                         />
                         <span className="text-[10px] font-bold text-purple-600">%</span>
                       </div>
+
+                      {isBelowTarget ? (
+                        <div className="text-[10px] font-black text-rose-600 dark:text-rose-400 mt-1 flex items-center justify-center gap-0.5">
+                          <AlertTriangle className="w-3 h-3 shrink-0" />
+                          <span>Real: {calculatedMarginSalePercent}% (-{marginDeficitPercent}%)</span>
+                        </div>
+                      ) : (
+                        <div className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 mt-1 font-semibold">
+                          Real: {calculatedMarginSalePercent}%
+                        </div>
+                      )}
                     </td>
 
                     {/* Markup s/ Compra */}
@@ -1596,33 +2078,48 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                           min="1"
                           value={currentErpPrice}
                           onChange={(e) => handlePriceChange(mesa.code, Number(e.target.value) || 0)}
-                          className="w-20 px-1.5 py-1 text-right font-mono font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded focus:outline-none focus:border-emerald-500 text-xs shadow-2xs"
+                          className={`w-20 px-1.5 py-1 text-right font-mono font-black rounded text-xs shadow-2xs focus:outline-none ${
+                            isBelowTarget
+                              ? 'border-2 border-rose-500 bg-rose-100/90 dark:bg-rose-900/50 text-rose-950 dark:text-rose-100 focus:border-rose-600 ring-1 ring-rose-500/30'
+                              : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:border-emerald-500'
+                          }`}
                           title="Preço praticado atualmente no cadastro do ERP (editável)"
                         />
                       </div>
                     </td>
 
-                    {/* Status & Ação Individual */}
+                    {/* Status & Ação Individual com Alerta em Vermelho */}
                     <td className="px-3 py-3 text-center font-sans">
                       <div className="flex items-center justify-center gap-1.5">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap ${
-                          isExact
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
-                            : isAbove
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
-                            : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
-                        }`}>
-                          {isExact ? '🟢 Alinhado' : isAbove ? `🔵 +R$ ${priceDiff.toFixed(2)}` : `🟡 -R$ ${Math.abs(priceDiff).toFixed(2)}`}
-                        </span>
+                        {isBelowTarget ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-rose-600 text-white shadow-xs flex items-center gap-1 whitespace-nowrap">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            <span>Déficit -R$ {Math.abs(priceDiff).toFixed(2)}</span>
+                          </span>
+                        ) : (
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap ${
+                            isExact
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                              : isAbove
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
+                              : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
+                          }`}>
+                            {isExact ? '🟢 Alinhado' : isAbove ? `🔵 +R$ ${priceDiff.toFixed(2)}` : `🟡 -R$ ${Math.abs(priceDiff).toFixed(2)}`}
+                          </span>
+                        )}
 
                         {!isExact && (
                           <button
                             type="button"
                             onClick={() => handleApplySingleSuggestedPrice(mesa.code, suggestedSellingPrice)}
-                            className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold transition cursor-pointer active:scale-95 shadow-2xs"
+                            className={`px-2 py-1 rounded text-[10px] font-black transition cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap ${
+                              isBelowTarget
+                                ? 'bg-rose-600 hover:bg-rose-500 text-white uppercase tracking-wider'
+                                : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                            }`}
                             title={`Aplicar R$ ${suggestedSellingPrice.toFixed(2)} diretamente na tabela de produtos do ERP`}
                           >
-                            Aplicar
+                            {isBelowTarget ? 'Corrigir Meta' : 'Aplicar'}
                           </button>
                         )}
                       </div>
@@ -1869,12 +2366,16 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                 const isWaste = cut.isWaste;
                 const isPrimary = cut.isPrimaryPiece;
                 const isCustomized = cut.productCode && customSellingPrices[cut.productCode] !== undefined;
+                const targetMarginForCut = cut.productCode ? (mesaProfitMargins[cut.productCode] ?? 28) : 28;
+                const isBelowTargetInCut = isPrimary && !!cut.productCode && TARGET_ALERT_PIECES.includes(cut.productCode) && cut.marginOnSalePercent < targetMarginForCut;
 
                 return (
                   <tr 
                     key={idx}
                     className={`transition-colors ${
-                      isPrimary
+                      isBelowTargetInCut
+                        ? 'bg-rose-50/95 dark:bg-rose-950/40 border-l-4 border-l-rose-600 text-rose-950 dark:text-rose-100 font-semibold ring-1 ring-inset ring-rose-500/20'
+                        : isPrimary
                         ? 'bg-amber-50/80 dark:bg-amber-950/25 border-l-4 border-l-amber-500 text-slate-900 dark:text-amber-100 font-semibold'
                         : isWaste 
                         ? 'bg-rose-50/50 dark:bg-rose-950/10 text-slate-500 dark:text-slate-400 hover:bg-rose-50' 
@@ -1884,7 +2385,11 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                     {/* Name & Product Code */}
                     <td className="px-4 py-2.5 font-sans font-medium">
                       <div className="flex items-center gap-2">
-                        {isPrimary ? (
+                        {isBelowTargetInCut ? (
+                          <div className="p-1 rounded-md bg-rose-600 text-white shrink-0 shadow-xs animate-pulse">
+                            <AlertTriangle className="w-4 h-4" />
+                          </div>
+                        ) : isPrimary ? (
                           <div className="p-1 rounded-md bg-amber-500/20 text-amber-700 dark:text-amber-300 shrink-0">
                             <Boxes className="w-4 h-4" />
                           </div>
@@ -1898,7 +2403,9 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                         <div>
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className={`font-bold ${
-                              isPrimary 
+                              isBelowTargetInCut
+                                ? 'text-rose-950 dark:text-rose-100 text-[13px] tracking-tight uppercase'
+                                : isPrimary 
                                 ? 'text-amber-950 dark:text-amber-200 text-[13px] tracking-tight uppercase' 
                                 : isWaste 
                                 ? 'text-rose-700 dark:text-rose-300 font-semibold' 
@@ -1910,8 +2417,17 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                             </span>
 
                             {isPrimary && (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500 text-slate-950 shadow-2xs">
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase shadow-2xs ${
+                                isBelowTargetInCut ? 'bg-amber-600 text-white' : 'bg-amber-500 text-slate-950'
+                              }`}>
                                 PEÇA PRIMÁRIA • MESA
+                              </span>
+                            )}
+
+                            {isBelowTargetInCut && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-rose-600 text-white shadow-2xs flex items-center gap-0.5">
+                                <AlertCircle className="w-2.5 h-2.5" />
+                                Abaixo da Meta ({targetMarginForCut}%)
                               </span>
                             )}
 
@@ -1944,7 +2460,9 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                     {/* Category */}
                     <td className="px-3 py-2.5 text-center font-sans">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                        isPrimary
+                        isBelowTargetInCut
+                          ? 'bg-rose-600 text-white font-bold'
+                          : isPrimary
                           ? 'bg-amber-600 text-white font-bold'
                           : isWaste 
                           ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30' 
@@ -1982,7 +2500,13 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                         </span>
                       ) : (
                         <div>
-                          <span className={`font-bold ${isPrimary ? 'text-amber-800 dark:text-amber-300 text-xs' : 'text-slate-800 dark:text-slate-200'}`}>
+                          <span className={`font-bold ${
+                            isBelowTargetInCut
+                              ? 'text-rose-900 dark:text-rose-200 text-xs'
+                              : isPrimary 
+                              ? 'text-amber-800 dark:text-amber-300 text-xs' 
+                              : 'text-slate-800 dark:text-slate-200'
+                          }`}>
                             {formatCurrencyBRL(cut.costPriceKg)}
                           </span>
                           {isPrimary ? (
@@ -2009,7 +2533,9 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                             value={cut.sellingPriceKg}
                             onChange={(e) => handlePriceChange(cut.productCode!, Number(e.target.value) || 0)}
                             className={`w-20 px-1.5 py-0.5 text-right font-mono font-bold rounded focus:outline-none focus:ring-1 ${
-                              isPrimary
+                              isBelowTargetInCut
+                                ? 'text-rose-950 dark:text-rose-100 bg-rose-100/90 dark:bg-rose-900/50 border border-rose-400 dark:border-rose-700 focus:ring-rose-500 ring-1 ring-rose-500/30'
+                                : isPrimary
                                 ? 'text-amber-900 dark:text-amber-200 bg-amber-100/80 dark:bg-amber-900/40 border border-amber-400 dark:border-amber-700 focus:ring-amber-500'
                                 : 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 focus:ring-emerald-500'
                             }`}
@@ -2047,6 +2573,16 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                         <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
                           {cut.name.includes('Sebo') ? 'Abate R$ 0,32/kg' : cut.name.includes('Osso') ? 'Abate R$ 0,14/kg' : 'Evaporação'}
                         </span>
+                      ) : isBelowTargetInCut ? (
+                        <div className="flex flex-col items-end">
+                          <span className="font-black text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            {cut.marginOnSalePercent}%
+                          </span>
+                          <span className="text-[9px] text-rose-700 dark:text-rose-300 font-bold bg-rose-100 dark:bg-rose-900/60 px-1 py-0.2 rounded mt-0.5">
+                            Meta: {targetMarginForCut}% (-{(targetMarginForCut - cut.marginOnSalePercent).toFixed(1)}%)
+                          </span>
+                        </div>
                       ) : (
                         <span className={`font-bold ${
                           cut.marginOnSalePercent >= 30 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
@@ -2066,7 +2602,14 @@ export const YieldTab: React.FC<YieldTabProps> = ({
                 <td className="px-4 py-3 font-sans">TOTAL GERAL CARCAÇA</td>
                 <td className="text-center">-</td>
                 <td className="text-right text-amber-600 dark:text-amber-400">100.0%</td>
-                <td className="text-right text-slate-900 dark:text-white font-bold">{carcassWeight.toFixed(2)} kg</td>
+                <td className="text-right text-slate-900 dark:text-white font-bold">
+                  {effectiveCarcassWeight.toFixed(2)} kg
+                  {isSimulating && (
+                    <span className="block text-[9px] text-amber-600 dark:text-amber-400 font-sans font-bold">
+                      (🧪 Simulado)
+                    </span>
+                  )}
+                </td>
                 <td className="text-right text-slate-600 dark:text-slate-300">{formatCurrencyBRL(costPerKg)}</td>
                 <td className="text-right text-slate-400">-</td>
                 <td className="text-right text-emerald-600 dark:text-emerald-400 font-bold">{formatCurrencyBRL(realYield.totalRevenue)}</td>
@@ -2086,7 +2629,7 @@ export const YieldTab: React.FC<YieldTabProps> = ({
             <span>Formação Operacional do Custo no Mercado Varejista</span>
           </h4>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-            • <strong>Quebra Técnica Padrão de 25,0% (faixa de 20% a 30%):</strong> Ao adquirir uma carcaça com osso de <strong>{carcassWeight} kg</strong> a <strong>{formatCurrencyBRL(costPerKg)}/kg</strong> (investimento de {formatCurrencyBRL(realYield.totalCost)}), a desossa gera <strong>{formatNumberBR(realYield.totalCleanMeatKg, 1)} kg de carne limpa (75,0%)</strong> e <strong>{formatNumberBR(realYield.totalWasteKg, 1)} kg de quebra/descarte (25,0%)</strong>.
+            • <strong>Quebra Técnica Padrão de 25,0% (faixa de 20% a 30%):</strong> Ao adquirir uma carcaça com osso de <strong>{effectiveCarcassWeight} kg{isSimulating ? ' (🧪 Simulado)' : ''}</strong> a <strong>{formatCurrencyBRL(costPerKg)}/kg</strong> (investimento de {formatCurrencyBRL(realYield.totalCost)}), a desossa gera <strong>{formatNumberBR(realYield.totalCleanMeatKg, 1)} kg de carne limpa (75,0%)</strong> e <strong>{formatNumberBR(realYield.totalWasteKg, 1)} kg de quebra/descarte (25,0%)</strong>.
           </p>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
             • <strong>Fator Multiplicador de Quebra:</strong> Para cobrir a perda de peso dos 25%, o multiplicador é de <strong>1,3333x (+33,33%)</strong>, formando o <strong>Custo Base Varejo de {formatCurrencyBRL(realYield.baseCleanMeatCostPerKg)}/kg</strong>.

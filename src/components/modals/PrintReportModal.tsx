@@ -309,7 +309,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                   ERP APURAÇÃO DO BOI • RELATÓRIO GERAL DE PEDIDOS
                 </h1>
                 <p className="text-xs text-slate-600 font-semibold flex items-center gap-2 mt-0.5 flex-wrap">
-                  <span>BASE: PLANILHA DE COMPRAS DA DIREÇÃO v10.8</span>
+                  <span>BASE: PLANILHA DE COMPRAS DA DIREÇÃO v10.9</span>
                   <span>•</span>
                   <span className="text-emerald-700 font-bold">16 Filiais Consolidadas</span>
                   <span>•</span>
@@ -668,7 +668,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                 onError={(e) => { e.currentTarget.src = '/brand-logo.svg'; }}
               />
               <span>
-                <strong className="text-emerald-900">GAPP - PATRICK PESSOA</strong> • ERP Apuração do Boi v10.8 • Desenvolvedor: Patrick Pessoa
+                <strong className="text-emerald-900">GAPP - PATRICK PESSOA</strong> • ERP Apuração do Boi v10.9 • Desenvolvedor: Patrick Pessoa
               </span>
             </div>
             <span className="flex items-center gap-1 text-emerald-700 font-sans font-semibold">

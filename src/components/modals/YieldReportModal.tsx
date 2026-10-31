@@ -534,7 +534,7 @@ export const YieldReportModal: React.FC<YieldReportModalProps> = ({
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 <span>
-                  Autenticação ERP Grupo GAPP • Versão 10.8 • Cálculos em Conformidade Zootécnica e Contábil
+                  Autenticação ERP Grupo GAPP • Versão 10.9 • Cálculos em Conformidade Zootécnica e Contábil
                 </span>
               </div>
               <div className="font-mono text-[11px]">

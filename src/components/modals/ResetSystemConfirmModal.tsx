@@ -50,7 +50,7 @@ export const ResetSystemConfirmModal: React.FC<ResetSystemConfirmModalProps> = (
               </span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Redefinição dos parâmetros para a base oficial inicial v10.8
+              Redefinição dos parâmetros para a base oficial inicial v10.9
             </p>
           </div>
           <button

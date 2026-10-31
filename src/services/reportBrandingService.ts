@@ -31,7 +31,7 @@ export interface HtmlFooterOptions {
 
 /**
  * Serviço Centralizado de Identidade Visual e Padronização de Relatórios
- * GAPP - PATRICK PESSOA • Gestão Integral de Compra Personalizado (v10.8)
+ * GAPP - PATRICK PESSOA • Gestão Integral de Compra Personalizado (v10.9)
  */
 export class ReportBrandingService {
   private static cachedLogoBase64: string | null = null;
@@ -130,7 +130,7 @@ export class ReportBrandingService {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.2);
     doc.setTextColor(203, 213, 225); // Slate 300
-    const sub = options.subtitle || 'Sistema ERP Apuração do Boi v10.8 • Desenvolvedor: Patrick Pessoa • Matriz 16 Filiais';
+    const sub = options.subtitle || 'Sistema ERP Apuração do Boi v10.9 • Desenvolvedor: Patrick Pessoa • Matriz 16 Filiais';
     doc.text(sub, textLeftX, 19.8);
 
     // 4. Quadro de Metadados à Direita
@@ -138,7 +138,7 @@ export class ReportBrandingService {
       ? options.rightMetaLines
       : [
           `Emissão: ${emissionStr}`,
-          'Sistema: GAPP - PATRICK PESSOA v10.8',
+          'Sistema: GAPP - PATRICK PESSOA v10.9',
           'Desenvolvedor: Patrick Pessoa'
         ];
 
@@ -188,7 +188,7 @@ export class ReportBrandingService {
       doc.setFontSize(6.8);
       doc.setTextColor(17, 56, 41);
       doc.text(
-        'GAPP - PATRICK PESSOA • Sistema ERP Apuração do Boi v10.8 • Gestão Integral de Compra Personalizado',
+        'GAPP - PATRICK PESSOA • Sistema ERP Apuração do Boi v10.9 • Gestão Integral de Compra Personalizado',
         textStartX,
         footerTopY + 4.3
       );
@@ -236,13 +236,13 @@ export class ReportBrandingService {
 
     const subtitle =
       options.subtitle ||
-      'Sistema ERP Apuração do Boi v10.8 • Desenvolvedor: Patrick Pessoa • Matriz Consolidada';
+      'Sistema ERP Apuração do Boi v10.9 • Desenvolvedor: Patrick Pessoa • Matriz Consolidada';
 
     const rightMeta =
       options.rightMetaHtml ||
       `
         <div><strong>Emissão Oficial:</strong> ${emissionStr}</div>
-        <div><strong>Sistema:</strong> GAPP - PATRICK PESSOA (v10.8)</div>
+        <div><strong>Sistema:</strong> GAPP - PATRICK PESSOA (v10.9)</div>
         <div><strong>Desenvolvedor:</strong> Patrick Pessoa</div>
       `;
 
@@ -287,7 +287,7 @@ export class ReportBrandingService {
           <img src="/patrick-pessoa-brand.png" alt="Logo GAPP" style="width: 22px; height: 22px; object-fit: contain; background: #fff; border-radius: 4px; border: 1px solid #cbd5e1; padding: 1px;" onerror="this.src='/brand-logo.svg'" />
           <div>
             <div style="font-weight: 800; color: #113829;">
-              GAPP - PATRICK PESSOA • Sistema ERP Apuração do Boi v10.8 • Gestão Integral de Compra Personalizado
+              GAPP - PATRICK PESSOA • Sistema ERP Apuração do Boi v10.9 • Gestão Integral de Compra Personalizado
             </div>
             <div style="font-size: 6.5pt; color: #64748b;">
               Desenvolvedor & Direção do Sistema: <strong>Patrick Pessoa</strong>${docCode}
@@ -332,7 +332,7 @@ export class ReportBrandingService {
     blankRow.height = 8;
 
     const now = new Date();
-    const footerText = `GAPP - PATRICK PESSOA • Sistema ERP Apuração do Boi v10.8 • Gestão Integral de Compra Personalizado • Desenvolvedor: Patrick Pessoa • ${documentTag} • Emitido em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR')}`;
+    const footerText = `GAPP - PATRICK PESSOA • Sistema ERP Apuração do Boi v10.9 • Gestão Integral de Compra Personalizado • Desenvolvedor: Patrick Pessoa • ${documentTag} • Emitido em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR')}`;
     const footerRow = worksheet.addRow([footerText]);
     footerRow.height = 22;
 

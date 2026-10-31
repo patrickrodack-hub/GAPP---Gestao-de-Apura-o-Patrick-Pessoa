@@ -401,7 +401,7 @@ export class PortalLaunchPdfService {
       notes.trim() ? `📝 *Observações:* ${notes.trim()}\n` : '',
       `📄 _O Extrato Oficial em PDF foi gerado pelo sistema com todos os detalhes._`,
       `🌐 _Portal Oficial:_ https://gipp-site.vercel.app/`,
-      `🔒 _Autenticação GAPP - PATRICK PESSOA • v10.8_`
+      `🔒 _Autenticação GAPP - PATRICK PESSOA • v10.9_`
     ].filter(Boolean);
 
     const messageText = messageLines.join('\n');
