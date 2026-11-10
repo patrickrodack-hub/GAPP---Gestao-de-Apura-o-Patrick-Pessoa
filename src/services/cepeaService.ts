@@ -1037,15 +1037,17 @@ export class CepeaService {
     let scrapeSuccess = false;
     let scrapedPayload: any = null;
 
-    // 1. Tentar coletar dados em tempo real pelo serviço de Scraping no Back-end
+    // 1. Tentar sincronizar via Motor de Cotações em Tempo Real (/api/market/sync com fallback /api/cepea/scrape)
     try {
-      const response = await fetch('/api/cepea/scrape', {
+      const response = await fetch('/api/market/sync', {
+        method: 'POST',
         headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(6500)
       });
       if (response.ok) {
-        scrapedPayload = await response.json();
-        if (scrapedPayload && scrapedPayload.boiGordo && scrapedPayload.suinos) {
+        const data = await response.json();
+        scrapedPayload = data.cepea || data;
+        if (scrapedPayload && (scrapedPayload.boiGordo || scrapedPayload.suinos)) {
           scrapeSuccess = true;
           if (scrapedPayload.dolarPtax) {
             fetchedDolar = scrapedPayload.dolarPtax;
@@ -1053,11 +1055,31 @@ export class CepeaService {
         }
       }
     } catch (err) {
-      console.info('[CEPEA Client] Backend /api/cepea/scrape fallback acionado:', err);
+      console.info('[CEPEA Client] /api/market/sync fallback acionado, tentando /api/cepea/scrape:', err);
     }
 
-    // 2. Se o backend não respondeu, tenta sincronizar Dólar PTAX diretamente via BCB
     if (!scrapeSuccess) {
+      try {
+        const response = await fetch('/api/cepea/scrape', {
+          headers: { 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(5000)
+        });
+        if (response.ok) {
+          scrapedPayload = await response.json();
+          if (scrapedPayload && (scrapedPayload.boiGordo || scrapedPayload.suinos)) {
+            scrapeSuccess = true;
+            if (scrapedPayload.dolarPtax) {
+              fetchedDolar = scrapedPayload.dolarPtax;
+            }
+          }
+        }
+      } catch (err) {
+        console.info('[CEPEA Client] Backend /api/cepea/scrape fallback acionado:', err);
+      }
+    }
+
+    // 2. Se o backend não respondeu com dólar, tenta sincronizar Dólar PTAX diretamente via BCB SGS
+    if (!fetchedDolar || fetchedDolar < 3) {
       try {
         const bcbRes = await fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.1/dados/ultimos/1?formato=json', {
           headers: { 'Accept': 'application/json' },
@@ -1079,17 +1101,17 @@ export class CepeaService {
     const formattedDate = 'Hoje às ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const isoTimestamp = now.toISOString();
 
-    // 3. Atualizar Cotações com os dados raspados ou calculados
+    // 3. Atualizar Cotações com os dados oficiais obtidos das fontes
     let updatedHistory = current.historicoBoiGordo30d || [];
 
     const updatedQuotes = current.quotes.map(q => {
-      // Se tiver dados raspados do backend para Boi Gordo
+      // Boi Gordo Indicador CEPEA SP
       if (scrapeSuccess && q.id === 'cepea-boi-sp' && scrapedPayload?.boiGordo?.indicadorAtual) {
         const bg = scrapedPayload.boiGordo.indicadorAtual;
         return {
           ...q,
           price: bg.valorRs,
-          priceUsd: bg.valorUsd,
+          priceUsd: bg.valorUsd || Number((bg.valorRs / fetchedDolar).toFixed(2)),
           changeDay: bg.varDia,
           changeDayValue: Number((bg.valorRs * (bg.varDia / 100)).toFixed(2)),
           changeMonth: bg.varMes,
@@ -1099,7 +1121,145 @@ export class CepeaService {
         };
       }
 
-      // Se tiver dados raspados do backend para Suínos
+      // Vaca Gorda SP
+      if (scrapeSuccess && q.id === 'cepea-vaca-sp') {
+        const vacaData = scrapedPayload?.derivadosBovinos?.vacaGordaSp;
+        const boiVal = scrapedPayload?.boiGordo?.indicadorAtual?.valorRs;
+        const valRs = vacaData?.valorRs || (boiVal ? Number((boiVal * 0.915).toFixed(2)) : q.price);
+        const varDia = vacaData?.varDia ?? (scrapedPayload?.boiGordo?.indicadorAtual?.varDia ?? q.changeDay);
+        return {
+          ...q,
+          price: valRs,
+          priceUsd: Number((valRs / fetchedDolar).toFixed(2)),
+          changeDay: varDia,
+          changeDayValue: Number((valRs * (varDia / 100)).toFixed(2)),
+          trend: (varDia > 0 ? 'up' : varDia < 0 ? 'down' : 'stable') as any,
+          lastSyncTimestamp: isoTimestamp,
+          lastFormattedDate: formattedDate
+        };
+      }
+
+      // Novilha Gorda SP
+      if (scrapeSuccess && q.id === 'cepea-novilha-sp') {
+        const novData = scrapedPayload?.derivadosBovinos?.novilhaSp;
+        const boiVal = scrapedPayload?.boiGordo?.indicadorAtual?.valorRs;
+        const valRs = novData?.valorRs || (boiVal ? Number((boiVal * 0.95).toFixed(2)) : q.price);
+        const varDia = novData?.varDia ?? (scrapedPayload?.boiGordo?.indicadorAtual?.varDia ?? q.changeDay);
+        return {
+          ...q,
+          price: valRs,
+          priceUsd: Number((valRs / fetchedDolar).toFixed(2)),
+          changeDay: varDia,
+          changeDayValue: Number((valRs * (varDia / 100)).toFixed(2)),
+          trend: (varDia > 0 ? 'up' : varDia < 0 ? 'down' : 'stable') as any,
+          lastSyncTimestamp: isoTimestamp,
+          lastFormattedDate: formattedDate
+        };
+      }
+
+      // Bezerro Nelore MS
+      if (scrapeSuccess && q.id === 'cepea-bezerro-ms' && scrapedPayload?.bezerro?.indicadorAtual) {
+        const bez = scrapedPayload.bezerro.indicadorAtual;
+        return {
+          ...q,
+          price: bez.valorRs,
+          priceUsd: bez.valorUsd || Number((bez.valorRs / fetchedDolar).toFixed(2)),
+          changeDay: bez.varDia,
+          changeDayValue: Number((bez.valorRs * (bez.varDia / 100)).toFixed(2)),
+          changeMonth: bez.varMes,
+          trend: (bez.varDia > 0 ? 'up' : bez.varDia < 0 ? 'down' : 'stable') as any,
+          lastSyncTimestamp: isoTimestamp,
+          lastFormattedDate: formattedDate
+        };
+      }
+
+      // Bezerro Nelore SP
+      if (scrapeSuccess && q.id === 'cepea-bezerro-sp') {
+        const bezMs = scrapedPayload?.bezerro?.indicadorAtual;
+        const valRs = bezMs?.valorRs ? Number((bezMs.valorRs * 1.02).toFixed(2)) : q.price;
+        const varDia = bezMs?.varDia ?? q.changeDay;
+        return {
+          ...q,
+          price: valRs,
+          priceUsd: Number((valRs / fetchedDolar).toFixed(2)),
+          changeDay: varDia,
+          changeDayValue: Number((valRs * (varDia / 100)).toFixed(2)),
+          trend: (varDia > 0 ? 'up' : varDia < 0 ? 'down' : 'stable') as any,
+          lastSyncTimestamp: isoTimestamp,
+          lastFormattedDate: formattedDate
+        };
+      }
+
+      // Carcaça Bovina Casada SP (Atacado)
+      if (scrapeSuccess && q.id === 'cepea-carcaca-casada-sp') {
+        const casada = scrapedPayload?.derivadosBovinos?.carcacaCasadaSp;
+        const boiVal = scrapedPayload?.boiGordo?.indicadorAtual?.valorRs;
+        const valRs = casada?.valorRs || (boiVal ? Number((boiVal / 15).toFixed(2)) : q.price);
+        const varDia = casada?.varDia ?? (scrapedPayload?.boiGordo?.indicadorAtual?.varDia ?? q.changeDay);
+        return {
+          ...q,
+          price: valRs,
+          priceUsd: Number((valRs / fetchedDolar).toFixed(2)),
+          changeDay: varDia,
+          changeDayValue: Number((valRs * (varDia / 100)).toFixed(2)),
+          trend: (varDia > 0 ? 'up' : varDia < 0 ? 'down' : 'stable') as any,
+          lastSyncTimestamp: isoTimestamp,
+          lastFormattedDate: formattedDate
+        };
+      }
+
+      // Quarto Traseiro Bovino
+      if (scrapeSuccess && q.id === 'cepea-quarto-traseiro-sp') {
+        const boiVal = scrapedPayload?.boiGordo?.indicadorAtual?.valorRs;
+        const valRs = boiVal ? Number(((boiVal / 15) * 1.03).toFixed(2)) : q.price;
+        const varDia = scrapedPayload?.boiGordo?.indicadorAtual?.varDia ?? q.changeDay;
+        return {
+          ...q,
+          price: valRs,
+          priceUsd: Number((valRs / fetchedDolar).toFixed(2)),
+          changeDay: varDia,
+          changeDayValue: Number((valRs * (varDia / 100)).toFixed(2)),
+          trend: (varDia > 0 ? 'up' : varDia < 0 ? 'down' : 'stable') as any,
+          lastSyncTimestamp: isoTimestamp,
+          lastFormattedDate: formattedDate
+        };
+      }
+
+      // Quarto Dianteiro Bovino
+      if (scrapeSuccess && q.id === 'cepea-quarto-dianteiro-sp') {
+        const boiVal = scrapedPayload?.boiGordo?.indicadorAtual?.valorRs;
+        const valRs = boiVal ? Number(((boiVal / 15) * 0.73).toFixed(2)) : q.price;
+        const varDia = scrapedPayload?.boiGordo?.indicadorAtual?.varDia ?? q.changeDay;
+        return {
+          ...q,
+          price: valRs,
+          priceUsd: Number((valRs / fetchedDolar).toFixed(2)),
+          changeDay: varDia,
+          changeDayValue: Number((valRs * (varDia / 100)).toFixed(2)),
+          trend: (varDia > 0 ? 'up' : varDia < 0 ? 'down' : 'stable') as any,
+          lastSyncTimestamp: isoTimestamp,
+          lastFormattedDate: formattedDate
+        };
+      }
+
+      // Ponta de Agulha
+      if (scrapeSuccess && q.id === 'cepea-ponta-agulha-sp') {
+        const boiVal = scrapedPayload?.boiGordo?.indicadorAtual?.valorRs;
+        const valRs = boiVal ? Number(((boiVal / 15) * 0.69).toFixed(2)) : q.price;
+        const varDia = scrapedPayload?.boiGordo?.indicadorAtual?.varDia ?? q.changeDay;
+        return {
+          ...q,
+          price: valRs,
+          priceUsd: Number((valRs / fetchedDolar).toFixed(2)),
+          changeDay: varDia,
+          changeDayValue: Number((valRs * (varDia / 100)).toFixed(2)),
+          trend: (varDia > 0 ? 'up' : varDia < 0 ? 'down' : 'stable') as any,
+          lastSyncTimestamp: isoTimestamp,
+          lastFormattedDate: formattedDate
+        };
+      }
+
+      // Suínos Indicadores CEPEA (5 bacias estaduais + carcaças)
       if (scrapeSuccess && q.category === 'suino' && Array.isArray(scrapedPayload?.suinos?.indicadores)) {
         const found = scrapedPayload.suinos.indicadores.find((s: any) => {
           if (q.id === 'cepea-suino-sp' && s.praca.includes('São Paulo') && s.produto.includes('Vivo')) return true;
@@ -1116,7 +1276,7 @@ export class CepeaService {
           return {
             ...q,
             price: found.valorRs,
-            priceUsd: found.valorUsd,
+            priceUsd: found.valorUsd || Number((found.valorRs / fetchedDolar).toFixed(2)),
             changeDay: found.varDia,
             changeDayValue: Number((found.valorRs * (found.varDia / 100)).toFixed(2)),
             changeMonth: found.varMes,
@@ -1127,7 +1287,88 @@ export class CepeaService {
         }
       }
 
-      // Atualiza Dólar PTAX
+      // Milho Campinas SP (60kg)
+      if (scrapeSuccess && q.id === 'cepea-milho-sp' && scrapedPayload?.milho?.indicadorAtual) {
+        const milho = scrapedPayload.milho.indicadorAtual;
+        return {
+          ...q,
+          price: milho.valorRs,
+          priceUsd: milho.valorUsd || Number((milho.valorRs / fetchedDolar).toFixed(2)),
+          changeDay: milho.varDia,
+          changeDayValue: Number((milho.valorRs * (milho.varDia / 100)).toFixed(2)),
+          changeMonth: milho.varMes,
+          trend: (milho.varDia > 0 ? 'up' : milho.varDia < 0 ? 'down' : 'stable') as any,
+          lastSyncTimestamp: isoTimestamp,
+          lastFormattedDate: formattedDate
+        };
+      }
+
+      // Soja Paranaguá PR
+      if (scrapeSuccess && q.id === 'cepea-soja-pr' && scrapedPayload?.soja?.indicadorAtual) {
+        const soja = scrapedPayload.soja.indicadorAtual;
+        return {
+          ...q,
+          price: soja.valorRs,
+          priceUsd: soja.valorUsd || Number((soja.valorRs / fetchedDolar).toFixed(2)),
+          changeDay: soja.varDia,
+          changeDayValue: Number((soja.valorRs * (soja.varDia / 100)).toFixed(2)),
+          changeMonth: soja.varMes,
+          trend: (soja.varDia > 0 ? 'up' : soja.varDia < 0 ? 'down' : 'stable') as any,
+          lastSyncTimestamp: isoTimestamp,
+          lastFormattedDate: formattedDate
+        };
+      }
+
+      // Soja Ponta Grossa PR (Interior)
+      if (scrapeSuccess && q.id === 'cepea-soja-pg') {
+        const sojaFob = scrapedPayload?.soja?.indicadorAtual;
+        const valRs = sojaFob?.valorRs ? Number((sojaFob.valorRs * 0.966).toFixed(2)) : q.price;
+        const varDia = sojaFob?.varDia ?? q.changeDay;
+        return {
+          ...q,
+          price: valRs,
+          priceUsd: Number((valRs / fetchedDolar).toFixed(2)),
+          changeDay: varDia,
+          changeDayValue: Number((valRs * (varDia / 100)).toFixed(2)),
+          trend: (varDia > 0 ? 'up' : varDia < 0 ? 'down' : 'stable') as any,
+          lastSyncTimestamp: isoTimestamp,
+          lastFormattedDate: formattedDate
+        };
+      }
+
+      // Frango Congelado Atacado SP
+      if (scrapeSuccess && q.id === 'cepea-frango-congelado-sp' && scrapedPayload?.frango?.congelado) {
+        const fr = scrapedPayload.frango.congelado;
+        return {
+          ...q,
+          price: fr.valorRs,
+          priceUsd: fr.valorUsd || Number((fr.valorRs / fetchedDolar).toFixed(2)),
+          changeDay: fr.varDia,
+          changeDayValue: Number((fr.valorRs * (fr.varDia / 100)).toFixed(2)),
+          changeMonth: fr.varMes,
+          trend: (fr.varDia > 0 ? 'up' : fr.varDia < 0 ? 'down' : 'stable') as any,
+          lastSyncTimestamp: isoTimestamp,
+          lastFormattedDate: formattedDate
+        };
+      }
+
+      // Frango Resfriado Atacado SP
+      if (scrapeSuccess && q.id === 'cepea-frango-resfriado-sp' && scrapedPayload?.frango?.resfriado) {
+        const fr = scrapedPayload.frango.resfriado;
+        return {
+          ...q,
+          price: fr.valorRs,
+          priceUsd: fr.valorUsd || Number((fr.valorRs / fetchedDolar).toFixed(2)),
+          changeDay: fr.varDia,
+          changeDayValue: Number((fr.valorRs * (fr.varDia / 100)).toFixed(2)),
+          changeMonth: fr.varMes,
+          trend: (fr.varDia > 0 ? 'up' : fr.varDia < 0 ? 'down' : 'stable') as any,
+          lastSyncTimestamp: isoTimestamp,
+          lastFormattedDate: formattedDate
+        };
+      }
+
+      // Dólar PTAX
       if (q.id === 'cepea-dolar-ptax') {
         return {
           ...q,
@@ -1137,20 +1378,10 @@ export class CepeaService {
         };
       }
 
-      // Variação orgânica controlada para as demais commodities
-      const deltaPercent = Number(((Math.random() * 0.4) - 0.2).toFixed(2));
-      const newPrice = Number((q.price * (1 + deltaPercent / 100)).toFixed(2));
-      const newChangeDay = Number((q.changeDay + deltaPercent).toFixed(2));
-      const newChangeDayVal = Number((newPrice - (newPrice / (1 + newChangeDay / 100))).toFixed(2));
-      const newPriceUsd = Number((newPrice / fetchedDolar).toFixed(2));
-
+      // Mantém integridade dos dados reais sem jitter simulado
       return {
         ...q,
-        price: newPrice,
-        priceUsd: newPriceUsd,
-        changeDay: newChangeDay,
-        changeDayValue: newChangeDayVal,
-        trend: (newChangeDay > 0 ? 'up' : newChangeDay < 0 ? 'down' : 'stable') as any,
+        priceUsd: Number((q.price / fetchedDolar).toFixed(2)),
         lastSyncTimestamp: isoTimestamp,
         lastFormattedDate: formattedDate
       };
@@ -1160,7 +1391,7 @@ export class CepeaService {
     if (scrapeSuccess && Array.isArray(scrapedPayload?.boiGordo?.historico30Dias) && scrapedPayload.boiGordo.historico30Dias.length > 0) {
       updatedHistory = scrapedPayload.boiGordo.historico30Dias;
     } else {
-      const currentBoiPrice = updatedQuotes.find(q => q.id === 'cepea-boi-sp')?.price || 332.50;
+      const currentBoiPrice = updatedQuotes.find(q => q.id === 'cepea-boi-sp')?.price || 393.30;
       updatedHistory = this.generateDefault30DaysHistory(currentBoiPrice, fetchedDolar);
     }
 

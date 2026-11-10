@@ -97,6 +97,34 @@ async function startServer() {
     }
   });
 
+  // Endpoint de Sincronização Integral das 12 Redes Supermercadistas RJ (Motor de Perecíveis)
+  app.post('/api/perishables/sync', async (req, res) => {
+    try {
+      const products = req.body?.products;
+      const data = await perishablesTvPromoScraperService.syncAllPerishablesRealTime(products);
+      res.json(data);
+    } catch (err: any) {
+      console.error('[API /api/perishables/sync] Erro:', err);
+      res.status(500).json({
+        error: 'Erro ao executar sincronização de perecíveis com fontes do RJ',
+        message: err?.message || 'Falha de comunicação'
+      });
+    }
+  });
+
+  app.get('/api/perishables/sync', async (_req, res) => {
+    try {
+      const data = await perishablesTvPromoScraperService.syncAllPerishablesRealTime();
+      res.json(data);
+    } catch (err: any) {
+      console.error('[API /api/perishables/sync] Erro:', err);
+      res.status(500).json({
+        error: 'Erro ao executar sincronização de perecíveis com fontes do RJ',
+        message: err?.message || 'Falha de comunicação'
+      });
+    }
+  });
+
   // Endpoint de Auditoria de Integridade e Detecção de Discrepâncias de Preço
   app.post('/api/perishables/tv-promos/audit', async (req, res) => {
     try {

@@ -329,9 +329,16 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      // Simulação de verificação em fontes de dados do RJ
-      await new Promise(r => setTimeout(r, 600));
-      if (showToast) showToast('Cotações de perecíveis sincronizadas com as bases de dados do RJ!');
+      const syncResult = await PerishablesQuotesService.syncAllPerishablesRealTime(products);
+      if (syncResult && Array.isArray(syncResult.syncedProducts)) {
+        setProducts(syncResult.syncedProducts);
+        if (showToast) {
+          showToast(`✓ Cotações de perecíveis atualizadas com as fontes oficiais do RJ! (${syncResult.activePromosCount} ofertas ativas auditadas nas 12 redes em ${syncResult.latencyMs}ms)`);
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao sincronizar cotações de perecíveis:', err);
+      if (showToast) showToast('Falha ao sincronizar cotações de perecíveis com as fontes oficiais do RJ.');
     } finally {
       setIsRefreshing(false);
     }

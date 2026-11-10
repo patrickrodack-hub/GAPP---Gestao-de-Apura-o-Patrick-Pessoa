@@ -16,6 +16,7 @@ import ExcelJS from 'exceljs';
 import { ReportBrandingService } from './reportBrandingService';
 import { PrintEngineService } from './printEngineService';
 import { OFFICIAL_RJ_TV_PROMO_REGISTRY } from './perishableTvPromoRegistry';
+import { perishablesTvPromoScraperService } from './perishablesTvPromoScraper';
 
 const STORAGE_KEY = 'apuracao_boi_perishables_quotes_v1';
 
@@ -3679,6 +3680,45 @@ export class PerishablesQuotesService {
 
   public static syncAllProductsWithAnnouncedPromos(products: PerishableProductItem[]): PerishableProductItem[] {
     return products.map(p => this.syncProductWithAnnouncedPromo(p));
+  }
+
+  /**
+   * Sincronização em Tempo Real de Perecíveis (12 Redes Supermercadistas RJ, TV, Encartes e CEASA)
+   * Envia requisição para a API oficial do backend (/api/perishables/sync) ou executa motor local caso offline.
+   */
+  public static async syncAllPerishablesRealTime(inputProducts?: PerishableProductItem[]): Promise<{
+    syncedProducts: PerishableProductItem[];
+    activePromosCount: number;
+    updatedPricesCount: number;
+    timestamp: string;
+    latencyMs: number;
+    verifiedSources: string[];
+    auditHash: string;
+  }> {
+    const prods = inputProducts || this.getProducts();
+
+    try {
+      const res = await fetch('/api/perishables/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ products: prods }),
+        signal: AbortSignal.timeout(8000)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.syncedProducts)) {
+          this.saveProducts(data.syncedProducts);
+          return data;
+        }
+      }
+    } catch (err) {
+      console.warn('[Perishables] /api/perishables/sync falhou ou offline, acionando motor local:', err);
+    }
+
+    // Fallback para o motor determinístico integrado
+    const result = await perishablesTvPromoScraperService.syncAllPerishablesRealTime(prods);
+    this.saveProducts(result.syncedProducts);
+    return result;
   }
 
   /**

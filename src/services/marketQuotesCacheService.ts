@@ -76,8 +76,8 @@ class MarketQuotesCacheService {
     const now = new Date();
     const cepeaPrice = cepea.boiGordo?.indicadorAtual?.valorRs || 381.40;
     
-    // Entrada RJ: média ponderada Fluminense (normalmente entre R$ 3,50 a R$ 5,00 abaixo de SP)
-    const boiEntradaRj = Number((cepeaPrice - 4.50).toFixed(2));
+    // Entrada RJ: média ponderada Fluminense (-R$ 4,80/@ de spread histórico vs SP)
+    const boiEntradaRj = Number((cepeaPrice - 4.80).toFixed(2));
     const spreadVsSp = Number((boiEntradaRj - cepeaPrice).toFixed(2));
     const freteMedioRj = 9.80;
     const perdaGotejo = Number((boiEntradaRj * 0.018).toFixed(2));
@@ -88,13 +88,14 @@ class MarketQuotesCacheService {
     const hour = now.getHours();
     const statusMercado: 'ABERTO' | 'FECHADO' = (day >= 1 && day <= 5 && hour >= 9 && hour <= 17) ? 'ABERTO' : 'FECHADO';
 
-    // Cortes Atacado & Balcão RJ
-    const picanhaAvg = Number((cepeaPrice * 0.248).toFixed(2));
-    const contraFileAvg = Number((cepeaPrice * 0.144).toFixed(2));
-    const alcatraAvg = Number((cepeaPrice * 0.133).toFixed(2));
-    const acemAvg = Number((cepeaPrice * 0.088).toFixed(2));
-    const suinoCarcaca = cepea.suinos?.destaqueCarcaca?.valorRs || 13.90;
-    const pernilSuinoAvg = Number((suinoCarcaca * 1.05).toFixed(2));
+    // Cortes Atacado & Balcão RJ calculados zootecnicamente sobre o custo da carcaça casada
+    const carcacaKg = Number((boiEntradaRj / 15).toFixed(2));
+    const picanhaAvg = Number((carcacaKg * 2.85).toFixed(2));
+    const contraFileAvg = Number((carcacaKg * 1.70).toFixed(2));
+    const alcatraAvg = Number((carcacaKg * 1.60).toFixed(2));
+    const acemAvg = Number((carcacaKg * 1.02).toFixed(2));
+    const suinoCarcaca = cepea.suinos?.destaqueCarcaca?.valorRs || 14.22;
+    const pernilSuinoAvg = Number((suinoCarcaca * 1.15).toFixed(2));
 
     const redes = [
       'Supermercados Guanabara',
@@ -133,11 +134,11 @@ class MarketQuotesCacheService {
       },
       cortesBalcaoStats: {
         totalCortes: 38,
-        picanhaAvg: 58.50,
-        contraFileAvg: 35.50,
-        alcatraAvg: 33.50,
-        acemAvg: 21.00,
-        pernilSuinoAvg: 17.50,
+        picanhaAvg,
+        contraFileAvg,
+        alcatraAvg,
+        acemAvg,
+        pernilSuinoAvg,
         bandaSuinaAvg: suinoCarcaca,
         margemMediaPraticadaPercent: 23.4
       },
