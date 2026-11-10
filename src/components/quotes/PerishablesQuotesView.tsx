@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   PerishableCategoryId, 
   PerishableProductItem,
@@ -43,8 +43,10 @@ import {
   Tag,
   TrendingDown,
   Pin,
-  History
+  History,
+  Clock
 } from 'lucide-react';
+import { MarketDataSyncService } from '../../services/marketDataSyncService';
 
 interface PerishablesQuotesViewProps {
   showToast?: (message: string) => void;
@@ -63,6 +65,7 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
   const [activeCategoryId, setActiveCategoryId] = useState<PerishableCategoryId>('corte_frango');
   const [activeFlvSubdivision, setActiveFlvSubdivision] = useState<'TODOS' | FlvSubdivision>('FRUTAS');
   const [products, setProducts] = useState<PerishableProductItem[]>(() => PerishablesQuotesService.getProducts());
+  const [syncDetails, setSyncDetails] = useState(() => MarketDataSyncService.getStatusDetails());
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -70,6 +73,14 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [isScanningTv, setIsScanningTv] = useState(false);
   const [promoChannelFilter, setPromoChannelFilter] = useState<'ALL' | 'TV' | 'ENCARTE' | 'CLUBE' | 'LAMINA' | 'REDES'>('ALL');
+
+  // Subscrição reativa contínua ao MarketDataSyncService
+  useEffect(() => {
+    const unsubscribe = MarketDataSyncService.subscribe((details) => {
+      setSyncDetails(details);
+    });
+    return () => { unsubscribe(); };
+  }, []);
   
   // Modal de auditoria de oferta de TV / encarte individual
   const [selectedTvPromoProduct, setSelectedTvPromoProduct] = useState<{
@@ -325,15 +336,15 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
     }
   };
 
-  // Handlers de Ações
+  // Handlers de Ações via MarketDataSyncService
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      const syncResult = await PerishablesQuotesService.syncAllPerishablesRealTime(products);
+      const syncResult = await MarketDataSyncService.syncPerishables(products);
       if (syncResult && Array.isArray(syncResult.syncedProducts)) {
         setProducts(syncResult.syncedProducts);
         if (showToast) {
-          showToast(`✓ Cotações de perecíveis atualizadas com as fontes oficiais do RJ! (${syncResult.activePromosCount} ofertas ativas auditadas nas 12 redes em ${syncResult.latencyMs}ms)`);
+          showToast(`✓ Cotações de perecíveis sincronizadas com fontes oficiais do RJ! (${syncResult.activePromosCount} ofertas ativas auditadas nas 12 redes em ${syncResult.statusDetails.latencyMs}ms)`);
         }
       }
     } catch (err) {
@@ -692,16 +703,38 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
               )}
             </button>
 
+            {/* Indicador Visual de 'Sincronizando' e Data da Última Atualização */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 shadow-2xs">
+              {isRefreshing || syncDetails.status === 'syncing' ? (
+                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-xs animate-pulse">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Sincronizando 12 Redes RJ...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 text-xs">
+                  <Clock className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span className="text-[11px] font-medium whitespace-nowrap">
+                    Última atualização: <strong className="font-mono text-slate-900 dark:text-white font-bold">{syncDetails.lastSyncFormatted || MarketDataSyncService.getLastSyncFormatted()}</strong>
+                  </span>
+                  {syncDetails.latencyMs > 0 && (
+                    <span className="hidden sm:inline-block text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                      {syncDetails.latencyMs}ms
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Sincronizar 12 Redes */}
             <button
               type="button"
               onClick={handleRefresh}
-              disabled={isRefreshing}
+              disabled={isRefreshing || syncDetails.status === 'syncing'}
               className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-950/20 transition active:scale-95 cursor-pointer disabled:opacity-50"
-              title="Sincronizar base de dados das 12 redes supermercadistas"
+              title="Sincronizar base de dados das 12 redes supermercadistas com fontes oficiais do RJ"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span>Sincronizar 12 Redes RJ</span>
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing || syncDetails.status === 'syncing' ? 'animate-spin' : ''}`} />
+              <span>{isRefreshing || syncDetails.status === 'syncing' ? 'Sincronizando...' : 'Sincronizar 12 Redes RJ'}</span>
             </button>
 
             {/* Baixar Relatório PDF */}

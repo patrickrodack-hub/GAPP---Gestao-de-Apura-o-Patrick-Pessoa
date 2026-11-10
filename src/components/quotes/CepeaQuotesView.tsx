@@ -47,6 +47,7 @@ import {
   Filter,
   RotateCcw
 } from 'lucide-react';
+import { MarketDataSyncService } from '../../services/marketDataSyncService';
 
 interface CepeaQuotesViewProps {
   yieldParams?: YieldParams;
@@ -64,6 +65,7 @@ export const CepeaQuotesView: React.FC<CepeaQuotesViewProps> = ({
   onResetAndReload
 }) => {
   const [snapshot, setSnapshot] = useState<CepeaSnapshot>(() => CepeaService.getSnapshot());
+  const [syncDetails, setSyncDetails] = useState(() => MarketDataSyncService.getStatusDetails());
   const [isSyncing, setIsSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState<'bovino' | 'suino' | 'milho_soja' | 'frango' | 'leite' | 'cafe_outros' | 'troca' | 'metodologia'>('bovino');
   const [searchQuery, setSearchQuery] = useState('');
@@ -77,21 +79,28 @@ export const CepeaQuotesView: React.FC<CepeaQuotesViewProps> = ({
   const [showMma7, setShowMma7] = useState<boolean>(true);
   const [showRefLines, setShowRefLines] = useState<boolean>(true);
 
-  // Sincronização automática na montagem para garantir dados em tempo real
+  // Sincronização automática na montagem e assinatura ao MarketDataSyncService
   useEffect(() => {
     let isMounted = true;
-    const runAutoSync = async () => {
-      try {
-        const updated = await CepeaService.syncRealTimeQuotes();
-        if (isMounted) {
-          setSnapshot(updated);
-        }
-      } catch (err) {
-        console.warn('Auto sync CEPEA fallback:', err);
+    const unsubscribe = MarketDataSyncService.subscribe((details) => {
+      if (isMounted) {
+        setSyncDetails(details);
+        setSnapshot(CepeaService.getSnapshot());
       }
+    });
+
+    MarketDataSyncService.syncAllMarketData().then(res => {
+      if (isMounted) {
+        setSnapshot(res.cepeaSnapshot);
+      }
+    }).catch(err => {
+      console.warn('Auto sync CEPEA fallback:', err);
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
     };
-    runAutoSync();
-    return () => { isMounted = false; };
   }, []);
 
   // Efeito de Reset Completo disparado pela ação global de Limpar e Resetar Cotações
@@ -104,8 +113,8 @@ export const CepeaQuotesView: React.FC<CepeaQuotesViewProps> = ({
       setShowMma7(true);
       setShowRefLines(true);
       setAppliedQuoteMsg(null);
-      CepeaService.syncRealTimeQuotes().then(updated => {
-        setSnapshot(updated);
+      MarketDataSyncService.syncAllMarketData(true).then(res => {
+        setSnapshot(res.cepeaSnapshot);
       }).catch(err => {
         console.warn('Erro ao atualizar CEPEA durante reset:', err);
       });
@@ -118,8 +127,8 @@ export const CepeaQuotesView: React.FC<CepeaQuotesViewProps> = ({
       return snapshot.historicoBoiGordo30d;
     }
     return CepeaService.generateDefault30DaysHistory(
-      snapshot.quotes.find(q => q.id === 'cepea-boi-sp')?.price || 332.50,
-      snapshot.dolarPtax || 5.62
+      snapshot.quotes.find(q => q.id === 'cepea-boi-sp')?.price || 393.30,
+      snapshot.dolarPtax || 5.5146
     );
   }, [snapshot.historicoBoiGordo30d, snapshot.quotes, snapshot.dolarPtax]);
 
@@ -131,7 +140,7 @@ export const CepeaQuotesView: React.FC<CepeaQuotesViewProps> = ({
   // Estatísticas calculadas do período
   const chartStats = useMemo(() => {
     if (!chartData || chartData.length === 0) {
-      return { initial: 318, current: 332.50, diffVal: 14.50, diffPct: 4.56, min: 318, max: 335, avg: 326.5 };
+      return { initial: 375, current: 393.30, diffVal: 18.30, diffPct: 4.88, min: 375, max: 395, avg: 388.5 };
     }
     const initial = chartData[0].valorRs;
     const current = chartData[chartData.length - 1].valorRs;
@@ -145,16 +154,16 @@ export const CepeaQuotesView: React.FC<CepeaQuotesViewProps> = ({
     return { initial, current, diffVal, diffPct, min, max, avg };
   }, [chartData]);
 
-  // Sincronização em Tempo Real Oficial
+  // Sincronização em Tempo Real Oficial via MarketDataSyncService
   const handleSyncRealTime = async () => {
     try {
       setIsSyncing(true);
-      const updated = await CepeaService.syncRealTimeQuotes();
-      setSnapshot(updated);
-      const boi = updated.quotes.find(q => q.id === 'cepea-boi-sp');
-      const bez = updated.quotes.find(q => q.id === 'cepea-bezerro-ms');
+      const result = await MarketDataSyncService.syncAllMarketData(true);
+      setSnapshot(result.cepeaSnapshot);
+      const boi = result.cepeaSnapshot.quotes.find(q => q.id === 'cepea-boi-sp');
+      const bez = result.cepeaSnapshot.quotes.find(q => q.id === 'cepea-bezerro-ms');
       if (showToast) {
-        showToast(`✓ Cotações oficiais CEPEA/ESALQ e BACEN atualizadas! Boi Gordo: R$ ${boi?.price.toFixed(2) || '393,30'}/@ • Bezerro: R$ ${bez?.price.toFixed(2) || '3.597,71'} • Dólar PTAX: R$ ${updated.dolarPtax.toFixed(4)}`);
+        showToast(`✓ Cotações oficiais CEPEA/ESALQ e BACEN atualizadas (${result.statusDetails.source})! Boi Gordo: R$ ${boi?.price.toFixed(2) || '393,30'}/@ • Bezerro: R$ ${bez?.price.toFixed(2) || '3.597,71'} • Dólar PTAX: R$ ${result.cepeaSnapshot.dolarPtax.toFixed(4)} (${result.statusDetails.latencyMs}ms)`);
       }
     } catch (err) {
       console.error('Erro na sincronização CEPEA:', err);
@@ -336,16 +345,38 @@ export const CepeaQuotesView: React.FC<CepeaQuotesViewProps> = ({
               </button>
             )}
             
+            {/* Indicador Visual de 'Sincronizando' e Data da Última Atualização */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 border border-white/15 text-xs text-white">
+              {isSyncing || syncDetails.status === 'syncing' ? (
+                <div className="flex items-center gap-1.5 text-[#b5e550] font-bold animate-pulse">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Sincronizando CEPEA & BACEN...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-emerald-100">
+                  <Clock className="w-3.5 h-3.5 text-[#b5e550] shrink-0" />
+                  <span className="text-[11px] font-medium whitespace-nowrap">
+                    Última atualização: <strong className="font-mono text-white font-bold">{syncDetails.lastSyncFormatted || MarketDataSyncService.getLastSyncFormatted()}</strong>
+                  </span>
+                  {syncDetails.latencyMs > 0 && (
+                    <span className="hidden sm:inline-block text-[10px] text-[#b5e550] font-mono font-bold bg-[#b5e550]/20 px-1.5 py-0.5 rounded">
+                      {syncDetails.latencyMs}ms
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Botão Sincronizar Agora */}
             <button
               type="button"
               onClick={handleSyncRealTime}
-              disabled={isSyncing}
+              disabled={isSyncing || syncDetails.status === 'syncing'}
               className="px-4 py-2.5 rounded-xl bg-[#b5e550] hover:bg-[#a6d741] text-[#0c281e] font-black text-xs flex items-center gap-2 shadow-lg shadow-black/25 active:scale-95 transition cursor-pointer disabled:opacity-50"
               title="Sincronizar cotações em tempo real com CEPEA e Banco Central"
             >
-              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? 'Sincronizando CEPEA...' : 'Sincronizar em Tempo Real'}</span>
+              <RefreshCw className={`w-4 h-4 ${isSyncing || syncDetails.status === 'syncing' ? 'animate-spin' : ''}`} />
+              <span>{isSyncing || syncDetails.status === 'syncing' ? 'Sincronizando CEPEA...' : 'Sincronizar em Tempo Real'}</span>
             </button>
 
             {/* Baixar Boletim PDF */}
