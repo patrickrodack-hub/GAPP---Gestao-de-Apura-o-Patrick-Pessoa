@@ -146,6 +146,19 @@
             else if (theme === 'solidcon') meta.setAttribute('content', '#1b3252');
             else meta.setAttribute('content', '#ffffff');
           }
+
+          // Limpa chave legada de perecíveis v1 caso presente para forçar carga imediata da v11 BGRJ
+          if (localStorage.getItem('apuracao_boi_perishables_quotes_v1')) {
+            localStorage.removeItem('apuracao_boi_perishables_quotes_v1');
+          }
+          // No ambiente de preview do AI Studio, desregistra service workers para evitar cache estático
+          if (window.location.hostname.indexOf('ais-') !== -1 || window.location.hostname === 'localhost') {
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function(regs) {
+                for (var r of regs) { r.unregister(); }
+              });
+            }
+          }
         } catch(e) {}
       })();
     </script>

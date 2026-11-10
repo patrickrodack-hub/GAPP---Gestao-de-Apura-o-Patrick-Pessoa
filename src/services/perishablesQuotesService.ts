@@ -17,8 +17,9 @@ import { ReportBrandingService } from './reportBrandingService';
 import { PrintEngineService } from './printEngineService';
 import { OFFICIAL_RJ_TV_PROMO_REGISTRY } from './perishableTvPromoRegistry';
 import { perishablesTvPromoScraperService } from './perishablesTvPromoScraper';
+import { BgrjMarketDailyService } from './bgrjMarketDailyService';
 
-const STORAGE_KEY = 'apuracao_boi_perishables_quotes_v1';
+const STORAGE_KEY = 'apuracao_boi_perishables_quotes_v11';
 
 export const PERISHABLE_CATEGORIES: PerishableCategoryDef[] = [
   {
@@ -3697,78 +3698,85 @@ export class PerishablesQuotesService {
   }> {
     const prods = inputProducts || this.getProducts();
 
+    // Aplica a metodologia rigorosa da Bolsa de Gêneros Alimentícios do RJ (BGRJ)
+    // Redes sem cotação ativa no dia/período permanecem em branco (preço 0)
+    const bgrjProducts = BgrjMarketDailyService.applyBgrjQuotationMethodology(
+      prods,
+      OFFICIAL_RJ_TV_PROMO_REGISTRY
+    );
+
     try {
       const res = await fetch('/api/perishables/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ products: prods }),
+        body: JSON.stringify({ products: bgrjProducts }),
         signal: AbortSignal.timeout(8000)
       });
       if (res.ok) {
         const data = await res.json();
         if (data && Array.isArray(data.syncedProducts)) {
-          this.saveProducts(data.syncedProducts);
-          return data;
+          const finalBgrj = BgrjMarketDailyService.applyBgrjQuotationMethodology(
+            data.syncedProducts,
+            OFFICIAL_RJ_TV_PROMO_REGISTRY
+          );
+          this.saveProducts(finalBgrj);
+          BgrjMarketDailyService.markDailyCheckCompleted();
+          return {
+            ...data,
+            syncedProducts: finalBgrj
+          };
         }
       }
     } catch (err) {
       console.warn('[Perishables] /api/perishables/sync falhou ou offline, acionando motor local:', err);
     }
 
-    // Fallback para o motor determinístico integrado
-    const result = await perishablesTvPromoScraperService.syncAllPerishablesRealTime(prods);
-    this.saveProducts(result.syncedProducts);
-    return result;
+    // Fallback para o motor determinístico integrado com BGRJ
+    const result = await perishablesTvPromoScraperService.syncAllPerishablesRealTime(bgrjProducts);
+    const finalSynced = BgrjMarketDailyService.applyBgrjQuotationMethodology(
+      result.syncedProducts,
+      OFFICIAL_RJ_TV_PROMO_REGISTRY
+    );
+    this.saveProducts(finalSynced);
+    BgrjMarketDailyService.markDailyCheckCompleted();
+
+    return {
+      ...result,
+      syncedProducts: finalSynced
+    };
   }
 
   /**
-   * Obtém a lista completa de produtos de perecíveis armazenada ou inicial (com merge inteligente e sincronização verídica)
+   * Obtém a lista completa de produtos de perecíveis armazenada ou inicial
+   * Executa checagem diária automática com metodologia BGRJ (1 vez ao dia)
    */
   public static getProducts(): PerishableProductItem[] {
+    let rawList: PerishableProductItem[] = [];
+
     try {
       if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // Merge inteligente: garante que todos os produtos novos do baseline
-            // estejam presentes, sincronizando os preços anunciados das redes concorrentes
-            const map = new Map<string, PerishableProductItem>();
-            INITIAL_PERISHABLE_PRODUCTS.forEach(p => {
-              const synced = this.syncProductWithAnnouncedPromo(p);
-              map.set(synced.id, synced);
-            });
-            parsed.forEach((p: PerishableProductItem) => {
-              const promo = OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id] || p.promoOffer;
-              const updatedPrices = { ...(p.chainPrices || {}) };
-              if (promo && promo.hasActivePromo && promo.promoPrice > 0 && promo.chainId) {
-                // Garante que a coluna da rede anunciante reflita o preço verídico anunciado
-                updatedPrices[promo.chainId] = promo.promoPrice;
-              }
-              if (map.has(p.id)) {
-                const base = map.get(p.id)!;
-                map.set(p.id, {
-                  ...base,
-                  ...p,
-                  chainPrices: updatedPrices,
-                  promoOffer: promo || base.promoOffer
-                });
-              } else {
-                map.set(p.id, {
-                  ...p,
-                  chainPrices: updatedPrices,
-                  promoOffer: promo
-                });
-              }
-            });
-            return Array.from(map.values()).map(p => this.syncProductWithAnnouncedPromo(p));
+            rawList = parsed;
           }
         }
       }
     } catch (e) {
       console.warn('Erro ao ler perecíveis do localStorage, usando baseline inicial:', e);
     }
-    return INITIAL_PERISHABLE_PRODUCTS.map(p => this.syncProductWithAnnouncedPromo(p));
+
+    if (rawList.length === 0) {
+      const base = INITIAL_PERISHABLE_PRODUCTS.map(p => this.syncProductWithAnnouncedPromo(p));
+      rawList = BgrjMarketDailyService.applyBgrjQuotationMethodology(base, OFFICIAL_RJ_TV_PROMO_REGISTRY);
+      this.saveProducts(rawList);
+    } else {
+      // Sempre assegura que as regras da BGRJ e as datas de vigência de hoje estejam sincronizadas
+      rawList = BgrjMarketDailyService.applyBgrjQuotationMethodology(rawList, OFFICIAL_RJ_TV_PROMO_REGISTRY);
+    }
+
+    return rawList;
   }
 
   /**
@@ -4102,7 +4110,10 @@ export class PerishablesQuotesService {
     } catch (e) {
       // Ignorar
     }
-    return INITIAL_PERISHABLE_PRODUCTS.map(p => this.syncProductWithAnnouncedPromo(p));
+    const synced = INITIAL_PERISHABLE_PRODUCTS.map(p => this.syncProductWithAnnouncedPromo(p));
+    const bgrj = BgrjMarketDailyService.applyBgrjQuotationMethodology(synced, OFFICIAL_RJ_TV_PROMO_REGISTRY);
+    this.saveProducts(bgrj);
+    return bgrj;
   }
 
   /**
@@ -4419,7 +4430,7 @@ export class PerishablesQuotesService {
       departmentTag: 'AUDITORIA DE PERECÍVEIS & RADAR DE TV / ENCARTE RJ',
       rightMetaLines: [
         `Emissão: ${today}`,
-        'Sistema: GAPP - PATRICK PESSOA v10.9',
+        'Sistema: GAPP - PATRICK PESSOA v11.0',
         'Desenvolvedor: Patrick Pessoa'
       ],
       themeColor: 'forest'
@@ -4679,7 +4690,7 @@ export class PerishablesQuotesService {
       text += `• Média 12 Redes: *R$ ${stats.avgPrice.toFixed(2)}*\n\n`;
     });
 
-    text += `_Gerado via GAPP - PATRICK PESSOA • Gestão Apuração do Boi v10.9 • Patrick Pessoa_`;
+    text += `_Gerado via GAPP - PATRICK PESSOA • Gestão Apuração do Boi v11.0 • Patrick Pessoa_`;
     return encodeURIComponent(text);
   }
 }

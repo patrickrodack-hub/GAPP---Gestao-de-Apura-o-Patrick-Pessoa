@@ -5,7 +5,7 @@ import {
   PerishablesAuditReport 
 } from '../types/perishablesQuotes';
 import { OFFICIAL_RJ_TV_PROMO_REGISTRY } from './perishableTvPromoRegistry';
-import { RJ_SUPERMARKET_CHAINS } from './perishablesQuotesService';
+import { RJ_SUPERMARKET_CHAINS, INITIAL_PERISHABLE_PRODUCTS } from './perishablesQuotesService';
 
 /**
  * SERVIÇO DE SCRAPING E AUDITORIA DE OFERTAS DE TV, ENCARTES E MÍDIAS DO RJ
@@ -266,7 +266,7 @@ class PerishablesTvPromoScraperService {
 
     const baseProducts: PerishableProductItem[] = inputProducts && inputProducts.length > 0 
       ? inputProducts 
-      : [];
+      : INITIAL_PERISHABLE_PRODUCTS;
 
     let activePromosCount = 0;
     let updatedPricesCount = 0;

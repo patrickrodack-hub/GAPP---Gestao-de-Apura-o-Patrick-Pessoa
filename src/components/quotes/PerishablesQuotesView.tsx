@@ -47,6 +47,7 @@ import {
   Clock
 } from 'lucide-react';
 import { MarketDataSyncService } from '../../services/marketDataSyncService';
+import { BgrjMarketDailyService } from '../../services/bgrjMarketDailyService';
 
 interface PerishablesQuotesViewProps {
   showToast?: (message: string) => void;
@@ -73,6 +74,25 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [isScanningTv, setIsScanningTv] = useState(false);
   const [promoChannelFilter, setPromoChannelFilter] = useState<'ALL' | 'TV' | 'ENCARTE' | 'CLUBE' | 'LAMINA' | 'REDES'>('ALL');
+  const [quoteAvailabilityFilter, setQuoteAvailabilityFilter] = useState<'ALL' | 'WITH_QUOTES' | 'ONLY_TV_PROMO'>('ALL');
+
+  // Metadados Dinâmicos do Boletim da Bolsa de Gêneros Alimentícios do RJ (BGRJ)
+  const bulletinMeta = useMemo(() => BgrjMarketDailyService.getBulletinMeta(), []);
+
+  // Checagem Diária Automática (1 vez ao dia na abertura)
+  useEffect(() => {
+    if (BgrjMarketDailyService.shouldRunDailyCheck()) {
+      const checkResult = BgrjMarketDailyService.performDailyMarketCheck(
+        products,
+        OFFICIAL_RJ_TV_PROMO_REGISTRY,
+        false
+      );
+      if (checkResult.wasUpdated) {
+        setProducts(checkResult.products);
+        PerishablesQuotesService.saveProducts(checkResult.products);
+      }
+    }
+  }, []);
 
   // Subscrição reativa contínua ao MarketDataSyncService
   useEffect(() => {
@@ -159,8 +179,19 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
         if (promoChannelFilter === 'ALL') return true;
         const promo = p.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id];
         return promo?.mediaChannel === promoChannelFilter;
+      })
+      .filter(p => {
+        if (quoteAvailabilityFilter === 'WITH_QUOTES') {
+          const stats = PerishablesQuotesService.calculateProductStats(p);
+          return stats.validQuotesCount > 0;
+        }
+        if (quoteAvailabilityFilter === 'ONLY_TV_PROMO') {
+          const promo = p.promoOffer || OFFICIAL_RJ_TV_PROMO_REGISTRY[p.id];
+          return Boolean(promo && promo.hasActivePromo && promo.promoPrice > 0);
+        }
+        return true;
       });
-  }, [products, activeCategoryId, activeFlvSubdivision, searchQuery, promoChannelFilter]);
+  }, [products, activeCategoryId, activeFlvSubdivision, searchQuery, promoChannelFilter, quoteAvailabilityFilter]);
 
   // Resumo estatístico da categoria (considerando subdivisão FLV ativa)
   const categorySummary = useMemo(() => {
@@ -561,23 +592,51 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
         )}
       </div>
 
-      {/* 2. BARRA DE STATUS DE AUDITORIA & METODOLOGIA */}
-      <div className="flex items-center justify-between gap-3 bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl px-4 py-2.5 text-xs text-emerald-900 dark:text-emerald-200 flex-wrap">
-        <div className="flex items-center gap-2.5">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-          </span>
-          <span className="font-extrabold tracking-wide uppercase text-[11px] text-emerald-800 dark:text-emerald-300">
-            AUDITORIA DE BALCÃO ATIVA & SINCRONIZADA EM TEMPO REAL
-          </span>
-          <span className="text-emerald-600 dark:text-emerald-400 hidden sm:inline">•</span>
-          <span className="text-slate-600 dark:text-slate-300 hidden md:inline">
-            Amostragem em 12 redes fluminenses (Populares, Atacarejos e Premium)
-          </span>
+      {/* 2. PAINEL OFICIAL BGRJ • BOLSA DE GÊNEROS ALIMENTÍCIOS DO RIO DE JANEIRO */}
+      <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-[#113829] border-2 border-emerald-500/40 rounded-2xl p-4 shadow-lg text-white">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-emerald-700/50 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300">
+              <Store className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black uppercase tracking-wider shadow-xs">
+                  BGRJ • MERCADO FÍSICO RJ
+                </span>
+                <span className="text-xs font-mono font-bold text-emerald-300">
+                  {bulletinMeta.bulletinNumber}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-200 text-[10px] font-mono font-semibold border border-emerald-700/50">
+                  {bulletinMeta.marketStatus}
+                </span>
+              </div>
+              <h2 className="text-sm md:text-base font-extrabold text-white mt-0.5">
+                Bolsa de Gêneros Alimentícios do Rio de Janeiro • {bulletinMeta.retailCycleTitle}
+              </h2>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 bg-emerald-900/30 border border-emerald-600/40 px-3 py-1.5 rounded-xl text-xs font-mono shrink-0">
+            <Clock className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-slate-300 text-[11px]">
+              Pregão Diário: <strong className="text-emerald-200">{bulletinMeta.tradingDateFormatted}</strong> ({bulletinMeta.dayOfWeekLabel})
+            </span>
+            <span className="text-emerald-400">•</span>
+            <span className="text-slate-200 text-[11px]">
+              Última sincronização: <strong>{syncDetails.lastSyncFormatted || MarketDataSyncService.getLastSyncFormatted()}</strong>
+            </span>
+          </div>
         </div>
-        <div className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 bg-white/70 dark:bg-emerald-900/40 px-2.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/60">
-          Última sincronização: <strong>{new Date().toLocaleDateString('pt-BR')} às 17:30</strong>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2.5 text-[11px] text-emerald-100/90 font-sans">
+          <p className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>{bulletinMeta.methodology}</span>
+          </p>
+          <div className="flex items-center gap-1 shrink-0 font-mono text-[10px] bg-slate-900/60 px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-300">
+            <span>Vigência Mídia: {bulletinMeta.validityWindow}</span>
+          </div>
         </div>
       </div>
 
@@ -604,6 +663,48 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
+          </div>
+
+          {/* Seletor BGRJ: Metodologia de Cotação Ativa */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shrink-0">
+            <button
+              type="button"
+              onClick={() => setQuoteAvailabilityFilter('ALL')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                quoteAvailabilityFilter === 'ALL'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-emerald-600'
+              }`}
+              title="Exibir todos os produtos do catálogo"
+            >
+              Todos ({products.filter(p => p.categoryId === activeCategoryId).length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setQuoteAvailabilityFilter('WITH_QUOTES')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                quoteAvailabilityFilter === 'WITH_QUOTES'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-emerald-600'
+              }`}
+              title="Exibir apenas produtos que possuem cotações válidas registradas no dia"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Cotados no Dia</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setQuoteAvailabilityFilter('ONLY_TV_PROMO')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                quoteAvailabilityFilter === 'ONLY_TV_PROMO'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-amber-500'
+              }`}
+              title="Exibir apenas produtos veiculados em comerciais de TV, encartes ou apps no RJ"
+            >
+              <Tv className="w-3.5 h-3.5" />
+              <span>Destaques de Mídia</span>
+            </button>
           </div>
 
           {/* Filtro por Meio de Publicação da Oferta (TV, Encarte, Clube, Lâmina, Redes) */}
@@ -1045,7 +1146,9 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                                   ? 'bg-emerald-50/70 dark:bg-emerald-950/30 font-black text-emerald-700 dark:text-emerald-400' 
                                   : isMax 
                                     ? 'bg-rose-50/40 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400' 
-                                    : 'text-slate-800 dark:text-slate-200'
+                                    : price > 0
+                                      ? 'text-slate-800 dark:text-slate-200'
+                                      : 'text-slate-400 dark:text-slate-600 bg-slate-50/30 dark:bg-slate-900/20'
                           }`}
                           onClick={() => !isEditing && startEditing(product.id, chain.id, price)}
                           title={
@@ -1053,7 +1156,9 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                               ? `⚠️ DISCREPÂNCIA DETECTADA: Preço Anunciado R$ ${promo.promoPrice.toFixed(2)} vs Preço Processado R$ ${price.toFixed(2)}. Clique para resolver no Log de Auditoria.`
                               : isPromoChain 
                                 ? `Oferta Anunciada em ${promo.mediaLabel} (De: R$ ${promo.regularPrice?.toFixed(2)} Por: R$ ${price.toFixed(2)}) • Clique para editar` 
-                                : 'Clique para editar este preço manualmente'
+                                : price > 0
+                                  ? `R$ ${price.toFixed(2)} no ${chain.name} • Clique para editar preço`
+                                  : `Sem cotação registrada no dia pela rede ${chain.name} (Metodologia BGRJ) • Clique para lançar cotação`
                           }
                         >
                           {isEditing ? (
@@ -1117,19 +1222,23 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                                   <span>{channel}</span>
                                 </button>
                               ) : null}
-                              <span>{price > 0 ? `R$ ${price.toFixed(2)}` : '-'}</span>
-                              {price > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenPriceHistory(product, chain.id, stats);
-                                  }}
-                                  className="p-0.5 rounded text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 opacity-60 group-hover:opacity-100 transition shrink-0 cursor-pointer"
-                                  title={`Ver evolução de 4 semanas no ${chain.shortName}`}
-                                >
-                                  <History className="w-3 h-3" />
-                                </button>
+                              {price > 0 ? (
+                                <>
+                                  <span className="font-mono font-medium">R$ {price.toFixed(2)}</span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenPriceHistory(product, chain.id, stats);
+                                    }}
+                                    className="p-0.5 rounded text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 opacity-60 group-hover:opacity-100 transition shrink-0 cursor-pointer"
+                                    title={`Ver evolução de 4 semanas no ${chain.shortName}`}
+                                  >
+                                    <History className="w-3 h-3" />
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="font-mono text-slate-400 dark:text-slate-600 font-semibold select-none pr-1" title={`Sem cotação registrada no dia pela rede ${chain.name} (Metodologia BGRJ)`}>—</span>
                               )}
                               <Edit3 className="w-2.5 h-2.5 text-slate-300 opacity-0 group-hover:opacity-100 transition shrink-0" />
                             </div>
@@ -1177,9 +1286,11 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                                 <span className="truncate max-w-[85px] font-bold text-slate-800 dark:text-slate-100">
                                   {promo.chainName.split(' ')[0]}
                                 </span>
-                                <span className="text-[8px] font-black text-emerald-700 dark:text-emerald-400 font-mono">
-                                  -{Math.round(((stats.avgPrice - promo.promoPrice) / stats.avgPrice) * 100)}%
-                                </span>
+                                {stats.avgPrice > 0 && (
+                                  <span className="text-[8px] font-black text-emerald-700 dark:text-emerald-400 font-mono">
+                                    -{Math.round(((stats.avgPrice - promo.promoPrice) / stats.avgPrice) * 100)}%
+                                  </span>
+                                )}
                               </div>
                               <div className="text-[8px] text-amber-800 dark:text-amber-300 truncate font-sans mt-0.5 font-medium border-t border-amber-100 dark:border-amber-900/40 pt-0.5">
                                 {promo.validity.split('(')[0].trim()}
@@ -1188,8 +1299,8 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                           );
                         }
                         return (
-                          <span className="text-[10px] text-slate-400 font-mono italic">
-                            Sem oferta
+                          <span className="text-[11px] text-slate-400 dark:text-slate-600 font-mono font-medium select-none" title="Sem veiculação de mídia no dia para este item">
+                            —
                           </span>
                         );
                       })()}
@@ -1197,39 +1308,41 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
 
                     {/* Menor RJ */}
                     <td className="py-3 px-2.5 text-right font-black text-emerald-700 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/40">
-                      R$ {stats.minPrice.toFixed(2)}
+                      {stats.minPrice > 0 ? `R$ ${stats.minPrice.toFixed(2)}` : '—'}
                     </td>
 
                     {/* Maior RJ */}
                     <td className="py-3 px-2.5 text-right font-black text-rose-700 dark:text-rose-400 bg-rose-50/60 dark:bg-rose-950/30">
-                      R$ {stats.maxPrice.toFixed(2)}
+                      {stats.maxPrice > 0 ? `R$ ${stats.maxPrice.toFixed(2)}` : '—'}
                     </td>
 
                     {/* Média RJ */}
                     <td className="py-3 px-2.5 text-right font-black text-slate-900 dark:text-white bg-slate-100/70 dark:bg-slate-800/70">
                       <div className="flex items-center justify-end gap-1.5">
-                        <span>R$ {stats.avgPrice.toFixed(2)}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenPriceHistory(product, undefined, stats)}
-                          className="p-1 rounded text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-100/60 dark:hover:bg-emerald-950/60 transition cursor-pointer"
-                          title="Ver gráfico de evolução do preço médio no RJ (4 semanas)"
-                        >
-                          <History className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                        </button>
+                        <span>{stats.avgPrice > 0 ? `R$ ${stats.avgPrice.toFixed(2)}` : '—'}</span>
+                        {stats.avgPrice > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPriceHistory(product, undefined, stats)}
+                            className="p-1 rounded text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-100/60 dark:hover:bg-emerald-950/60 transition cursor-pointer"
+                            title="Ver gráfico de evolução do preço médio no RJ (4 semanas)"
+                          >
+                            <History className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          </button>
+                        )}
                       </div>
                     </td>
 
                     {/* Spread */}
                     <td className="py-3 px-2.5 text-right font-bold text-amber-700 dark:text-amber-300 bg-amber-50/60 dark:bg-amber-950/20">
-                      R$ {stats.spread.toFixed(2)}
+                      {stats.spread > 0 ? `R$ ${stats.spread.toFixed(2)}` : '—'}
                     </td>
 
                     {/* Fonte / Auditoria */}
                     <td className="py-3 px-3 font-sans text-center text-[10px] text-slate-500">
                       <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
                         <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                        <span>Aferido RJ</span>
+                        <span>Aferido BGRJ</span>
                       </span>
                     </td>
                   </tr>
@@ -1248,25 +1361,28 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                   </div>
                 </td>
                 <td className="py-2.5 px-2 text-center font-sans text-[10px] text-slate-500 whitespace-nowrap">MÉDIA</td>
-                {RJ_SUPERMARKET_CHAINS.map(chain => (
-                  <td key={chain.id} className="py-2.5 px-2.5 text-right font-black whitespace-nowrap">
-                    R$ {chainAverages[chain.id]?.avg.toFixed(2) || '0.00'}
-                  </td>
-                ))}
+                {RJ_SUPERMARKET_CHAINS.map(chain => {
+                  const ch = chainAverages[chain.id];
+                  return (
+                    <td key={chain.id} className="py-2.5 px-2.5 text-right font-black whitespace-nowrap">
+                      {ch && ch.count > 0 ? `R$ ${ch.avg.toFixed(2)}` : '—'}
+                    </td>
+                  );
+                })}
                 <td className="py-2.5 px-3 text-center text-amber-800 dark:text-amber-200 font-black bg-amber-100/60 dark:bg-amber-950/40 whitespace-nowrap">
-                  R$ {tvPromoSummary.avgPromo.toFixed(2)}
+                  {tvPromoSummary.count > 0 ? `R$ ${tvPromoSummary.avgPromo.toFixed(2)}` : '—'}
                 </td>
                 <td className="py-2.5 px-2.5 text-right text-emerald-700 dark:text-emerald-300 font-black whitespace-nowrap">
-                  R$ {categorySummary.minPriceCategory.toFixed(2)}
+                  {categorySummary.minPriceCategory > 0 ? `R$ ${categorySummary.minPriceCategory.toFixed(2)}` : '—'}
                 </td>
                 <td className="py-2.5 px-2.5 text-right text-rose-700 dark:text-rose-400 font-black whitespace-nowrap">
-                  R$ {categorySummary.maxPriceCategory.toFixed(2)}
+                  {categorySummary.maxPriceCategory > 0 ? `R$ ${categorySummary.maxPriceCategory.toFixed(2)}` : '—'}
                 </td>
                 <td className="py-2.5 px-2.5 text-right text-slate-900 dark:text-white font-black whitespace-nowrap">
-                  R$ {categorySummary.avgPriceCategory.toFixed(2)}
+                  {categorySummary.avgPriceCategory > 0 ? `R$ ${categorySummary.avgPriceCategory.toFixed(2)}` : '—'}
                 </td>
                 <td className="py-2.5 px-2.5 text-right text-amber-700 dark:text-amber-300 font-black whitespace-nowrap">
-                  R$ {categorySummary.avgSpread.toFixed(2)}
+                  {categorySummary.avgSpread > 0 ? `R$ ${categorySummary.avgSpread.toFixed(2)}` : '—'}
                 </td>
                 <td className="py-2.5 px-3 font-sans text-center text-[10px] text-slate-500 whitespace-nowrap">Média Geral Ponderada</td>
               </tr>
@@ -1277,16 +1393,19 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                   MENOR PREÇO REGISTRADO RJ
                 </td>
                 <td className="py-2 px-2 text-center font-sans text-[10px] whitespace-nowrap">MÍNIMO</td>
-                {RJ_SUPERMARKET_CHAINS.map(chain => (
-                  <td key={chain.id} className="py-2 px-2.5 text-right whitespace-nowrap">
-                    R$ {chainAverages[chain.id]?.min.toFixed(2) || '0.00'}
-                  </td>
-                ))}
+                {RJ_SUPERMARKET_CHAINS.map(chain => {
+                  const ch = chainAverages[chain.id];
+                  return (
+                    <td key={chain.id} className="py-2 px-2.5 text-right whitespace-nowrap">
+                      {ch && ch.count > 0 ? `R$ ${ch.min.toFixed(2)}` : '—'}
+                    </td>
+                  );
+                })}
                 <td className="py-2 px-3 text-center text-amber-900 dark:text-amber-300 font-black bg-amber-100/70 dark:bg-amber-950/50 whitespace-nowrap">
-                  R$ {tvPromoSummary.minPromo.toFixed(2)}
+                  {tvPromoSummary.count > 0 ? `R$ ${tvPromoSummary.minPromo.toFixed(2)}` : '—'}
                 </td>
                 <td className="py-2 px-2.5 text-right text-emerald-700 font-black whitespace-nowrap">
-                  R$ {categorySummary.minPriceCategory.toFixed(2)}
+                  {categorySummary.minPriceCategory > 0 ? `R$ ${categorySummary.minPriceCategory.toFixed(2)}` : '—'}
                 </td>
                 <td className="py-2 px-2.5 text-right whitespace-nowrap">-</td>
                 <td className="py-2 px-2.5 text-right whitespace-nowrap">-</td>
@@ -1300,15 +1419,18 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                   MAIOR PREÇO REGISTRADO RJ
                 </td>
                 <td className="py-2 px-2 text-center font-sans text-[10px] whitespace-nowrap">MÁXIMO</td>
-                {RJ_SUPERMARKET_CHAINS.map(chain => (
-                  <td key={chain.id} className="py-2 px-2.5 text-right whitespace-nowrap">
-                    R$ {chainAverages[chain.id]?.max.toFixed(2) || '0.00'}
-                  </td>
-                ))}
+                {RJ_SUPERMARKET_CHAINS.map(chain => {
+                  const ch = chainAverages[chain.id];
+                  return (
+                    <td key={chain.id} className="py-2 px-2.5 text-right whitespace-nowrap">
+                      {ch && ch.count > 0 ? `R$ ${ch.max.toFixed(2)}` : '—'}
+                    </td>
+                  );
+                })}
                 <td className="py-2 px-3 text-center text-slate-400 whitespace-nowrap">-</td>
                 <td className="py-2 px-2.5 text-right whitespace-nowrap">-</td>
                 <td className="py-2 px-2.5 text-right text-rose-700 font-black whitespace-nowrap">
-                  R$ {categorySummary.maxPriceCategory.toFixed(2)}
+                  {categorySummary.maxPriceCategory > 0 ? `R$ ${categorySummary.maxPriceCategory.toFixed(2)}` : '—'}
                 </td>
                 <td className="py-2 px-2.5 text-right whitespace-nowrap">-</td>
                 <td className="py-2 px-2.5 text-right whitespace-nowrap">-</td>
@@ -1322,10 +1444,11 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
                 </td>
                 <td className="py-2 px-2 text-center font-sans text-[10px] whitespace-nowrap">SPREAD</td>
                 {RJ_SUPERMARKET_CHAINS.map(chain => {
-                  const sp = (chainAverages[chain.id]?.max || 0) - (chainAverages[chain.id]?.min || 0);
+                  const ch = chainAverages[chain.id];
+                  const sp = ch && ch.count > 0 ? (ch.max - ch.min) : 0;
                   return (
                     <td key={chain.id} className="py-2 px-2.5 text-right whitespace-nowrap">
-                      R$ {sp.toFixed(2)}
+                      {ch && ch.count > 0 ? `R$ ${sp.toFixed(2)}` : '—'}
                     </td>
                   );
                 })}

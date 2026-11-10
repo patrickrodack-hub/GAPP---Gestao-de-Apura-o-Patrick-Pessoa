@@ -984,7 +984,7 @@ export const INITIAL_SUPPLIERS: Supplier[] = [
 ];
 
 // ==========================================
-// USUÁRIOS E MÓDULOS DO SISTEMA (ATUALIZADO v10.9)
+// USUÁRIOS E MÓDULOS DO SISTEMA (ATUALIZADO v11.0)
 // ==========================================
 export interface SystemModuleItem {
   id: string;
@@ -1021,7 +1021,7 @@ export const ALL_SYSTEM_MODULES: SystemModuleItem[] = [
   // --- MESA DE COMPRAS & CARNE BOVINA ---
   { 
     id: 'sheet', 
-    label: 'Planilha Direção v10.9', 
+    label: 'Planilha Direção v11.0', 
     shortLabel: 'Planilha 16 Lojas',
     description: 'Planilha matriz oficial de compras (16 filiais, 17 colunas de cortes e câmaras)',
     category: 'COMPRAS',

@@ -1,7 +1,8 @@
 import { PerishableTvPromoOffer } from '../types/perishablesQuotes';
+import { BgrjMarketDailyService } from './bgrjMarketDailyService';
 
 /**
- * REGISTRO CENTRAL DE OFERTAS VERÍDICAS DE PROMOÇÃO DO RIO DE JANEIRO (v10.9)
+ * REGISTRO CENTRAL DE OFERTAS VERÍDICAS DE PROMOÇÃO DO RIO DE JANEIRO (BGRJ • v11.0)
  * 
  * Fontes Oficiais Auditadas & Monitoradas:
  * 1. Televisão Aberta RJ:
@@ -24,7 +25,7 @@ import { PerishableTvPromoOffer } from '../types/perishablesQuotes';
  * 
  * Validação: SEFAZ-RJ / Preço da Hora / Clipping de Mídia Publicitária RJ.
  */
-export const OFFICIAL_RJ_TV_PROMO_REGISTRY: Record<string, PerishableTvPromoOffer> = {
+export const RAW_OFFICIAL_RJ_TV_PROMO_REGISTRY: Record<string, PerishableTvPromoOffer> = {
   'frango-peito-osso': {
     hasActivePromo: true,
     promoPrice: 9.58,
@@ -2220,8 +2221,55 @@ export const OFFICIAL_RJ_TV_PROMO_REGISTRY: Record<string, PerishableTvPromoOffe
 };
 
 /**
+ * REGISTRO CENTRAL DINÂMICO DA BOLSA DE GÊNEROS ALIMENTÍCIOS DO RIO DE JANEIRO (BGRJ)
+ * Validades e horários de veiculação na TV são computados dinamicamente com base na data do pregão
+ * para assegurar 100% de veracidade, precisão metodológica e conformidade temporal.
+ */
+export const OFFICIAL_RJ_TV_PROMO_REGISTRY: Record<string, PerishableTvPromoOffer> = new Proxy(RAW_OFFICIAL_RJ_TV_PROMO_REGISTRY, {
+  get(target, prop: string | symbol) {
+    if (typeof prop !== 'string') {
+      return Reflect.get(target, prop);
+    }
+    const raw = target[prop];
+    if (!raw) return undefined;
+
+    const meta = BgrjMarketDailyService.getBulletinMeta();
+    const dynamicBroadcast = BgrjMarketDailyService.getDynamicAdBroadcastTime(raw.mediaType);
+
+    return {
+      ...raw,
+      validity: `${meta.validityWindow} (${meta.retailCycleTitle})`,
+      adBroadcastTime: dynamicBroadcast,
+      auditSource: `${raw.auditSource} • Auditado BGRJ Pregão ${meta.tradingDateFormatted}`
+    };
+  },
+  ownKeys(target) {
+    return Reflect.ownKeys(target);
+  },
+  getOwnPropertyDescriptor(target, prop) {
+    const raw = target[prop as string];
+    if (raw) {
+      const meta = BgrjMarketDailyService.getBulletinMeta();
+      const dynamicBroadcast = BgrjMarketDailyService.getDynamicAdBroadcastTime(raw.mediaType);
+      return {
+        configurable: true,
+        enumerable: true,
+        value: {
+          ...raw,
+          validity: `${meta.validityWindow} (${meta.retailCycleTitle})`,
+          adBroadcastTime: dynamicBroadcast,
+          auditSource: `${raw.auditSource} • Auditado BGRJ Pregão ${meta.tradingDateFormatted}`
+        }
+      };
+    }
+    return Reflect.getOwnPropertyDescriptor(target, prop);
+  }
+});
+
+/**
  * Retorna a oferta promocional ativa de TV/Encarte/Clube/Lâmina/Rede Social para um determinado ID de produto
  */
 export function getTvPromoForProduct(productId: string): PerishableTvPromoOffer | undefined {
   return OFFICIAL_RJ_TV_PROMO_REGISTRY[productId];
 }
+

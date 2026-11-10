@@ -1530,7 +1530,7 @@ export class CepeaService {
       departmentTag: 'INTELIGÊNCIA DE MERCADO & INDICADORES CEPEA/B3',
       rightMetaLines: [
         `Sincronização: ${snapshot.lastUpdated}`,
-        'Sistema: GAPP - PATRICK PESSOA v10.9',
+        'Sistema: GAPP - PATRICK PESSOA v11.0',
         'Desenvolvedor: Patrick Pessoa'
       ],
       themeColor: 'forest'
@@ -1908,7 +1908,7 @@ export class CepeaService {
     if (soja) text += `• Soja Paranaguá: *R$ ${soja.price.toFixed(2)}/sc 60kg*\n\n`;
 
     text += `🔗 *Fonte Oficial:* cepea.esalq.usp.br\n`;
-    text += `💻 _GAPP - PATRICK PESSOA • Gestão Apuração do Boi v10.9 • Patrick Pessoa_`;
+    text += `💻 _GAPP - PATRICK PESSOA • Gestão Apuração do Boi v11.0 • Patrick Pessoa_`;
 
     const encoded = encodeURIComponent(text);
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
