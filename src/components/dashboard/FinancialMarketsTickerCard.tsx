@@ -211,7 +211,12 @@ export const FinancialMarketsTickerCard: React.FC = () => {
         const res = await fetchFinancialMarkets(targetPeriod, forceFresh);
         setData(res);
       } catch (err: any) {
-        setError(err?.message || 'Não foi possível conectar às fontes financeiras em tempo real.');
+        const rawMsg = String(err?.message || '');
+        const cleanMsg =
+          rawMsg.includes('Unexpected token') || rawMsg.includes('<!doctype')
+            ? 'Sincronizando com o gateway de cotações em tempo real. Clique em Tentar novamente.'
+            : rawMsg || 'Não foi possível conectar às fontes financeiras em tempo real.';
+        setError(cleanMsg);
       } finally {
         setLoading(false);
         setRefreshing(false);

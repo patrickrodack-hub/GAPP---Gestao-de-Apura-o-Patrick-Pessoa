@@ -198,6 +198,14 @@ async function startServer() {
     return next(err);
   });
 
+  // Garante que rotas /api/* nunca caiam no fallback HTML (<!doctype html>) do SPA
+  app.all('/api/*', (req, res) => {
+    res.status(404).json({
+      error: 'Endpoint de API não encontrado',
+      path: req.originalUrl
+    });
+  });
+
   // Integração com Vite
   if (!isProduction) {
     process.env.DISABLE_HMR = 'true';
