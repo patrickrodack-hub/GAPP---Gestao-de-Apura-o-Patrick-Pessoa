@@ -91,7 +91,7 @@ export const getERPMenuCategories = (
       },
       {
         id: 'arq-matriz',
-        name: 'Planilha Matriz da Direção v11.0',
+        name: 'Planilha Matriz da Direção v11.1',
         division: 'Diretoria Executiva',
         code: 'DIR-01',
         shortcut: 'Alt+2',
@@ -155,7 +155,7 @@ export const getERPMenuCategories = (
         code: 'EXP-02',
         shortcut: 'Alt+X',
         badge: 'Excel Oficial',
-        description: 'Gera pasta de trabalho XLSX com abas Matriz v11.0, Rendimento e DRE formatadas',
+        description: 'Gera pasta de trabalho XLSX com abas Matriz v11.1, Rendimento e DRE formatadas',
         icon: Download,
         actionType: 'action',
         actionId: 'exportXLSX'
@@ -565,7 +565,7 @@ export const getERPMenuCategories = (
     items: [
       {
         id: 'cns-matriz-oficial',
-        name: 'Planilha Oficial da Direção v11.0 (Matriz)',
+        name: 'Planilha Oficial da Direção v11.1 (Matriz)',
         division: 'Diretoria Geral',
         code: 'CNS-01',
         shortcut: 'F2',
@@ -709,7 +709,7 @@ export const getERPMenuCategories = (
       },
       {
         id: 'mnt-reset-fabrica',
-        name: 'Restaurar Matriz Oficial v11.0 (Padrão de Fábrica)',
+        name: 'Restaurar Matriz Oficial v11.1 (Padrão de Fábrica)',
         division: 'Banco de Dados',
         code: 'MNT-03',
         badge: 'Restauração',
@@ -810,7 +810,7 @@ export const getERPMenuCategories = (
       },
       {
         id: 'win-sheet',
-        name: 'Janela: Planilha Matriz da Direção v11.0',
+        name: 'Janela: Planilha Matriz da Direção v11.1',
         division: 'Módulo MDI',
         code: 'WIN-02',
         shortcut: 'F2',
@@ -957,10 +957,10 @@ export const getERPMenuCategories = (
       },
       {
         id: 'hlp-sobre',
-        name: 'Sobre o Grupo GAPP Sistemas v11.0',
+        name: 'Sobre o Grupo GAPP Sistemas v11.1',
         division: 'Institucional',
         code: 'HLP-01',
-        badge: 'v11.0',
+        badge: 'v11.1',
         description: 'Informações do ERP, autoria Patrick Pessoa e versão da matriz',
         icon: Info,
         actionType: 'modal',

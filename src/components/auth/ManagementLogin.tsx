@@ -257,7 +257,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                 isSolidcon ? 'text-blue-200' : isGappNew ? 'text-[#113829] font-bold' : isLight ? 'text-slate-500' : 'text-zinc-400'
               }`}
             >
-              Módulo de Gestão • Gestão Apuração do Boi v11.0
+              Módulo de Gestão • Gestão Apuração do Boi v11.1
             </span>
           </div>
         </div>
@@ -399,7 +399,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                 <div className="flex items-center gap-2">
                   <Monitor className="w-4 h-4 text-sky-200" />
                   <span className="tracking-wide">
-                    GAPP Classic • Autenticação de Acesso ao Sistema - Gestão Apuração do Boi v11.0
+                    GAPP Classic • Autenticação de Acesso ao Sistema - Gestão Apuração do Boi v11.1
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -480,7 +480,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                       </div>
                     </div>
 
-                    {/* Título Oficial: Apuração do BOI v11.0 */}
+                    {/* Título Oficial: Apuração do BOI v11.1 */}
                     <div>
                       <span 
                         className={`text-2xl sm:text-3xl font-black tracking-tight block drop-shadow-sm ${
@@ -493,7 +493,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                             : 'text-transparent bg-clip-text bg-gradient-to-r from-white via-emerald-100 to-emerald-300'
                         }`}
                       >
-                        Gestão Apuração do Boi v11.0
+                        Gestão Apuração do Boi v11.1
                       </span>
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                         <span 
@@ -564,6 +564,31 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                     apuração técnica e real de rendimento de carcaças, auditoria de margens 
                     e consolidação de estoque nas câmaras das 16 lojas filiais.
                   </p>
+
+                  {/* Destaques da Atualização v11.1 */}
+                  <div
+                    className={`mt-4 p-3 rounded-2xl border text-[11px] space-y-1 ${
+                      isSolidcon
+                        ? 'bg-blue-50/80 border-blue-200 text-slate-700'
+                        : isGappNew
+                        ? 'bg-[#f4f7f4] border-[#cad5cc] text-slate-700'
+                        : isLight
+                        ? 'bg-emerald-50/60 border-emerald-200/80 text-slate-700'
+                        : 'bg-white/5 border-white/10 text-zinc-300'
+                    }`}
+                  >
+                    <div className="font-extrabold uppercase tracking-wider text-[10px] flex items-center justify-between">
+                      <span className={isGappNew ? 'text-[#113829]' : isSolidcon ? 'text-[#005a9e]' : 'text-emerald-600 dark:text-emerald-400'}>
+                        Novidades da Release v11.1
+                      </span>
+                      <span className="font-mono opacity-75">Build 2.1.1110</span>
+                    </div>
+                    <div className="leading-snug opacity-90">
+                      • Terminal Bolsa &amp; Câmbio em Tempo Real (Dólar, Euro, Ouro 24k e Bitcoin)<br />
+                      • Gráfico Histórico de Linhas com Filtros de Período e Datas<br />
+                      • Menu Lateral Retrátil e Motor Diário BGRJ de Cotações
+                    </div>
+                  </div>
                 </div>
 
                 {/* 4. Rodapé da Coluna Esquerda: Endereço Atualizado www.gipp-site.vercel.app */}
@@ -654,7 +679,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
                         ? 'bg-[#113829] text-[#b5e550] border border-[#b5e550]/40'
                         : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
                     }`}>
-                      v11.0
+                      v11.1
                     </span>
                   </div>
                   <p 
@@ -886,7 +911,7 @@ export const ManagementLogin: React.FC<ManagementLoginProps> = ({ onLoginSuccess
           isSolidcon ? 'text-blue-200/70 font-mono' : isLight || isGappNew ? 'text-slate-600 font-medium' : 'text-zinc-500'
         }`}
       >
-        Grupo GAPP • Patrick Pessoa • Gestão Apuração do Boi v11.0 • 16 Filiais Conectadas
+        Grupo GAPP • Patrick Pessoa • Gestão Apuração do Boi v11.1 • 16 Filiais Conectadas
       </footer>
 
     </div>

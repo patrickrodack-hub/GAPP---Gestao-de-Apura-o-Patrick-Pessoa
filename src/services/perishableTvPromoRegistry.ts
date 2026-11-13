@@ -2,7 +2,7 @@ import { PerishableTvPromoOffer } from '../types/perishablesQuotes';
 import { BgrjMarketDailyService } from './bgrjMarketDailyService';
 
 /**
- * REGISTRO CENTRAL DE OFERTAS VERÍDICAS DE PROMOÇÃO DO RIO DE JANEIRO (BGRJ • v11.0)
+ * REGISTRO CENTRAL DE OFERTAS VERÍDICAS DE PROMOÇÃO DO RIO DE JANEIRO (BGRJ • v11.1)
  * 
  * Fontes Oficiais Auditadas & Monitoradas:
  * 1. Televisão Aberta RJ:

@@ -485,7 +485,7 @@ export class PdfReportService {
     await ReportBrandingService.drawPdfHeader(doc, {
       title: title,
       subtitle: `Matriz Consolidada 16 Filiais • Custos: Boi R$ ${boiCost.toFixed(2)}/kg | Alcatrão R$ ${alcatraoCost.toFixed(2)}/kg | Costela R$ ${costelaCost.toFixed(2)}/kg | Banda R$ ${bandaCost.toFixed(2)}/kg`,
-      departmentTag: 'RELATÓRIO OFICIAL DA MATRIZ DE COMPRAS v11.0',
+      departmentTag: 'RELATÓRIO OFICIAL DA MATRIZ DE COMPRAS v11.1',
       rightMetaLines: [
         `Emissão: ${emissionDateFormatted} às ${emissionTimeFormatted}`,
         `Operador: ${currentUser}`,
@@ -737,8 +737,8 @@ export class PdfReportService {
 
     await ReportBrandingService.drawPdfHeader(doc, {
       title: title,
-      subtitle: 'Matriz Oficial Consolidada de 16 Filiais • v11.0 • Validação de Compra & Apuração',
-      departmentTag: 'RELATÓRIO OFICIAL DA MATRIZ DE COMPRAS v11.0',
+      subtitle: 'Matriz Oficial Consolidada de 16 Filiais • v11.1 • Validação de Compra & Apuração',
+      departmentTag: 'RELATÓRIO OFICIAL DA MATRIZ DE COMPRAS v11.1',
       rightMetaLines: [
         `Emissão: ${emissionDateFormatted} às ${emissionTimeFormatted}`,
         `Operador: ${currentUser}`,

@@ -102,7 +102,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
     const p = StorageService.getYieldParams();
     return p.bandaCostKg || 26.00;
   });
-  const [notes, setNotes] = useState('Pedido emitido conforme apuração oficial da Matriz Direção v11.0. Entrega programada nas câmaras frigoríficas.');
+  const [notes, setNotes] = useState('Pedido emitido conforme apuração oficial da Matriz Direção v11.1. Entrega programada nas câmaras frigoríficas.');
   const [copiedToast, setCopiedToast] = useState(false);
   const [savedBatchSuccess, setSavedBatchSuccess] = useState(false);
   const [isSharingPdfWhatsApp, setIsSharingPdfWhatsApp] = useState(false);
@@ -428,7 +428,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
       costPerKg: Math.round(pricePerKg * 100) / 100,
       targetStoreId: 'TODAS',
       status: 'PENDENTE',
-      notes: notes ? `Pedido de Compra Padrão gerado pela Planilha da Direção v11.0 (${notes})` : `Pedido de Compra Padrão gerado pela Planilha da Direção v11.0`,
+      notes: notes ? `Pedido de Compra Padrão gerado pela Planilha da Direção v11.1 (${notes})` : `Pedido de Compra Padrão gerado pela Planilha da Direção v11.1`,
       deliveryDate: deliveryDateStr,
       items: orderItems,
     };
@@ -583,7 +583,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
 
     ws.mergeCells('A2:U2');
     const subCell = ws.getCell('A2');
-    subCell.value = `Sistema ERP Apuração do Boi v11.0 • Desenvolvedor: Patrick Pessoa • Pedido: ${orderNumber} • Emissão: ${todayStr} • Previsão: ${deliveryDateStr} • Fornecedor: ${selectedSupplierName}`;
+    subCell.value = `Sistema ERP Apuração do Boi v11.1 • Desenvolvedor: Patrick Pessoa • Pedido: ${orderNumber} • Emissão: ${todayStr} • Previsão: ${deliveryDateStr} • Fornecedor: ${selectedSupplierName}`;
     subCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF334155' } };
     subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
     subCell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -773,7 +773,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-white/80">
-                Grupo GAPP Sistemas • Emitido com base no cabeçalho operacional da Planilha v11.0
+                Grupo GAPP Sistemas • Emitido com base no cabeçalho operacional da Planilha v11.1
               </p>
             </div>
           </div>
@@ -887,7 +887,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
                     GAPP - PATRICK PESSOA
                   </h1>
                   <p className="text-xs text-slate-600 dark:text-slate-400">
-                    Sistema de Gestão e Apuração de Compra do Boi v11.0 • Desenvolvedor: Patrick Pessoa
+                    Sistema de Gestão e Apuração de Compra do Boi v11.1 • Desenvolvedor: Patrick Pessoa
                   </p>
                 </div>
               </div>

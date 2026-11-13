@@ -55,7 +55,7 @@ export const ERPMenuDialogs: React.FC<ERPMenuDialogsProps> = ({
                   ERP Apuração do Boi por Patrick Pessoa
                 </p>
                 <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                  Versão 11.0 (Build Oficial 1.11.0110)
+                  Versão 11.1 (Build Oficial 2.1.1110)
                 </p>
               </div>
             </div>
@@ -75,11 +75,15 @@ export const ERPMenuDialogs: React.FC<ERPMenuDialogsProps> = ({
               </div>
               <div className="flex justify-between border-b border-slate-100 pb-1">
                 <span className="text-slate-500">Arquitetura de Banco:</span>
-                <span className="font-mono text-slate-700">PostgreSQL / Storage v11.0</span>
+                <span className="font-mono text-slate-700">PostgreSQL / Storage v11.1</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-100 pb-1">
+                <span className="text-slate-500">Terminal Bolsa &amp; Câmbio:</span>
+                <span className="font-bold text-emerald-700">USD • EUR • Ouro 24k • BTC (Tempo Real)</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Ambiente de Execução:</span>
-                <span className="font-mono text-slate-700">GAPP - PATRICK PESSOA Engine</span>
+                <span className="font-mono text-slate-700">GAPP - PATRICK PESSOA Engine v11.1</span>
               </div>
             </div>
 
@@ -130,7 +134,7 @@ export const ERPMenuDialogs: React.FC<ERPMenuDialogsProps> = ({
                 <tbody className="divide-y divide-slate-100">
                   <tr>
                     <td className="py-1.5 px-3 font-mono font-bold text-blue-700">F2</td>
-                    <td className="py-1.5 px-3">Planilha Matriz da Direção v11.0</td>
+                    <td className="py-1.5 px-3">Planilha Matriz da Direção v11.1</td>
                     <td className="py-1.5 px-3 text-slate-500">Diretoria</td>
                   </tr>
                   <tr>
@@ -222,7 +226,7 @@ export const ERPMenuDialogs: React.FC<ERPMenuDialogsProps> = ({
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-600">Versão da Matriz da Direção:</span>
-                <span className="font-mono font-bold text-blue-700">v11.0 Oficial</span>
+                <span className="font-mono font-bold text-blue-700">v11.1 Oficial</span>
               </div>
             </div>
 
