@@ -23,6 +23,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { DeboningYieldKpiPanel } from '../dashboard/DeboningYieldKpiPanel';
+import { FinancialMarketsTickerCard } from '../dashboard/FinancialMarketsTickerCard';
 
 interface GappNewDashboardViewProps {
   rows: SheetRowData[];
@@ -628,6 +629,11 @@ export const GappNewDashboardView: React.FC<GappNewDashboardViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ===================================================================== */}
+      {/* TERMINAL BOLSA & CÂMBIO EM TEMPO REAL (DÓLAR, EURO, OURO & BITCOIN)   */}
+      {/* ===================================================================== */}
+      <FinancialMarketsTickerCard />
 
       {/* ===================================================================== */}
       {/* MAIN BENTO GRID: LEFT/CENTER (8 COLS) + RIGHT CALENDAR/LIST (4 COLS)  */}

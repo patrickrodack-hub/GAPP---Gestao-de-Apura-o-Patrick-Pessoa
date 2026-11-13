@@ -4,6 +4,8 @@ import { fileURLToPath } from 'url';
 import { scrapeCepeaRealTime } from './src/services/cepeaScraper';
 import { marketQuotesCacheService } from './src/services/marketQuotesCacheService';
 import { perishablesTvPromoScraperService } from './src/services/perishablesTvPromoScraper';
+import { getRealFinancialMarkets } from './src/services/financialMarketsServerService';
+import type { FinancialPeriod } from './src/services/financialMarketsService';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,6 +54,28 @@ async function startServer() {
       res.status(500).json({
         error: 'Erro ao forçar sincronização de mercado',
         message: err?.message || 'Falha de comunicação'
+      });
+    }
+  });
+
+  // Endpoint de Mercado Financeiro em Tempo Real (Dólar, Euro, Ouro, Bitcoin + Histórico)
+  app.get('/api/markets/financial', async (req, res) => {
+    try {
+      const rawRange = String(req.query.range || '1mo');
+      const allowed: FinancialPeriod[] = ['1d', '5d', '1mo', '3mo', '6mo', '1y'];
+      const period: FinancialPeriod = allowed.includes(rawRange as FinancialPeriod)
+        ? (rawRange as FinancialPeriod)
+        : '1mo';
+      const forceFresh = req.query.fresh === 'true';
+
+      const data = await getRealFinancialMarkets(period, forceFresh);
+      res.setHeader('Cache-Control', 'no-store');
+      res.json(data);
+    } catch (err: any) {
+      console.error('[API /api/markets/financial] Erro ao buscar cotações:', err);
+      res.status(500).json({
+        error: 'Erro ao consultar cotações financeiras em tempo real',
+        message: err?.message || 'Falha de comunicação externa'
       });
     }
   });

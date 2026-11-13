@@ -36,6 +36,7 @@ import {
 import { NavigationTab } from '../Navigation';
 import { D3TrendsChart } from '../dashboard/D3TrendsChart';
 import { DeboningYieldKpiPanel } from '../dashboard/DeboningYieldKpiPanel';
+import { FinancialMarketsTickerCard } from '../dashboard/FinancialMarketsTickerCard';
 import { StorageService } from '../../services/storageService';
 
 interface DashboardTabProps {
@@ -385,6 +386,11 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       {/* PAINEL DE INDICADORES (KPIS) DE DESOSSA EM TEMPO REAL */}
       {/* ---------------------------------------------------- */}
       <DeboningYieldKpiPanel batches={batches} onNavigate={onNavigate} />
+
+      {/* ---------------------------------------------------- */}
+      {/* TERMINAL BOLSA & CÂMBIO EM TEMPO REAL                */}
+      {/* ---------------------------------------------------- */}
+      <FinancialMarketsTickerCard />
 
       {/* ---------------------------------------------------- */}
       {/* GRÁFICO D3.JS: TENDÊNCIA DE CUSTO X RENDIMENTO (30 DIAS) */}
