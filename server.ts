@@ -15,7 +15,8 @@ async function startServer() {
   const PORT = Number(process.env.PORT) || 3000;
   const isProduction = process.env.NODE_ENV === 'production';
 
-  app.use(express.json());
+  app.use(express.json({ limit: '25mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
   // Inicia Polling de Segundo Plano Contínuo (Ciclo de 60s)
   marketQuotesCacheService.startBackgroundPolling(60000);
@@ -183,6 +184,18 @@ async function startServer() {
         message: err?.message || 'Falha de processamento'
       });
     }
+  });
+
+  // Tratamento global de erros de parsing de requisição (ex.: PayloadTooLargeError)
+  app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (!err) return next();
+    if (err.type === 'entity.too.large' || err.status === 413) {
+      return res.status(413).json({
+        error: 'Tamanho do payload excedido',
+        message: 'A requisição ultrapassou o limite permitido pelo servidor (25MB).'
+      });
+    }
+    return next(err);
   });
 
   // Integração com Vite
