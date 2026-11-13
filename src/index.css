@@ -20,6 +20,14 @@
   }
 }
 
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Light / Dark Mode transition */
 body {
   transition: background-color 0.2s ease, color 0.2s ease;

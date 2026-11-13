@@ -49,6 +49,23 @@ import { GappNewDashboardView } from './components/gapp-new/GappNewDashboardView
 export default function App() {
   const { theme, isSolidcon, isGappNew, toggleTheme, setTheme } = useTheme();
   const [isGappMobileMenuOpen, setIsGappMobileMenuOpen] = useState(false);
+  const [isGappSidebarCollapsed, setIsGappSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('gapp_new_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleGappSidebar = () => {
+    setIsGappSidebarCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('gapp_new_sidebar_collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   // Service Worker Update Detection & Instant Reload logic
   const [isUpdatingSW, setIsUpdatingSW] = useState(false);
@@ -1306,6 +1323,8 @@ export default function App() {
             onExitSystem={() => setIsExitModalOpen(true)}
             isMobileOpen={isGappMobileMenuOpen}
             onCloseMobile={() => setIsGappMobileMenuOpen(false)}
+            isCollapsed={isGappSidebarCollapsed}
+            onToggleCollapse={handleToggleGappSidebar}
           />
 
           {/* 2. Right Main Column: Executive TopBar + Dynamic Viewport */}
@@ -1333,6 +1352,8 @@ export default function App() {
                 onLogout={handleLogout}
                 onExitSystem={() => setIsExitModalOpen(true)}
                 onOpenMobileMenu={() => setIsGappMobileMenuOpen(true)}
+                isSidebarCollapsed={isGappSidebarCollapsed}
+                onToggleSidebarCollapse={handleToggleGappSidebar}
               />
             </div>
 

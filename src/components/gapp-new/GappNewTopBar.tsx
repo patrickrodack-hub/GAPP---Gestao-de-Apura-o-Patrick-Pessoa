@@ -19,7 +19,9 @@ import {
   Save,
   Building2,
   Package,
-  Keyboard
+  Keyboard,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import { ThemeSwitcher } from '../common/ThemeSwitcher';
 import { SheetRowData, Store, SystemUser } from '../../types/erp';
@@ -47,6 +49,8 @@ interface GappNewTopBarProps {
   onLogout: () => void;
   onExitSystem: () => void;
   onOpenMobileMenu: () => void;
+  isSidebarCollapsed?: boolean;
+  onToggleSidebarCollapse?: () => void;
 }
 
 export const GappNewTopBar: React.FC<GappNewTopBarProps> = ({
@@ -70,7 +74,9 @@ export const GappNewTopBar: React.FC<GappNewTopBarProps> = ({
   onReset,
   onLogout,
   onExitSystem,
-  onOpenMobileMenu
+  onOpenMobileMenu,
+  isSidebarCollapsed = false,
+  onToggleSidebarCollapse
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -185,6 +191,40 @@ export const GappNewTopBar: React.FC<GappNewTopBarProps> = ({
         >
           <Menu className="w-5 h-5" />
         </button>
+
+        {onToggleSidebarCollapse && (
+          <button
+            type="button"
+            onClick={onToggleSidebarCollapse}
+            className={`hidden lg:inline-flex h-10 px-3 rounded-full border text-xs font-bold items-center gap-1.5 transition cursor-pointer shrink-0 ${
+              isSidebarCollapsed
+                ? 'bg-[#113829] hover:bg-[#194d38] border-[#113829] text-white shadow-xs'
+                : 'bg-[#f4f6f4] hover:bg-[#e6ebe7] border-[#dfe5e0] text-[#113829]'
+            }`}
+            title={
+              isSidebarCollapsed
+                ? 'Restaurar barra de menu lateral completa'
+                : 'Minimizar barra de menu lateral para ampliar área de trabalho'
+            }
+            aria-label={
+              isSidebarCollapsed
+                ? 'Restaurar barra de menu lateral'
+                : 'Minimizar barra de menu lateral'
+            }
+          >
+            {isSidebarCollapsed ? (
+              <>
+                <PanelLeftOpen className="w-4 h-4 text-[#b5e550]" />
+                <span>Restaurar Menu</span>
+              </>
+            ) : (
+              <>
+                <PanelLeftClose className="w-4 h-4 text-[#113829]" />
+                <span className="hidden xl:inline">Minimizar Menu</span>
+              </>
+            )}
+          </button>
+        )}
 
         <div className="relative flex-1" ref={searchRef}>
           <div className="relative flex items-center">
