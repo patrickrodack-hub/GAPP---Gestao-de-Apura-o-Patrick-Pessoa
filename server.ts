@@ -186,27 +186,31 @@ async function startServer() {
     }
   });
 
-  // Endpoint de Análise e Classificação de PDF de Vendas de Cortes (Pedido por Frigorífico)
+  // Endpoint de Análise e Classificação de PDF ou Imagem de Vendas de Cortes (Pedido por Frigorífico)
   app.post('/api/slaughterhouse-order/parse-sales-pdf', async (req, res) => {
     try {
-      const { fileName, pdfBase64, rawText } = req.body || {};
+      const { fileName, fileBase64, pdfBase64, mimeType, rawText, stores } = req.body || {};
       const { parseSalesPdfDocument } = await import('./src/services/pdfSalesParserServer');
       const result = await parseSalesPdfDocument({
         fileName: String(fileName || 'vendas-cortes.pdf'),
+        fileBase64: typeof fileBase64 === 'string' ? fileBase64 : undefined,
         pdfBase64: typeof pdfBase64 === 'string' ? pdfBase64 : undefined,
+        mimeType: typeof mimeType === 'string' ? mimeType : undefined,
         rawText: typeof rawText === 'string' ? rawText : undefined,
+        stores: Array.isArray(stores) ? stores : undefined,
       });
-      res.json(result);
+      return res.json(result);
     } catch (err: any) {
       console.error('[API /api/slaughterhouse-order/parse-sales-pdf] Erro:', err);
-      res.status(422).json({
+      const status = typeof err?.statusCode === 'number' ? err.statusCode : 422;
+      return res.status(status).json({
         error: 'Não foi possível processar o documento de vendas',
-        message: err?.message || 'Falha ao extrair cortes vendidos do PDF'
+        message: err?.message || 'Falha ao extrair cortes vendidos do documento'
       });
     }
   });
 
-  // Tratamento global de erros de parsing de requisição (ex.: PayloadTooLargeError)
+  // Tratamento global de erros de parsing de requisição (ex.: PayloadTooLargeError, JSON inválido)
   app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (!err) return next();
     if (err.type === 'entity.too.large' || err.status === 413) {
@@ -215,7 +219,16 @@ async function startServer() {
         message: 'A requisição ultrapassou o limite permitido pelo servidor (25MB).'
       });
     }
-    return next(err);
+    if (err instanceof SyntaxError && 'body' in err) {
+      return res.status(400).json({
+        error: 'Requisição JSON inválida',
+        message: 'O corpo enviado não está em formato JSON válido.'
+      });
+    }
+    return res.status(err.status || 500).json({
+      error: 'Erro interno no servidor',
+      message: err?.message || 'Falha inesperada no processamento da requisição.'
+    });
   });
 
   // Garante que rotas /api/* nunca caiam no fallback HTML (<!doctype html>) do SPA

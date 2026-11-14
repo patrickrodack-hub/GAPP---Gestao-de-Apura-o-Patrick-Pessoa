@@ -1,13 +1,66 @@
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel, Type } from '@google/genai';
 import { PdfSalesImportResult, PdfSalesParsedCutItem } from '../types/erp';
-import { classifyBeefCut, parseRawSalesText } from './slaughterhouseOrderService';
+import { INITIAL_STORES } from '../data/initialData';
+import {
+  StoreRefLike,
+  buildRecognizedStoresMetadata,
+  classifyBeefCut,
+  matchStoreReference,
+  parseRawSalesText,
+} from './slaughterhouseOrderService';
 
 interface GeminiExtractedCut {
   cutName: string;
   rawCategory?: string;
+  storeName?: string;
+  storeCode?: string;
   weightKg: number;
   units?: number;
   revenueR$?: number;
+}
+
+const SUPPORTED_INLINE_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+]);
+
+function inferMimeType(fileName: string, providedMime?: string): string {
+  const cleanMime = String(providedMime || '')
+    .split(';')[0]
+    .trim()
+    .toLowerCase();
+
+  if (cleanMime === 'image/jpg') return 'image/jpeg';
+  if (cleanMime && SUPPORTED_INLINE_MIME_TYPES.has(cleanMime)) {
+    return cleanMime;
+  }
+
+  const lower = String(fileName || '').toLowerCase();
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.heic')) return 'image/heic';
+  if (lower.endsWith('.heif')) return 'image/heif';
+  if (lower.endsWith('.pdf')) return 'application/pdf';
+
+  return cleanMime || 'application/pdf';
+}
+
+function safeParseModelJson<T>(rawText: string): T {
+  const cleaned = String(rawText || '')
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+  if (!cleaned) {
+    throw new Error('O leitor retornou uma resposta vazia.');
+  }
+  return JSON.parse(cleaned) as T;
 }
 
 /**
@@ -32,45 +85,70 @@ function extractPlainTextFallbackFromPdfBuffer(buf: Buffer): string {
 
 export async function parseSalesPdfDocument(params: {
   fileName: string;
+  fileBase64?: string;
   pdfBase64?: string;
+  mimeType?: string;
   rawText?: string;
+  stores?: StoreRefLike[];
 }): Promise<PdfSalesImportResult> {
-  const { fileName, pdfBase64, rawText } = params;
+  const { fileName, rawText } = params;
+  const rawBase64 = params.fileBase64 || params.pdfBase64 || '';
+  const storeList: StoreRefLike[] =
+    Array.isArray(params.stores) && params.stores.length > 0
+      ? params.stores
+      : INITIAL_STORES.map(s => ({ id: s.id, code: s.code, name: s.name, city: s.city }));
 
   // 1. Se o usuário enviou texto tabular explícito para leitura direta
-  if (rawText && rawText.trim().length > 0 && !pdfBase64) {
-    const parsed = parseRawSalesText(rawText);
+  if (rawText && rawText.trim().length > 0 && !rawBase64) {
+    const parsed = parseRawSalesText(rawText, storeList);
     if (parsed.items.length === 0) {
       throw new Error(
         'Não foi possível identificar cortes bovinos com peso (KG) no texto informado. Verifique se cada linha contém o nome do corte e a quantidade em KG.'
       );
     }
+    const storeMeta = buildRecognizedStoresMetadata(parsed.items);
     return {
       fileName: fileName || 'relatorio-vendas.txt',
       parsedAt: Date.now(),
       parserEngine: 'text_parser',
-      rawSummaryNote: `Leitura tabular determinística: ${parsed.items.length} corte(s) identificado(s).`,
+      rawSummaryNote: `Leitura tabular determinística: ${parsed.items.length} corte(s) identificado(s) em ${storeMeta.recognizedStores.length} filial(is).`,
+      recognizedStores: storeMeta.recognizedStores,
+      unassignedCount: storeMeta.unassignedCount,
       items: parsed.items,
       unclassifiedLines: parsed.unclassifiedLines,
     };
   }
 
-  if (!pdfBase64 || pdfBase64.trim().length === 0) {
-    throw new Error('Nenhum arquivo PDF ou texto de relatório de vendas foi enviado para análise.');
+  if (!rawBase64 || rawBase64.trim().length === 0) {
+    throw new Error('Nenhum arquivo (PDF ou Imagem) ou texto de relatório de vendas foi enviado para análise.');
   }
 
-  const cleanBase64 = pdfBase64.includes('base64,')
-    ? pdfBase64.split('base64,')[1].trim()
-    : pdfBase64.trim();
+  // Detecta data-URL se houver (ex.: data:image/png;base64,...)
+  let detectedDataUrlMime = '';
+  if (rawBase64.startsWith('data:') && rawBase64.includes(';base64,')) {
+    detectedDataUrlMime = rawBase64.slice(5, rawBase64.indexOf(';base64,'));
+  }
+
+  const cleanBase64 = rawBase64.includes('base64,')
+    ? rawBase64.split('base64,')[1].trim()
+    : rawBase64.trim();
 
   if (cleanBase64.length < 32) {
-    throw new Error('O arquivo PDF enviado está vazio ou inválido.');
+    throw new Error('O arquivo enviado está vazio ou corrompido.');
   }
 
+  const resolvedMimeType = inferMimeType(fileName, params.mimeType || detectedDataUrlMime);
+  if (!SUPPORTED_INLINE_MIME_TYPES.has(resolvedMimeType)) {
+    throw new Error(
+      `Formato de arquivo não suportado (${resolvedMimeType}). Envie um arquivo PDF, PNG, JPG ou WEBP.`
+    );
+  }
+
+  const isImageUpload = resolvedMimeType.startsWith('image/');
   const apiKey = process.env.GEMINI_API_KEY;
   let geminiErrorMsg = '';
 
-  // 2. Motor principal de leitura inteligente de PDF via Gemini API (server-side)
+  // 2. Motor principal multimodal (PDF ou Imagem) via Gemini API (server-side)
   if (apiKey && apiKey.trim().length > 0) {
     try {
       const ai = new GoogleGenAI({
@@ -82,33 +160,50 @@ export async function parseSalesPdfDocument(params: {
         },
       });
 
+      const storeCatalogPrompt = storeList
+        .map((s, i) => `${i + 1}. Código: ${s.code || s.id} | Nome oficial: "${s.name}" (${s.city || 'RJ'})`)
+        .join('\n');
+
       const response = await ai.models.generateContent({
         model: 'gemini-4-hydrogen',
         contents: [
           {
             inlineData: {
-              mimeType: 'application/pdf',
+              mimeType: resolvedMimeType,
               data: cleanBase64,
             },
           },
-          `Você é um analista técnico de açougue e controladoria de frigorífico.
-Analise este documento PDF de relatório de vendas de carnes/cortes bovinos e extraia TODOS os itens/cortes vendidos listados no documento.
+          `Você é um analista técnico de açougue e controladoria de rede supermercadista.
+Analise este ${isImageUpload ? 'print/imagem de relatório de vendas' : 'documento PDF de vendas'} de carnes/cortes bovinos e extraia TODOS os cortes vendidos com seus respectivos pesos em KG e a FILIAL / LOJA correspondente.
 
-REGRAS ESTRITAS:
-1. Extraia SOMENTE cortes reais que aparecem explicitamente no documento. Nunca invente, estime ou simule números.
-2. Ignore linhas de subtotais gerais, rodapés ou cabeçalhos para não duplicar o peso vendido.
-3. Converta pesos expressos em gramas ou toneladas para KG (ex.: 500g = 0.5). Se o peso estiver em padrão brasileiro com vírgula (ex.: 350,45 kg), retorne como número decimal 350.45.
-4. Preserve o nome original do corte em cutName e, se houver seção/grupo no relatório (ex.: Segunda, Nobre, Traseiro, Coxão, Costela), informe em rawCategory.`,
+CATÁLOGO OFICIAL DAS FILIAIS DA REDE (USE PARA IDENTIFICAR A FILIAL EXATA DE CADA LINHA/SEÇÃO):
+${storeCatalogPrompt}
+
+REGRAS ESTRITAS E OBRIGATÓRIAS:
+1. Extraia SOMENTE cortes reais e valores reais visíveis no documento/imagem. Nunca invente, estime ou arredonde artificialmente os pesos.
+2. RECONHECIMENTO FIEL POR FILIAL:
+   - Se o documento mostrar vendas separadas por loja/filial (em seções por filial, colunas por filial ou uma coluna de loja), informe em CADA item os campos storeName e storeCode exatamente da filial a que aquele valor pertence.
+   - Se o relatório for de uma única filial indicada no cabeçalho/título, informe essa filial em documentStoreName e também em cada item.
+   - NUNCA misture ou divida valores entre lojas: cada filial deve manter estritamente o seu próprio valor vendido em KG.
+3. Ignore linhas de subtotais gerais ou totalizadores finais ("Total Geral", "Total Rede") para não duplicar o peso vendido.
+4. Converta pesos expressos em gramas ou toneladas para KG (ex.: 500g = 0.5). Padrão brasileiro (ex.: 350,45 kg) deve virar número decimal 350.45.
+5. Preserve o nome original do corte em cutName e, se houver seção/grupo (Segunda, Nobre, Traseiro, Coxão, Costela), preencha rawCategory.`,
         ],
         config: {
-          temperature: 0.1,
+          thinkingConfig: {
+            thinkingLevel: ThinkingLevel.LOW,
+          },
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.OBJECT,
             properties: {
               summaryNote: {
                 type: Type.STRING,
-                description: 'Breve resumo factual do relatório encontrado no PDF (período, loja se houver, total de linhas).',
+                description: 'Breve resumo factual do documento analisado (período, quantidade de filiais encontradas).',
+              },
+              documentStoreName: {
+                type: Type.STRING,
+                description: 'Nome ou código da filial caso todo o documento pertença a uma única loja.',
               },
               cuts: {
                 type: Type.ARRAY,
@@ -117,6 +212,8 @@ REGRAS ESTRITAS:
                   properties: {
                     cutName: { type: Type.STRING },
                     rawCategory: { type: Type.STRING },
+                    storeName: { type: Type.STRING },
+                    storeCode: { type: Type.STRING },
                     weightKg: { type: Type.NUMBER },
                     units: { type: Type.NUMBER },
                     revenueR$: { type: Type.NUMBER },
@@ -130,21 +227,29 @@ REGRAS ESTRITAS:
         },
       });
 
-      const jsonText = response.text?.trim() || '{}';
-      const parsedJson = JSON.parse(jsonText) as {
+      const parsedJson = safeParseModelJson<{
         summaryNote?: string;
+        documentStoreName?: string;
         cuts?: GeminiExtractedCut[];
-      };
+      }>(response.text || '');
 
+      const docLevelStore = matchStoreReference(parsedJson.documentStoreName, storeList);
       const rawCuts = Array.isArray(parsedJson.cuts) ? parsedJson.cuts : [];
+
       const items: PdfSalesParsedCutItem[] = rawCuts
         .filter(c => c && typeof c.cutName === 'string' && Number(c.weightKg) > 0)
         .map((c, idx) => {
           const classified = classifyBeefCut(c.cutName, c.rawCategory);
+          const rawStoreText = [c.storeCode, c.storeName].filter(Boolean).join(' ').trim();
+          const itemStoreMatch = matchStoreReference(rawStoreText, storeList) || docLevelStore;
+
           return {
-            id: `pdf-cut-${Date.now()}-${idx}`,
+            id: `doc-cut-${Date.now()}-${idx}`,
             cutName: c.cutName.trim(),
             rawCategory: c.rawCategory?.trim() || undefined,
+            rawStore: rawStoreText || parsedJson.documentStoreName?.trim() || undefined,
+            matchedStoreId: itemStoreMatch?.storeId,
+            matchedStoreName: itemStoreMatch?.storeName,
             category: classified.category,
             desossaGroup: classified.desossaGroup,
             weightKg: Number(Number(c.weightKg).toFixed(2)),
@@ -155,48 +260,61 @@ REGRAS ESTRITAS:
         });
 
       if (items.length > 0) {
+        const storeMeta = buildRecognizedStoresMetadata(items);
         return {
-          fileName: fileName || 'relatorio-vendas.pdf',
+          fileName: fileName || (isImageUpload ? 'relatorio-vendas.png' : 'relatorio-vendas.pdf'),
           parsedAt: Date.now(),
           parserEngine: 'gemini',
-          rawSummaryNote: parsedJson.summaryNote || `${items.length} corte(s) extraído(s) do PDF e classificado(s) pela Desossa.`,
+          rawSummaryNote:
+            parsedJson.summaryNote ||
+            `${items.length} corte(s) extraído(s) e vinculados a ${storeMeta.recognizedStores.length} filial(is).`,
+          recognizedStores: storeMeta.recognizedStores,
+          unassignedCount: storeMeta.unassignedCount,
           items,
           unclassifiedLines: [],
         };
       }
 
-      geminiErrorMsg = 'A análise do PDF não localizou cortes bovinos com peso em KG no documento.';
+      geminiErrorMsg =
+        'A análise do documento não localizou cortes bovinos com peso em KG válidos.';
     } catch (err: any) {
       console.error('[pdfSalesParserServer] Erro Gemini:', err);
-      geminiErrorMsg = err?.message || 'Falha na leitura inteligente do PDF.';
+      geminiErrorMsg = err?.message || 'Falha na leitura inteligente do documento.';
     }
   } else {
     geminiErrorMsg = 'Chave GEMINI_API_KEY não configurada no servidor.';
   }
 
-  // 3. Fallback determinístico para PDFs com stream de texto legível ou rawText anexo
-  try {
-    const buffer = Buffer.from(cleanBase64, 'base64');
-    const extractedText = [rawText || '', extractPlainTextFallbackFromPdfBuffer(buffer)].join('\n').trim();
-    if (extractedText.length > 10) {
-      const parsed = parseRawSalesText(extractedText);
-      if (parsed.items.length > 0) {
-        return {
-          fileName: fileName || 'relatorio-vendas.pdf',
-          parsedAt: Date.now(),
-          parserEngine: 'text_parser',
-          rawSummaryNote: `Extração textual direta do PDF: ${parsed.items.length} corte(s) identificado(s).`,
-          items: parsed.items,
-          unclassifiedLines: parsed.unclassifiedLines,
-        };
+  // 3. Fallback determinístico textual apenas para PDFs ou rawText anexo
+  if (!isImageUpload) {
+    try {
+      const buffer = Buffer.from(cleanBase64, 'base64');
+      const extractedText = [rawText || '', extractPlainTextFallbackFromPdfBuffer(buffer)]
+        .join('\n')
+        .trim();
+      if (extractedText.length > 10) {
+        const parsed = parseRawSalesText(extractedText, storeList);
+        if (parsed.items.length > 0) {
+          const storeMeta = buildRecognizedStoresMetadata(parsed.items);
+          return {
+            fileName: fileName || 'relatorio-vendas.pdf',
+            parsedAt: Date.now(),
+            parserEngine: 'text_parser',
+            rawSummaryNote: `Extração textual direta do PDF: ${parsed.items.length} corte(s) identificado(s).`,
+            recognizedStores: storeMeta.recognizedStores,
+            unassignedCount: storeMeta.unassignedCount,
+            items: parsed.items,
+            unclassifiedLines: parsed.unclassifiedLines,
+          };
+        }
       }
+    } catch (fallbackErr) {
+      console.warn('[pdfSalesParserServer] Fallback textual sem correspondências:', fallbackErr);
     }
-  } catch (fallbackErr) {
-    console.warn('[pdfSalesParserServer] Fallback textual sem correspondências:', fallbackErr);
   }
 
   throw new Error(
     geminiErrorMsg ||
-      'Não foi possível extrair os cortes vendidos deste PDF. Tente colar o texto das linhas de vendas na aba de importação textual.'
+      'Não foi possível extrair os cortes vendidos deste arquivo. Verifique a nitidez da imagem/PDF ou cole os dados na aba de importação textual.'
   );
 }

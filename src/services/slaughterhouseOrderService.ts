@@ -2,6 +2,7 @@ import {
   DesossaCategoryGroup,
   PdfSalesCategorySummary,
   PdfSalesParsedCutItem,
+  PdfSalesStoreSummary,
   SheetRowData,
   SlaughterhouseCategoryStandard,
   SlaughterhouseCategoryStock,
@@ -587,11 +588,218 @@ export function summarizePdfSalesByCategory(
   };
 }
 
+export interface StoreRefLike {
+  id: string;
+  code?: string;
+  name: string;
+  city?: string;
+}
+
+function expandStoreAbbreviations(normalized: string): string {
+  return normalized
+    .replace(/\blgo\b/g, 'largo')
+    .replace(/\bsta\b/g, 'santa')
+    .replace(/\bvda\b/g, 'venda')
+    .replace(/\bmte\b/g, 'monte')
+    .replace(/\bs\.?\s*goncalo\b/g, 'sao goncalo');
+}
+
+const STORE_ALIAS_KEYWORDS: Record<string, string[]> = {
+  str_1: ['santa rosa', 'cm santa rosa', 'sr 01', 'sr01'],
+  str_2: ['araruama', 'araruama ii', 'araruama 2', 'ar 02', 'ar02'],
+  str_3: ['bandeirantes', 'bd 03', 'bd03'],
+  str_4: ['rn itaborai', 'itaborai centro', 'it 04', 'it04', 'itaborai'],
+  str_5: ['itauna', 'iu 05', 'iu05'],
+  str_6: ['lgo batalha', 'largo da batalha', 'largo batalha', 'batalha', 'lb 06', 'lb06'],
+  str_7: ['macae', 'mc 07', 'mc07'],
+  str_8: ['manilha', 'mn 08', 'mn08'],
+  str_9: ['marambaia', 'mb 09', 'mb09'],
+  str_10: ['rio bonito', 'rb 10', 'rb10'],
+  str_11: ['rio das ostras', 'das ostras', 'ostras', 'ro 11', 'ro11'],
+  str_12: ['sta luzia', 'santa luzia', 'luzia', 'sl 12', 'sl12'],
+  str_13: ['vda das pedras', 'venda das pedras', 'venda pedras', 'pedras', 'vp 13', 'vp13'],
+  str_14: ['vista alegre', 'va 14', 'va14'],
+  str_15: ['colubande', 'cl 15', 'cl15'],
+  str_16: ['itaipu', 'ip 16', 'ip16'],
+};
+
+/**
+ * Reconhece a filial correspondente a partir de um texto (nome, sigla, código ou número de loja).
+ * Prioriza termos mais específicos (ex.: "Venda das Pedras", "Manilha" antes de "Itaboraí").
+ */
+export function matchStoreReference(
+  rawStoreText: string | undefined,
+  stores: StoreRefLike[]
+): { storeId: string; storeName: string; matchedBy: string } | null {
+  const raw = String(rawStoreText || '').trim();
+  if (!raw || stores.length === 0) return null;
+
+  const norm = expandStoreAbbreviations(normalizeTextForClassification(raw));
+  if (!norm) return null;
+
+  // 1. Correspondência direta por ID ou código exato (ex.: str_1, SR-01)
+  for (const st of stores) {
+    const idNorm = normalizeTextForClassification(st.id);
+    const codeNorm = normalizeTextForClassification(st.code || '');
+    const codeCompact = codeNorm.replace(/[\s-]/g, '');
+    const normCompact = norm.replace(/[\s-]/g, '');
+    if (norm === idNorm || (codeNorm && (norm.includes(codeNorm) || normCompact.includes(codeCompact)))) {
+      return { storeId: st.id, storeName: st.name, matchedBy: `Código ${st.code || st.id}` };
+    }
+  }
+
+  // 2. Correspondência por nome completo oficial (ex.: "CM SANTA ROSA", "RN MANILHA", "RN ITABORAI")
+  const byFullName = [...stores]
+    .map(st => ({
+      st,
+      nameNorm: expandStoreAbbreviations(normalizeTextForClassification(st.name)),
+    }))
+    .sort((a, b) => b.nameNorm.length - a.nameNorm.length);
+
+  for (const { st, nameNorm } of byFullName) {
+    if (nameNorm && norm.includes(nameNorm)) {
+      return { storeId: st.id, storeName: st.name, matchedBy: `Nome exato (${st.name})` };
+    }
+  }
+
+  // 3. Correspondência por nome-núcleo / apelido, priorizando sub-regiões específicas antes de nomes de cidade compartilhados (ex.: "Manilha" e "Venda das Pedras" antes de "Itaboraí")
+  const deferredGenericCityTerms = new Set(['itaborai']);
+  const specificCandidates: { storeId: string; kw: string; storeName?: string }[] = [];
+  const genericCandidates: { storeId: string; kw: string; storeName?: string }[] = [];
+
+  for (const st of stores) {
+    const nameNorm = expandStoreAbbreviations(normalizeTextForClassification(st.name));
+    const coreName = nameNorm.replace(/^(cm|rn|supermercado|rede|loja|filial)\s+/i, '').trim();
+    if (coreName.length >= 4) {
+      const target = deferredGenericCityTerms.has(coreName) ? genericCandidates : specificCandidates;
+      target.push({ storeId: st.id, kw: coreName, storeName: st.name });
+    }
+  }
+
+  for (const [storeId, kws] of Object.entries(STORE_ALIAS_KEYWORDS)) {
+    for (const kw of kws) {
+      const target = deferredGenericCityTerms.has(kw) ? genericCandidates : specificCandidates;
+      target.push({ storeId, kw });
+    }
+  }
+
+  specificCandidates.sort((a, b) => b.kw.length - a.kw.length);
+  genericCandidates.sort((a, b) => b.kw.length - a.kw.length);
+
+  for (const cand of [...specificCandidates, ...genericCandidates]) {
+    if (norm.includes(cand.kw)) {
+      const matched = stores.find(s => s.id === cand.storeId);
+      if (matched) {
+        return {
+          storeId: matched.id,
+          storeName: matched.name,
+          matchedBy: cand.storeName ? `Filial (${matched.name})` : `Apelido (${cand.kw})`,
+        };
+      }
+    }
+  }
+
+  // 4. Correspondência numérica explícita ("FILIAL 01", "LOJA 7", "LJ 16", "UNIDADE 04")
+  const numMatch = norm.match(/\b(?:filial|loja|lj|fl|unidade|emp|cd)\s*0*(\d{1,2})\b/i);
+  if (numMatch) {
+    const idx = Number(numMatch[1]);
+    if (idx >= 1 && idx <= stores.length) {
+      const padded = String(idx).padStart(2, '0');
+      const byCode = stores.find(s => (s.code || '').endsWith(padded)) || stores[idx - 1];
+      if (byCode) {
+        return { storeId: byCode.id, storeName: byCode.name, matchedBy: `N° Filial (${padded})` };
+      }
+    }
+  }
+
+  return null;
+}
+
+export function buildRecognizedStoresMetadata(items: PdfSalesParsedCutItem[]) {
+  const byStore = new Map<string, { storeId: string; storeName: string; rawLabels: Set<string> }>();
+  let unassignedCount = 0;
+
+  for (const item of items) {
+    if (item.matchedStoreId && item.matchedStoreName) {
+      if (!byStore.has(item.matchedStoreId)) {
+        byStore.set(item.matchedStoreId, {
+          storeId: item.matchedStoreId,
+          storeName: item.matchedStoreName,
+          rawLabels: new Set(),
+        });
+      }
+      if (item.rawStore) {
+        byStore.get(item.matchedStoreId)!.rawLabels.add(item.rawStore);
+      }
+    } else {
+      unassignedCount += 1;
+    }
+  }
+
+  return {
+    recognizedStores: Array.from(byStore.values()).map(entry => ({
+      storeId: entry.storeId,
+      storeName: entry.storeName,
+      rawLabels: Array.from(entry.rawLabels),
+    })),
+    unassignedCount,
+  };
+}
+
+/**
+ * Agrupa e totaliza os cortes extraídos respeitando fielmente cada filial identificada.
+ */
+export function summarizePdfSalesByStore(
+  items: PdfSalesParsedCutItem[],
+  standards: Record<SlaughterhouseCutCategory, SlaughterhouseCategoryStandard>,
+  stores: StoreRefLike[]
+): {
+  storeSummaries: PdfSalesStoreSummary[];
+  unassignedItems: PdfSalesParsedCutItem[];
+} {
+  const grouped = new Map<string, PdfSalesParsedCutItem[]>();
+  const unassignedItems: PdfSalesParsedCutItem[] = [];
+
+  for (const item of items) {
+    if (item.matchedStoreId) {
+      if (!grouped.has(item.matchedStoreId)) grouped.set(item.matchedStoreId, []);
+      grouped.get(item.matchedStoreId)!.push(item);
+    } else {
+      unassignedItems.push(item);
+    }
+  }
+
+  const storeSummaries: PdfSalesStoreSummary[] = [];
+  // Mantém a ordem oficial das lojas no sistema
+  for (const store of stores) {
+    const storeItems = grouped.get(store.id);
+    if (!storeItems || storeItems.length === 0) continue;
+    const { salesEntry } = summarizePdfSalesByCategory(storeItems, standards);
+    const pieces = getSalesPiecesBreakdown(salesEntry, standards);
+    const totalKg = Number(
+      storeItems.reduce((acc, it) => acc + (Number(it.weightKg) || 0), 0).toFixed(2)
+    );
+    storeSummaries.push({
+      storeId: store.id,
+      storeName: store.name,
+      itemsCount: storeItems.length,
+      totalKg,
+      salesEntry,
+      pieces,
+    });
+  }
+
+  return { storeSummaries, unassignedItems };
+}
+
 /**
  * Parser determinístico de texto tabular de vendas (para fallback sem Gemini ou colagem direta de relatório).
- * Não inventa dados: retorna somente linhas reais com nome de corte e peso em KG identificável.
+ * Reconhece cabeçalhos ou colunas de filial/loja e preserva o vínculo fiel de cada corte à sua filial.
  */
-export function parseRawSalesText(rawText: string): {
+export function parseRawSalesText(
+  rawText: string,
+  stores: StoreRefLike[] = []
+): {
   items: PdfSalesParsedCutItem[];
   unclassifiedLines: string[];
 } {
@@ -646,17 +854,35 @@ export function parseRawSalesText(rawText: string): {
     return Number(cleaned) || 0;
   };
 
+  let activeStore: { storeId: string; storeName: string; rawLabel: string } | null = null;
+
   lines.forEach((line, idx) => {
     const norm = normalizeTextForClassification(line);
     const hasCutWord = knownCutHints.some(h => norm.includes(normalizeTextForClassification(h)));
-    if (!hasCutWord) return;
+    const inlineStore = stores.length > 0 ? matchStoreReference(line, stores) : null;
 
-    // Evita linhas de cabeçalho/totalização sem corte específico
-    if (/^(total geral|resumo|subtotal|loja|filial|relatorio|pagina)\b/i.test(norm)) {
+    // Se a linha é um cabeçalho de filial/loja (sem corte bovino), atualiza o contexto da filial ativa
+    if (!hasCutWord) {
+      if (inlineStore) {
+        activeStore = {
+          storeId: inlineStore.storeId,
+          storeName: inlineStore.storeName,
+          rawLabel: line,
+        };
+      }
       return;
     }
 
-    // Procura explicitamente por "<numero> kg" ou primeiro número decimal/inteiro após o nome do corte
+    // Evita linhas de totalização sem corte específico
+    if (/^(total geral|resumo|subtotal|relatorio|pagina)\b/i.test(norm)) {
+      return;
+    }
+
+    const rowStore = inlineStore
+      ? { storeId: inlineStore.storeId, storeName: inlineStore.storeName, rawLabel: line }
+      : activeStore;
+
+    // Procura explicitamente por "<numero> kg"
     const kgMatch = line.match(/(\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{1,3})?|\d+(?:[.,]\d{1,3})?)\s*(?:kg|kilos?|quilos?)\b/i);
     let weightKg = kgMatch ? parseBrNumber(kgMatch[1]) : 0;
 
@@ -664,8 +890,18 @@ export function parseRawSalesText(rawText: string): {
     const moneyMatch = line.match(/R\$\s*(\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)/i);
     const revenueR$ = moneyMatch ? parseBrNumber(moneyMatch[1]) : undefined;
 
-    // Nome do corte = parte textual antes dos números (ou antes de 'kg')
-    let cutName = line
+    // Nome do corte = parte textual após remover números/pesos/separadores e eventuais prefixos de loja
+    let cutSource = line;
+    if (inlineStore && /[|;\t]|[-–]\s*/.test(line)) {
+      // Se a linha tiver delimitadores ("RN MACAE | PALETA | 180 kg"), remove segmentos que pertencem apenas ao nome da loja
+      const parts = line.split(/[|;\t]+/).map(p => p.trim()).filter(Boolean);
+      const cutPart = parts.find(p =>
+        knownCutHints.some(h => normalizeTextForClassification(p).includes(normalizeTextForClassification(h)))
+      );
+      if (cutPart) cutSource = cutPart;
+    }
+
+    const cutName = cutSource
       .replace(/R\$\s*[\d.,]+/gi, '')
       .replace(/(\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{1,3})?|\d+(?:[.,]\d{1,3})?)\s*(?:kg|kilos?|quilos?|pç|pcs?|un)?/gi, ' ')
       .replace(/^\s*\d{2,6}\s*[-–|]?\s*/, '')
@@ -674,13 +910,11 @@ export function parseRawSalesText(rawText: string): {
       .trim();
 
     if (weightKg <= 0) {
-      // Tenta extrair último número plausível não monetário na linha (ex.: "ACÉM BOVINO   125,40")
       const withoutMoney = line.replace(/R\$\s*[\d.,]+/gi, '');
       const nums = Array.from(withoutMoney.matchAll(/(\d{1,3}(?:\.\d{3})*(?:,\d{1,3})|\d+(?:[.,]\d{1,3})?)/g))
         .map(m => parseBrNumber(m[1]))
         .filter(n => n > 0 && n < 500000);
       if (nums.length > 0) {
-        // Prefere decimal com vírgula ou o primeiro valor após código do produto
         weightKg = nums.length > 1 && nums[0] > 999 && Number.isInteger(nums[0]) ? nums[1] : nums[0];
       }
     }
@@ -690,6 +924,9 @@ export function parseRawSalesText(rawText: string): {
       items.push({
         id: `cut-${Date.now()}-${idx}`,
         cutName,
+        rawStore: rowStore?.rawLabel,
+        matchedStoreId: rowStore?.storeId,
+        matchedStoreName: rowStore?.storeName,
         category: classified.category,
         desossaGroup: classified.desossaGroup,
         weightKg: Number(weightKg.toFixed(2)),

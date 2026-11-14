@@ -517,6 +517,9 @@ export interface PdfSalesParsedCutItem {
   id: string;
   cutName: string;
   rawCategory?: string;
+  rawStore?: string;
+  matchedStoreId?: string;
+  matchedStoreName?: string;
   category: SlaughterhouseCutCategory;
   desossaGroup: DesossaCategoryGroup;
   weightKg: number;
@@ -536,12 +539,29 @@ export interface PdfSalesCategorySummary {
   itemsCount: number;
 }
 
+export interface PdfSalesStoreSummary {
+  storeId: string;
+  storeName: string;
+  itemsCount: number;
+  totalKg: number;
+  salesEntry: SlaughterhouseSalesEntry;
+  pieces: {
+    dianteiroPecas: number;
+    traseiroPecas: number;
+    coxaoPecas: number;
+    alcatraoPecas: number;
+    costelaPecas: number;
+  };
+}
+
 export interface PdfSalesImportResult {
   fileName: string;
   parsedAt: number;
   parserEngine: 'gemini' | 'text_parser';
   rawSummaryNote?: string;
   targetStoreId?: string;
+  recognizedStores?: { storeId: string; storeName: string; rawLabels: string[] }[];
+  unassignedCount?: number;
   items: PdfSalesParsedCutItem[];
   unclassifiedLines: string[];
 }

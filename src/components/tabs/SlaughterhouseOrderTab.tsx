@@ -48,6 +48,7 @@ import {
   createInitialSlaughterhouseDraft,
   getSalesPiecesBreakdown,
   summarizePdfSalesByCategory,
+  summarizePdfSalesByStore,
 } from '../../services/slaughterhouseOrderService';
 
 interface SlaughterhouseOrderTabProps {
@@ -130,7 +131,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
   const [orderStatus, setOrderStatus] = useState<'RASCUNHO' | 'ENVIADO' | 'CONFIRMADO'>('RASCUNHO');
 
-  // Estado do Modal Importador de PDF de Vendas
+  // Estado do Modal Importador de PDF / Imagem de Vendas
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [pdfMode, setPdfMode] = useState<'file' | 'text'>('file');
   const [rawSalesText, setRawSalesText] = useState('');
@@ -139,8 +140,9 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
   const [pendingPdfResult, setPendingPdfResult] = useState<PdfSalesImportResult | null>(
     draft.lastPdfImport || null
   );
-  const [applyTargetMode, setApplyTargetMode] = useState<'equal' | 'single'>('equal');
+  const [applyTargetMode, setApplyTargetMode] = useState<'by_store' | 'single' | 'equal'>('by_store');
   const [applyTargetStoreId, setApplyTargetStoreId] = useState<string>(stores[0]?.id || '');
+  const [clearAbsentStores, setClearAbsentStores] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -572,61 +574,174 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
   };
 
   // ==========================================
-  // IMPORTADOR DE PDF DE VENDAS (REAL)
+  // IMPORTADOR DE PDF / IMAGEM DE VENDAS (REAL & POR FILIAL)
   // ==========================================
+  const storeRefsPayload = useMemo(
+    () => stores.map((s) => ({ id: s.id, code: s.code, name: s.name, city: s.city })),
+    [stores]
+  );
+
+  const safeReadApiResponse = async (response: Response): Promise<any> => {
+    const rawText = await response.text();
+    if (!rawText || rawText.trim().length === 0) {
+      throw new Error(
+        `O servidor retornou uma resposta vazia (HTTP ${response.status}). Tente novamente com uma imagem mais leve ou cole os dados na aba textual.`
+      );
+    }
+    try {
+      return JSON.parse(rawText);
+    } catch {
+      const snippet = rawText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 140);
+      throw new Error(
+        `Resposta inválida do servidor (HTTP ${response.status}): ${snippet || 'formato não JSON'}`
+      );
+    }
+  };
+
+  const prepareFilePayload = async (
+    file: File
+  ): Promise<{ base64: string; mimeType: string }> => {
+    const rawDataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('Falha ao ler arquivo selecionado no navegador.'));
+      reader.readAsDataURL(file);
+    });
+
+    const isImage =
+      file.type.startsWith('image/') ||
+      /\.(png|jpe?g|webp|heic|heif)$/i.test(file.name);
+
+    // Se for imagem muito pesada (> 2.5 MB), otimiza resolução/qualidade mantendo nitidez da tabela
+    if (isImage && file.size > 2.5 * 1024 * 1024) {
+      try {
+        const compressed = await new Promise<{ base64: string; mimeType: string }>(
+          (resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+              const maxDim = 2200;
+              let { width, height } = img;
+              if (width > maxDim || height > maxDim) {
+                const ratio = Math.min(maxDim / width, maxDim / height);
+                width = Math.round(width * ratio);
+                height = Math.round(height * ratio);
+              }
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              if (!ctx) {
+                reject(new Error('Canvas indisponível'));
+                return;
+              }
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, width, height);
+              ctx.drawImage(img, 0, 0, width, height);
+              const outUrl = canvas.toDataURL('image/jpeg', 0.88);
+              resolve({
+                base64: outUrl.split(',')[1] || '',
+                mimeType: 'image/jpeg',
+              });
+            };
+            img.onerror = () => reject(new Error('Falha ao otimizar imagem'));
+            img.src = rawDataUrl;
+          }
+        );
+        if (compressed.base64) return compressed;
+      } catch {
+        // Segue com original se o canvas falhar
+      }
+    }
+
+    const base64 = rawDataUrl.includes(',') ? rawDataUrl.split(',')[1] : rawDataUrl;
+    const inferredMime =
+      file.type ||
+      (isImage
+        ? file.name.toLowerCase().endsWith('.png')
+          ? 'image/png'
+          : file.name.toLowerCase().endsWith('.webp')
+          ? 'image/webp'
+          : 'image/jpeg'
+        : 'application/pdf');
+
+    return { base64, mimeType: inferredMime };
+  };
+
+  const applyParsedResultDefaults = (parsed: PdfSalesImportResult) => {
+    setPendingPdfResult(parsed);
+    const matchedCount = parsed.items.filter((it) => Boolean(it.matchedStoreId)).length;
+    if (matchedCount > 0) {
+      setApplyTargetMode('by_store');
+    } else {
+      setApplyTargetMode('single');
+    }
+  };
+
   const handlePdfFileSelected = async (file: File | null) => {
     if (!file) return;
     setPdfParseError(null);
 
     if (file.size > 15 * 1024 * 1024) {
-      setPdfParseError('O arquivo PDF excede o limite de 15 MB. Comprima o PDF ou cole o texto.');
+      setPdfParseError('O arquivo excede o limite de 15 MB. Reduza o tamanho ou cole os dados em texto.');
       return;
     }
 
     setIsParsingPdf(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000);
+
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = String(reader.result || '');
-          const clean = result.includes(',') ? result.split(',')[1] : result;
-          resolve(clean);
-        };
-        reader.onerror = () => reject(new Error('Falha ao ler arquivo PDF local.'));
-        reader.readAsDataURL(file);
-      });
+      const { base64, mimeType } = await prepareFilePayload(file);
 
       const response = await fetch('/api/slaughterhouse-order/parse-sales-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
-          pdfBase64: base64,
+          fileBase64: base64,
+          mimeType,
           fileName: file.name,
+          stores: storeRefsPayload,
         }),
       });
 
-      const payload = await response.json();
+      const payload = await safeReadApiResponse(response);
       if (!response.ok) {
-        throw new Error(payload?.message || payload?.error || 'Não foi possível extrair cortes deste PDF.');
+        throw new Error(
+          payload?.message || payload?.error || 'Não foi possível extrair os cortes deste documento.'
+        );
       }
 
       const parsed = (payload?.data ?? payload) as PdfSalesImportResult;
       if (!parsed || !Array.isArray(parsed.items)) {
-        throw new Error('Resposta inválida ao processar o PDF de vendas.');
+        throw new Error('Resposta inválida ao processar o documento de vendas.');
       }
 
-      setPendingPdfResult(parsed);
-      showToast(`PDF analisado: ${parsed.items.length} cortes extraídos.`);
+      applyParsedResultDefaults(parsed);
+      const storesCount = parsed.recognizedStores?.length || 0;
+      showToast(
+        storesCount > 0
+          ? `Documento analisado: ${parsed.items.length} cortes em ${storesCount} filial(is) reconhecida(s).`
+          : `Documento analisado: ${parsed.items.length} cortes extraídos.`
+      );
     } catch (err: any) {
-      setPdfParseError(err?.message || 'Falha ao processar o documento PDF.');
+      if (err?.name === 'AbortError') {
+        setPdfParseError('Tempo limite excedido ao processar o documento. Tente uma imagem mais nítida/leve ou cole o texto.');
+      } else {
+        setPdfParseError(err?.message || 'Falha ao processar o documento de vendas.');
+      }
     } finally {
+      clearTimeout(timeoutId);
       setIsParsingPdf(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
   const handleParseRawText = async () => {
     if (!rawSalesText.trim()) {
-      setPdfParseError('Cole as linhas do relatório de vendas (corte + KG) para analisar.');
+      setPdfParseError('Cole as linhas do relatório de vendas (filial, corte + KG) para analisar.');
       return;
     }
     setPdfParseError(null);
@@ -638,18 +753,26 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
         body: JSON.stringify({
           rawText: rawSalesText,
           fileName: 'Relatorio_Vendas_Colado.txt',
+          stores: storeRefsPayload,
         }),
       });
-      const payload = await response.json();
+      const payload = await safeReadApiResponse(response);
       if (!response.ok) {
-        throw new Error(payload?.message || payload?.error || 'Não foi possível identificar cortes e pesos no texto.');
+        throw new Error(
+          payload?.message || payload?.error || 'Não foi possível identificar cortes e pesos no texto.'
+        );
       }
       const parsed = (payload?.data ?? payload) as PdfSalesImportResult;
       if (!parsed || !Array.isArray(parsed.items)) {
         throw new Error('Resposta inválida ao analisar o texto de vendas.');
       }
-      setPendingPdfResult(parsed);
-      showToast(`${parsed.items.length} cortes classificados pela base Desossa.`);
+      applyParsedResultDefaults(parsed);
+      const storesCount = parsed.recognizedStores?.length || 0;
+      showToast(
+        storesCount > 0
+          ? `${parsed.items.length} cortes classificados em ${storesCount} filial(is).`
+          : `${parsed.items.length} cortes classificados pela base Desossa.`
+      );
     } catch (err: any) {
       setPdfParseError(err?.message || 'Erro ao analisar texto de vendas.');
     } finally {
@@ -675,6 +798,23 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
     });
   };
 
+  const handleReassignPdfItemStore = (itemId: string, storeId: string) => {
+    if (!pendingPdfResult) return;
+    const matched = stores.find((s) => s.id === storeId);
+    setPendingPdfResult({
+      ...pendingPdfResult,
+      items: pendingPdfResult.items.map((it) =>
+        it.id === itemId
+          ? {
+              ...it,
+              matchedStoreId: matched ? matched.id : undefined,
+              matchedStoreName: matched ? matched.name : undefined,
+            }
+          : it
+      ),
+    });
+  };
+
   const handleRemovePdfItem = (itemId: string) => {
     if (!pendingPdfResult) return;
     setPendingPdfResult({
@@ -688,10 +828,63 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
     return summarizePdfSalesByCategory(pendingPdfResult.items, draft.standards);
   }, [pendingPdfResult, draft.standards]);
 
+  const pdfByStoreSummary = useMemo(() => {
+    if (!pendingPdfResult) return null;
+    return summarizePdfSalesByStore(pendingPdfResult.items, draft.standards, stores);
+  }, [pendingPdfResult, draft.standards, stores]);
+
   const handleApplyPdfSalesToSheet = () => {
     if (!pendingPdfResult || !pdfSummary) return;
     const { salesEntry } = pdfSummary;
     const count = Math.max(1, draft.storeRows.length);
+
+    if (applyTargetMode === 'by_store') {
+      const storeSummaries = pdfByStoreSummary?.storeSummaries || [];
+      if (storeSummaries.length === 0) {
+        setPdfParseError(
+          'Nenhuma filial foi vinculada aos cortes extraídos. Selecione a filial na tabela acima ou escolha "Aplicar em filial específica".'
+        );
+        return;
+      }
+
+      const byStoreMap = new Map(storeSummaries.map((s) => [s.storeId, s.salesEntry]));
+
+      setDraft((prev) => ({
+        ...prev,
+        lastPdfImport: {
+          ...pendingPdfResult,
+          targetStoreId: 'BY_STORE_EXACT',
+        },
+        storeRows: prev.storeRows.map((row) => {
+          const matchedSales = byStoreMap.get(row.storeId);
+          if (matchedSales) {
+            return {
+              ...row,
+              sales: { ...matchedSales },
+            };
+          }
+          if (clearAbsentStores) {
+            return {
+              ...row,
+              sales: {
+                dianteiroKg: 0,
+                traseiroKg: 0,
+                coxaoKg: 0,
+                alcatraoKg: 0,
+                costelaKg: 0,
+              },
+            };
+          }
+          return row;
+        }),
+      }));
+
+      setIsPdfModalOpen(false);
+      showToast(
+        `Vendas aplicadas fielmente em ${storeSummaries.length} filial(is) reconhecida(s)!`
+      );
+      return;
+    }
 
     setDraft((prev) => ({
       ...prev,
@@ -723,8 +916,8 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
     setIsPdfModalOpen(false);
     showToast(
       applyTargetMode === 'single'
-        ? 'Vendas do PDF aplicadas na filial selecionada!'
-        : `Vendas do PDF distribuídas nas ${count} filiais e convertidas para peças.`
+        ? 'Vendas aplicadas na filial selecionada!'
+        : `Vendas distribuídas igualmente nas ${count} filiais e convertidas para peças.`
     );
   };
 
@@ -760,7 +953,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition cursor-pointer whitespace-nowrap shrink-0"
             >
               <FileUp className="w-3.5 h-3.5" />
-              <span>Importar PDF de Vendas</span>
+              <span>Importar PDF / Imagem</span>
             </button>
 
             <button
@@ -1476,10 +1669,10 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
         )}
       </div>
 
-      {/* 6. MODAL IMPORTADOR DE PDF DE VENDAS (CLASSIFICAÇÃO DESOSSA + CONVERSÃO KG -> PEÇAS) */}
+      {/* 6. MODAL IMPORTADOR DE PDF / IMAGEM DE VENDAS (RECONHECIMENTO POR FILIAL + MOTOR DESOSSA) */}
       {isPdfModalOpen && (
         <div className="fixed inset-0 z-[10020] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[92vh] rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-6xl max-h-[92vh] rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden">
             {/* Header Modal */}
             <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/60">
               <div className="flex items-center gap-3">
@@ -1488,10 +1681,10 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
-                    Importador de Documento de Vendas (PDF) & Motor Desossa
+                    Importador de Documento de Vendas (PDF / Imagem) & Reconhecimento por Filial
                   </h3>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Classifica cortes em Dianteiro (Segunda), Traseiro (Nobre+Coxão), Coxão, Alcatrão (Nobre) e Costela, somando KG e dividindo pelo Peso Padrão.
+                    Reconhece cada filial automaticamente, classifica cortes pela Desossa e preserva fielmente os valores de KG de cada loja.
                   </p>
                 </div>
               </div>
@@ -1506,7 +1699,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Modo de entrada: Upload PDF vs Colar Texto */}
+              {/* Modo de entrada: Upload PDF/Imagem vs Colar Texto */}
               <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
                 <button
                   type="button"
@@ -1517,7 +1710,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                   }`}
                 >
-                  Enviar Arquivo PDF (.pdf)
+                  Enviar PDF ou Imagem (.pdf, .png, .jpg)
                 </button>
                 <button
                   type="button"
@@ -1537,16 +1730,16 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="application/pdf,.pdf"
+                    accept="application/pdf,.pdf,image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
                     className="hidden"
                     onChange={(e) => handlePdfFileSelected(e.target.files?.[0] || null)}
                   />
                   <Upload className="w-8 h-8 text-indigo-600 dark:text-indigo-400 mx-auto mb-2" />
                   <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                    Selecione o relatório de vendas de cortes em PDF (máx. 15 MB)
+                    Selecione o relatório de vendas em PDF ou Imagem/Print de tela (máx. 15 MB)
                   </p>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-3">
-                    O sistema extrai os cortes e quantidades reais em KG e separa automaticamente pela árvore da Desossa.
+                    O sistema identifica cada filial listada no documento, separa os cortes pela Desossa e respeita o peso em KG de cada loja.
                   </p>
                   <button
                     type="button"
@@ -1554,19 +1747,19 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                     onClick={() => fileInputRef.current?.click()}
                     className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold shadow-xs transition cursor-pointer"
                   >
-                    {isParsingPdf ? 'Analisando PDF...' : 'Escolher Arquivo PDF'}
+                    {isParsingPdf ? 'Analisando Documento...' : 'Escolher Arquivo (PDF ou Imagem)'}
                   </button>
                 </div>
               ) : (
                 <div className="space-y-2">
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
-                    Cole as linhas de venda por corte (ex.: &quot;ACÉM BOVINO 180,50 kg&quot;, &quot;PALETA 169,50 kg&quot;, &quot;PICANHA 95,00 kg&quot;):
+                    Cole o relatório por filial (ex.: nome/código da filial seguido dos cortes e KG vendidos):
                   </label>
                   <textarea
                     rows={5}
                     value={rawSalesText}
                     onChange={(e) => setRawSalesText(e.target.value)}
-                    placeholder={'PALETA BOVINA   180,00 kg\nACÉM BOVINO     170,00 kg\nPICANHA         65,00 kg\nCHÃ DE DENTRO   140,00 kg\nCOSTELA GAÚCHA  80,00 kg'}
+                    placeholder={'FILIAL 01 - CM SANTA ROSA\nPALETA BOVINA   180,00 kg\nACÉM BOVINO     170,00 kg\n\nFILIAL 02 - RN ARARUAMA II\nPICANHA         65,00 kg\nCHÃ DE DENTRO   140,00 kg'}
                     className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <div className="flex justify-end">
@@ -1576,7 +1769,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                       onClick={handleParseRawText}
                       className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold transition cursor-pointer"
                     >
-                      {isParsingPdf ? 'Classificando...' : 'Analisar e Classificar Cortes'}
+                      {isParsingPdf ? 'Classificando...' : 'Analisar e Reconhecer Filiais'}
                     </button>
                   </div>
                 </div>
@@ -1589,22 +1782,23 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                 </div>
               )}
 
-              {/* Resumo da Conversão KG -> Peças Padrão */}
+              {/* Resumo da Conversão KG -> Peças Padrão + Quebra Fiel por Filial */}
               {pendingPdfResult && pdfSummary && (
                 <div className="space-y-4">
                   <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex flex-wrap items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-2 text-emerald-900 dark:text-emerald-200 font-bold">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                       <span>
-                        Documento: {pendingPdfResult.fileName} • {pendingPdfResult.items.length} cortes extraídos
+                        Documento: {pendingPdfResult.fileName} • {pendingPdfResult.items.length} cortes •{' '}
+                        {pdfByStoreSummary?.storeSummaries.length || 0} filial(is) reconhecida(s)
                       </span>
                     </div>
                     <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-300">
-                      Motor: {pendingPdfResult.parserEngine === 'gemini' ? 'Leitura Inteligente PDF' : 'Parser Tabular'}
+                      Motor: {pendingPdfResult.parserEngine === 'gemini' ? 'Leitura Inteligente Multimodal' : 'Parser Tabular'}
                     </span>
                   </div>
 
-                  {/* Tabela Resumo das 5 Categorias */}
+                  {/* Resumo Consolidado das 5 Categorias */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
                     {SLAUGHTERHOUSE_CATEGORY_ORDER.map((cat) => {
                       const sum = pdfSummary.summaries[cat];
@@ -1635,12 +1829,86 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                     })}
                   </div>
 
-                  {/* Tabela de Cortes Extraídos (Reclassificável) */}
+                  {/* Resumo Fiel por Filial Reconhecida */}
+                  {pdfByStoreSummary && pdfByStoreSummary.storeSummaries.length > 0 && (
+                    <div className="border border-emerald-200 dark:border-emerald-900/60 rounded-xl overflow-hidden bg-emerald-50/30 dark:bg-emerald-950/15">
+                      <div className="px-3 py-2 bg-emerald-100/70 dark:bg-emerald-950/50 border-b border-emerald-200 dark:border-emerald-900/60 flex items-center justify-between">
+                        <span className="text-[11px] font-extrabold text-emerald-900 dark:text-emerald-200 uppercase tracking-wider">
+                          Vendas Reconhecidas por Filial (Valores Individuais Preservados)
+                        </span>
+                        {pdfByStoreSummary.unassignedItems.length > 0 && (
+                          <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">
+                            {pdfByStoreSummary.unassignedItems.length} item(ns) sem filial vinculada
+                          </span>
+                        )}
+                      </div>
+                      <div className="overflow-x-auto max-h-48">
+                        <table className="w-full text-[11px]">
+                          <thead className="bg-white/80 dark:bg-slate-900/80 text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 border-b border-emerald-200/70 dark:border-emerald-900/40">
+                            <tr>
+                              <th className="py-1.5 px-3 text-left">Filial Reconhecida</th>
+                              <th className="py-1.5 px-2 text-right">Dianteiro</th>
+                              <th className="py-1.5 px-2 text-right">Traseiro</th>
+                              <th className="py-1.5 px-2 text-right">Coxão</th>
+                              <th className="py-1.5 px-2 text-right">Alcatrão</th>
+                              <th className="py-1.5 px-2 text-right">Costela</th>
+                              <th className="py-1.5 px-3 text-right">Total KG</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-emerald-100 dark:divide-emerald-900/30 tabular-nums">
+                            {pdfByStoreSummary.storeSummaries.map((st) => (
+                              <tr key={st.storeId} className="hover:bg-white/60 dark:hover:bg-slate-900/40">
+                                <td className="py-1.5 px-3 font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                                  {st.storeName}
+                                </td>
+                                <td className="py-1.5 px-2 text-right font-mono">
+                                  {formatNumberBR(st.salesEntry.dianteiroKg, 1)}kg{' '}
+                                  <span className="text-[9px] text-emerald-700 dark:text-emerald-400">
+                                    ({formatNumberBR(st.pieces.dianteiroPecas, 2)}pç)
+                                  </span>
+                                </td>
+                                <td className="py-1.5 px-2 text-right font-mono">
+                                  {formatNumberBR(st.salesEntry.traseiroKg, 1)}kg{' '}
+                                  <span className="text-[9px] text-emerald-700 dark:text-emerald-400">
+                                    ({formatNumberBR(st.pieces.traseiroPecas, 2)}pç)
+                                  </span>
+                                </td>
+                                <td className="py-1.5 px-2 text-right font-mono">
+                                  {formatNumberBR(st.salesEntry.coxaoKg, 1)}kg{' '}
+                                  <span className="text-[9px] text-emerald-700 dark:text-emerald-400">
+                                    ({formatNumberBR(st.pieces.coxaoPecas, 2)}pç)
+                                  </span>
+                                </td>
+                                <td className="py-1.5 px-2 text-right font-mono">
+                                  {formatNumberBR(st.salesEntry.alcatraoKg, 1)}kg{' '}
+                                  <span className="text-[9px] text-emerald-700 dark:text-emerald-400">
+                                    ({formatNumberBR(st.pieces.alcatraoPecas, 2)}pç)
+                                  </span>
+                                </td>
+                                <td className="py-1.5 px-2 text-right font-mono">
+                                  {formatNumberBR(st.salesEntry.costelaKg, 1)}kg{' '}
+                                  <span className="text-[9px] text-emerald-700 dark:text-emerald-400">
+                                    ({formatNumberBR(st.pieces.costelaPecas, 2)}pç)
+                                  </span>
+                                </td>
+                                <td className="py-1.5 px-3 text-right font-mono font-extrabold text-slate-900 dark:text-white">
+                                  {formatNumberBR(st.totalKg, 2)} kg
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tabela de Cortes Extraídos (Reclassificável por Corte e por Filial) */}
                   <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
                     <div className="max-h-60 overflow-y-auto">
                       <table className="w-full text-xs">
                         <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold uppercase text-slate-600 dark:text-slate-300">
                           <tr>
+                            <th className="py-2 px-3 text-left">Filial / Loja</th>
                             <th className="py-2 px-3 text-left">Corte Extraído</th>
                             <th className="py-2 px-3 text-left">Classificação Desossa</th>
                             <th className="py-2 px-3 text-right">Peso (kg)</th>
@@ -1651,6 +1919,29 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                           {pendingPdfResult.items.map((item: PdfSalesParsedCutItem) => (
                             <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                              <td className="py-1.5 px-3">
+                                <select
+                                  value={item.matchedStoreId || ''}
+                                  onChange={(e) => handleReassignPdfItemStore(item.id, e.target.value)}
+                                  className={`px-2 py-1 rounded-lg border text-[11px] font-bold ${
+                                    item.matchedStoreId
+                                      ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200'
+                                      : 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300'
+                                  }`}
+                                >
+                                  <option value="">Sem filial vinculada</option>
+                                  {stores.map((s) => (
+                                    <option key={s.id} value={s.id}>
+                                      {s.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                {item.rawStore && !item.matchedStoreId && (
+                                  <div className="text-[9px] text-amber-600 dark:text-amber-400 mt-0.5">
+                                    Lido: {item.rawStore}
+                                  </div>
+                                )}
+                              </td>
                               <td className="py-1.5 px-3 font-semibold text-slate-900 dark:text-white">
                                 {item.cutName}
                               </td>
@@ -1700,14 +1991,16 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
             {/* Footer Modal: Aplicar na Planilha */}
             <div className="px-5 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-3 text-xs">
-                <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-slate-700 dark:text-slate-200">
+                <label className="flex items-center gap-1.5 cursor-pointer font-bold text-emerald-700 dark:text-emerald-400">
                   <input
                     type="radio"
                     name="applyTargetMode"
-                    checked={applyTargetMode === 'equal'}
-                    onChange={() => setApplyTargetMode('equal')}
+                    checked={applyTargetMode === 'by_store'}
+                    onChange={() => setApplyTargetMode('by_store')}
                   />
-                  <span>Distribuir igualmente entre as {draft.storeRows.length} filiais</span>
+                  <span>
+                    Respeitar cada filial identificada ({pdfByStoreSummary?.storeSummaries.length || 0})
+                  </span>
                 </label>
 
                 <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-slate-700 dark:text-slate-200">
@@ -1717,7 +2010,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                     checked={applyTargetMode === 'single'}
                     onChange={() => setApplyTargetMode('single')}
                   />
-                  <span>Aplicar em filial específica:</span>
+                  <span>Aplicar total em filial específica:</span>
                 </label>
 
                 {applyTargetMode === 'single' && (
@@ -1732,6 +2025,27 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                       </option>
                     ))}
                   </select>
+                )}
+
+                <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-slate-600 dark:text-slate-300">
+                  <input
+                    type="radio"
+                    name="applyTargetMode"
+                    checked={applyTargetMode === 'equal'}
+                    onChange={() => setApplyTargetMode('equal')}
+                  />
+                  <span>Dividir igualmente ({draft.storeRows.length} filiais)</span>
+                </label>
+
+                {applyTargetMode === 'by_store' && (
+                  <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-500 dark:text-slate-400 border-l border-slate-300 dark:border-slate-700 pl-3">
+                    <input
+                      type="checkbox"
+                      checked={clearAbsentStores}
+                      onChange={(e) => setClearAbsentStores(e.target.checked)}
+                    />
+                    <span>Zerar vendas das filiais ausentes</span>
+                  </label>
                 )}
               </div>
 
