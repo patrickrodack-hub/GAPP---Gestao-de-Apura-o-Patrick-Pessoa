@@ -845,10 +845,10 @@ export function parseRawSalesText(
   items: PdfSalesParsedCutItem[];
   unclassifiedLines: string[];
 } {
-  const lines = String(rawText || '')
+  const rawLines = String(rawText || '')
     .split(/\r?\n/)
     .map(l => l.trim())
-    .filter(l => l.length > 2);
+    .filter(l => l.length > 0);
 
   const items: PdfSalesParsedCutItem[] = [];
   const unclassifiedLines: string[] = [];
@@ -896,9 +896,12 @@ export function parseRawSalesText(
     return Number(cleaned) || 0;
   };
 
-  let activeStore: { storeId: string; storeName: string; rawLabel: string } | null = null;
+  let activeStore: { storeId?: string; storeName?: string; rawLabel: string } | null = null;
 
-  lines.forEach((line, idx) => {
+  for (let idx = 0; idx < rawLines.length; idx++) {
+    let line = rawLines[idx];
+    if (line.length <= 1) continue;
+
     const norm = normalizeTextForClassification(line);
     const hasCutWord = knownCutHints.some(h => norm.includes(normalizeTextForClassification(h)));
     const inlineStore = stores.length > 0 ? matchStoreReference(line, stores) : null;
@@ -911,13 +914,39 @@ export function parseRawSalesText(
           storeName: inlineStore.storeName,
           rawLabel: line,
         };
+      } else {
+        const explicitStoreHeader = line.match(
+          /^(?:filial|loja|unidade|supermercado|rede|emp)\s*[:\-–]?\s*([A-Za-zÀ-ÿ0-9\s.\-_/]{3,50})$/i
+        );
+        if (explicitStoreHeader) {
+          const cleanHeader = explicitStoreHeader[1].trim();
+          const headerMatched = stores.length > 0 ? matchStoreReference(cleanHeader, stores) : null;
+          activeStore = headerMatched
+            ? { storeId: headerMatched.storeId, storeName: headerMatched.storeName, rawLabel: cleanHeader }
+            : { rawLabel: cleanHeader };
+        }
       }
-      return;
+      continue;
     }
 
     // Evita linhas de totalização sem corte específico
     if (/^(total geral|resumo|subtotal|relatorio|pagina)\b/i.test(norm)) {
-      return;
+      continue;
+    }
+
+    // Em streams de PDF, o nome do corte pode estar em uma linha ("CARNE BOV ACEM kg")
+    // e o peso na linha imediatamente seguinte ("304,17"). Se a linha atual não tiver número,
+    // verifica se a próxima linha contém apenas valores numéricos/pesos da tabela.
+    const hasNumberInCurrentLine = /\d+(?:[.,]\d+)?/.test(line.replace(/^\s*\d{1,6}\s*[-–|]\s*/, ''));
+    if (!hasNumberInCurrentLine && idx + 1 < rawLines.length) {
+      const nextLine = rawLines[idx + 1];
+      const nextNorm = normalizeTextForClassification(nextLine);
+      const nextHasCut = knownCutHints.some(h => nextNorm.includes(normalizeTextForClassification(h)));
+      const nextHasStore = stores.length > 0 ? Boolean(matchStoreReference(nextLine, stores)) : false;
+      if (!nextHasCut && !nextHasStore && /\d+(?:[.,]\d+)?/.test(nextLine)) {
+        line = `${line} ${nextLine}`;
+        idx += 1;
+      }
     }
 
     const rowStore = inlineStore
@@ -925,7 +954,9 @@ export function parseRawSalesText(
       : activeStore;
 
     // Procura explicitamente por "<numero> kg"
-    const kgMatch = line.match(/(\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{1,3})?|\d+(?:[.,]\d{1,3})?)\s*(?:kg|kilos?|quilos?)\b/i);
+    const kgMatch = line.match(
+      /(\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{1,3})?|\d+(?:[.,]\d{1,3})?)\s*(?:kg|kilos?|quilos?)\b/i
+    );
     let weightKg = kgMatch ? parseBrNumber(kgMatch[1]) : 0;
 
     // Captura valor financeiro R$ se houver
@@ -935,8 +966,10 @@ export function parseRawSalesText(
     // Nome do corte = parte textual após remover números/pesos/separadores e eventuais prefixos de loja
     let cutSource = line;
     if (inlineStore && /[|;\t]|[-–]\s*/.test(line)) {
-      // Se a linha tiver delimitadores ("RN MACAE | PALETA | 180 kg"), remove segmentos que pertencem apenas ao nome da loja
-      const parts = line.split(/[|;\t]+/).map(p => p.trim()).filter(Boolean);
+      const parts = line
+        .split(/[|;\t]+/)
+        .map(p => p.trim())
+        .filter(Boolean);
       const cutPart = parts.find(p =>
         knownCutHints.some(h => normalizeTextForClassification(p).includes(normalizeTextForClassification(h)))
       );
@@ -957,6 +990,7 @@ export function parseRawSalesText(
         .map(m => parseBrNumber(m[1]))
         .filter(n => n > 0 && n < 500000);
       if (nums.length > 0) {
+        // Se o primeiro número for um código inteiro de produto (ex.: 10452) e houver outro número depois, usa o peso
         weightKg = nums.length > 1 && nums[0] > 999 && Number.isInteger(nums[0]) ? nums[1] : nums[0];
       }
     }
@@ -978,7 +1012,7 @@ export function parseRawSalesText(
     } else {
       unclassifiedLines.push(line);
     }
-  });
+  }
 
   return { items, unclassifiedLines };
 }

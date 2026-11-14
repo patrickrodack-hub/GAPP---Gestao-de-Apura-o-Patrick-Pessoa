@@ -50,6 +50,7 @@ import {
   summarizePdfSalesByCategory,
   summarizePdfSalesByStore,
 } from '../../services/slaughterhouseOrderService';
+import { parseSalesDocumentClientSide } from '../../services/pdfSalesClientParser';
 
 interface SlaughterhouseOrderTabProps {
   stores: Store[];
@@ -586,19 +587,72 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
     [stores]
   );
 
-  const safeReadApiResponse = async (response: Response): Promise<any> => {
-    const rawText = await response.text();
-    if (!rawText || rawText.trim().length === 0) {
-      throw new Error(
-        `O servidor retornou uma resposta vazia (HTTP ${response.status}). Tente novamente com uma imagem mais leve ou cole os dados na aba textual.`
-      );
+  const parseSalesDocumentMultiTier = async (params: {
+    fileName: string;
+    fileBase64?: string;
+    mimeType?: string;
+    rawText?: string;
+    signal?: AbortSignal;
+  }): Promise<PdfSalesImportResult> => {
+    // Se for texto colado diretamente, processa instantaneamente no cliente sem depender de rede
+    if (params.rawText && !params.fileBase64) {
+      return parseSalesDocumentClientSide({
+        fileName: params.fileName,
+        rawText: params.rawText,
+        stores: storeRefsPayload,
+      });
     }
+
+    let serverErrorMsg = '';
+
+    // Camada 1: Tenta rota de API do servidor Express (quando disponível)
     try {
-      return JSON.parse(rawText);
-    } catch {
-      const snippet = rawText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 140);
+      const response = await fetch('/api/slaughterhouse-order/parse-sales-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: params.signal,
+        body: JSON.stringify({
+          fileBase64: params.fileBase64,
+          mimeType: params.mimeType,
+          rawText: params.rawText,
+          fileName: params.fileName,
+          stores: storeRefsPayload,
+        }),
+      });
+
+      const rawBody = await response.text();
+      const trimmed = (rawBody || '').trim();
+
+      if (trimmed.length > 0 && !trimmed.startsWith('<!') && !trimmed.startsWith('<html')) {
+        const payload = JSON.parse(trimmed);
+        if (response.ok) {
+          const parsed = (payload?.data ?? payload) as PdfSalesImportResult;
+          if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) {
+            return parsed;
+          }
+        } else {
+          serverErrorMsg = payload?.message || payload?.error || '';
+        }
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') throw err;
+      // Em ambientes estáticos/preview (HTTP 405 / HTML fallback), prossegue silenciosamente para a Camada 2/3 no navegador
+    }
+
+    // Camada 2 & 3 (Client-Side): Gemini Multimodal no Navegador + Descompressor Nativo de PDF (FlateDecode + ToUnicode CMap)
+    try {
+      return await parseSalesDocumentClientSide({
+        fileName: params.fileName,
+        fileBase64: params.fileBase64,
+        mimeType: params.mimeType,
+        rawText: params.rawText,
+        stores: storeRefsPayload,
+      });
+    } catch (clientErr: any) {
       throw new Error(
-        `Resposta inválida do servidor (HTTP ${response.status}): ${snippet || 'formato não JSON'}`
+        clientErr?.message ||
+          serverErrorMsg ||
+          `Não foi possível extrair os cortes de ${params.fileName}.`
       );
     }
   };
@@ -746,29 +800,12 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
         try {
           const { base64, mimeType } = await prepareFilePayload(file);
 
-          const response = await fetch('/api/slaughterhouse-order/parse-sales-pdf', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          const parsed = await parseSalesDocumentMultiTier({
+            fileName: file.name,
+            fileBase64: base64,
+            mimeType,
             signal: controller.signal,
-            body: JSON.stringify({
-              fileBase64: base64,
-              mimeType,
-              fileName: file.name,
-              stores: storeRefsPayload,
-            }),
           });
-
-          const payload = await safeReadApiResponse(response);
-          if (!response.ok) {
-            throw new Error(
-              payload?.message || payload?.error || `Não foi possível extrair os cortes de ${file.name}.`
-            );
-          }
-
-          const parsed = (payload?.data ?? payload) as PdfSalesImportResult;
-          if (!parsed || !Array.isArray(parsed.items)) {
-            throw new Error(`Resposta inválida ao processar ${file.name}.`);
-          }
 
           totalExtractedCuts += parsed.items.length;
           (parsed.recognizedStores || []).forEach((s) => allRecognizedStoreNames.add(s.storeName));
@@ -805,25 +842,10 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
     setPdfParseError(null);
     setIsParsingPdf(true);
     try {
-      const response = await fetch('/api/slaughterhouse-order/parse-sales-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rawText: rawSalesText,
-          fileName: 'Relatorio_Vendas_Colado.txt',
-          stores: storeRefsPayload,
-        }),
+      const parsed = await parseSalesDocumentMultiTier({
+        rawText: rawSalesText,
+        fileName: 'Relatorio_Vendas_Colado.txt',
       });
-      const payload = await safeReadApiResponse(response);
-      if (!response.ok) {
-        throw new Error(
-          payload?.message || payload?.error || 'Não foi possível identificar cortes e pesos no texto.'
-        );
-      }
-      const parsed = (payload?.data ?? payload) as PdfSalesImportResult;
-      if (!parsed || !Array.isArray(parsed.items)) {
-        throw new Error('Resposta inválida ao analisar o texto de vendas.');
-      }
       mergeOrReplacePdfResult(parsed, accumulateImports);
       const storesCount = parsed.recognizedStores?.length || 0;
       showToast(

@@ -1,6 +1,11 @@
 import { GoogleGenAI, ThinkingLevel, Type } from '@google/genai';
+import zlib from 'zlib';
 import { PdfSalesImportResult, PdfSalesParsedCutItem } from '../types/erp';
 import { INITIAL_STORES } from '../data/initialData';
+import {
+  decodePdfStreamsAndExtractText,
+  extractRawPdfStreamSlices,
+} from './pdfSalesClientParser';
 import {
   StoreRefLike,
   buildRecognizedStoresMetadata,
@@ -64,23 +69,34 @@ function safeParseModelJson<T>(rawText: string): T {
 }
 
 /**
- * Extrai texto básico legível de streams não compactados de PDF como fallback determinístico
- * caso GEMINI_API_KEY não esteja configurada no ambiente local.
+ * Descompacta streams FlateDecode de PDFs e decodifica operadores BT..ET e tabelas ToUnicode CMap
+ * como fallback determinístico caso GEMINI_API_KEY não esteja configurada no servidor.
  */
 function extractPlainTextFallbackFromPdfBuffer(buf: Buffer): string {
-  const latin = buf.toString('latin1');
-  const chunks: string[] = [];
-  const tjMatches = latin.match(/\(([^()\\]{2,120})\)\s*Tj/g) || [];
-  for (const m of tjMatches) {
-    const inner = m.replace(/^\(/, '').replace(/\)\s*Tj$/, '');
-    chunks.push(inner);
+  const rawSlices = extractRawPdfStreamSlices(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
+  const decompressedTexts: string[] = [];
+
+  for (const slice of rawSlices) {
+    const sliceBuf = Buffer.from(slice.buffer, slice.byteOffset, slice.byteLength);
+    let inflated: Buffer | null = null;
+    try {
+      inflated = zlib.inflateSync(sliceBuf);
+    } catch {
+      try {
+        inflated = zlib.inflateRawSync(sliceBuf);
+      } catch {
+        inflated = null;
+      }
+    }
+    if (inflated && inflated.length > 0) {
+      decompressedTexts.push(inflated.toString('latin1'));
+    } else {
+      decompressedTexts.push(sliceBuf.toString('latin1'));
+    }
   }
-  const tjArrayMatches = latin.match(/\[(.*?)\]\s*TJ/g) || [];
-  for (const arr of tjArrayMatches) {
-    const innerStrings = arr.match(/\(([^()\\]{1,120})\)/g) || [];
-    chunks.push(innerStrings.map(s => s.slice(1, -1)).join(''));
-  }
-  return chunks.join('\n');
+
+  decompressedTexts.push(buf.toString('latin1'));
+  return decodePdfStreamsAndExtractText(decompressedTexts);
 }
 
 export async function parseSalesPdfDocument(params: {
