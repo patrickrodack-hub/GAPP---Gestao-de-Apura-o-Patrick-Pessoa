@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Store, PortalLockConfig } from '../../types/erp';
-import { StorageService } from '../../services/storageService';
+import { StorageService, normalizePortalWeeklySchedule } from '../../services/storageService';
 import { 
   Building2, 
   User, 
@@ -91,14 +91,32 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
     }
   };
 
-  // Verifica permissão e horário do portal
-  const portalAccess = StorageService.checkPortalAccess(portalLockConfig);
+  const [nowTick, setNowTick] = useState<Date>(() => new Date());
+  const [showWeeklySchedule, setShowWeeklySchedule] = useState<boolean>(false);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowTick(new Date()), 5000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  // Verifica permissão e horário do portal em tempo real (obedecendo dia da semana e hora)
+  const portalAccess = StorageService.checkPortalAccess(portalLockConfig, nowTick);
+
+  const weeklyScheduleList =
+    portalLockConfig?.mode === 'HORARIO_PROGRAMADO'
+      ? normalizePortalWeeklySchedule(
+          portalLockConfig.weeklySchedule,
+          portalLockConfig.startTime || '06:00',
+          portalLockConfig.endTime || '12:00'
+        )
+      : [];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!portalAccess.isOpen) {
-      setError(`O portal está bloqueado no momento: ${portalAccess.message}`);
+    const freshCheck = StorageService.checkPortalAccess(portalLockConfig, new Date());
+    if (!freshCheck.isOpen) {
+      setError(`O portal está bloqueado no momento: ${freshCheck.message}`);
       return;
     }
 
@@ -348,19 +366,75 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
             </div>
 
             {/* Status e Horário do Portal */}
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-slate-400" />
-                <span>Data: <strong className="text-slate-900 dark:text-white">{new Date().toLocaleDateString('pt-BR')}</strong></span>
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2 text-xs text-slate-600 dark:text-slate-400">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-slate-400" />
+                  <span>
+                    Data:{' '}
+                    <strong className="text-slate-900 dark:text-white">
+                      {nowTick.toLocaleDateString('pt-BR')}
+                    </strong>{' '}
+                    <span className="font-mono text-[11px] text-slate-500">
+                      {nowTick.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </span>
+                </div>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 shrink-0 ${
+                    portalAccess.isOpen
+                      ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                      : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30'
+                  }`}
+                >
+                  {portalAccess.isOpen ? (
+                    <CheckCircle2 className="w-3 h-3" />
+                  ) : (
+                    <Lock className="w-3 h-3" />
+                  )}
+                  <span>{portalAccess.isOpen ? 'Portal Liberado' : 'Portal Bloqueado'}</span>
+                </span>
               </div>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
-                portalAccess.isOpen 
-                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30' 
-                  : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30'
-              }`}>
-                {portalAccess.isOpen ? <CheckCircle2 className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                <span>{portalAccess.isOpen ? 'Portal Liberado' : 'Portal Bloqueado'}</span>
-              </span>
+
+              {portalLockConfig?.mode === 'HORARIO_PROGRAMADO' && weeklyScheduleList.length > 0 && (
+                <div className="pt-1.5 border-t border-slate-200/80 dark:border-slate-800/80">
+                  <button
+                    type="button"
+                    onClick={() => setShowWeeklySchedule(prev => !prev)}
+                    className="w-full flex items-center justify-between text-[11px] font-bold text-amber-700 dark:text-amber-400 hover:underline cursor-pointer"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>{portalAccess.scheduleText}</span>
+                    </span>
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 transition-transform ${
+                        showWeeklySchedule ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {showWeeklySchedule && (
+                    <div className="mt-2 grid grid-cols-1 gap-1 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60">
+                      {weeklyScheduleList.map(d => (
+                        <div
+                          key={d.day}
+                          className={`flex items-center justify-between px-2 py-1 rounded-lg text-[11px] ${
+                            portalAccess.todaySchedule?.day === d.day
+                              ? 'bg-amber-500/15 text-amber-900 dark:text-amber-200 font-bold'
+                              : 'text-slate-600 dark:text-slate-400'
+                          }`}
+                        >
+                          <span>{d.label}</span>
+                          <span className="font-mono">
+                            {d.enabled ? `${d.openTime} às ${d.closeTime}` : 'Fechado'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Botão Entrar */}

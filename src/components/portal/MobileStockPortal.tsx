@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SheetRowData, Store, PortalLockConfig, ConnectedDevice } from '../../types/erp';
-import { StorageService } from '../../services/storageService';
+import { StorageService, DEFAULT_PORTAL_LOCK, normalizePortalWeeklySchedule } from '../../services/storageService';
 import { FirebaseService } from '../../services/firebase';
 import { PortalLogin } from './PortalLogin';
 import { PortalForm } from './PortalForm';
@@ -156,8 +156,17 @@ export const MobileStockPortal: React.FC<MobileStockPortalProps> = ({
     // Sincroniza configuração de bloqueio em tempo real com o Firestore
     const unsubscribe = FirebaseService.subscribeToPortalLockConfig((cfg) => {
       if (cfg) {
-        setPortalLockConfig(cfg);
-        localStorage.setItem('apuracao_boi_portal_lock_v1', JSON.stringify(cfg));
+        const normalized: PortalLockConfig = {
+          ...DEFAULT_PORTAL_LOCK,
+          ...cfg,
+          weeklySchedule: normalizePortalWeeklySchedule(
+            cfg.weeklySchedule,
+            cfg.startTime || '06:00',
+            cfg.endTime || '12:00'
+          )
+        };
+        setPortalLockConfig(normalized);
+        localStorage.setItem('apuracao_boi_portal_lock_v1', JSON.stringify(normalized));
       }
     });
 
@@ -165,6 +174,25 @@ export const MobileStockPortal: React.FC<MobileStockPortalProps> = ({
       if (unsubscribe) unsubscribe();
     };
   }, []);
+
+  // Fiscalização contínua em tempo real: bloqueia imediatamente caso o horário agendado se encerre ou o Gestor feche o portal
+  useEffect(() => {
+    const enforcePortalWindow = () => {
+      if (!loggedStoreId) return;
+      const access = StorageService.checkPortalAccess(portalLockConfig, new Date());
+      if (!access.isOpen) {
+        if (deviceInfo) {
+          StorageService.markDeviceOffline(deviceInfo.deviceId);
+        }
+        setLoggedStoreId(null);
+        setOperatorName('');
+      }
+    };
+
+    enforcePortalWindow();
+    const timer = window.setInterval(enforcePortalWindow, 5000);
+    return () => window.clearInterval(timer);
+  }, [loggedStoreId, portalLockConfig, deviceInfo]);
 
   // Padrão "claro" conforme solicitado pelo usuário
   const [portalTheme, setPortalTheme] = useState<PortalTheme>(() => {
@@ -244,6 +272,12 @@ export const MobileStockPortal: React.FC<MobileStockPortalProps> = ({
   };
 
   const handleLogin = (storeId: string, name: string) => {
+    // Garante obediência estrita à programação de horário / bloqueio no momento do login
+    const accessCheck = StorageService.checkPortalAccess(portalLockConfig, new Date());
+    if (!accessCheck.isOpen) {
+      return;
+    }
+
     // Garante que o aparelho não está bloqueado
     if (deviceInfo) {
       const check = StorageService.isDeviceBlocked(deviceInfo.deviceId);
@@ -332,6 +366,7 @@ export const MobileStockPortal: React.FC<MobileStockPortalProps> = ({
           onToggleTheme={togglePortalTheme}
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
+          portalLockConfig={portalLockConfig}
         />
       )}
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SheetRowData, Store, StockLaunchRecord } from '../../types/erp';
+import { SheetRowData, Store, StockLaunchRecord, PortalLockConfig } from '../../types/erp';
 import { 
   recalculateRowOrderFormulas, 
   CutYieldWeights, 
@@ -58,6 +58,7 @@ interface PortalFormProps {
   onToggleTheme: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  portalLockConfig?: PortalLockConfig;
 }
 
 export const PortalForm: React.FC<PortalFormProps> = ({
@@ -70,7 +71,8 @@ export const PortalForm: React.FC<PortalFormProps> = ({
   theme,
   onToggleTheme,
   isFullscreen,
-  onToggleFullscreen
+  onToggleFullscreen,
+  portalLockConfig
 }) => {
   const [activeSection, setActiveSection] = useState<'bovina_camara' | 'bovina_desossa' | 'suina_desossa'>('bovina_camara');
   const [subSection, setSubSection] = useState<'nobres' | 'dianteiro' | 'traseiro'>('nobres');
@@ -194,8 +196,14 @@ export const PortalForm: React.FC<PortalFormProps> = ({
     }, currentWeights);
   };
 
-  // Validação estrita de navegação antes de salvar
+  // Validação estrita de navegação e horário antes de salvar
   const handleSaveData = () => {
+    const accessCheck = StorageService.checkPortalAccess(portalLockConfig, new Date());
+    if (!accessCheck.isOpen) {
+      onLogout();
+      return;
+    }
+
     const missing: string[] = [];
 
     // 1. Verifica resposta se recebeu BOI hoje

@@ -316,10 +316,29 @@ export interface SheetSnapshotRecord {
   rows: SheetRowData[];         // Snapshot completo das 16 linhas com todos os cortes e câmaras
 }
 
+export type DayOfWeekKey =
+  | 'segunda'
+  | 'terca'
+  | 'quarta'
+  | 'quinta'
+  | 'sexta'
+  | 'sabado'
+  | 'domingo';
+
+export interface PortalDaySchedule {
+  day: DayOfWeekKey;
+  label: string;         // Ex: "Segunda-feira"
+  shortLabel: string;    // Ex: "Seg"
+  enabled: boolean;      // Dia liberado para acesso dentro do horário
+  openTime: string;      // Horário de abertura (HH:mm)
+  closeTime: string;     // Horário de fechamento (HH:mm)
+}
+
 export interface PortalLockConfig {
   mode: 'LIBERADO' | 'HORARIO_PROGRAMADO' | 'BLOQUEADO';
-  startTime: string;            // Ex: "07:00"
-  endTime: string;              // Ex: "12:00"
+  startTime: string;            // Horário padrão/fallback (Ex: "06:00")
+  endTime: string;              // Horário padrão/fallback (Ex: "12:00")
+  weeklySchedule?: PortalDaySchedule[]; // Programação semanal de Segunda a Domingo
   customMessage?: string;       // Mensagem personalizada exibida aos encarregados
   updatedBy?: string;           // Quem configurou (ex: "Patrick Pessoa - Gestor")
   updatedAt?: number;           // Timestamp da última alteração

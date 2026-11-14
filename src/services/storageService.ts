@@ -1,4 +1,4 @@
-import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, StockLaunchRecord, SheetSnapshotRecord, PortalLockConfig, SystemUser, ConnectedDevice, DeviceAccessStatus } from '../types/erp';
+import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, StockLaunchRecord, SheetSnapshotRecord, PortalLockConfig, PortalDaySchedule, DayOfWeekKey, SystemUser, ConnectedDevice, DeviceAccessStatus } from '../types/erp';
 import { INITIAL_PRODUCTS, INITIAL_STORES, INITIAL_SHEET_ROWS, INITIAL_BATCHES, INITIAL_WASTE_RECORDS, INITIAL_SUPPLIERS, INITIAL_USERS, ALL_SYSTEM_MODULES } from '../data/initialData';
 import { INITIAL_CONNECTED_DEVICES } from '../data/initialDevices';
 import { recalculateRowOrderFormulas, calculateSheetTotals } from './calculationService';
@@ -22,10 +22,62 @@ const STORAGE_KEYS = {
   ACTIVE_TAB: 'apuracao_boi_active_tab',
 };
 
+export const PORTAL_WEEKDAY_DEFS: Array<{
+  day: DayOfWeekKey;
+  jsDay: number;
+  label: string;
+  shortLabel: string;
+}> = [
+  { day: 'segunda', jsDay: 1, label: 'Segunda-feira', shortLabel: 'Seg' },
+  { day: 'terca', jsDay: 2, label: 'Terça-feira', shortLabel: 'Ter' },
+  { day: 'quarta', jsDay: 3, label: 'Quarta-feira', shortLabel: 'Qua' },
+  { day: 'quinta', jsDay: 4, label: 'Quinta-feira', shortLabel: 'Qui' },
+  { day: 'sexta', jsDay: 5, label: 'Sexta-feira', shortLabel: 'Sex' },
+  { day: 'sabado', jsDay: 6, label: 'Sábado', shortLabel: 'Sáb' },
+  { day: 'domingo', jsDay: 0, label: 'Domingo', shortLabel: 'Dom' },
+];
+
+export function normalizePortalWeeklySchedule(
+  schedule?: PortalDaySchedule[],
+  fallbackOpenTime = '06:00',
+  fallbackCloseTime = '12:00'
+): PortalDaySchedule[] {
+  const safeOpen = /^\d{2}:\d{2}$/.test(fallbackOpenTime) ? fallbackOpenTime : '06:00';
+  const safeClose = /^\d{2}:\d{2}$/.test(fallbackCloseTime) ? fallbackCloseTime : '12:00';
+  const byDay = new Map<DayOfWeekKey, PortalDaySchedule>();
+  if (Array.isArray(schedule)) {
+    for (const item of schedule) {
+      if (item && item.day) {
+        byDay.set(item.day, item);
+      }
+    }
+  }
+  return PORTAL_WEEKDAY_DEFS.map(def => {
+    const existing = byDay.get(def.day);
+    return {
+      day: def.day,
+      label: def.label,
+      shortLabel: def.shortLabel,
+      enabled: existing ? Boolean(existing.enabled) : true,
+      openTime: existing && /^\d{2}:\d{2}$/.test(existing.openTime) ? existing.openTime : safeOpen,
+      closeTime: existing && /^\d{2}:\d{2}$/.test(existing.closeTime) ? existing.closeTime : safeClose,
+    };
+  });
+}
+
+function parseTimeHHMMToMinutes(timeStr: string): number {
+  const [hStr, mStr] = (timeStr || '00:00').split(':');
+  const h = Number(hStr);
+  const m = Number(mStr);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return 0;
+  return Math.max(0, Math.min(23, h)) * 60 + Math.max(0, Math.min(59, m));
+}
+
 export const DEFAULT_PORTAL_LOCK: PortalLockConfig = {
   mode: 'LIBERADO',
   startTime: '06:00',
   endTime: '12:00',
+  weeklySchedule: normalizePortalWeeklySchedule(undefined, '06:00', '12:00'),
   customMessage: 'Lançamento de estoque liberado pelo Gestor para as filiais.',
   updatedBy: 'Patrick Pessoa (Gestor)',
   updatedAt: Date.now()
@@ -332,7 +384,16 @@ export const StorageService = {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.PORTAL_LOCK);
       if (data) {
-        return JSON.parse(data);
+        const parsed = JSON.parse(data) as PortalLockConfig;
+        return {
+          ...DEFAULT_PORTAL_LOCK,
+          ...parsed,
+          weeklySchedule: normalizePortalWeeklySchedule(
+            parsed.weeklySchedule,
+            parsed.startTime || '06:00',
+            parsed.endTime || '12:00'
+          )
+        };
       }
       return DEFAULT_PORTAL_LOCK;
     } catch {
@@ -341,8 +402,14 @@ export const StorageService = {
   },
 
   savePortalLockConfig(config: PortalLockConfig) {
-    const updated = {
+    const normalizedWeekly = normalizePortalWeeklySchedule(
+      config.weeklySchedule,
+      config.startTime || '06:00',
+      config.endTime || '12:00'
+    );
+    const updated: PortalLockConfig = {
       ...config,
+      weeklySchedule: normalizedWeekly,
       updatedAt: Date.now()
     };
     try {
@@ -354,12 +421,14 @@ export const StorageService = {
     return updated;
   },
 
-  checkPortalAccess(config?: PortalLockConfig): {
+  checkPortalAccess(config?: PortalLockConfig, referenceDate?: Date): {
     isOpen: boolean;
     status: 'LIBERADO' | 'HORARIO_PROGRAMADO' | 'BLOQUEADO';
     title: string;
     message: string;
     scheduleText: string;
+    todaySchedule?: PortalDaySchedule;
+    nextWindowText?: string;
   } {
     const cfg = config || this.getPortalLockConfig();
     
@@ -383,35 +452,92 @@ export const StorageService = {
       };
     }
 
-    // Modo: HORARIO_PROGRAMADO
-    const now = new Date();
+    // Modo: HORARIO_PROGRAMADO (Avaliação por dia da semana: Segunda a Domingo)
+    const now = referenceDate || new Date();
+    const jsDay = now.getDay(); // 0=Dom, 1=Seg, ..., 6=Sab
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-    const [startH, startM] = (cfg.startTime || '06:00').split(':').map(Number);
-    const [endH, endM] = (cfg.endTime || '12:00').split(':').map(Number);
+    const weeklySchedule = normalizePortalWeeklySchedule(
+      cfg.weeklySchedule,
+      cfg.startTime || '06:00',
+      cfg.endTime || '12:00'
+    );
 
-    const startMinutes = (startH || 0) * 60 + (startM || 0);
-    const endMinutes = (endH || 0) * 60 + (endM || 0);
+    const todayDef = PORTAL_WEEKDAY_DEFS.find(d => d.jsDay === jsDay) || PORTAL_WEEKDAY_DEFS[0];
+    const todayRule = weeklySchedule.find(d => d.day === todayDef.day) || weeklySchedule[0];
 
-    const isWithinSchedule = currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+    const startMinutes = parseTimeHHMMToMinutes(todayRule.openTime);
+    const endMinutes = parseTimeHHMMToMinutes(todayRule.closeTime);
+    const isRangeValid = endMinutes > startMinutes;
+    const isWithinHours =
+      isRangeValid &&
+      currentMinutes >= startMinutes &&
+      (todayRule.closeTime === '23:59'
+        ? currentMinutes <= endMinutes
+        : currentMinutes < endMinutes);
 
-    if (isWithinSchedule) {
+    const isTodayOpen = todayRule.enabled && isWithinHours;
+
+    // Calcula próxima janela de liberação se fechado agora
+    const findNextWindowText = (): string | undefined => {
+      if (todayRule.enabled && isRangeValid && currentMinutes < startMinutes) {
+        return `Hoje (${todayRule.label}) às ${todayRule.openTime}`;
+      }
+      for (let offset = 1; offset <= 7; offset++) {
+        const nextJsDay = (jsDay + offset) % 7;
+        const nextDef = PORTAL_WEEKDAY_DEFS.find(d => d.jsDay === nextJsDay);
+        if (!nextDef) continue;
+        const nextRule = weeklySchedule.find(d => d.day === nextDef.day);
+        if (nextRule && nextRule.enabled && parseTimeHHMMToMinutes(nextRule.closeTime) > parseTimeHHMMToMinutes(nextRule.openTime)) {
+          const dayPrefix = offset === 1 ? `Amanhã (${nextRule.label})` : nextRule.label;
+          return `${dayPrefix} às ${nextRule.openTime}`;
+        }
+      }
+      return undefined;
+    };
+
+    if (isTodayOpen) {
       return {
         isOpen: true,
         status: 'HORARIO_PROGRAMADO',
-        title: 'Lançamento Liberado no Horário',
-        message: cfg.customMessage || `Lançamento de estoque liberado no período das ${cfg.startTime} às ${cfg.endTime}.`,
-        scheduleText: `Janela permitida: ${cfg.startTime} às ${cfg.endTime}`
-      };
-    } else {
-      return {
-        isOpen: false,
-        status: 'HORARIO_PROGRAMADO',
-        title: 'Portal Fechado para Lançamento',
-        message: cfg.customMessage || `O portal de estoque ainda não está liberado para lançamento ou o horário de hoje foi encerrado. O período de lançamento autorizado pela Gestão é das ${cfg.startTime} às ${cfg.endTime}.`,
-        scheduleText: `Horário liberado: das ${cfg.startTime} às ${cfg.endTime}`
+        title: `Lançamento Liberado (${todayRule.label})`,
+        message:
+          cfg.customMessage ||
+          `Lançamento de estoque liberado hoje (${todayRule.label}) das ${todayRule.openTime} às ${todayRule.closeTime}.`,
+        scheduleText: `${todayRule.label}: liberado das ${todayRule.openTime} às ${todayRule.closeTime}`,
+        todaySchedule: todayRule
       };
     }
+
+    const nextWindowText = findNextWindowText();
+    const defaultClosedMsg = !todayRule.enabled
+      ? `O portal não possui expediente de lançamento programado para ${todayRule.label}.${
+          nextWindowText ? ` Próxima abertura agendada: ${nextWindowText}.` : ''
+        }`
+      : `O portal de estoque está fora do horário programado para ${todayRule.label} (${todayRule.openTime} às ${todayRule.closeTime}).${
+          nextWindowText ? ` Próxima abertura agendada: ${nextWindowText}.` : ''
+        }`;
+
+    return {
+      isOpen: false,
+      status: 'HORARIO_PROGRAMADO',
+      title: !todayRule.enabled
+        ? `Portal Fechado (${todayRule.label})`
+        : 'Portal Fechado Fora do Horário',
+      message:
+        cfg.customMessage && !cfg.customMessage.includes('liberado pelo Gestor')
+          ? `${cfg.customMessage}${nextWindowText ? ` • Próxima liberação: ${nextWindowText}` : ''}`
+          : defaultClosedMsg,
+      scheduleText: todayRule.enabled
+        ? `${todayRule.label}: ${todayRule.openTime} às ${todayRule.closeTime}${
+            nextWindowText ? ` • Próx.: ${nextWindowText}` : ''
+          }`
+        : `${todayRule.label}: Sem liberação programada${
+            nextWindowText ? ` • Próx.: ${nextWindowText}` : ''
+          }`,
+      todaySchedule: todayRule,
+      nextWindowText
+    };
   },
 
   getStockLaunchRecords(): StockLaunchRecord[] {

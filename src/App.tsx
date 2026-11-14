@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StorageService } from './services/storageService';
+import { StorageService, DEFAULT_PORTAL_LOCK, normalizePortalWeeklySchedule } from './services/storageService';
 import { FirebaseService } from './services/firebase';
 import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, SheetSnapshotRecord, PortalLockConfig, SystemUser } from './types/erp';
 import { Header } from './components/Header';
@@ -385,8 +385,17 @@ export default function App() {
       unsubscribeLock = FirebaseService.subscribeToPortalLockConfig((cfg) => {
         if (!isMounted) return;
         if (cfg) {
-          setPortalLockConfig(cfg);
-          localStorage.setItem('apuracao_boi_portal_lock_v1', JSON.stringify(cfg));
+          const normalized: PortalLockConfig = {
+            ...DEFAULT_PORTAL_LOCK,
+            ...cfg,
+            weeklySchedule: normalizePortalWeeklySchedule(
+              cfg.weeklySchedule,
+              cfg.startTime || '06:00',
+              cfg.endTime || '12:00'
+            )
+          };
+          setPortalLockConfig(normalized);
+          localStorage.setItem('apuracao_boi_portal_lock_v1', JSON.stringify(normalized));
         }
       });
     } catch (e) {
@@ -441,9 +450,9 @@ export default function App() {
   }, [currentUser, isPortalMode, stores]);
 
   const handleSavePortalLockConfig = (config: PortalLockConfig) => {
-    StorageService.savePortalLockConfig(config);
-    setPortalLockConfig(config);
-    showToast('Regras de acesso e horários do Portal salvas com sucesso!');
+    const updated = StorageService.savePortalLockConfig(config);
+    setPortalLockConfig(updated);
+    showToast('Regras de acesso e horários semanais do Portal salvos com sucesso!');
   };
 
   // Sync to local storage
