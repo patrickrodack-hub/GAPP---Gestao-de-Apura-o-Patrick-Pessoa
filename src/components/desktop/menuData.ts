@@ -149,6 +149,18 @@ export const getERPMenuCategories = (
         actionId: 'purchaseOrder'
       },
       {
+        id: 'arq-pedido-frigorifico',
+        name: 'Pedido por Frigorífico (Cortes Desossa & PDF)',
+        division: 'Suprimentos & Desossa',
+        code: 'CMP-05',
+        shortcut: 'Alt+B',
+        badge: 'Cortes & PDF',
+        description: 'Planilha de pedido por frigorífico com cálculo de estoque, venda PDF e relatório',
+        icon: Truck,
+        actionType: 'tab',
+        targetTab: 'slaughterhouse_order'
+      },
+      {
         id: 'arq-exportar-xlsx',
         name: 'Exportar para Excel (.xlsx estruturado com fórmulas)',
         division: 'Controladoria & Diretoria',
@@ -404,6 +416,18 @@ export const getERPMenuCategories = (
         icon: Database,
         actionType: 'tab',
         targetTab: 'purchases'
+      },
+      {
+        id: 'cmp-pedido-frigorifico',
+        name: 'Pedido por Frigorífico (Cortes, Venda PDF & Desossa)',
+        division: 'Mesa de Compras Matriz',
+        code: 'CMP-05',
+        shortcut: 'Alt+B',
+        badge: 'Novo',
+        description: 'Calcula estoque por categoria, analisa PDF de vendas pela Desossa e emite pedido por frigorífico',
+        icon: Truck,
+        actionType: 'tab',
+        targetTab: 'slaughterhouse_order'
       }
     ]
   },
@@ -912,6 +936,17 @@ export const getERPMenuCategories = (
         icon: Smartphone,
         actionType: 'tab',
         targetTab: 'devices'
+      },
+      {
+        id: 'win-slaughterhouse-order',
+        name: 'Janela: Pedido por Frigorífico (Cortes & PDF)',
+        division: 'Módulo MDI',
+        code: 'WIN-12',
+        shortcut: 'Alt+B',
+        description: 'Planilha de pedido por frigorífico, estoque por cortes Desossa e importador de PDF',
+        icon: Truck,
+        actionType: 'tab',
+        targetTab: 'slaughterhouse_order'
       }
     ]
   },

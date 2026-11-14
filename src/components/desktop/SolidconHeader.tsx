@@ -323,6 +323,7 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
       case 'results': return 'DRE Gerencial, Margens de Compra e Venda (Markup)';
       case 'inventory': return 'Controle de Estoque: Câmaras Frias, Desossa e Trânsito';
       case 'purchases': return 'Gestão de Compras de Gado e Lotes de Frigoríficos';
+      case 'slaughterhouse_order': return 'Pedido por Frigorífico (Estoque, Venda PDF & Cortes Desossa)';
       case 'waste': return 'Controle de Subprodutos & Descarte (Sebo e Osso)';
       case 'parameters': return 'Módulo 1: Cadastro de Informações e Parâmetros (7 Etapas)';
       case 'backup': return 'Central de Backup Online & Agendamento Automático (Nuvem Firestore)';

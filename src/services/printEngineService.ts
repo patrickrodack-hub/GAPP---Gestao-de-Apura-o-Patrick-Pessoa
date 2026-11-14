@@ -1,5 +1,6 @@
-import { SheetRowData, Store, Supplier, PurchaseBatch } from '../types/erp';
+import { SheetRowData, SlaughterhouseOrderRecord, Store, Supplier, PurchaseBatch } from '../types/erp';
 import { formatCurrencyBRL, formatNumberBR, calculateSheetTotals } from './calculationService';
+import { SLAUGHTERHOUSE_CATEGORY_ORDER } from './slaughterhouseOrderService';
 import { StorageService } from './storageService';
 import { ReportBrandingService } from './reportBrandingService';
 
@@ -1146,6 +1147,179 @@ export class PrintEngineService {
   ${ReportBrandingService.getHtmlFooter({
     documentCode: hashAuth,
     extraRightText: `Emissão Oficial em ${new Date().toLocaleDateString('pt-BR')} • Documento Gerencial A4 Paisagem`
+  })}
+</body>
+</html>`;
+  }
+
+  /**
+   * Layout oficial A4 Paisagem para Impressão Direta do Pedido por Frigorífico
+   */
+  public static generateSlaughterhouseOrderHtml(order: SlaughterhouseOrderRecord): string {
+    const sumCol = (fn: (r: typeof order.rows[number]) => number) =>
+      order.rows.reduce((acc, r) => acc + fn(r), 0);
+
+    const avgCostKg = order.totalWeightKg > 0 ? order.totalCostR$ / order.totalWeightKg : 0;
+    const stdSummaryHtml = SLAUGHTERHOUSE_CATEGORY_ORDER.map(cat => {
+      const st = order.standards[cat];
+      return `<span style="display:inline-block; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; padding:2px 6px; margin-right:6px;">
+        <strong>${st.label}:</strong> ${st.standardWeightKg} kg/pç · ${formatCurrencyBRL(st.costPerKg)}/kg
+      </span>`;
+    }).join('');
+
+    return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Pedido por Frigorífico #${order.orderNumber} - GAPP</title>
+  <style>
+    @page { size: A4 landscape; margin: 7mm 8mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 7.2pt; color: #0f172a; background: #fff; }
+    .meta-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+    .meta-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 8px; }
+    .meta-label { font-size: 6pt; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
+    .meta-val { font-size: 8.5pt; font-weight: 800; color: #0f172a; }
+    .std-bar { margin-bottom: 8px; font-size: 6.8pt; color: #334155; }
+    table { width: 100%; border-collapse: collapse; font-size: 6.4pt; margin-bottom: 10px; }
+    th, td { border: 1px solid #cbd5e1; padding: 3px 3px; text-align: center; white-space: nowrap; }
+    th { font-weight: 800; text-transform: uppercase; font-size: 5.9pt; }
+    td.store { text-align: left; font-weight: 700; padding-left: 5px; background: #f8fafc; }
+    td.ped { background: #ecfdf5; color: #065f46; font-weight: 800; }
+    td.num { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    tfoot td { background: #f1f5f9; font-weight: 900; border-top: 2px solid #334155; }
+    .signatures { display: flex; justify-content: space-around; margin-top: 16px; text-align: center; font-size: 6.8pt; }
+    .sig { width: 28%; border-top: 1px solid #94a3b8; padding-top: 4px; }
+  </style>
+</head>
+<body>
+  ${ReportBrandingService.getHtmlHeader({
+    title: `PEDIDO POR FRIGORÍFICO N° ${order.orderNumber}`,
+    subtitle: `${order.supplier} • Entrega Prevista: ${order.deliveryDate} • Condição: ${order.paymentTerms || 'A combinar'}`,
+    departmentTag: 'PEDIDO POR FRIGORÍFICO • ESTOQUE, VENDA & CORTES DESOSSA',
+    rightMetaHtml: `
+      <div><strong>Data Pedido:</strong> ${order.date}</div>
+      <div><strong>Comprador:</strong> ${order.buyer || 'Patrick Pessoa'}</div>
+      <div><strong>Status:</strong> ${order.status}</div>
+    `,
+    themeColor: 'forest'
+  })}
+
+  <div class="meta-grid">
+    <div class="meta-card">
+      <div class="meta-label">Frigorífico / Fornecedor</div>
+      <div class="meta-val">${order.supplier}</div>
+      <div style="font-size:6.4pt;color:#475569;margin-top:2px;">
+        ${order.supplierDetails ? `${order.supplierDetails.sifNumber || ''} · CNPJ ${order.supplierDetails.cnpj || '-'} · ${order.supplierDetails.city}/${order.supplierDetails.state}` : 'Fornecedor cadastrado no ERP'}
+      </div>
+    </div>
+    <div class="meta-card">
+      <div class="meta-label">Total Peças Pedidas</div>
+      <div class="meta-val">${order.totalPieces} peças</div>
+      <div style="font-size:6.4pt;color:#475569;margin-top:2px;">Equiv. ${order.totalBois} carcaças</div>
+    </div>
+    <div class="meta-card">
+      <div class="meta-label">Peso Total Estimado</div>
+      <div class="meta-val">${formatNumberBR(order.totalWeightKg, 1)} kg</div>
+      <div style="font-size:6.4pt;color:#475569;margin-top:2px;">Custo médio ${formatCurrencyBRL(avgCostKg)}/kg</div>
+    </div>
+    <div class="meta-card" style="background:#ecfdf5;border-color:#6ee7b7;">
+      <div class="meta-label" style="color:#065f46;">Valor Total do Pedido</div>
+      <div class="meta-val" style="color:#065f46;font-size:10pt;">${formatCurrencyBRL(order.totalCostR$)}</div>
+      <div style="font-size:6.4pt;color:#047857;margin-top:2px;">${order.paymentTerms || 'Condição padrão'}</div>
+    </div>
+  </div>
+
+  <div class="std-bar">${stdSummaryHtml}</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th rowspan="2" style="background:#e2e8f0;color:#0f172a;">Filial (16)</th>
+        <th colspan="5" style="background:#fef3c7;color:#92400e;">Estoque Atual Planilha (Peças)</th>
+        <th colspan="5" style="background:#e0f2fe;color:#075985;">Venda Informada (KG / Pçs)</th>
+        <th colspan="5" style="background:#d1fae5;color:#065f46;">Pedido Frigorífico (Peças)</th>
+        <th colspan="2" style="background:#113829;color:#ffffff;">Totais Filial</th>
+      </tr>
+      <tr>
+        <th style="background:#fef9c3;">Diant</th>
+        <th style="background:#fef9c3;">Tras</th>
+        <th style="background:#fef9c3;">Coxão</th>
+        <th style="background:#fef9c3;">Alcat</th>
+        <th style="background:#fef9c3;">Cost</th>
+        <th style="background:#f0f9ff;">V.Diant</th>
+        <th style="background:#f0f9ff;">V.Tras</th>
+        <th style="background:#f0f9ff;">V.Coxão</th>
+        <th style="background:#f0f9ff;">V.Alcat</th>
+        <th style="background:#f0f9ff;">V.Cost</th>
+        <th style="background:#ecfdf5;color:#065f46;">Ped.Diant</th>
+        <th style="background:#ecfdf5;color:#065f46;">Ped.Tras</th>
+        <th style="background:#ecfdf5;color:#065f46;">Ped.Cox</th>
+        <th style="background:#ecfdf5;color:#065f46;">Ped.Alc</th>
+        <th style="background:#ecfdf5;color:#065f46;">Ped.Cost</th>
+        <th style="background:#f8fafc;">Peso (kg)</th>
+        <th style="background:#f8fafc;">Total (R$)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${order.rows.map(r => `
+        <tr>
+          <td class="store">${r.storeName}</td>
+          <td class="num">${r.stock.dianteiroPecas}</td>
+          <td class="num">${r.stock.traseiroPecas}</td>
+          <td class="num">${r.stock.coxaoPecas}</td>
+          <td class="num">${r.stock.alcatraoPecas}</td>
+          <td class="num">${r.stock.costelaPecas}</td>
+          <td class="num">${r.sales.dianteiroKg > 0 ? `${Math.round(r.sales.dianteiroKg)}kg/${r.sales.dianteiroPecas.toFixed(1)}` : '0'}</td>
+          <td class="num">${r.sales.traseiroKg > 0 ? `${Math.round(r.sales.traseiroKg)}kg/${r.sales.traseiroPecas.toFixed(1)}` : '0'}</td>
+          <td class="num">${r.sales.coxaoKg > 0 ? `${Math.round(r.sales.coxaoKg)}kg/${r.sales.coxaoPecas.toFixed(1)}` : '0'}</td>
+          <td class="num">${r.sales.alcatraoKg > 0 ? `${Math.round(r.sales.alcatraoKg)}kg/${r.sales.alcatraoPecas.toFixed(1)}` : '0'}</td>
+          <td class="num">${r.sales.costelaKg > 0 ? `${Math.round(r.sales.costelaKg)}kg/${r.sales.costelaPecas.toFixed(1)}` : '0'}</td>
+          <td class="num ped">${r.order.pedidoDianteiro}</td>
+          <td class="num ped">${r.order.pedidoTraseiro}</td>
+          <td class="num ped">${r.order.pedidoCoxao}</td>
+          <td class="num ped">${r.order.pedidoAlcatrao}</td>
+          <td class="num ped">${r.order.pedidoCostela}</td>
+          <td class="num">${formatNumberBR(r.order.totalWeightKg, 1)}</td>
+          <td class="num" style="text-align:right;font-weight:700;">${formatCurrencyBRL(r.order.totalCostR$)}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td class="store">TOTAIS GERAIS</td>
+        <td>${sumCol(r => r.stock.dianteiroPecas)}</td>
+        <td>${sumCol(r => r.stock.traseiroPecas)}</td>
+        <td>${sumCol(r => r.stock.coxaoPecas)}</td>
+        <td>${sumCol(r => r.stock.alcatraoPecas)}</td>
+        <td>${sumCol(r => r.stock.costelaPecas)}</td>
+        <td>${Math.round(sumCol(r => r.sales.dianteiroKg))}kg</td>
+        <td>${Math.round(sumCol(r => r.sales.traseiroKg))}kg</td>
+        <td>${Math.round(sumCol(r => r.sales.coxaoKg))}kg</td>
+        <td>${Math.round(sumCol(r => r.sales.alcatraoKg))}kg</td>
+        <td>${Math.round(sumCol(r => r.sales.costelaKg))}kg</td>
+        <td class="ped">${sumCol(r => r.order.pedidoDianteiro)}</td>
+        <td class="ped">${sumCol(r => r.order.pedidoTraseiro)}</td>
+        <td class="ped">${sumCol(r => r.order.pedidoCoxao)}</td>
+        <td class="ped">${sumCol(r => r.order.pedidoAlcatrao)}</td>
+        <td class="ped">${sumCol(r => r.order.pedidoCostela)}</td>
+        <td>${formatNumberBR(order.totalWeightKg, 1)} kg</td>
+        <td style="text-align:right;background:#d1fae5;color:#065f46;">${formatCurrencyBRL(order.totalCostR$)}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  ${order.notes ? `<div style="margin-bottom:8px;padding:5px 8px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:4px;font-size:6.8pt;"><strong>Observações:</strong> ${order.notes}</div>` : ''}
+
+  <div class="signatures">
+    <div class="sig"><strong>Diretoria de Compras</strong><br>${order.buyer || 'Patrick Pessoa'}</div>
+    <div class="sig"><strong>Frigorífico / Fornecedor</strong><br>${order.supplier}</div>
+    <div class="sig"><strong>Recepção & Câmara Fria</strong><br>Conferência de Descarga</div>
+  </div>
+
+  ${ReportBrandingService.getHtmlFooter({
+    documentCode: `PF-${order.orderNumber}`,
+    extraRightText: `Pedido por Frigorífico • ${order.supplier}`
   })}
 </body>
 </html>`;

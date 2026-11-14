@@ -12,6 +12,7 @@ import { PerishablesQuotesView } from './components/quotes/PerishablesQuotesView
 import { ResultsTab } from './components/tabs/ResultsTab';
 import { InventoryTab } from './components/tabs/InventoryTab';
 import { PurchasesTab } from './components/tabs/PurchasesTab';
+import { SlaughterhouseOrderTab } from './components/tabs/SlaughterhouseOrderTab';
 import { WasteTab } from './components/tabs/WasteTab';
 import { ParametersTab } from './components/tabs/ParametersTab';
 import { DevicesTab } from './components/tabs/DevicesTab';
@@ -741,6 +742,7 @@ export default function App() {
         results: 'DRE & Margens (Alt+4)',
         inventory: 'Estoque & Câmaras (Alt+5)',
         purchases: 'Compras & Lotes (Alt+6)',
+        slaughterhouse_order: 'Pedido por Frigorífico (Alt+B)',
         waste: 'Descarte Sebo/Osso (Alt+7)',
         devices: 'Aparelhos Conectados & Auditoria (Alt+M)',
         parameters: 'Módulo 1: Parâmetros (Alt+8)',
@@ -785,6 +787,7 @@ export default function App() {
       case 'results': return 'Apuração de Resultados DRE e Margens';
       case 'inventory': return 'Controle de Estoque e Câmaras Frias';
       case 'purchases': return 'Gestão de Compras e Lotes de Gado';
+      case 'slaughterhouse_order': return 'Pedido por Frigorífico (Cortes Desossa, Venda PDF & Relatório)';
       case 'waste': return 'Controle de Descarte (Sebo e Osso)';
       case 'parameters': return 'Módulo 1: Cadastro e Parâmetros';
       case 'backup': return 'Central de Backup Online & Agendamento Automático (Nuvem Firestore)';
@@ -1002,6 +1005,7 @@ export default function App() {
                       { id: 'results', label: 'DRE & Margens' },
                       { id: 'inventory', label: 'Estoque Câmaras' },
                       { id: 'purchases', label: 'Compras & Lotes' },
+                      { id: 'slaughterhouse_order', label: 'Pedido por Frigorífico' },
                       { id: 'waste', label: 'Descarte (Sebo/Osso)' },
                       { id: 'parameters', label: 'Módulo 1: Parâmetros' },
                       { id: 'backup', label: 'Backup Online' },
@@ -1111,6 +1115,18 @@ export default function App() {
                       onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
                       onUpdateYieldParams={handleUpdateYieldParams}
                       onUpdateSheetRows={handleUpdateMultipleRows}
+                    />
+                  )}
+
+                  {activeTab === 'slaughterhouse_order' && (
+                    <SlaughterhouseOrderTab
+                      stores={stores}
+                      suppliers={suppliers}
+                      sheetRows={sheetRows}
+                      yieldParams={yieldParams}
+                      currentUser={currentUser}
+                      onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+                      showToast={showToast}
                     />
                   )}
 
@@ -1457,6 +1473,18 @@ export default function App() {
                       />
                     )}
 
+                    {activeTab === 'slaughterhouse_order' && (
+                      <SlaughterhouseOrderTab
+                        stores={stores}
+                        suppliers={suppliers}
+                        sheetRows={sheetRows}
+                        yieldParams={yieldParams}
+                        currentUser={currentUser}
+                        onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+                        showToast={showToast}
+                      />
+                    )}
+
                     {activeTab === 'waste' && (
                       <WasteTab
                         wasteRecords={wasteRecords}
@@ -1637,6 +1665,18 @@ export default function App() {
                   onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
                   onUpdateYieldParams={handleUpdateYieldParams}
                   onUpdateSheetRows={handleUpdateMultipleRows}
+                />
+              )}
+
+              {activeTab === 'slaughterhouse_order' && (
+                <SlaughterhouseOrderTab
+                  stores={stores}
+                  suppliers={suppliers}
+                  sheetRows={sheetRows}
+                  yieldParams={yieldParams}
+                  currentUser={currentUser}
+                  onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+                  showToast={showToast}
                 />
               )}
 

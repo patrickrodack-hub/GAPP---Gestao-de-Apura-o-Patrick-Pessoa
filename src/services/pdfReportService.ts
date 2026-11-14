@@ -1,7 +1,8 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { SheetRowData, Store, Supplier } from '../types/erp';
+import { SheetRowData, SlaughterhouseOrderRecord, Store, Supplier } from '../types/erp';
 import { formatCurrencyBRL, formatNumberBR, calculateSheetTotals } from './calculationService';
+import { SLAUGHTERHOUSE_CATEGORY_ORDER, summarizePdfSalesByCategory } from './slaughterhouseOrderService';
 import { StorageService } from './storageService';
 import { ReportBrandingService } from './reportBrandingService';
 
@@ -1441,6 +1442,256 @@ export class PdfReportService {
    */
   public static async generateAndDownloadBeefYieldPdf(options: GenerateBeefYieldPdfOptions): Promise<void> {
     const { doc, fileName } = await this.getBeefYieldPdfDoc(options);
+    doc.save(fileName);
+  }
+
+  /**
+   * Relatório Oficial de Pedido por Frigorífico (A4 Paisagem)
+   * Contempla Estoque por Categoria, Venda (KG e Peças via Motor Desossa/PDF) e Pedido por Loja
+   */
+  public static async getSlaughterhouseOrderPdfDoc(
+    order: SlaughterhouseOrderRecord
+  ): Promise<{ doc: jsPDF; fileName: string }> {
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4',
+      compress: true
+    });
+
+    const margin = 10;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const emissionDate = new Date();
+    const emissionStr = `${emissionDate.toLocaleDateString('pt-BR')} às ${emissionDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    const docCode = `PF-${order.orderNumber}`;
+
+    let currentY = await ReportBrandingService.drawPdfHeader(doc, {
+      title: `PEDIDO POR FRIGORÍFICO N° ${order.orderNumber}`,
+      subtitle: `${order.supplier} • Entrega: ${order.deliveryDate} • Condição: ${order.paymentTerms || 'A combinar'}`,
+      departmentTag: 'MÓDULO PEDIDO POR FRIGORÍFICO • ESTOQUE, VENDA PDF & DESOSSA',
+      emissionDateStr: emissionStr,
+      rightMetaLines: [
+        `Emissão: ${emissionStr}`,
+        `Comprador: ${order.buyer || 'Patrick Pessoa'}`,
+        `Total Pedido: ${formatCurrencyBRL(order.totalCostR$)}`
+      ],
+      themeColor: 'forest'
+    });
+
+    // Bloco Fornecedor & Resumo Financeiro
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(margin, currentY, pageWidth - margin * 2, 19, 1.5, 1.5, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(17, 56, 41);
+    doc.text('FRIGORÍFICO FORNECEDOR:', margin + 3, currentY + 5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 23, 42);
+    const supplierMeta = order.supplierDetails
+      ? `${order.supplierDetails.name} (${order.supplierDetails.sifNumber || 'SIF N/I'}) • CNPJ: ${order.supplierDetails.cnpj || '-'} • ${order.supplierDetails.city}/${order.supplierDetails.state}`
+      : order.supplier;
+    doc.text(supplierMeta, margin + 43, currentY + 5);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(17, 56, 41);
+    doc.text('RESUMO CONSOLIDADO:', margin + 3, currentY + 10.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 23, 42);
+    const avgCostKg = order.totalWeightKg > 0 ? order.totalCostR$ / order.totalWeightKg : 0;
+    doc.text(
+      `${order.totalPieces} peças pedidas • ${formatNumberBR(order.totalWeightKg, 1)} kg totais • Custo médio: ${formatCurrencyBRL(avgCostKg)}/kg • Total: ${formatCurrencyBRL(order.totalCostR$)}`,
+      margin + 43,
+      currentY + 10.5
+    );
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(71, 85, 105);
+    doc.text('PARÂMETROS (KG/PÇ & R$/KG):', margin + 3, currentY + 15.8);
+    doc.setFont('helvetica', 'normal');
+    const stdLine = SLAUGHTERHOUSE_CATEGORY_ORDER.map(cat => {
+      const st = order.standards[cat];
+      return `${st.label}: ${st.standardWeightKg}kg (${formatCurrencyBRL(st.costPerKg)}/kg)`;
+    }).join('  |  ');
+    doc.text(stdLine, margin + 46, currentY + 15.8);
+
+    currentY += 23;
+
+    // Resumo opcional do PDF de vendas importado
+    if (order.lastPdfImport && order.lastPdfImport.items.length > 0) {
+      const pdfSummary = summarizePdfSalesByCategory(order.lastPdfImport.items, order.standards);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.2);
+      doc.setTextColor(17, 56, 41);
+      doc.text(
+        `AUDITORIA PDF DE VENDAS IMPORTADO (${order.lastPdfImport.fileName} • ${order.lastPdfImport.items.length} cortes classificados):`,
+        margin,
+        currentY
+      );
+      currentY += 2;
+
+      const pdfBody = SLAUGHTERHOUSE_CATEGORY_ORDER.map(cat => {
+        const s = pdfSummary.summaries[cat];
+        const st = order.standards[cat];
+        return [
+          `${s.label} (${s.desossaGroup})`,
+          `${formatNumberBR(s.totalKg, 2)} kg`,
+          `${formatNumberBR(s.standardWeightKg, 1)} kg/pç`,
+          `${formatNumberBR(s.exactPieces, 2)} pçs`,
+          `${s.roundedPieces} pçs`,
+          `${formatCurrencyBRL(st.costPerKg)}/kg`
+        ];
+      });
+
+      autoTable(doc, {
+        startY: currentY,
+        margin: { left: margin, right: margin },
+        head: [['CATEGORIA DESOSSA', 'VENDA INFORMADA (KG)', 'PESO PADRÃO', 'VENDA EXATA (PÇS)', 'ARREDONDADO', 'CUSTO REF.']],
+        body: pdfBody,
+        theme: 'grid',
+        styles: { fontSize: 6.2, cellPadding: 1.2, halign: 'center' },
+        columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
+        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+      });
+
+      currentY = (doc as any).lastAutoTable.finalY + 5;
+    }
+
+    // Tabela Matriz das 16 Filiais
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(17, 56, 41);
+    doc.text('MATRIZ CONSOLIDADA DE ESTOQUE, VENDA E PEDIDO POR FRIGORÍFICO (16 FILIAIS)', margin, currentY);
+
+    const head = [
+      [
+        { content: 'FILIAL', rowSpan: 2, styles: { fillColor: [226, 232, 240] as [number, number, number], textColor: [15, 23, 42] as [number, number, number], halign: 'left' as const, valign: 'middle' as const } },
+        { content: 'ESTOQUE PLANILHA (PÇ)', colSpan: 5, styles: { fillColor: [254, 243, 199] as [number, number, number], textColor: [146, 64, 14] as [number, number, number] } },
+        { content: 'VENDA INFORMADA (KG / PÇ)', colSpan: 5, styles: { fillColor: [224, 242, 254] as [number, number, number], textColor: [7, 89, 133] as [number, number, number] } },
+        { content: 'PEDIDO POR FRIGORÍFICO (PEÇAS)', colSpan: 5, styles: { fillColor: [209, 250, 229] as [number, number, number], textColor: [6, 95, 70] as [number, number, number] } },
+        { content: 'TOTAIS PEDIDO', colSpan: 2, styles: { fillColor: [17, 56, 41] as [number, number, number], textColor: [255, 255, 255] as [number, number, number] } },
+      ],
+      [
+        'Diant', 'Tras', 'Coxão', 'Alcat', 'Cost',
+        'V.Diant', 'V.Tras', 'V.Cox', 'V.Alc', 'V.Cost',
+        'PED.DIANT', 'PED.TRAS', 'PED.COX', 'PED.ALC', 'PED.COST',
+        'Peso (kg)', 'Valor (R$)'
+      ]
+    ];
+
+    const body = order.rows.map(r => [
+      r.storeName,
+      r.stock.dianteiroPecas,
+      r.stock.traseiroPecas,
+      r.stock.coxaoPecas,
+      r.stock.alcatraoPecas,
+      r.stock.costelaPecas,
+      r.sales.dianteiroKg > 0 ? `${Math.round(r.sales.dianteiroKg)}kg/${r.sales.dianteiroPecas.toFixed(1)}` : '0',
+      r.sales.traseiroKg > 0 ? `${Math.round(r.sales.traseiroKg)}kg/${r.sales.traseiroPecas.toFixed(1)}` : '0',
+      r.sales.coxaoKg > 0 ? `${Math.round(r.sales.coxaoKg)}kg/${r.sales.coxaoPecas.toFixed(1)}` : '0',
+      r.sales.alcatraoKg > 0 ? `${Math.round(r.sales.alcatraoKg)}kg/${r.sales.alcatraoPecas.toFixed(1)}` : '0',
+      r.sales.costelaKg > 0 ? `${Math.round(r.sales.costelaKg)}kg/${r.sales.costelaPecas.toFixed(1)}` : '0',
+      r.order.pedidoDianteiro,
+      r.order.pedidoTraseiro,
+      r.order.pedidoCoxao,
+      r.order.pedidoAlcatrao,
+      r.order.pedidoCostela,
+      formatNumberBR(r.order.totalWeightKg, 1),
+      formatCurrencyBRL(r.order.totalCostR$),
+    ]);
+
+    const sumCol = (fn: (r: typeof order.rows[number]) => number) =>
+      order.rows.reduce((acc, r) => acc + fn(r), 0);
+
+    const foot = [
+      [
+        { content: 'TOTAIS CONSOLIDADOS', styles: { halign: 'left' as const, fontStyle: 'bold' as const, fillColor: [241, 245, 249] as [number, number, number] } },
+        sumCol(r => r.stock.dianteiroPecas),
+        sumCol(r => r.stock.traseiroPecas),
+        sumCol(r => r.stock.coxaoPecas),
+        sumCol(r => r.stock.alcatraoPecas),
+        sumCol(r => r.stock.costelaPecas),
+        `${Math.round(sumCol(r => r.sales.dianteiroKg))}kg`,
+        `${Math.round(sumCol(r => r.sales.traseiroKg))}kg`,
+        `${Math.round(sumCol(r => r.sales.coxaoKg))}kg`,
+        `${Math.round(sumCol(r => r.sales.alcatraoKg))}kg`,
+        `${Math.round(sumCol(r => r.sales.costelaKg))}kg`,
+        { content: sumCol(r => r.order.pedidoDianteiro), styles: { fontStyle: 'bold' as const, textColor: [6, 95, 70] as [number, number, number] } },
+        { content: sumCol(r => r.order.pedidoTraseiro), styles: { fontStyle: 'bold' as const, textColor: [6, 95, 70] as [number, number, number] } },
+        { content: sumCol(r => r.order.pedidoCoxao), styles: { fontStyle: 'bold' as const, textColor: [6, 95, 70] as [number, number, number] } },
+        { content: sumCol(r => r.order.pedidoAlcatrao), styles: { fontStyle: 'bold' as const, textColor: [6, 95, 70] as [number, number, number] } },
+        { content: sumCol(r => r.order.pedidoCostela), styles: { fontStyle: 'bold' as const, textColor: [6, 95, 70] as [number, number, number] } },
+        { content: `${formatNumberBR(order.totalWeightKg, 1)} kg`, styles: { fontStyle: 'bold' as const } },
+        { content: formatCurrencyBRL(order.totalCostR$), styles: { fontStyle: 'bold' as const, fillColor: [209, 250, 229] as [number, number, number], textColor: [6, 95, 70] as [number, number, number] } },
+      ]
+    ];
+
+    autoTable(doc, {
+      startY: currentY + 2,
+      margin: { left: margin, right: margin, bottom: 14 },
+      head,
+      body,
+      foot,
+      theme: 'grid',
+      styles: {
+        fontSize: 5.5,
+        cellPadding: 1.0,
+        halign: 'center',
+        valign: 'middle',
+        lineColor: [203, 213, 225],
+        lineWidth: 0.12,
+      },
+      columnStyles: {
+        0: { halign: 'left', fontStyle: 'bold', cellWidth: 28 },
+        11: { fillColor: [236, 253, 245], fontStyle: 'bold', textColor: [6, 95, 70] },
+        12: { fillColor: [236, 253, 245], fontStyle: 'bold', textColor: [6, 95, 70] },
+        13: { fillColor: [236, 253, 245], fontStyle: 'bold', textColor: [6, 95, 70] },
+        14: { fillColor: [236, 253, 245], fontStyle: 'bold', textColor: [6, 95, 70] },
+        15: { fillColor: [236, 253, 245], fontStyle: 'bold', textColor: [6, 95, 70] },
+        17: { halign: 'right', fontStyle: 'bold' },
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      }
+    });
+
+    // Assinaturas se houver espaço
+    const finalY = ((doc as any).lastAutoTable?.finalY || 170) + 10;
+    if (finalY < doc.internal.pageSize.getHeight() - 22) {
+      const sigW = 68;
+      const centers = [pageWidth * 0.2, pageWidth * 0.5, pageWidth * 0.8];
+      const labels = [
+        ['Diretoria de Compras', order.buyer || 'Patrick Pessoa'],
+        ['Representante Frigorífico', order.supplier],
+        ['Controladoria / Recepção', 'Conferência Câmaras Frias']
+      ];
+      centers.forEach((cx, idx) => {
+        doc.setDrawColor(148, 163, 184);
+        doc.setLineWidth(0.25);
+        doc.line(cx - sigW / 2, finalY, cx + sigW / 2, finalY);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(labels[idx][0], cx, finalY + 3.5, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6);
+        doc.setTextColor(100, 116, 139);
+        doc.text(labels[idx][1], cx, finalY + 6.5, { align: 'center' });
+      });
+    }
+
+    await ReportBrandingService.drawPdfFooterAllPages(doc, {
+      documentCode: docCode,
+      extraRightText: `Pedido por Frigorífico • ${order.supplier}`
+    });
+
+    const fileName = `Pedido_Frigorifico_${order.orderNumber}_${order.date}.pdf`;
+    return { doc, fileName };
+  }
+
+  public static async generateAndDownloadSlaughterhouseOrderPdf(order: SlaughterhouseOrderRecord): Promise<void> {
+    const { doc, fileName } = await this.getSlaughterhouseOrderPdfDoc(order);
     doc.save(fileName);
   }
 }

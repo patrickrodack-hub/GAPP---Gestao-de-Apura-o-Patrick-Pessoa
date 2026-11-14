@@ -186,6 +186,26 @@ async function startServer() {
     }
   });
 
+  // Endpoint de Análise e Classificação de PDF de Vendas de Cortes (Pedido por Frigorífico)
+  app.post('/api/slaughterhouse-order/parse-sales-pdf', async (req, res) => {
+    try {
+      const { fileName, pdfBase64, rawText } = req.body || {};
+      const { parseSalesPdfDocument } = await import('./src/services/pdfSalesParserServer');
+      const result = await parseSalesPdfDocument({
+        fileName: String(fileName || 'vendas-cortes.pdf'),
+        pdfBase64: typeof pdfBase64 === 'string' ? pdfBase64 : undefined,
+        rawText: typeof rawText === 'string' ? rawText : undefined,
+      });
+      res.json(result);
+    } catch (err: any) {
+      console.error('[API /api/slaughterhouse-order/parse-sales-pdf] Erro:', err);
+      res.status(422).json({
+        error: 'Não foi possível processar o documento de vendas',
+        message: err?.message || 'Falha ao extrair cortes vendidos do PDF'
+      });
+    }
+  });
+
   // Tratamento global de erros de parsing de requisição (ex.: PayloadTooLargeError)
   app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (!err) return next();

@@ -1038,6 +1038,15 @@ export const ALL_SYSTEM_MODULES: SystemModuleItem[] = [
     badge: 'Pedidos'
   },
   { 
+    id: 'slaughterhouse_order', 
+    label: 'Pedido por Frigorífico', 
+    shortLabel: 'Ped. Frigorífico',
+    description: 'Planilha de pedido por frigorífico com soma de cortes Desossa, importação de PDF de vendas, custos e relatório oficial',
+    category: 'COMPRAS',
+    categoryLabel: 'Mesa de Compras Matriz',
+    badge: 'Cortes & PDF'
+  },
+  { 
     id: 'yield', 
     label: 'Desossa & Rendimento', 
     shortLabel: 'Desossa & Rendimento',
@@ -1153,6 +1162,7 @@ export const INITIAL_USERS: import('../types/erp').SystemUser[] = [
       'parameters', 
       'sheet', 
       'purchases', 
+      'slaughterhouse_order',
       'yield', 
       'quotes', 
       'perishables', 
@@ -1181,6 +1191,7 @@ export const INITIAL_USERS: import('../types/erp').SystemUser[] = [
       'parameters', 
       'sheet', 
       'purchases', 
+      'slaughterhouse_order',
       'yield', 
       'quotes', 
       'perishables', 
@@ -1208,6 +1219,7 @@ export const INITIAL_USERS: import('../types/erp').SystemUser[] = [
       'parameters', 
       'sheet', 
       'purchases', 
+      'slaughterhouse_order',
       'yield', 
       'quotes', 
       'perishables'

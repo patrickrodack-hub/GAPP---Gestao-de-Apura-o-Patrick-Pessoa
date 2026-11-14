@@ -23,7 +23,8 @@ import {
   Sparkles,
   LogOut,
   X,
-  Layers
+  Layers,
+  Truck
 } from 'lucide-react';
 import { NavigationTab } from '../Navigation';
 import { SystemUser } from '../../types/erp';
@@ -90,6 +91,7 @@ export const GappNewSidebar: React.FC<GappNewSidebarProps> = ({
     { id: 'yield', label: 'Desossa & Rendimento', icon: Scissors },
     { id: 'results', label: 'Apuração & Margens', icon: DollarSign },
     { id: 'purchases', label: 'Compras & Lotes', icon: ShoppingCart },
+    { id: 'slaughterhouse_order', label: 'Pedido por Frigorífico', icon: Truck, badge: 'Cortes' },
     { id: 'quotes', label: 'Cotações Ao Vivo', icon: Activity },
     { id: 'perishables', label: 'Cotação de Perecíveis', icon: Layers, badge: '11 Abas' },
     { id: 'waste', label: 'Descarte (Sebo/Osso)', icon: Bone },

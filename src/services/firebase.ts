@@ -918,5 +918,53 @@ export const FirebaseService = {
     } catch {
       return () => {};
     }
+  },
+
+  // 14. PEDIDO POR FRIGORÍFICO (Rascunho em app_settings + Pedidos Oficiais em purchase_orders)
+  async getSlaughterhouseOrderDraft(): Promise<any | null> {
+    try {
+      const snap = await getDoc(doc(db, 'app_settings', 'slaughterhouse_order_draft'));
+      if (!snap.exists()) return null;
+      return snap.data();
+    } catch (error) {
+      console.warn('Erro ao carregar rascunho de Pedido por Frigorífico do Firestore:', error);
+      return null;
+    }
+  },
+
+  async saveSlaughterhouseOrderDraft(draft: any): Promise<void> {
+    const path = 'app_settings/slaughterhouse_order_draft';
+    try {
+      const cleanData = sanitizeForFirestore({
+        ...draft,
+        updatedAt: Date.now()
+      });
+      await setDoc(doc(db, 'app_settings', 'slaughterhouse_order_draft'), cleanData, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  },
+
+  async saveSlaughterhouseOrder(order: any): Promise<void> {
+    const safeId = String(order.id || `frig_${Date.now()}`).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const path = `purchase_orders/${safeId}`;
+    try {
+      const cleanData = sanitizeForFirestore({
+        ...order,
+        id: safeId,
+        orderType: 'FRIGORIFICO_CORTES',
+        orderNumber: String(order.orderNumber || safeId).slice(0, 64),
+        date: String(order.date || new Date().toISOString().slice(0, 10)).slice(0, 64),
+        supplier: String(order.supplier || 'Frigorífico').slice(0, 128),
+        totalBois: Number(order.totalBois) || 0,
+        totalWeightKg: Number(order.totalWeightKg) || 0,
+        totalCostR$: Number(order.totalCostR$) || 0,
+        status: String(order.status || 'CONFIRMADO').slice(0, 32),
+        updatedAt: Date.now()
+      });
+      await setDoc(doc(db, 'purchase_orders', safeId), cleanData, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
   }
 };

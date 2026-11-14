@@ -1,4 +1,4 @@
-import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, StockLaunchRecord, SheetSnapshotRecord, PortalLockConfig, PortalDaySchedule, DayOfWeekKey, SystemUser, ConnectedDevice, DeviceAccessStatus } from '../types/erp';
+import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, StockLaunchRecord, SheetSnapshotRecord, PortalLockConfig, PortalDaySchedule, DayOfWeekKey, SystemUser, ConnectedDevice, DeviceAccessStatus, SlaughterhouseOrderDraft, SlaughterhouseOrderRecord } from '../types/erp';
 import { INITIAL_PRODUCTS, INITIAL_STORES, INITIAL_SHEET_ROWS, INITIAL_BATCHES, INITIAL_WASTE_RECORDS, INITIAL_SUPPLIERS, INITIAL_USERS, ALL_SYSTEM_MODULES } from '../data/initialData';
 import { INITIAL_CONNECTED_DEVICES } from '../data/initialDevices';
 import { recalculateRowOrderFormulas, calculateSheetTotals } from './calculationService';
@@ -20,6 +20,8 @@ const STORAGE_KEYS = {
   CONNECTED_DEVICES: 'gapp_connected_devices_v1',
   THEME: 'apuracao_boi_theme',
   ACTIVE_TAB: 'apuracao_boi_active_tab',
+  SLAUGHTERHOUSE_DRAFT: 'gapp_slaughterhouse_order_draft_v1',
+  SLAUGHTERHOUSE_ORDERS: 'gapp_slaughterhouse_orders_v1',
 };
 
 export const PORTAL_WEEKDAY_DEFS: Array<{
@@ -987,7 +989,7 @@ export const StorageService = {
         }
       }
 
-      // Migração suave: adiciona automaticamente 'perishables' aos usuários cujo perfil já contempla cotações ou compras
+      // Migração suave: adiciona automaticamente 'perishables' e 'slaughterhouse_order' aos perfis aplicáveis
       let hasChanges = false;
       users = users.map(user => {
         if (user.role === 'DESENVOLVEDOR') {
@@ -996,14 +998,32 @@ export const StorageService = {
             allowedModules: ALL_SYSTEM_MODULES.map(m => m.id)
           };
         }
-        if (!user.allowedModules.includes('perishables')) {
+        let nextModules = [...(user.allowedModules || [])];
+        let changedUser = false;
+
+        if (!nextModules.includes('perishables')) {
           if (user.role === 'DIRETOR' || user.role === 'COMPRADOR' || user.role === 'OPERACIONAL' || user.role === 'VISUALIZADOR') {
-            hasChanges = true;
-            return {
-              ...user,
-              allowedModules: [...user.allowedModules, 'perishables']
-            };
+            nextModules.push('perishables');
+            changedUser = true;
           }
+        }
+        if (!nextModules.includes('slaughterhouse_order')) {
+          if (
+            user.role === 'DIRETOR' ||
+            user.role === 'COMPRADOR' ||
+            (user.role === 'OPERACIONAL' && (nextModules.includes('purchases') || nextModules.includes('sheet')))
+          ) {
+            nextModules.push('slaughterhouse_order');
+            changedUser = true;
+          }
+        }
+
+        if (changedUser) {
+          hasChanges = true;
+          return {
+            ...user,
+            allowedModules: nextModules
+          };
         }
         return user;
       });
@@ -1472,6 +1492,110 @@ export const StorageService = {
     } catch (e) {
       console.warn('Erro ao sincronizar aparelhos com a nuvem:', e);
       return this.getConnectedDevices();
+    }
+  },
+
+  // ========================================================
+  // MÓDULO PEDIDO POR FRIGORÍFICO (RASCUNHO & HISTÓRICO)
+  // ========================================================
+  getSlaughterhouseDraft(): SlaughterhouseOrderDraft | null {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.SLAUGHTERHOUSE_DRAFT);
+      return raw ? (JSON.parse(raw) as SlaughterhouseOrderDraft) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  saveSlaughterhouseDraft(draft: SlaughterhouseOrderDraft, syncToCloud = true): void {
+    try {
+      const updated = { ...draft, updatedAt: Date.now() };
+      localStorage.setItem(STORAGE_KEYS.SLAUGHTERHOUSE_DRAFT, JSON.stringify(updated));
+      if (syncToCloud) {
+        FirebaseService.saveSlaughterhouseOrderDraft(updated).catch(() => {});
+      }
+    } catch (e) {
+      console.warn('Erro ao salvar rascunho de Pedido por Frigorífico:', e);
+    }
+  },
+
+  getSlaughterhouseOrders(): SlaughterhouseOrderRecord[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.SLAUGHTERHOUSE_ORDERS);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveSlaughterhouseOrder(order: SlaughterhouseOrderRecord): SlaughterhouseOrderRecord[] {
+    const current = this.getSlaughterhouseOrders();
+    const exists = current.some(o => o.id === order.id);
+    const updated = exists
+      ? current.map(o => (o.id === order.id ? order : o))
+      : [order, ...current];
+    try {
+      localStorage.setItem(STORAGE_KEYS.SLAUGHTERHOUSE_ORDERS, JSON.stringify(updated));
+      FirebaseService.saveSlaughterhouseOrder(order).catch(err => {
+        console.warn('Erro ao gravar Pedido por Frigorífico no Firestore:', err);
+      });
+    } catch (e) {
+      console.warn('Erro ao salvar histórico de Pedido por Frigorífico:', e);
+    }
+    return updated;
+  },
+
+  deleteSlaughterhouseOrder(orderId: string): SlaughterhouseOrderRecord[] {
+    const current = this.getSlaughterhouseOrders();
+    const updated = current.filter(o => o.id !== orderId);
+    try {
+      localStorage.setItem(STORAGE_KEYS.SLAUGHTERHOUSE_ORDERS, JSON.stringify(updated));
+      FirebaseService.deletePurchaseOrder(orderId).catch(() => {});
+    } catch {}
+    return updated;
+  },
+
+  async syncSlaughterhouseDataFromCloud(): Promise<{
+    draft: SlaughterhouseOrderDraft | null;
+    orders: SlaughterhouseOrderRecord[];
+  }> {
+    try {
+      const [cloudDraft, cloudOrders] = await Promise.all([
+        FirebaseService.getSlaughterhouseOrderDraft(),
+        FirebaseService.getPurchaseOrders(),
+      ]);
+
+      let resolvedDraft = this.getSlaughterhouseDraft();
+      if (cloudDraft && (!resolvedDraft || (cloudDraft.updatedAt || 0) > (resolvedDraft.updatedAt || 0))) {
+        resolvedDraft = cloudDraft as SlaughterhouseOrderDraft;
+        localStorage.setItem(STORAGE_KEYS.SLAUGHTERHOUSE_DRAFT, JSON.stringify(resolvedDraft));
+      }
+
+      const localOrders = this.getSlaughterhouseOrders();
+      const filteredCloudOrders = Array.isArray(cloudOrders)
+        ? (cloudOrders as any[]).filter(o => o?.orderType === 'FRIGORIFICO_CORTES')
+        : [];
+
+      const mergedMap = new Map<string, SlaughterhouseOrderRecord>();
+      filteredCloudOrders.forEach(o => mergedMap.set(o.id, o as SlaughterhouseOrderRecord));
+      localOrders.forEach(o => {
+        if (!mergedMap.has(o.id)) {
+          mergedMap.set(o.id, o);
+        }
+      });
+      const mergedOrders = Array.from(mergedMap.values()).sort(
+        (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+      );
+      localStorage.setItem(STORAGE_KEYS.SLAUGHTERHOUSE_ORDERS, JSON.stringify(mergedOrders));
+
+      return { draft: resolvedDraft, orders: mergedOrders };
+    } catch {
+      return {
+        draft: this.getSlaughterhouseDraft(),
+        orders: this.getSlaughterhouseOrders(),
+      };
     }
   }
 };

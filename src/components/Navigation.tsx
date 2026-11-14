@@ -12,7 +12,8 @@ import {
   Cloud,
   Activity,
   Smartphone,
-  Layers
+  Layers,
+  Truck
 } from 'lucide-react';
 import { SystemUser } from '../types/erp';
 
@@ -25,6 +26,7 @@ export type NavigationTab =
   | 'results'
   | 'inventory'
   | 'purchases'
+  | 'slaughterhouse_order'
   | 'waste'
   | 'parameters'
   | 'backup'
@@ -53,6 +55,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     { id: 'results', label: 'Apuração & Margens', icon: DollarSign, badge: 'DRE', shortcut: 'Alt+4' },
     { id: 'inventory', label: 'Estoque & Câmaras', icon: Boxes, badge: null, shortcut: 'Alt+5' },
     { id: 'purchases', label: 'Compras & Lotes', icon: ShoppingCart, badge: null, shortcut: 'Alt+6' },
+    { id: 'slaughterhouse_order', label: 'Pedido por Frigorífico', icon: Truck, badge: 'Cortes', shortcut: 'Alt+B' },
     { id: 'waste', label: 'Descarte (Sebo & Osso)', icon: Bone, badge: null, shortcut: 'Alt+7' },
     { id: 'devices', label: 'Aparelhos Conectados', icon: Smartphone, badge: 'Acessos', shortcut: 'Alt+M' },
     { id: 'parameters', label: 'Módulo 1: Cadastros', icon: SlidersHorizontal, badge: 'Setup', shortcut: 'Alt+8' },

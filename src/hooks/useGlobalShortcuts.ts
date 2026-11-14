@@ -128,6 +128,10 @@ export function useGlobalShortcuts({
             e.preventDefault();
             onNavigateTab('perishables');
             return;
+          case 'KeyB':
+            e.preventDefault();
+            onNavigateTab('slaughterhouse_order');
+            return;
           case 'KeyX':
             e.preventDefault();
             onExportXLSX();

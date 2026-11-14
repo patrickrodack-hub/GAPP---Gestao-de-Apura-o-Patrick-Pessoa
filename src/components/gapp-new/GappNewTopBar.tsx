@@ -148,6 +148,11 @@ export const GappNewTopBar: React.FC<GappNewTopBarProps> = ({
         action: () => onOpenPurchaseOrder()
       },
       {
+        label: 'Pedido por Frigorífico (Cortes & PDF)',
+        desc: 'Planilha de cortes Desossa, importação de PDF de vendas e relatório',
+        action: () => onNavigateTab('slaughterhouse_order')
+      },
+      {
         label: 'Controle de Estoque & Câmaras Frias',
         desc: 'Conferir ocupação das câmaras das 16 filiais',
         action: () => onNavigateTab('inventory')

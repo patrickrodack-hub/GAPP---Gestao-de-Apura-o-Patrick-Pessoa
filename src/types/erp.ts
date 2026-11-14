@@ -449,4 +449,178 @@ export interface ConnectedDevice {
   locationHint?: string;           // Localização aproximada (ex: "Rio de Janeiro, RJ")
 }
 
+// ==========================================
+// MÓDULO PEDIDO POR FRIGORÍFICO (CORTES & PDF)
+// ==========================================
+export type SlaughterhouseCutCategory =
+  | 'dianteiro'
+  | 'traseiro'
+  | 'coxao'
+  | 'alcatrao'
+  | 'costela';
+
+export type DesossaCategoryGroup =
+  | 'SEGUNDA'
+  | 'TRASEIRO'
+  | 'COXAO'
+  | 'NOBRE'
+  | 'COSTELA';
+
+export interface SlaughterhouseCategoryStandard {
+  category: SlaughterhouseCutCategory;
+  label: string;
+  desossaGroup: DesossaCategoryGroup;
+  standardWeightKg: number;      // Peso padrão da peça para conversão Venda KG -> Peças (ex: Dianteiro 45kg)
+  carcassPercent: number;        // % sobre carcaça da Desossa (ex: 39%, 48%, 30%, 18%, 13%)
+  costPerKg: number;             // Custo negociado com o frigorífico (R$/kg)
+  includedCutsLabel: string;     // Lista de cortes pertencentes à categoria
+}
+
+export interface SlaughterhouseCategoryStock {
+  pieces: number;
+  chamberPieces: number;
+  debonedPieces: number;
+  kg: number;
+  debonedKg: number;
+  breakdown: string[];
+}
+
+export interface SlaughterhouseStoreStock {
+  dianteiro: SlaughterhouseCategoryStock;
+  traseiro: SlaughterhouseCategoryStock;
+  coxao: SlaughterhouseCategoryStock;
+  alcatrao: SlaughterhouseCategoryStock;
+  costela: SlaughterhouseCategoryStock;
+}
+
+export interface SlaughterhouseSalesEntry {
+  dianteiroKg: number;
+  traseiroKg: number;
+  coxaoKg: number;
+  alcatraoKg: number;
+  costelaKg: number;
+}
+
+export interface SlaughterhouseStoreOrderRow {
+  storeId: string;
+  storeName: string;
+  pedidoDianteiro: number;
+  pedidoTraseiro: number;
+  pedidoCoxao: number;
+  pedidoAlcatrao: number;
+  pedidoCostela: number;
+  sales: SlaughterhouseSalesEntry;
+  notes?: string;
+}
+
+export interface PdfSalesParsedCutItem {
+  id: string;
+  cutName: string;
+  rawCategory?: string;
+  category: SlaughterhouseCutCategory;
+  desossaGroup: DesossaCategoryGroup;
+  weightKg: number;
+  units?: number;
+  revenueR$?: number;
+  matchedBy: string;
+}
+
+export interface PdfSalesCategorySummary {
+  category: SlaughterhouseCutCategory;
+  label: string;
+  desossaGroup: DesossaCategoryGroup;
+  totalKg: number;
+  standardWeightKg: number;
+  exactPieces: number;
+  roundedPieces: number;
+  itemsCount: number;
+}
+
+export interface PdfSalesImportResult {
+  fileName: string;
+  parsedAt: number;
+  parserEngine: 'gemini' | 'text_parser';
+  rawSummaryNote?: string;
+  targetStoreId?: string;
+  items: PdfSalesParsedCutItem[];
+  unclassifiedLines: string[];
+}
+
+export interface SlaughterhouseOrderDraft {
+  supplierId: string;
+  supplierName: string;
+  orderNumber: string;
+  orderDate: string;
+  deliveryDate: string;
+  buyer: string;
+  paymentTerms: string;
+  notes: string;
+  standards: Record<SlaughterhouseCutCategory, SlaughterhouseCategoryStandard>;
+  storeRows: SlaughterhouseStoreOrderRow[];
+  lastPdfImport?: PdfSalesImportResult | null;
+  updatedAt: number;
+}
+
+export interface SlaughterhouseOrderReportRow {
+  storeId: string;
+  storeName: string;
+  stock: {
+    dianteiroPecas: number;
+    dianteiroKg: number;
+    traseiroPecas: number;
+    traseiroKg: number;
+    coxaoPecas: number;
+    coxaoKg: number;
+    alcatraoPecas: number;
+    alcatraoKg: number;
+    costelaPecas: number;
+    costelaKg: number;
+  };
+  sales: {
+    dianteiroKg: number;
+    dianteiroPecas: number;
+    traseiroKg: number;
+    traseiroPecas: number;
+    coxaoKg: number;
+    coxaoPecas: number;
+    alcatraoKg: number;
+    alcatraoPecas: number;
+    costelaKg: number;
+    costelaPecas: number;
+  };
+  order: {
+    pedidoDianteiro: number;
+    pedidoTraseiro: number;
+    pedidoCoxao: number;
+    pedidoAlcatrao: number;
+    pedidoCostela: number;
+    totalPieces: number;
+    totalWeightKg: number;
+    totalCostR$: number;
+  };
+}
+
+export interface SlaughterhouseOrderRecord {
+  id: string;
+  orderType: 'FRIGORIFICO_CORTES';
+  orderNumber: string;
+  date: string;
+  deliveryDate: string;
+  supplier: string;
+  supplierId?: string;
+  supplierDetails?: Supplier;
+  buyer: string;
+  paymentTerms?: string;
+  totalBois: number;               // Equivalente em cabeças/carcaças para compatibilidade com Firestore rules
+  totalPieces: number;
+  totalWeightKg: number;
+  totalCostR$: number;
+  status: 'RASCUNHO' | 'ENVIADO' | 'CONFIRMADO';
+  notes?: string;
+  standards: Record<SlaughterhouseCutCategory, SlaughterhouseCategoryStandard>;
+  rows: SlaughterhouseOrderReportRow[];
+  lastPdfImport?: PdfSalesImportResult | null;
+  createdAt: number;
+}
+
 
