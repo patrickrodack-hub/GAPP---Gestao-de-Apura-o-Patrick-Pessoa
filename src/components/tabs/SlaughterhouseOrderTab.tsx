@@ -140,6 +140,11 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
   const [pendingPdfResult, setPendingPdfResult] = useState<PdfSalesImportResult | null>(
     draft.lastPdfImport || null
   );
+  const [accumulateImports, setAccumulateImports] = useState<boolean>(true);
+  const [storeRecognitionViewMode, setStoreRecognitionViewMode] = useState<
+    'found_plus_sheet' | 'found_only'
+  >('found_plus_sheet');
+  const [isRecognitionCardOpen, setIsRecognitionCardOpen] = useState<boolean>(true);
   const [applyTargetMode, setApplyTargetMode] = useState<'by_store' | 'single' | 'equal'>('by_store');
   const [applyTargetStoreId, setApplyTargetStoreId] = useState<string>(stores[0]?.id || '');
   const [clearAbsentStores, setClearAbsentStores] = useState<boolean>(false);
@@ -667,62 +672,116 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
     return { base64, mimeType: inferredMime };
   };
 
-  const applyParsedResultDefaults = (parsed: PdfSalesImportResult) => {
-    setPendingPdfResult(parsed);
-    const matchedCount = parsed.items.filter((it) => Boolean(it.matchedStoreId)).length;
-    if (matchedCount > 0) {
-      setApplyTargetMode('by_store');
-    } else {
-      setApplyTargetMode('single');
-    }
+  const mergeOrReplacePdfResult = (
+    incoming: PdfSalesImportResult,
+    shouldMerge: boolean
+  ): PdfSalesImportResult => {
+    setPendingPdfResult((prev) => {
+      if (!prev || !shouldMerge || prev.items.length === 0) {
+        const matchedCount = incoming.items.filter((it) => Boolean(it.matchedStoreId || it.rawStore)).length;
+        setApplyTargetMode(matchedCount > 0 ? 'by_store' : 'single');
+        return incoming;
+      }
+
+      // Se acumular estiver ativo, preserva os cortes das filiais já lidas e atualiza/soma com os novos
+      const incomingStoreIds = new Set(
+        incoming.items.map((it) => it.matchedStoreId || (it.rawStore ? `raw:${it.rawStore}` : '')).filter(Boolean)
+      );
+
+      // Mantém itens anteriores de outras lojas + adiciona todos os itens do novo arquivo
+      const keptPreviousItems = prev.items.filter((it) => {
+        const key = it.matchedStoreId || (it.rawStore ? `raw:${it.rawStore}` : '');
+        return !key || !incomingStoreIds.has(key);
+      });
+
+      const combinedItems = [
+        ...keptPreviousItems,
+        ...incoming.items.map((it, idx) => ({
+          ...it,
+          id: `${it.id}-m${Date.now()}-${idx}`,
+        })),
+      ];
+
+      const prevNames = prev.fileName.split(' + ').map((s) => s.trim());
+      const combinedFileName = prevNames.includes(incoming.fileName)
+        ? prev.fileName
+        : `${prev.fileName} + ${incoming.fileName}`;
+
+      const matchedCount = combinedItems.filter((it) => Boolean(it.matchedStoreId || it.rawStore)).length;
+      setApplyTargetMode(matchedCount > 0 ? 'by_store' : 'single');
+
+      return {
+        ...incoming,
+        fileName: combinedFileName,
+        parsedAt: Date.now(),
+        items: combinedItems,
+        unclassifiedLines: [...(prev.unclassifiedLines || []), ...(incoming.unclassifiedLines || [])],
+      };
+    });
+    return incoming;
   };
 
-  const handlePdfFileSelected = async (file: File | null) => {
-    if (!file) return;
+  const handlePdfFilesSelected = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList);
     setPdfParseError(null);
 
-    if (file.size > 15 * 1024 * 1024) {
-      setPdfParseError('O arquivo excede o limite de 15 MB. Reduza o tamanho ou cole os dados em texto.');
-      return;
+    for (const f of files) {
+      if (f.size > 15 * 1024 * 1024) {
+        setPdfParseError(`O arquivo "${f.name}" excede o limite de 15 MB.`);
+        return;
+      }
     }
 
     setIsParsingPdf(true);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 90000);
+    let totalExtractedCuts = 0;
+    const allRecognizedStoreNames = new Set<string>();
 
     try {
-      const { base64, mimeType } = await prepareFilePayload(file);
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 90000);
 
-      const response = await fetch('/api/slaughterhouse-order/parse-sales-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-        body: JSON.stringify({
-          fileBase64: base64,
-          mimeType,
-          fileName: file.name,
-          stores: storeRefsPayload,
-        }),
-      });
+        try {
+          const { base64, mimeType } = await prepareFilePayload(file);
 
-      const payload = await safeReadApiResponse(response);
-      if (!response.ok) {
-        throw new Error(
-          payload?.message || payload?.error || 'Não foi possível extrair os cortes deste documento.'
-        );
+          const response = await fetch('/api/slaughterhouse-order/parse-sales-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            body: JSON.stringify({
+              fileBase64: base64,
+              mimeType,
+              fileName: file.name,
+              stores: storeRefsPayload,
+            }),
+          });
+
+          const payload = await safeReadApiResponse(response);
+          if (!response.ok) {
+            throw new Error(
+              payload?.message || payload?.error || `Não foi possível extrair os cortes de ${file.name}.`
+            );
+          }
+
+          const parsed = (payload?.data ?? payload) as PdfSalesImportResult;
+          if (!parsed || !Array.isArray(parsed.items)) {
+            throw new Error(`Resposta inválida ao processar ${file.name}.`);
+          }
+
+          totalExtractedCuts += parsed.items.length;
+          (parsed.recognizedStores || []).forEach((s) => allRecognizedStoreNames.add(s.storeName));
+          mergeOrReplacePdfResult(parsed, accumulateImports || i > 0);
+        } finally {
+          clearTimeout(timeoutId);
+        }
       }
 
-      const parsed = (payload?.data ?? payload) as PdfSalesImportResult;
-      if (!parsed || !Array.isArray(parsed.items)) {
-        throw new Error('Resposta inválida ao processar o documento de vendas.');
-      }
-
-      applyParsedResultDefaults(parsed);
-      const storesCount = parsed.recognizedStores?.length || 0;
       showToast(
-        storesCount > 0
-          ? `Documento analisado: ${parsed.items.length} cortes em ${storesCount} filial(is) reconhecida(s).`
-          : `Documento analisado: ${parsed.items.length} cortes extraídos.`
+        allRecognizedStoreNames.size > 0
+          ? `Importação concluída: ${totalExtractedCuts} cortes em ${allRecognizedStoreNames.size} filial(is) reconhecida(s).`
+          : `Importação concluída: ${totalExtractedCuts} cortes extraídos.`
       );
     } catch (err: any) {
       if (err?.name === 'AbortError') {
@@ -731,7 +790,6 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
         setPdfParseError(err?.message || 'Falha ao processar o documento de vendas.');
       }
     } finally {
-      clearTimeout(timeoutId);
       setIsParsingPdf(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -766,7 +824,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
       if (!parsed || !Array.isArray(parsed.items)) {
         throw new Error('Resposta inválida ao analisar o texto de vendas.');
       }
-      applyParsedResultDefaults(parsed);
+      mergeOrReplacePdfResult(parsed, accumulateImports);
       const storesCount = parsed.recognizedStores?.length || 0;
       showToast(
         storesCount > 0
@@ -815,12 +873,58 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
     });
   };
 
+  // Vincula todos os cortes de uma loja lida do arquivo (ainda sem vínculo ERP) para uma das 16 filiais oficiais
+  const handleLinkRawStoreGroupToStore = (rawStoreLabel: string, targetStoreId: string) => {
+    if (!pendingPdfResult || !targetStoreId) return;
+    const matched = stores.find((s) => s.id === targetStoreId);
+    if (!matched) return;
+    setPendingPdfResult({
+      ...pendingPdfResult,
+      items: pendingPdfResult.items.map((it) =>
+        !it.matchedStoreId && it.rawStore?.trim() === rawStoreLabel.trim()
+          ? {
+              ...it,
+              matchedStoreId: matched.id,
+              matchedStoreName: matched.name,
+            }
+          : it
+      ),
+    });
+    showToast(`Loja "${rawStoreLabel}" vinculada à filial ${matched.name}.`);
+  };
+
+  // Vincula todos os cortes sem filial para uma loja escolhida
+  const handleAssignAllUnassignedToStore = (targetStoreId: string) => {
+    if (!pendingPdfResult || !targetStoreId) return;
+    const matched = stores.find((s) => s.id === targetStoreId);
+    if (!matched) return;
+    setPendingPdfResult({
+      ...pendingPdfResult,
+      items: pendingPdfResult.items.map((it) =>
+        !it.matchedStoreId
+          ? {
+              ...it,
+              matchedStoreId: matched.id,
+              matchedStoreName: matched.name,
+            }
+          : it
+      ),
+    });
+    showToast(`Cortes sem filial atribuídos para ${matched.name}.`);
+  };
+
   const handleRemovePdfItem = (itemId: string) => {
     if (!pendingPdfResult) return;
     setPendingPdfResult({
       ...pendingPdfResult,
       items: pendingPdfResult.items.filter((it) => it.id !== itemId),
     });
+  };
+
+  const handleClearPendingPdfResult = () => {
+    setPendingPdfResult(null);
+    setPdfParseError(null);
+    showToast('Importação atual limpa. Você pode selecionar um novo arquivo.');
   };
 
   const pdfSummary = useMemo(() => {
@@ -833,16 +937,337 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
     return summarizePdfSalesByStore(pendingPdfResult.items, draft.standards, stores);
   }, [pendingPdfResult, draft.standards, stores]);
 
-  const handleApplyPdfSalesToSheet = () => {
+  /**
+   * Matriz Unificada: "Vendas Reconhecidas por Filial + Informações que Já Temos na Planilha"
+   * Une TODAS as lojas encontradas no documento importado + as informações que já temos para cada filial
+   * (Estoque atual da Planilha/Desossa por categoria, Giro/Boi à Venda, Venda já existente na Planilha,
+   * Sugestão de Pedido = Venda − Estoque, e Pedido Atual editável).
+   */
+  const combinedStoreRecognitionData = useMemo(() => {
+    const pdfStoreMap = new Map(
+      (pdfByStoreSummary?.storeSummaries || [])
+        .filter((s) => !s.isUnmappedStore)
+        .map((s) => [s.storeId, s])
+    );
+    const unmappedPdfStores = (pdfByStoreSummary?.storeSummaries || []).filter(
+      (s) => s.isUnmappedStore
+    );
+
+    const buildRowForStore = (store: Store) => {
+      const pdfMatch = pdfStoreMap.get(store.id);
+      const draftRow = draft.storeRows.find((r) => r.storeId === store.id);
+      const sheetRow = sheetRows.find((r) => r.storeId === store.id);
+      const stock = storeStockMap.get(store.id);
+      const reportRow = reportRows.find((r) => r.storeId === store.id);
+
+      const priorSales = draftRow?.sales || {
+        dianteiroKg: 0,
+        traseiroKg: 0,
+        coxaoKg: 0,
+        alcatraoKg: 0,
+        costelaKg: 0,
+      };
+      const priorTotalKg =
+        priorSales.dianteiroKg +
+        priorSales.coxaoKg +
+        priorSales.alcatraoKg +
+        priorSales.costelaKg +
+        Math.max(0, priorSales.traseiroKg - (priorSales.coxaoKg + priorSales.alcatraoKg));
+      const hasPriorSheetSales = priorTotalKg > 0;
+
+      // Venda efetiva: se a loja foi encontrada no documento atual, usa a venda do documento; caso contrário, preserva a venda que já temos na planilha
+      const effectiveSales = pdfMatch ? pdfMatch.salesEntry : priorSales;
+      const effectivePieces = pdfMatch
+        ? pdfMatch.pieces
+        : getSalesPiecesBreakdown(effectiveSales, draft.standards);
+      const effectiveTotalKg = pdfMatch ? pdfMatch.totalKg : Number(priorTotalKg.toFixed(2));
+      const effectiveTotalPieces = Number(
+        (
+          effectivePieces.dianteiroPecas +
+          effectivePieces.traseiroPecas +
+          effectivePieces.coxaoPecas +
+          effectivePieces.alcatraoPecas +
+          effectivePieces.costelaPecas
+        ).toFixed(2)
+      );
+
+      const stockDiant = stock?.dianteiro.pieces || 0;
+      const stockTras = stock?.traseiro.pieces || 0;
+      const stockCox = stock?.coxao.pieces || 0;
+      const stockAlc = stock?.alcatrao.pieces || 0;
+      const stockCost = stock?.costela.pieces || 0;
+      const totalStockPieces = stockDiant + stockTras + stockCost;
+      const totalStockKg =
+        (stock?.dianteiro.kg || 0) + (stock?.traseiro.kg || 0) + (stock?.costela.kg || 0);
+
+      const sugDiant = Math.max(0, Math.round(effectivePieces.dianteiroPecas - stockDiant));
+      const sugTras = Math.max(0, Math.round(effectivePieces.traseiroPecas - stockTras));
+      const sugCox = Math.max(0, Math.round(effectivePieces.coxaoPecas - stockCox));
+      const sugAlc = Math.max(0, Math.round(effectivePieces.alcatraoPecas - stockAlc));
+      const sugCost = Math.max(0, Math.round(effectivePieces.costelaPecas - stockCost));
+      const totalSuggestedPieces = sugDiant + sugTras + sugCox + sugAlc + sugCost;
+
+      const camaraTotalPieces =
+        Number(sheetRow?.camaraDianteiro || 0) +
+        Number(sheetRow?.camaraTraseiro || 0) +
+        Number(sheetRow?.camaraCoxao || 0) +
+        Number(sheetRow?.camaraAlcatrao || 0) +
+        Number(sheetRow?.camaraCostelaGaucha || 0);
+
+      return {
+        storeId: store.id,
+        storeCode: store.code || store.id,
+        storeName: store.name,
+        city: store.city || '',
+        manager: store.manager || '',
+        isFoundInPdf: Boolean(pdfMatch),
+        isUnmappedStore: false,
+        rawStoreLabel: pdfMatch?.rawStoreLabel,
+        itemsCount: pdfMatch?.itemsCount || 0,
+        hasPriorSheetSales,
+        priorSales,
+        effectiveSales,
+        effectivePieces,
+        effectiveTotalKg,
+        effectiveTotalPieces,
+        stock: {
+          dianteiroPecas: stockDiant,
+          dianteiroKg: stock?.dianteiro.kg || 0,
+          dianteiroBreakdown: stock?.dianteiro.breakdown.join(' | ') || '',
+          traseiroPecas: stockTras,
+          traseiroKg: stock?.traseiro.kg || 0,
+          traseiroBreakdown: stock?.traseiro.breakdown.join(' | ') || '',
+          coxaoPecas: stockCox,
+          coxaoKg: stock?.coxao.kg || 0,
+          coxaoBreakdown: stock?.coxao.breakdown.join(' | ') || '',
+          alcatraoPecas: stockAlc,
+          alcatraoKg: stock?.alcatrao.kg || 0,
+          alcatraoBreakdown: stock?.alcatrao.breakdown.join(' | ') || '',
+          costelaPecas: stockCost,
+          costelaKg: stock?.costela.kg || 0,
+          costelaBreakdown: stock?.costela.breakdown.join(' | ') || '',
+          totalPieces: totalStockPieces,
+          totalKg: totalStockKg,
+        },
+        sheetInfo: {
+          boiAVenda: Number(sheetRow?.boiAVenda || 0),
+          sugestaoPlanilha: Number(sheetRow?.sugestaoPedido || 0),
+          recebeuBoiHoje: Boolean(sheetRow?.recebeuBoiHoje),
+          camaraTotalPieces,
+        },
+        suggestedOrder: {
+          dianteiro: sugDiant,
+          traseiro: sugTras,
+          coxao: sugCox,
+          alcatrao: sugAlc,
+          costela: sugCost,
+          totalPieces: totalSuggestedPieces,
+        },
+        currentOrder: {
+          pedidoDianteiro: draftRow?.pedidoDianteiro || 0,
+          pedidoTraseiro: draftRow?.pedidoTraseiro || 0,
+          pedidoCoxao: draftRow?.pedidoCoxao || 0,
+          pedidoAlcatrao: draftRow?.pedidoAlcatrao || 0,
+          pedidoCostela: draftRow?.pedidoCostela || 0,
+          totalPieces: reportRow?.order.totalPieces || 0,
+          totalWeightKg: reportRow?.order.totalWeightKg || 0,
+          totalCostR$: reportRow?.order.totalCostR$ || 0,
+        },
+      };
+    };
+
+    const allErpRows = stores.map(buildRowForStore);
+    const unmappedRows = unmappedPdfStores.map((u) => {
+      const effectiveTotalPieces = Number(
+        (
+          u.pieces.dianteiroPecas +
+          u.pieces.traseiroPecas +
+          u.pieces.coxaoPecas +
+          u.pieces.alcatraoPecas +
+          u.pieces.costelaPecas
+        ).toFixed(2)
+      );
+      return {
+        storeId: u.storeId,
+        storeCode: 'VINCULAR',
+        storeName: u.storeName,
+        city: 'Loja lida do documento',
+        manager: '',
+        isFoundInPdf: true,
+        isUnmappedStore: true,
+        rawStoreLabel: u.rawStoreLabel || u.storeName,
+        itemsCount: u.itemsCount,
+        hasPriorSheetSales: false,
+        priorSales: u.salesEntry,
+        effectiveSales: u.salesEntry,
+        effectivePieces: u.pieces,
+        effectiveTotalKg: u.totalKg,
+        effectiveTotalPieces,
+        stock: {
+          dianteiroPecas: 0,
+          dianteiroKg: 0,
+          dianteiroBreakdown: '',
+          traseiroPecas: 0,
+          traseiroKg: 0,
+          traseiroBreakdown: '',
+          coxaoPecas: 0,
+          coxaoKg: 0,
+          coxaoBreakdown: '',
+          alcatraoPecas: 0,
+          alcatraoKg: 0,
+          alcatraoBreakdown: '',
+          costelaPecas: 0,
+          costelaKg: 0,
+          costelaBreakdown: '',
+          totalPieces: 0,
+          totalKg: 0,
+        },
+        sheetInfo: {
+          boiAVenda: 0,
+          sugestaoPlanilha: 0,
+          recebeuBoiHoje: false,
+          camaraTotalPieces: 0,
+        },
+        suggestedOrder: {
+          dianteiro: Math.round(u.pieces.dianteiroPecas),
+          traseiro: Math.round(u.pieces.traseiroPecas),
+          coxao: Math.round(u.pieces.coxaoPecas),
+          alcatrao: Math.round(u.pieces.alcatraoPecas),
+          costela: Math.round(u.pieces.costelaPecas),
+          totalPieces:
+            Math.round(u.pieces.dianteiroPecas) +
+            Math.round(u.pieces.traseiroPecas) +
+            Math.round(u.pieces.coxaoPecas) +
+            Math.round(u.pieces.alcatraoPecas) +
+            Math.round(u.pieces.costelaPecas),
+        },
+        currentOrder: {
+          pedidoDianteiro: 0,
+          pedidoTraseiro: 0,
+          pedidoCoxao: 0,
+          pedidoAlcatrao: 0,
+          pedidoCostela: 0,
+          totalPieces: 0,
+          totalWeightKg: 0,
+          totalCostR$: 0,
+        },
+      };
+    });
+
+    // Filiais encontradas no documento ou que já possuem vendas lançadas ficam no topo
+    const foundRows = [
+      ...allErpRows.filter((r) => r.isFoundInPdf),
+      ...unmappedRows,
+    ];
+    const sheetOtherRows = allErpRows.filter((r) => !r.isFoundInPdf);
+
+    const summarizeGroup = (rowsList: typeof foundRows) =>
+      rowsList.reduce(
+        (acc, r) => {
+          acc.dianteiroKg += r.effectiveSales.dianteiroKg;
+          acc.dianteiroPecas += r.effectivePieces.dianteiroPecas;
+          acc.stockDianteiroPecas += r.stock.dianteiroPecas;
+          acc.sugDianteiro += r.suggestedOrder.dianteiro;
+          acc.pedDianteiro += r.currentOrder.pedidoDianteiro;
+
+          acc.traseiroKg += r.effectiveSales.traseiroKg;
+          acc.traseiroPecas += r.effectivePieces.traseiroPecas;
+          acc.stockTraseiroPecas += r.stock.traseiroPecas;
+          acc.sugTraseiro += r.suggestedOrder.traseiro;
+          acc.pedTraseiro += r.currentOrder.pedidoTraseiro;
+
+          acc.coxaoKg += r.effectiveSales.coxaoKg;
+          acc.coxaoPecas += r.effectivePieces.coxaoPecas;
+          acc.stockCoxaoPecas += r.stock.coxaoPecas;
+          acc.sugCoxao += r.suggestedOrder.coxao;
+          acc.pedCoxao += r.currentOrder.pedidoCoxao;
+
+          acc.alcatraoKg += r.effectiveSales.alcatraoKg;
+          acc.alcatraoPecas += r.effectivePieces.alcatraoPecas;
+          acc.stockAlcatraoPecas += r.stock.alcatraoPecas;
+          acc.sugAlcatrao += r.suggestedOrder.alcatrao;
+          acc.pedAlcatrao += r.currentOrder.pedidoAlcatrao;
+
+          acc.costelaKg += r.effectiveSales.costelaKg;
+          acc.costelaPecas += r.effectivePieces.costelaPecas;
+          acc.stockCostelaPecas += r.stock.costelaPecas;
+          acc.sugCostela += r.suggestedOrder.costela;
+          acc.pedCostela += r.currentOrder.pedidoCostela;
+
+          acc.totalSalesKg += r.effectiveTotalKg;
+          acc.totalSalesPieces += r.effectiveTotalPieces;
+          acc.totalStockPieces += r.stock.totalPieces;
+          acc.totalStockKg += r.stock.totalKg;
+          acc.totalSuggestedPieces += r.suggestedOrder.totalPieces;
+          acc.totalOrderPieces += r.currentOrder.totalPieces;
+          acc.totalOrderCostR$ += r.currentOrder.totalCostR$;
+          return acc;
+        },
+        {
+          dianteiroKg: 0,
+          dianteiroPecas: 0,
+          stockDianteiroPecas: 0,
+          sugDianteiro: 0,
+          pedDianteiro: 0,
+          traseiroKg: 0,
+          traseiroPecas: 0,
+          stockTraseiroPecas: 0,
+          sugTraseiro: 0,
+          pedTraseiro: 0,
+          coxaoKg: 0,
+          coxaoPecas: 0,
+          stockCoxaoPecas: 0,
+          sugCoxao: 0,
+          pedCoxao: 0,
+          alcatraoKg: 0,
+          alcatraoPecas: 0,
+          stockAlcatraoPecas: 0,
+          sugAlcatrao: 0,
+          pedAlcatrao: 0,
+          costelaKg: 0,
+          costelaPecas: 0,
+          stockCostelaPecas: 0,
+          sugCostela: 0,
+          pedCostela: 0,
+          totalSalesKg: 0,
+          totalSalesPieces: 0,
+          totalStockPieces: 0,
+          totalStockKg: 0,
+          totalSuggestedPieces: 0,
+          totalOrderPieces: 0,
+          totalOrderCostR$: 0,
+        }
+      );
+
+    return {
+      foundRows,
+      sheetOtherRows,
+      allOrderedRows: [...foundRows, ...sheetOtherRows],
+      foundTotals: summarizeGroup(foundRows),
+      networkTotals: summarizeGroup([...foundRows, ...sheetOtherRows]),
+    };
+  }, [
+    pdfByStoreSummary,
+    stores,
+    draft.storeRows,
+    draft.standards,
+    sheetRows,
+    storeStockMap,
+    reportRows,
+  ]);
+
+  const handleApplyPdfSalesToSheet = (autoSuggestOrders = false) => {
     if (!pendingPdfResult || !pdfSummary) return;
     const { salesEntry } = pdfSummary;
     const count = Math.max(1, draft.storeRows.length);
 
     if (applyTargetMode === 'by_store') {
-      const storeSummaries = pdfByStoreSummary?.storeSummaries || [];
+      const storeSummaries = (pdfByStoreSummary?.storeSummaries || []).filter(
+        (s) => !s.isUnmappedStore
+      );
       if (storeSummaries.length === 0) {
         setPdfParseError(
-          'Nenhuma filial foi vinculada aos cortes extraídos. Selecione a filial na tabela acima ou escolha "Aplicar em filial específica".'
+          'Nenhuma filial cadastrada foi vinculada aos cortes extraídos. Vincule a filial na listagem acima ou escolha "Aplicar em filial específica".'
         );
         return;
       }
@@ -857,31 +1282,48 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
         },
         storeRows: prev.storeRows.map((row) => {
           const matchedSales = byStoreMap.get(row.storeId);
-          if (matchedSales) {
-            return {
-              ...row,
-              sales: { ...matchedSales },
-            };
-          }
-          if (clearAbsentStores) {
-            return {
-              ...row,
-              sales: {
+          const nextSales = matchedSales
+            ? { ...matchedSales }
+            : clearAbsentStores
+            ? {
                 dianteiroKg: 0,
                 traseiroKg: 0,
                 coxaoKg: 0,
                 alcatraoKg: 0,
                 costelaKg: 0,
-              },
+              }
+            : row.sales;
+
+          if (!autoSuggestOrders || (!matchedSales && !clearAbsentStores)) {
+            return {
+              ...row,
+              sales: nextSales,
             };
           }
-          return row;
+
+          const stock = storeStockMap.get(row.storeId);
+          const salesPc = getSalesPiecesBreakdown(nextSales, prev.standards);
+          if (!stock) {
+            return { ...row, sales: nextSales };
+          }
+
+          return {
+            ...row,
+            sales: nextSales,
+            pedidoDianteiro: Math.max(0, Math.round(salesPc.dianteiroPecas - stock.dianteiro.pieces)),
+            pedidoTraseiro: Math.max(0, Math.round(salesPc.traseiroPecas - stock.traseiro.pieces)),
+            pedidoCoxao: Math.max(0, Math.round(salesPc.coxaoPecas - stock.coxao.pieces)),
+            pedidoAlcatrao: Math.max(0, Math.round(salesPc.alcatraoPecas - stock.alcatrao.pieces)),
+            pedidoCostela: Math.max(0, Math.round(salesPc.costelaPecas - stock.costela.pieces)),
+          };
         }),
       }));
 
       setIsPdfModalOpen(false);
       showToast(
-        `Vendas aplicadas fielmente em ${storeSummaries.length} filial(is) reconhecida(s)!`
+        autoSuggestOrders
+          ? `Vendas e pedidos sugeridos aplicados em ${storeSummaries.length} filial(is) reconhecida(s)!`
+          : `Vendas aplicadas fielmente em ${storeSummaries.length} filial(is) reconhecida(s)!`
       );
       return;
     }
@@ -895,20 +1337,44 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
       storeRows: prev.storeRows.map((row) => {
         if (applyTargetMode === 'single') {
           if (row.storeId !== applyTargetStoreId) return row;
+          const nextSales = { ...salesEntry };
+          const stock = storeStockMap.get(row.storeId);
+          const salesPc = getSalesPiecesBreakdown(nextSales, prev.standards);
           return {
             ...row,
-            sales: { ...salesEntry },
+            sales: nextSales,
+            ...(autoSuggestOrders && stock
+              ? {
+                  pedidoDianteiro: Math.max(0, Math.round(salesPc.dianteiroPecas - stock.dianteiro.pieces)),
+                  pedidoTraseiro: Math.max(0, Math.round(salesPc.traseiroPecas - stock.traseiro.pieces)),
+                  pedidoCoxao: Math.max(0, Math.round(salesPc.coxaoPecas - stock.coxao.pieces)),
+                  pedidoAlcatrao: Math.max(0, Math.round(salesPc.alcatraoPecas - stock.alcatrao.pieces)),
+                  pedidoCostela: Math.max(0, Math.round(salesPc.costelaPecas - stock.costela.pieces)),
+                }
+              : {}),
           };
         }
+        const nextSales = {
+          dianteiroKg: Number((salesEntry.dianteiroKg / count).toFixed(2)),
+          traseiroKg: Number((salesEntry.traseiroKg / count).toFixed(2)),
+          coxaoKg: Number((salesEntry.coxaoKg / count).toFixed(2)),
+          alcatraoKg: Number((salesEntry.alcatraoKg / count).toFixed(2)),
+          costelaKg: Number((salesEntry.costelaKg / count).toFixed(2)),
+        };
+        const stock = storeStockMap.get(row.storeId);
+        const salesPc = getSalesPiecesBreakdown(nextSales, prev.standards);
         return {
           ...row,
-          sales: {
-            dianteiroKg: Number((salesEntry.dianteiroKg / count).toFixed(2)),
-            traseiroKg: Number((salesEntry.traseiroKg / count).toFixed(2)),
-            coxaoKg: Number((salesEntry.coxaoKg / count).toFixed(2)),
-            alcatraoKg: Number((salesEntry.alcatraoKg / count).toFixed(2)),
-            costelaKg: Number((salesEntry.costelaKg / count).toFixed(2)),
-          },
+          sales: nextSales,
+          ...(autoSuggestOrders && stock
+            ? {
+                pedidoDianteiro: Math.max(0, Math.round(salesPc.dianteiroPecas - stock.dianteiro.pieces)),
+                pedidoTraseiro: Math.max(0, Math.round(salesPc.traseiroPecas - stock.traseiro.pieces)),
+                pedidoCoxao: Math.max(0, Math.round(salesPc.coxaoPecas - stock.coxao.pieces)),
+                pedidoAlcatrao: Math.max(0, Math.round(salesPc.alcatraoPecas - stock.alcatrao.pieces)),
+                pedidoCostela: Math.max(0, Math.round(salesPc.costelaPecas - stock.costela.pieces)),
+              }
+            : {}),
         };
       }),
     }));
@@ -1271,6 +1737,176 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
           </div>
         )}
       </div>
+
+      {/* 3.5. QUADRO DE VENDAS RECONHECIDAS POR FILIAL + INFORMAÇÕES QUE JÁ TEMOS (QUANDO HÁ IMPORTAÇÃO ATIVA) */}
+      {pendingPdfResult && combinedStoreRecognitionData.foundRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-emerald-300 dark:border-emerald-900/70 shadow-xs overflow-hidden">
+          <div className="px-4 py-3 bg-emerald-50/90 dark:bg-emerald-950/50 border-b border-emerald-200 dark:border-emerald-900/60 flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setIsRecognitionCardOpen((v) => !v)}
+              className="flex items-center gap-2 text-xs font-extrabold text-emerald-950 dark:text-emerald-200 cursor-pointer text-left"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>
+                Vendas Reconhecidas por Filial ({combinedStoreRecognitionData.foundRows.length} encontrada(s) em{' '}
+                {pendingPdfResult.fileName}) + Informações que Já Temos na Planilha ({stores.length} Lojas)
+              </span>
+              {isRecognitionCardOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1 p-1 bg-white dark:bg-slate-900 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                <button
+                  type="button"
+                  onClick={() => setStoreRecognitionViewMode('found_plus_sheet')}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                    storeRecognitionViewMode === 'found_plus_sheet'
+                      ? 'bg-[#113829] text-[#b5e550]'
+                      : 'text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  Encontradas + Planilha ({stores.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStoreRecognitionViewMode('found_only')}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                    storeRecognitionViewMode === 'found_only'
+                      ? 'bg-[#113829] text-[#b5e550]'
+                      : 'text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  Somente Encontradas ({combinedStoreRecognitionData.foundRows.length})
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsPdfModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition cursor-pointer"
+              >
+                Abrir Importador / Adicionar Arquivo
+              </button>
+            </div>
+          </div>
+
+          {isRecognitionCardOpen && (
+            <div className="overflow-x-auto max-h-80">
+              <table className="w-full text-[11px] border-collapse">
+                <thead className="sticky top-0 z-10 bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider">
+                  <tr>
+                    <th className="py-2 px-3 text-left border-r border-slate-700">Filial & Dados da Planilha</th>
+                    <th className="py-2 px-2.5 text-right border-r border-slate-700">Dianteiro</th>
+                    <th className="py-2 px-2.5 text-right border-r border-slate-700">Traseiro</th>
+                    <th className="py-2 px-2.5 text-right border-r border-slate-700">Coxão</th>
+                    <th className="py-2 px-2.5 text-right border-r border-slate-700">Alcatrão</th>
+                    <th className="py-2 px-2.5 text-right border-r border-slate-700">Costela</th>
+                    <th className="py-2 px-3 text-right bg-[#113829] text-[#b5e550]">Total (Venda × Estoque × Pedido)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800 tabular-nums font-mono">
+                  {(storeRecognitionViewMode === 'found_plus_sheet'
+                    ? combinedStoreRecognitionData.allOrderedRows
+                    : combinedStoreRecognitionData.foundRows
+                  ).map((row) => (
+                    <tr
+                      key={`main-rec-${row.storeId}`}
+                      className={
+                        row.isFoundInPdf
+                          ? 'bg-emerald-50/45 dark:bg-emerald-950/20 hover:bg-emerald-50/80'
+                          : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                      }
+                    >
+                      <td className="py-1.5 px-3 border-r border-slate-200 dark:border-slate-800 font-sans">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {row.storeCode !== 'VINCULAR' ? `${row.storeCode} • ` : ''}
+                            {row.storeName}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold ${
+                              row.isFoundInPdf
+                                ? 'text-emerald-700 dark:text-emerald-400'
+                                : 'text-slate-500 dark:text-slate-400'
+                            }`}
+                          >
+                            {row.isFoundInPdf ? `No Arquivo (${row.itemsCount})` : 'Planilha'}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                          Est. Atual: <strong>{row.stock.totalPieces}pç</strong> ({formatNumberBR(row.stock.totalKg, 0)}kg) · Giro: <strong>{row.sheetInfo.boiAVenda}</strong>
+                        </div>
+                      </td>
+
+                      {SLAUGHTERHOUSE_CATEGORY_ORDER.map((cat) => {
+                        const saleKg =
+                          cat === 'dianteiro'
+                            ? row.effectiveSales.dianteiroKg
+                            : cat === 'traseiro'
+                            ? row.effectiveSales.traseiroKg
+                            : cat === 'coxao'
+                            ? row.effectiveSales.coxaoKg
+                            : cat === 'alcatrao'
+                            ? row.effectiveSales.alcatraoKg
+                            : row.effectiveSales.costelaKg;
+                        const salePc =
+                          cat === 'dianteiro'
+                            ? row.effectivePieces.dianteiroPecas
+                            : cat === 'traseiro'
+                            ? row.effectivePieces.traseiroPecas
+                            : cat === 'coxao'
+                            ? row.effectivePieces.coxaoPecas
+                            : cat === 'alcatrao'
+                            ? row.effectivePieces.alcatraoPecas
+                            : row.effectivePieces.costelaPecas;
+                        const stPc =
+                          cat === 'dianteiro'
+                            ? row.stock.dianteiroPecas
+                            : cat === 'traseiro'
+                            ? row.stock.traseiroPecas
+                            : cat === 'coxao'
+                            ? row.stock.coxaoPecas
+                            : cat === 'alcatrao'
+                            ? row.stock.alcatraoPecas
+                            : row.stock.costelaPecas;
+                        const sugPc = row.suggestedOrder[cat];
+                        const curOrdPc = row.currentOrder[ORDER_FIELD_BY_CATEGORY[cat]];
+
+                        return (
+                          <td
+                            key={`main-rec-${row.storeId}-${cat}`}
+                            className="py-1.5 px-2.5 text-right border-r border-slate-200 dark:border-slate-800"
+                          >
+                            <div className="font-bold text-slate-900 dark:text-white">
+                              {formatNumberBR(saleKg, 1)}kg{' '}
+                              <span className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                                ({formatNumberBR(salePc, 2)}pç)
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                              Est: <strong className="text-slate-800 dark:text-slate-200">{stPc}pç</strong> · Sug:{sugPc} · Ped:<strong>{curOrdPc}pç</strong>
+                            </div>
+                          </td>
+                        );
+                      })}
+
+                      <td className="py-1.5 px-3 text-right">
+                        <div className="font-extrabold text-slate-900 dark:text-white">
+                          Venda: {formatNumberBR(row.effectiveTotalKg, 2)} kg ({formatNumberBR(row.effectiveTotalPieces, 2)}pç)
+                        </div>
+                        <div className="text-[10px] text-slate-600 dark:text-slate-300">
+                          Est: <strong>{row.stock.totalPieces}pç</strong> · Ped: <strong className="text-emerald-700 dark:text-emerald-400">{row.currentOrder.totalPieces}pç</strong> ({formatCurrencyBRL(row.currentOrder.totalCostR$)})
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 4. PLANILHA PRINCIPAL — 16 FILIAIS (ESTOQUE DESOSSA + VENDA KG/PÇ + PEDIDO POR FRIGORÍFICO) */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
@@ -1669,14 +2305,14 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
         )}
       </div>
 
-      {/* 6. MODAL IMPORTADOR DE PDF / IMAGEM DE VENDAS (RECONHECIMENTO POR FILIAL + MOTOR DESOSSA) */}
+      {/* 6. MODAL IMPORTADOR DE PDF / IMAGEM DE VENDAS (RECONHECIMENTO POR FILIAL + DADOS DA PLANILHA) */}
       {isPdfModalOpen && (
-        <div className="fixed inset-0 z-[10020] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-6xl max-h-[92vh] rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-[10020] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-[1400px] max-h-[94vh] rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden">
             {/* Header Modal */}
-            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/60">
+            <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/60">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
                   <FileUp className="w-4 h-4" />
                 </div>
                 <div>
@@ -1684,7 +2320,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                     Importador de Documento de Vendas (PDF / Imagem) & Reconhecimento por Filial
                   </h3>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Reconhece cada filial automaticamente, classifica cortes pela Desossa e preserva fielmente os valores de KG de cada loja.
+                    Lista todas as lojas encontradas no arquivo somadas às informações que já temos na planilha (Estoque Atual Desossa, Giro, Sugestão e Pedido).
                   </p>
                 </div>
               </div>
@@ -1699,55 +2335,89 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Modo de entrada: Upload PDF/Imagem vs Colar Texto */}
-              <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
-                <button
-                  type="button"
-                  onClick={() => setPdfMode('file')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    pdfMode === 'file'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-                  }`}
-                >
-                  Enviar PDF ou Imagem (.pdf, .png, .jpg)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPdfMode('text')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    pdfMode === 'text'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-                  }`}
-                >
-                  Colar Relatório Tabular de Vendas
-                </button>
+              {/* Modo de entrada: Upload PDF/Imagem vs Colar Texto + Opção Acumular */}
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPdfMode('file')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      pdfMode === 'file'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    Enviar PDF ou Imagem (.pdf, .png, .jpg)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPdfMode('text')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      pdfMode === 'text'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    Colar Relatório Tabular de Vendas
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={accumulateImports}
+                      onChange={(e) => setAccumulateImports(e.target.checked)}
+                    />
+                    <span>Acumular lojas ao importar novos arquivos</span>
+                  </label>
+
+                  {pendingPdfResult && (
+                    <button
+                      type="button"
+                      onClick={handleClearPendingPdfResult}
+                      className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-[11px] font-bold transition cursor-pointer"
+                    >
+                      Limpar Importação Atual
+                    </button>
+                  )}
+                </div>
               </div>
 
               {pdfMode === 'file' ? (
-                <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-6 text-center bg-slate-50/70 dark:bg-slate-800/30">
+                <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-4 text-center bg-slate-50/70 dark:bg-slate-800/30 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <input
                     ref={fileInputRef}
                     type="file"
+                    multiple
                     accept="application/pdf,.pdf,image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
                     className="hidden"
-                    onChange={(e) => handlePdfFileSelected(e.target.files?.[0] || null)}
+                    onChange={(e) => handlePdfFilesSelected(e.target.files)}
                   />
-                  <Upload className="w-8 h-8 text-indigo-600 dark:text-indigo-400 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                    Selecione o relatório de vendas em PDF ou Imagem/Print de tela (máx. 15 MB)
-                  </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-3">
-                    O sistema identifica cada filial listada no documento, separa os cortes pela Desossa e respeita o peso em KG de cada loja.
-                  </p>
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                      <Upload className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                        Selecione um ou mais relatórios de vendas em PDF ou Imagem/Print (máx. 15 MB)
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        O sistema reconhece todas as filiais listadas, classifica os cortes pela Desossa e cruza com o estoque e informações que já temos na planilha.
+                      </p>
+                    </div>
+                  </div>
                   <button
                     type="button"
                     disabled={isParsingPdf}
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold shadow-xs transition cursor-pointer whitespace-nowrap shrink-0"
                   >
-                    {isParsingPdf ? 'Analisando Documento...' : 'Escolher Arquivo (PDF ou Imagem)'}
+                    {isParsingPdf
+                      ? 'Analisando Documento...'
+                      : pendingPdfResult
+                      ? 'Adicionar / Escolher Arquivo(s)'
+                      : 'Escolher Arquivo (PDF ou Imagem)'}
                   </button>
                 </div>
               ) : (
@@ -1756,7 +2426,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                     Cole o relatório por filial (ex.: nome/código da filial seguido dos cortes e KG vendidos):
                   </label>
                   <textarea
-                    rows={5}
+                    rows={4}
                     value={rawSalesText}
                     onChange={(e) => setRawSalesText(e.target.value)}
                     placeholder={'FILIAL 01 - CM SANTA ROSA\nPALETA BOVINA   180,00 kg\nACÉM BOVINO     170,00 kg\n\nFILIAL 02 - RN ARARUAMA II\nPICANHA         65,00 kg\nCHÃ DE DENTRO   140,00 kg'}
@@ -1782,26 +2452,66 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                 </div>
               )}
 
-              {/* Resumo da Conversão KG -> Peças Padrão + Quebra Fiel por Filial */}
+              {/* Resumo da Conversão KG -> Peças Padrão + Listagem Completa de Vendas Reconhecidas + Dados da Planilha */}
               {pendingPdfResult && pdfSummary && (
                 <div className="space-y-4">
                   <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-2 text-emerald-900 dark:text-emerald-200 font-bold">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <div className="flex flex-wrap items-center gap-2 text-emerald-900 dark:text-emerald-200 font-bold">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>
                         Documento: {pendingPdfResult.fileName} • {pendingPdfResult.items.length} cortes •{' '}
-                        {pdfByStoreSummary?.storeSummaries.length || 0} filial(is) reconhecida(s)
+                        {combinedStoreRecognitionData.foundRows.length} filial(is) encontrada(s) no arquivo •{' '}
+                        {stores.length} filiais na planilha
                       </span>
                     </div>
-                    <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-300">
-                      Motor: {pendingPdfResult.parserEngine === 'gemini' ? 'Leitura Inteligente Multimodal' : 'Parser Tabular'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {pdfByStoreSummary && pdfByStoreSummary.unassignedItems.length > 0 && (
+                        <div className="flex items-center gap-1.5 bg-amber-100 dark:bg-amber-950/60 px-2 py-1 rounded-lg border border-amber-300 dark:border-amber-800">
+                          <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300">
+                            Vincular {pdfByStoreSummary.unassignedItems.length} s/ filial:
+                          </span>
+                          <select
+                            defaultValue=""
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleAssignAllUnassignedToStore(e.target.value);
+                                e.target.value = '';
+                              }
+                            }}
+                            className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 text-[10px] font-bold text-slate-800 dark:text-slate-100"
+                          >
+                            <option value="">Escolher filial...</option>
+                            {stores.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-300">
+                        Motor: {pendingPdfResult.parserEngine === 'gemini' ? 'Leitura Inteligente Multimodal' : 'Parser Tabular'}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Resumo Consolidado das 5 Categorias */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
                     {SLAUGHTERHOUSE_CATEGORY_ORDER.map((cat) => {
                       const sum = pdfSummary.summaries[cat];
+                      const stockKey =
+                        cat === 'dianteiro'
+                          ? 'stockDianteiroPecas'
+                          : cat === 'traseiro'
+                          ? 'stockTraseiroPecas'
+                          : cat === 'coxao'
+                          ? 'stockCoxaoPecas'
+                          : cat === 'alcatrao'
+                          ? 'stockAlcatraoPecas'
+                          : 'stockCostelaPecas';
+                      const foundStockPc = combinedStoreRecognitionData.foundTotals[stockKey];
+                      const netStockPc = combinedStoreRecognitionData.networkTotals[stockKey];
+
                       return (
                         <div
                           key={`sum-${cat}`}
@@ -1811,11 +2521,11 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                             <span className="text-xs font-extrabold text-slate-900 dark:text-white">
                               {sum.label}
                             </span>
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+                            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                               {sum.desossaGroup}
                             </span>
                           </div>
-                          <div className="mt-2 text-sm font-black text-indigo-700 dark:text-indigo-300 tabular-nums">
+                          <div className="mt-1.5 text-sm font-black text-indigo-700 dark:text-indigo-300 tabular-nums">
                             {formatNumberBR(sum.totalKg, 2)} kg
                           </div>
                           <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
@@ -1824,89 +2534,483 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                               {formatNumberBR(sum.exactPieces, 2)} pçs
                             </strong>
                           </div>
+                          <div className="mt-1.5 pt-1.5 border-t border-slate-200/80 dark:border-slate-700/70 flex items-center justify-between text-[10px] font-mono text-slate-600 dark:text-slate-300">
+                            <span>Est. Lojas Arq.: <strong>{foundStockPc} pç</strong></span>
+                            <span>Rede: <strong>{netStockPc} pç</strong></span>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
 
-                  {/* Resumo Fiel por Filial Reconhecida */}
-                  {pdfByStoreSummary && pdfByStoreSummary.storeSummaries.length > 0 && (
-                    <div className="border border-emerald-200 dark:border-emerald-900/60 rounded-xl overflow-hidden bg-emerald-50/30 dark:bg-emerald-950/15">
-                      <div className="px-3 py-2 bg-emerald-100/70 dark:bg-emerald-950/50 border-b border-emerald-200 dark:border-emerald-900/60 flex items-center justify-between">
-                        <span className="text-[11px] font-extrabold text-emerald-900 dark:text-emerald-200 uppercase tracking-wider">
-                          Vendas Reconhecidas por Filial (Valores Individuais Preservados)
-                        </span>
-                        {pdfByStoreSummary.unassignedItems.length > 0 && (
-                          <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">
-                            {pdfByStoreSummary.unassignedItems.length} item(ns) sem filial vinculada
-                          </span>
-                        )}
+                  {/* QUADRO PRINCIPAL: VENDAS RECONHECIDAS POR FILIAL + INFORMAÇÕES QUE JÁ TEMOS NA PLANILHA */}
+                  <div className="border border-emerald-300 dark:border-emerald-900/70 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-xs">
+                    <div className="px-4 py-2.5 bg-emerald-100/80 dark:bg-emerald-950/60 border-b border-emerald-200 dark:border-emerald-900/60 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-extrabold text-emerald-950 dark:text-emerald-200 uppercase tracking-wider">
+                          Vendas Reconhecidas por Filial + Informações que Já Temos na Planilha
+                        </div>
+                        <div className="text-[11px] text-emerald-800/90 dark:text-emerald-300/80">
+                          Cada filial exibe a <strong>Venda Reconhecida (KG e Peças)</strong> somada ao <strong>Estoque Atual da Planilha/Desossa (Peças e KG)</strong>, <strong>Giro</strong>, <strong>Sugestão</strong> e <strong>Pedido</strong>.
+                        </div>
                       </div>
-                      <div className="overflow-x-auto max-h-48">
-                        <table className="w-full text-[11px]">
-                          <thead className="bg-white/80 dark:bg-slate-900/80 text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 border-b border-emerald-200/70 dark:border-emerald-900/40">
-                            <tr>
-                              <th className="py-1.5 px-3 text-left">Filial Reconhecida</th>
-                              <th className="py-1.5 px-2 text-right">Dianteiro</th>
-                              <th className="py-1.5 px-2 text-right">Traseiro</th>
-                              <th className="py-1.5 px-2 text-right">Coxão</th>
-                              <th className="py-1.5 px-2 text-right">Alcatrão</th>
-                              <th className="py-1.5 px-2 text-right">Costela</th>
-                              <th className="py-1.5 px-3 text-right">Total KG</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-emerald-100 dark:divide-emerald-900/30 tabular-nums">
-                            {pdfByStoreSummary.storeSummaries.map((st) => (
-                              <tr key={st.storeId} className="hover:bg-white/60 dark:hover:bg-slate-900/40">
-                                <td className="py-1.5 px-3 font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                                  {st.storeName}
-                                </td>
-                                <td className="py-1.5 px-2 text-right font-mono">
-                                  {formatNumberBR(st.salesEntry.dianteiroKg, 1)}kg{' '}
-                                  <span className="text-[9px] text-emerald-700 dark:text-emerald-400">
-                                    ({formatNumberBR(st.pieces.dianteiroPecas, 2)}pç)
-                                  </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-right font-mono">
-                                  {formatNumberBR(st.salesEntry.traseiroKg, 1)}kg{' '}
-                                  <span className="text-[9px] text-emerald-700 dark:text-emerald-400">
-                                    ({formatNumberBR(st.pieces.traseiroPecas, 2)}pç)
-                                  </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-right font-mono">
-                                  {formatNumberBR(st.salesEntry.coxaoKg, 1)}kg{' '}
-                                  <span className="text-[9px] text-emerald-700 dark:text-emerald-400">
-                                    ({formatNumberBR(st.pieces.coxaoPecas, 2)}pç)
-                                  </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-right font-mono">
-                                  {formatNumberBR(st.salesEntry.alcatraoKg, 1)}kg{' '}
-                                  <span className="text-[9px] text-emerald-700 dark:text-emerald-400">
-                                    ({formatNumberBR(st.pieces.alcatraoPecas, 2)}pç)
-                                  </span>
-                                </td>
-                                <td className="py-1.5 px-2 text-right font-mono">
-                                  {formatNumberBR(st.salesEntry.costelaKg, 1)}kg{' '}
-                                  <span className="text-[9px] text-emerald-700 dark:text-emerald-400">
-                                    ({formatNumberBR(st.pieces.costelaPecas, 2)}pç)
-                                  </span>
-                                </td>
-                                <td className="py-1.5 px-3 text-right font-mono font-extrabold text-slate-900 dark:text-white">
-                                  {formatNumberBR(st.totalKg, 2)} kg
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+
+                      {/* Filtro de Visualização: Encontradas + Planilha Completa vs Somente Encontradas */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <div className="flex items-center gap-1 p-1 bg-white/90 dark:bg-slate-900/90 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                          <button
+                            type="button"
+                            onClick={() => setStoreRecognitionViewMode('found_plus_sheet')}
+                            className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                              storeRecognitionViewMode === 'found_plus_sheet'
+                                ? 'bg-[#113829] text-[#b5e550] shadow-xs'
+                                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                            }`}
+                          >
+                            Lojas Encontradas ({combinedStoreRecognitionData.foundRows.length}) + Planilha ({stores.length})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setStoreRecognitionViewMode('found_only')}
+                            className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                              storeRecognitionViewMode === 'found_only'
+                                ? 'bg-[#113829] text-[#b5e550] shadow-xs'
+                                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                            }`}
+                          >
+                            Somente Lojas Encontradas ({combinedStoreRecognitionData.foundRows.length})
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  )}
+
+                    <div className="overflow-x-auto max-h-[380px]">
+                      <table className="w-full text-[11px] border-collapse">
+                        <thead className="sticky top-0 z-20 bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider">
+                          <tr>
+                            <th className="py-2 px-3 text-left border-r border-slate-700 min-w-[210px]">
+                              Filial Reconhecida & Dados da Planilha
+                            </th>
+                            <th className="py-2 px-2.5 text-right border-r border-slate-700 min-w-[145px]">
+                              Dianteiro ({draft.standards.dianteiro.standardWeightKg}kg)
+                            </th>
+                            <th className="py-2 px-2.5 text-right border-r border-slate-700 min-w-[145px]">
+                              Traseiro ({draft.standards.traseiro.standardWeightKg}kg)
+                            </th>
+                            <th className="py-2 px-2.5 text-right border-r border-slate-700 min-w-[145px]">
+                              Coxão ({draft.standards.coxao.standardWeightKg}kg)
+                            </th>
+                            <th className="py-2 px-2.5 text-right border-r border-slate-700 min-w-[145px]">
+                              Alcatrão ({draft.standards.alcatrao.standardWeightKg}kg)
+                            </th>
+                            <th className="py-2 px-2.5 text-right border-r border-slate-700 min-w-[145px]">
+                              Costela ({draft.standards.costela.standardWeightKg}kg)
+                            </th>
+                            <th className="py-2 px-3 text-right min-w-[175px] bg-[#113829] text-[#b5e550]">
+                              Total Filial (Venda × Estoque × Pedido)
+                            </th>
+                          </tr>
+                        </thead>
+
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800 tabular-nums">
+                          {/* SEÇÃO 1: LOJAS ENCONTRADAS NO DOCUMENTO IMPORTADO */}
+                          {combinedStoreRecognitionData.foundRows.length > 0 && (
+                            <tr className="bg-emerald-100/90 dark:bg-emerald-950/70 text-emerald-950 dark:text-emerald-200 font-extrabold text-[10px] uppercase tracking-wider">
+                              <td colSpan={7} className="py-1.5 px-3">
+                                Lojas Encontradas no Documento Importado ({combinedStoreRecognitionData.foundRows.length} filial(is)) — Venda do Arquivo + Estoque e Pedido Atual da Planilha
+                              </td>
+                            </tr>
+                          )}
+
+                          {combinedStoreRecognitionData.foundRows.map((row) => (
+                            <tr
+                              key={`rec-found-${row.storeId}`}
+                              className="bg-emerald-50/45 dark:bg-emerald-950/20 hover:bg-emerald-50/90 dark:hover:bg-emerald-950/35 transition-colors"
+                            >
+                              {/* Coluna Filial + Metadados que já temos */}
+                              <td className="py-2 px-3 border-r border-slate-200 dark:border-slate-800 align-top">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-extrabold text-slate-900 dark:text-white text-xs">
+                                    {row.storeCode !== 'VINCULAR' ? `${row.storeCode} • ` : ''}
+                                    {row.storeName}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+                                    No Arquivo ({row.itemsCount} cortes)
+                                  </span>
+                                </div>
+
+                                {row.isUnmappedStore ? (
+                                  <div className="mt-1.5">
+                                    <select
+                                      defaultValue=""
+                                      onChange={(e) =>
+                                        handleLinkRawStoreGroupToStore(
+                                          row.rawStoreLabel || row.storeName,
+                                          e.target.value
+                                        )
+                                      }
+                                      className="w-full px-2 py-1 rounded border border-amber-400 bg-amber-50 dark:bg-amber-950/50 text-[10px] font-bold text-amber-900 dark:text-amber-200"
+                                    >
+                                      <option value="">Vincular loja à filial oficial...</option>
+                                      {stores.map((s) => (
+                                        <option key={s.id} value={s.id}>
+                                          {s.code} - {s.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                ) : (
+                                  <div className="mt-1 text-[10px] text-slate-600 dark:text-slate-400 space-y-0.5 font-mono">
+                                    <div>
+                                      Est. Planilha: <strong className="text-slate-800 dark:text-slate-200">{row.stock.totalPieces} pç</strong> ({formatNumberBR(row.stock.totalKg, 0)}kg)
+                                    </div>
+                                    <div>
+                                      Câmara: <strong>{row.sheetInfo.camaraTotalPieces} pç</strong> · Giro: <strong>{row.sheetInfo.boiAVenda} bois</strong> · Sug. Dir.: <strong>{row.sheetInfo.sugestaoPlanilha}</strong>
+                                    </div>
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* As 5 Categorias: Venda (KG e Pç) + Estoque que Já Temos + Sugestão / Pedido Editável */}
+                              {SLAUGHTERHOUSE_CATEGORY_ORDER.map((cat) => {
+                                const saleKg =
+                                  cat === 'dianteiro'
+                                    ? row.effectiveSales.dianteiroKg
+                                    : cat === 'traseiro'
+                                    ? row.effectiveSales.traseiroKg
+                                    : cat === 'coxao'
+                                    ? row.effectiveSales.coxaoKg
+                                    : cat === 'alcatrao'
+                                    ? row.effectiveSales.alcatraoKg
+                                    : row.effectiveSales.costelaKg;
+                                const salePc =
+                                  cat === 'dianteiro'
+                                    ? row.effectivePieces.dianteiroPecas
+                                    : cat === 'traseiro'
+                                    ? row.effectivePieces.traseiroPecas
+                                    : cat === 'coxao'
+                                    ? row.effectivePieces.coxaoPecas
+                                    : cat === 'alcatrao'
+                                    ? row.effectivePieces.alcatraoPecas
+                                    : row.effectivePieces.costelaPecas;
+                                const stPc =
+                                  cat === 'dianteiro'
+                                    ? row.stock.dianteiroPecas
+                                    : cat === 'traseiro'
+                                    ? row.stock.traseiroPecas
+                                    : cat === 'coxao'
+                                    ? row.stock.coxaoPecas
+                                    : cat === 'alcatrao'
+                                    ? row.stock.alcatraoPecas
+                                    : row.stock.costelaPecas;
+                                const stKg =
+                                  cat === 'dianteiro'
+                                    ? row.stock.dianteiroKg
+                                    : cat === 'traseiro'
+                                    ? row.stock.traseiroKg
+                                    : cat === 'coxao'
+                                    ? row.stock.coxaoKg
+                                    : cat === 'alcatrao'
+                                    ? row.stock.alcatraoKg
+                                    : row.stock.costelaKg;
+                                const stBreakdown =
+                                  cat === 'dianteiro'
+                                    ? row.stock.dianteiroBreakdown
+                                    : cat === 'traseiro'
+                                    ? row.stock.traseiroBreakdown
+                                    : cat === 'coxao'
+                                    ? row.stock.coxaoBreakdown
+                                    : cat === 'alcatrao'
+                                    ? row.stock.alcatraoBreakdown
+                                    : row.stock.costelaBreakdown;
+                                const sugPc = row.suggestedOrder[cat];
+                                const ordField = ORDER_FIELD_BY_CATEGORY[cat];
+                                const curOrdPc = row.currentOrder[ordField];
+
+                                return (
+                                  <td
+                                    key={`rec-found-${row.storeId}-${cat}`}
+                                    title={stBreakdown}
+                                    className="py-1.5 px-2.5 text-right border-r border-slate-200 dark:border-slate-800 align-top font-mono"
+                                  >
+                                    {/* 1. Venda Reconhecida */}
+                                    <div className="font-extrabold text-slate-900 dark:text-white">
+                                      {formatNumberBR(saleKg, 1)}kg{' '}
+                                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                                        ({formatNumberBR(salePc, 2)}pç)
+                                      </span>
+                                    </div>
+                                    {/* 2. Estoque Atual que Já Temos na Planilha */}
+                                    <div className="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5">
+                                      Já Temos Est.: <strong className="text-slate-900 dark:text-white">{stPc}pç</strong>{' '}
+                                      <span className="text-[9px] text-slate-400">({formatNumberBR(stKg, 0)}kg)</span>
+                                    </div>
+                                    {/* 3. Sugestão e Pedido da Filial */}
+                                    {!row.isUnmappedStore && (
+                                      <div className="mt-1 flex items-center justify-end gap-1 text-[10px]">
+                                        <span className="text-amber-700 dark:text-amber-400 font-semibold">
+                                          Sug:{sugPc}
+                                        </span>
+                                        <span className="text-slate-400">·</span>
+                                        <span className="text-emerald-800 dark:text-emerald-300 font-bold">Ped:</span>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          step="1"
+                                          value={curOrdPc || ''}
+                                          placeholder="0"
+                                          onChange={(e) =>
+                                            handleUpdateOrderQty(row.storeId, ordField, e.target.value)
+                                          }
+                                          className="w-11 px-1 py-0.5 text-center rounded border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 text-[10px] font-mono font-black text-emerald-900 dark:text-emerald-300 outline-none"
+                                        />
+                                      </div>
+                                    )}
+                                  </td>
+                                );
+                              })}
+
+                              {/* Resumo Consolidado da Filial */}
+                              <td className="py-1.5 px-3 text-right align-top font-mono bg-emerald-100/40 dark:bg-emerald-950/30">
+                                <div className="font-black text-slate-900 dark:text-white text-xs">
+                                  Venda: {formatNumberBR(row.effectiveTotalKg, 2)} kg
+                                </div>
+                                <div className="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold">
+                                  Eq. Venda: {formatNumberBR(row.effectiveTotalPieces, 2)} pçs
+                                </div>
+                                <div className="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5">
+                                  Já Temos Est.: <strong>{row.stock.totalPieces} pçs</strong> ({formatNumberBR(row.stock.totalKg, 0)}kg)
+                                </div>
+                                <div className="text-[10px] text-emerald-900 dark:text-emerald-200 font-extrabold mt-0.5">
+                                  Sug: {row.suggestedOrder.totalPieces} pç · Ped: {row.currentOrder.totalPieces} pç ({formatCurrencyBRL(row.currentOrder.totalCostR$)})
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+
+                          {/* SEÇÃO 2: DEMAIS LOJAS DA PLANILHA (INFORMAÇÕES QUE JÁ TEMOS NO SISTEMA) */}
+                          {storeRecognitionViewMode === 'found_plus_sheet' &&
+                            combinedStoreRecognitionData.sheetOtherRows.length > 0 && (
+                              <>
+                                <tr className="bg-slate-200/90 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold text-[10px] uppercase tracking-wider">
+                                  <td colSpan={7} className="py-1.5 px-3">
+                                    Demais Filiais da Planilha ({combinedStoreRecognitionData.sheetOtherRows.length} lojas) — Informações de Estoque, Venda Anterior e Pedido que Já Temos
+                                  </td>
+                                </tr>
+
+                                {combinedStoreRecognitionData.sheetOtherRows.map((row) => (
+                                  <tr
+                                    key={`rec-sheet-${row.storeId}`}
+                                    className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                                  >
+                                    <td className="py-2 px-3 border-r border-slate-200 dark:border-slate-800 align-top">
+                                      <div className="flex items-center justify-between gap-1">
+                                        <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
+                                          {row.storeCode} • {row.storeName}
+                                        </span>
+                                        <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                          {row.hasPriorSheetSales ? 'Venda na Planilha' : 'Dados Planilha'}
+                                        </span>
+                                      </div>
+                                      <div className="mt-1 text-[10px] text-slate-500 dark:text-slate-400 space-y-0.5 font-mono">
+                                        <div>
+                                          Est. Planilha: <strong className="text-slate-700 dark:text-slate-200">{row.stock.totalPieces} pç</strong> ({formatNumberBR(row.stock.totalKg, 0)}kg)
+                                        </div>
+                                        <div>
+                                          Câmara: <strong>{row.sheetInfo.camaraTotalPieces} pç</strong> · Giro: <strong>{row.sheetInfo.boiAVenda} bois</strong> · Sug. Dir.: <strong>{row.sheetInfo.sugestaoPlanilha}</strong>
+                                        </div>
+                                      </div>
+                                    </td>
+
+                                    {SLAUGHTERHOUSE_CATEGORY_ORDER.map((cat) => {
+                                      const saleKg =
+                                        cat === 'dianteiro'
+                                          ? row.effectiveSales.dianteiroKg
+                                          : cat === 'traseiro'
+                                          ? row.effectiveSales.traseiroKg
+                                          : cat === 'coxao'
+                                          ? row.effectiveSales.coxaoKg
+                                          : cat === 'alcatrao'
+                                          ? row.effectiveSales.alcatraoKg
+                                          : row.effectiveSales.costelaKg;
+                                      const salePc =
+                                        cat === 'dianteiro'
+                                          ? row.effectivePieces.dianteiroPecas
+                                          : cat === 'traseiro'
+                                          ? row.effectivePieces.traseiroPecas
+                                          : cat === 'coxao'
+                                          ? row.effectivePieces.coxaoPecas
+                                          : cat === 'alcatrao'
+                                          ? row.effectivePieces.alcatraoPecas
+                                          : row.effectivePieces.costelaPecas;
+                                      const stPc =
+                                        cat === 'dianteiro'
+                                          ? row.stock.dianteiroPecas
+                                          : cat === 'traseiro'
+                                          ? row.stock.traseiroPecas
+                                          : cat === 'coxao'
+                                          ? row.stock.coxaoPecas
+                                          : cat === 'alcatrao'
+                                          ? row.stock.alcatraoPecas
+                                          : row.stock.costelaPecas;
+                                      const stKg =
+                                        cat === 'dianteiro'
+                                          ? row.stock.dianteiroKg
+                                          : cat === 'traseiro'
+                                          ? row.stock.traseiroKg
+                                          : cat === 'coxao'
+                                          ? row.stock.coxaoKg
+                                          : cat === 'alcatrao'
+                                          ? row.stock.alcatraoKg
+                                          : row.stock.costelaKg;
+                                      const stBreakdown =
+                                        cat === 'dianteiro'
+                                          ? row.stock.dianteiroBreakdown
+                                          : cat === 'traseiro'
+                                          ? row.stock.traseiroBreakdown
+                                          : cat === 'coxao'
+                                          ? row.stock.coxaoBreakdown
+                                          : cat === 'alcatrao'
+                                          ? row.stock.alcatraoBreakdown
+                                          : row.stock.costelaBreakdown;
+                                      const sugPc = row.suggestedOrder[cat];
+                                      const ordField = ORDER_FIELD_BY_CATEGORY[cat];
+                                      const curOrdPc = row.currentOrder[ordField];
+
+                                      return (
+                                        <td
+                                          key={`rec-sheet-${row.storeId}-${cat}`}
+                                          title={stBreakdown}
+                                          className="py-1.5 px-2.5 text-right border-r border-slate-200 dark:border-slate-800 align-top font-mono"
+                                        >
+                                          <div className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {formatNumberBR(saleKg, 1)}kg{' '}
+                                            <span className="text-[10px] text-indigo-600 dark:text-indigo-400">
+                                              ({formatNumberBR(salePc, 2)}pç)
+                                            </span>
+                                          </div>
+                                          <div className="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5">
+                                            Já Temos Est.: <strong className="text-slate-900 dark:text-white">{stPc}pç</strong>{' '}
+                                            <span className="text-[9px] text-slate-400">({formatNumberBR(stKg, 0)}kg)</span>
+                                          </div>
+                                          <div className="mt-1 flex items-center justify-end gap-1 text-[10px]">
+                                            <span className="text-slate-500">Sug:{sugPc}</span>
+                                            <span className="text-slate-400">·</span>
+                                            <span className="text-slate-700 dark:text-slate-300 font-bold">Ped:</span>
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              step="1"
+                                              value={curOrdPc || ''}
+                                              placeholder="0"
+                                              onChange={(e) =>
+                                                handleUpdateOrderQty(row.storeId, ordField, e.target.value)
+                                              }
+                                              className="w-11 px-1 py-0.5 text-center rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-[10px] font-mono font-bold text-slate-800 dark:text-slate-100 outline-none"
+                                            />
+                                          </div>
+                                        </td>
+                                      );
+                                    })}
+
+                                    <td className="py-1.5 px-3 text-right align-top font-mono bg-slate-50/70 dark:bg-slate-800/30">
+                                      <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                                        Venda: {formatNumberBR(row.effectiveTotalKg, 2)} kg
+                                      </div>
+                                      <div className="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5">
+                                        Já Temos Est.: <strong>{row.stock.totalPieces} pçs</strong> ({formatNumberBR(row.stock.totalKg, 0)}kg)
+                                      </div>
+                                      <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold mt-0.5">
+                                        Ped: {row.currentOrder.totalPieces} pç ({formatCurrencyBRL(row.currentOrder.totalCostR$)})
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </>
+                            )}
+                        </tbody>
+
+                        {/* RODAPÉ DUPLO: SUBTOTAL LOJAS ENCONTRADAS + TOTAL GERAL DA REDE */}
+                        <tfoot className="font-mono text-[10px] tabular-nums">
+                          <tr className="bg-emerald-100 dark:bg-emerald-950/70 text-emerald-950 dark:text-emerald-200 font-extrabold border-t-2 border-emerald-400 dark:border-emerald-700">
+                            <td className="py-2 px-3 border-r border-emerald-300 dark:border-emerald-800">
+                              SUBTOTAL ENCONTRADAS NO ARQUIVO ({combinedStoreRecognitionData.foundRows.length} LOJAS)
+                            </td>
+                            <td className="py-2 px-2.5 text-right border-r border-emerald-300 dark:border-emerald-800">
+                              <div>V: {formatNumberBR(combinedStoreRecognitionData.foundTotals.dianteiroKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.foundTotals.dianteiroPecas, 2)}pç)</div>
+                              <div>Est: {combinedStoreRecognitionData.foundTotals.stockDianteiroPecas}pç · Ped: {combinedStoreRecognitionData.foundTotals.pedDianteiro}pç</div>
+                            </td>
+                            <td className="py-2 px-2.5 text-right border-r border-emerald-300 dark:border-emerald-800">
+                              <div>V: {formatNumberBR(combinedStoreRecognitionData.foundTotals.traseiroKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.foundTotals.traseiroPecas, 2)}pç)</div>
+                              <div>Est: {combinedStoreRecognitionData.foundTotals.stockTraseiroPecas}pç · Ped: {combinedStoreRecognitionData.foundTotals.pedTraseiro}pç</div>
+                            </td>
+                            <td className="py-2 px-2.5 text-right border-r border-emerald-300 dark:border-emerald-800">
+                              <div>V: {formatNumberBR(combinedStoreRecognitionData.foundTotals.coxaoKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.foundTotals.coxaoPecas, 2)}pç)</div>
+                              <div>Est: {combinedStoreRecognitionData.foundTotals.stockCoxaoPecas}pç · Ped: {combinedStoreRecognitionData.foundTotals.pedCoxao}pç</div>
+                            </td>
+                            <td className="py-2 px-2.5 text-right border-r border-emerald-300 dark:border-emerald-800">
+                              <div>V: {formatNumberBR(combinedStoreRecognitionData.foundTotals.alcatraoKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.foundTotals.alcatraoPecas, 2)}pç)</div>
+                              <div>Est: {combinedStoreRecognitionData.foundTotals.stockAlcatraoPecas}pç · Ped: {combinedStoreRecognitionData.foundTotals.pedAlcatrao}pç</div>
+                            </td>
+                            <td className="py-2 px-2.5 text-right border-r border-emerald-300 dark:border-emerald-800">
+                              <div>V: {formatNumberBR(combinedStoreRecognitionData.foundTotals.costelaKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.foundTotals.costelaPecas, 2)}pç)</div>
+                              <div>Est: {combinedStoreRecognitionData.foundTotals.stockCostelaPecas}pç · Ped: {combinedStoreRecognitionData.foundTotals.pedCostela}pç</div>
+                            </td>
+                            <td className="py-2 px-3 text-right">
+                              <div>Venda: {formatNumberBR(combinedStoreRecognitionData.foundTotals.totalSalesKg, 2)} kg</div>
+                              <div>Est: {combinedStoreRecognitionData.foundTotals.totalStockPieces} pç · Ped: {combinedStoreRecognitionData.foundTotals.totalOrderPieces} pç</div>
+                            </td>
+                          </tr>
+
+                          {storeRecognitionViewMode === 'found_plus_sheet' && (
+                            <tr className="bg-slate-900 text-white font-extrabold border-t border-slate-700">
+                              <td className="py-2 px-3 border-r border-slate-700">
+                                TOTAL GERAL CONSOLIDADO ({stores.length} FILIAIS DA PLANILHA)
+                              </td>
+                              <td className="py-2 px-2.5 text-right border-r border-slate-700">
+                                <div>V: {formatNumberBR(combinedStoreRecognitionData.networkTotals.dianteiroKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.networkTotals.dianteiroPecas, 2)}pç)</div>
+                                <div className="text-emerald-300">Est: {combinedStoreRecognitionData.networkTotals.stockDianteiroPecas}pç · Ped: {combinedStoreRecognitionData.networkTotals.pedDianteiro}pç</div>
+                              </td>
+                              <td className="py-2 px-2.5 text-right border-r border-slate-700">
+                                <div>V: {formatNumberBR(combinedStoreRecognitionData.networkTotals.traseiroKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.networkTotals.traseiroPecas, 2)}pç)</div>
+                                <div className="text-emerald-300">Est: {combinedStoreRecognitionData.networkTotals.stockTraseiroPecas}pç · Ped: {combinedStoreRecognitionData.networkTotals.pedTraseiro}pç</div>
+                              </td>
+                              <td className="py-2 px-2.5 text-right border-r border-slate-700">
+                                <div>V: {formatNumberBR(combinedStoreRecognitionData.networkTotals.coxaoKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.networkTotals.coxaoPecas, 2)}pç)</div>
+                                <div className="text-emerald-300">Est: {combinedStoreRecognitionData.networkTotals.stockCoxaoPecas}pç · Ped: {combinedStoreRecognitionData.networkTotals.pedCoxao}pç</div>
+                              </td>
+                              <td className="py-2 px-2.5 text-right border-r border-slate-700">
+                                <div>V: {formatNumberBR(combinedStoreRecognitionData.networkTotals.alcatraoKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.networkTotals.alcatraoPecas, 2)}pç)</div>
+                                <div className="text-emerald-300">Est: {combinedStoreRecognitionData.networkTotals.stockAlcatraoPecas}pç · Ped: {combinedStoreRecognitionData.networkTotals.pedAlcatrao}pç</div>
+                              </td>
+                              <td className="py-2 px-2.5 text-right border-r border-slate-700">
+                                <div>V: {formatNumberBR(combinedStoreRecognitionData.networkTotals.costelaKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.networkTotals.costelaPecas, 2)}pç)</div>
+                                <div className="text-emerald-300">Est: {combinedStoreRecognitionData.networkTotals.stockCostelaPecas}pç · Ped: {combinedStoreRecognitionData.networkTotals.pedCostela}pç</div>
+                              </td>
+                              <td className="py-2 px-3 text-right text-[#b5e550]">
+                                <div>Venda: {formatNumberBR(combinedStoreRecognitionData.networkTotals.totalSalesKg, 2)} kg</div>
+                                <div>Est: {combinedStoreRecognitionData.networkTotals.totalStockPieces} pç · Ped: {combinedStoreRecognitionData.networkTotals.totalOrderPieces} pç ({formatCurrencyBRL(combinedStoreRecognitionData.networkTotals.totalOrderCostR$)})</div>
+                              </td>
+                            </tr>
+                          )}
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
 
                   {/* Tabela de Cortes Extraídos (Reclassificável por Corte e por Filial) */}
                   <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-                    <div className="max-h-60 overflow-y-auto">
+                    <div className="px-3 py-2 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                      <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                        Detalhamento dos Cortes Extraídos do Documento ({pendingPdfResult.items.length} itens)
+                      </span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Você pode alterar a filial ou categoria de qualquer corte individualmente abaixo
+                      </span>
+                    </div>
+                    <div className="max-h-52 overflow-y-auto">
                       <table className="w-full text-xs">
-                        <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold uppercase text-slate-600 dark:text-slate-300">
+                        <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800/90 text-[10px] font-bold uppercase text-slate-600 dark:text-slate-300">
                           <tr>
                             <th className="py-2 px-3 text-left">Filial / Loja</th>
                             <th className="py-2 px-3 text-left">Corte Extraído</th>
@@ -1999,7 +3103,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                     onChange={() => setApplyTargetMode('by_store')}
                   />
                   <span>
-                    Respeitar cada filial identificada ({pdfByStoreSummary?.storeSummaries.length || 0})
+                    Respeitar cada filial identificada ({combinedStoreRecognitionData.foundRows.length})
                   </span>
                 </label>
 
@@ -2049,7 +3153,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setIsPdfModalOpen(false)}
@@ -2060,7 +3164,16 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                 <button
                   type="button"
                   disabled={!pendingPdfResult || pendingPdfResult.items.length === 0}
-                  onClick={handleApplyPdfSalesToSheet}
+                  onClick={() => handleApplyPdfSalesToSheet(true)}
+                  className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-slate-950 text-xs font-bold shadow-xs transition cursor-pointer"
+                  title="Aplica as vendas reconhecidas e já preenche o Pedido sugerido (Venda − Estoque que já temos)"
+                >
+                  Aplicar Venda + Sugerir Pedido
+                </button>
+                <button
+                  type="button"
+                  disabled={!pendingPdfResult || pendingPdfResult.items.length === 0}
+                  onClick={() => handleApplyPdfSalesToSheet(false)}
                   className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white text-xs font-bold shadow-xs transition cursor-pointer"
                 >
                   Aplicar Venda na Planilha

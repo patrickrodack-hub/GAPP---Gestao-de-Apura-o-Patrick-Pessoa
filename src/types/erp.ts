@@ -544,6 +544,8 @@ export interface PdfSalesStoreSummary {
   storeName: string;
   itemsCount: number;
   totalKg: number;
+  isUnmappedStore?: boolean;
+  rawStoreLabel?: string;
   salesEntry: SlaughterhouseSalesEntry;
   pieces: {
     dianteiroPecas: number;

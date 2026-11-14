@@ -731,6 +731,17 @@ export function buildRecognizedStoresMetadata(items: PdfSalesParsedCutItem[]) {
       if (item.rawStore) {
         byStore.get(item.matchedStoreId)!.rawLabels.add(item.rawStore);
       }
+    } else if (item.rawStore && item.rawStore.trim().length > 0) {
+      const rawLabel = item.rawStore.trim();
+      const rawKey = `raw:${normalizeTextForClassification(rawLabel)}`;
+      if (!byStore.has(rawKey)) {
+        byStore.set(rawKey, {
+          storeId: rawKey,
+          storeName: rawLabel,
+          rawLabels: new Set([rawLabel]),
+        });
+      }
+      unassignedCount += 1;
     } else {
       unassignedCount += 1;
     }
@@ -747,7 +758,8 @@ export function buildRecognizedStoresMetadata(items: PdfSalesParsedCutItem[]) {
 }
 
 /**
- * Agrupa e totaliza os cortes extraídos respeitando fielmente cada filial identificada.
+ * Agrupa e totaliza os cortes extraídos respeitando fielmente cada filial identificada no documento
+ * (tanto filiais já vinculadas ao cadastro quanto filiais lidas do arquivo aguardando vínculo).
  */
 export function summarizePdfSalesByStore(
   items: PdfSalesParsedCutItem[],
@@ -758,19 +770,28 @@ export function summarizePdfSalesByStore(
   unassignedItems: PdfSalesParsedCutItem[];
 } {
   const grouped = new Map<string, PdfSalesParsedCutItem[]>();
+  const rawGrouped = new Map<string, { rawLabel: string; items: PdfSalesParsedCutItem[] }>();
   const unassignedItems: PdfSalesParsedCutItem[] = [];
 
   for (const item of items) {
     if (item.matchedStoreId) {
       if (!grouped.has(item.matchedStoreId)) grouped.set(item.matchedStoreId, []);
       grouped.get(item.matchedStoreId)!.push(item);
+    } else if (item.rawStore && item.rawStore.trim().length > 0) {
+      const rawLabel = item.rawStore.trim();
+      const rawKey = `raw:${normalizeTextForClassification(rawLabel)}`;
+      if (!rawGrouped.has(rawKey)) {
+        rawGrouped.set(rawKey, { rawLabel, items: [] });
+      }
+      rawGrouped.get(rawKey)!.items.push(item);
+      unassignedItems.push(item);
     } else {
       unassignedItems.push(item);
     }
   }
 
   const storeSummaries: PdfSalesStoreSummary[] = [];
-  // Mantém a ordem oficial das lojas no sistema
+  // 1. Mantém a ordem oficial das lojas no sistema para as filiais vinculadas
   for (const store of stores) {
     const storeItems = grouped.get(store.id);
     if (!storeItems || storeItems.length === 0) continue;
@@ -784,6 +805,27 @@ export function summarizePdfSalesByStore(
       storeName: store.name,
       itemsCount: storeItems.length,
       totalKg,
+      isUnmappedStore: false,
+      rawStoreLabel: storeItems.find(i => i.rawStore)?.rawStore,
+      salesEntry,
+      pieces,
+    });
+  }
+
+  // 2. Inclui também qualquer loja encontrada no documento cujo nome ainda não foi vinculado automaticamente
+  for (const [rawKey, group] of rawGrouped.entries()) {
+    const { salesEntry } = summarizePdfSalesByCategory(group.items, standards);
+    const pieces = getSalesPiecesBreakdown(salesEntry, standards);
+    const totalKg = Number(
+      group.items.reduce((acc, it) => acc + (Number(it.weightKg) || 0), 0).toFixed(2)
+    );
+    storeSummaries.push({
+      storeId: rawKey,
+      storeName: group.rawLabel,
+      itemsCount: group.items.length,
+      totalKg,
+      isUnmappedStore: true,
+      rawStoreLabel: group.rawLabel,
       salesEntry,
       pieces,
     });

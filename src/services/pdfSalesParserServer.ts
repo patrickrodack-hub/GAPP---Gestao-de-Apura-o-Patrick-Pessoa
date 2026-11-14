@@ -174,16 +174,17 @@ export async function parseSalesPdfDocument(params: {
             },
           },
           `Você é um analista técnico de açougue e controladoria de rede supermercadista.
-Analise este ${isImageUpload ? 'print/imagem de relatório de vendas' : 'documento PDF de vendas'} de carnes/cortes bovinos e extraia TODOS os cortes vendidos com seus respectivos pesos em KG e a FILIAL / LOJA correspondente.
+Analise este ${isImageUpload ? 'print/imagem de relatório de vendas' : 'documento PDF de vendas'} de carnes/cortes bovinos do início ao fim (TODAS as páginas, tabelas e blocos) e extraia TODOS os cortes vendidos com seus respectivos pesos em KG e a FILIAL / LOJA correspondente.
 
 CATÁLOGO OFICIAL DAS FILIAIS DA REDE (USE PARA IDENTIFICAR A FILIAL EXATA DE CADA LINHA/SEÇÃO):
 ${storeCatalogPrompt}
 
 REGRAS ESTRITAS E OBRIGATÓRIAS:
 1. Extraia SOMENTE cortes reais e valores reais visíveis no documento/imagem. Nunca invente, estime ou arredonde artificialmente os pesos.
-2. RECONHECIMENTO FIEL POR FILIAL:
-   - Se o documento mostrar vendas separadas por loja/filial (em seções por filial, colunas por filial ou uma coluna de loja), informe em CADA item os campos storeName e storeCode exatamente da filial a que aquele valor pertence.
-   - Se o relatório for de uma única filial indicada no cabeçalho/título, informe essa filial em documentStoreName e também em cada item.
+2. LEITURA COMPLETA DE TODAS AS FILIAIS E PÁGINAS:
+   - Percorra TODAS as páginas e seções do documento sem omitir ou resumir nenhuma loja. Todas as filiais presentes no arquivo devem ter seus cortes listados integralmente em "cuts".
+   - Se o documento mostrar vendas separadas por loja/filial (em blocos/seções por filial, colunas por filial ou uma coluna de loja), informe em CADA item os campos storeName e storeCode exatamente da filial a que aquele valor pertence.
+   - Somente preencha documentStoreName se o documento inteiro pertencer a uma única loja; se houver 2 ou mais lojas no documento, deixe documentStoreName em branco e preencha storeName/storeCode em cada item.
    - NUNCA misture ou divida valores entre lojas: cada filial deve manter estritamente o seu próprio valor vendido em KG.
 3. Ignore linhas de subtotais gerais ou totalizadores finais ("Total Geral", "Total Rede") para não duplicar o peso vendido.
 4. Converta pesos expressos em gramas ou toneladas para KG (ex.: 500g = 0.5). Padrão brasileiro (ex.: 350,45 kg) deve virar número decimal 350.45.
@@ -199,11 +200,11 @@ REGRAS ESTRITAS E OBRIGATÓRIAS:
             properties: {
               summaryNote: {
                 type: Type.STRING,
-                description: 'Breve resumo factual do documento analisado (período, quantidade de filiais encontradas).',
+                description: 'Breve resumo factual do documento analisado (período, quantidade total de filiais encontradas).',
               },
               documentStoreName: {
                 type: Type.STRING,
-                description: 'Nome ou código da filial caso todo o documento pertença a uma única loja.',
+                description: 'Preencha SOMENTE se o arquivo inteiro for de uma única filial. Deixe vazio se houver múltiplas filiais.',
               },
               cuts: {
                 type: Type.ARRAY,
@@ -233,21 +234,36 @@ REGRAS ESTRITAS E OBRIGATÓRIAS:
         cuts?: GeminiExtractedCut[];
       }>(response.text || '');
 
-      const docLevelStore = matchStoreReference(parsedJson.documentStoreName, storeList);
       const rawCuts = Array.isArray(parsedJson.cuts) ? parsedJson.cuts : [];
+      const distinctItemStores = new Set(
+        rawCuts
+          .map(c => [c?.storeCode, c?.storeName].filter(Boolean).join(' ').trim().toLowerCase())
+          .filter(Boolean)
+      );
+      // Só aplica documentStoreName como fallback se o corte não tiver loja própria E o documento não for multifilial
+      const docLevelStore =
+        distinctItemStores.size <= 1
+          ? matchStoreReference(parsedJson.documentStoreName, storeList)
+          : null;
 
       const items: PdfSalesParsedCutItem[] = rawCuts
         .filter(c => c && typeof c.cutName === 'string' && Number(c.weightKg) > 0)
         .map((c, idx) => {
           const classified = classifyBeefCut(c.cutName, c.rawCategory);
           const rawStoreText = [c.storeCode, c.storeName].filter(Boolean).join(' ').trim();
-          const itemStoreMatch = matchStoreReference(rawStoreText, storeList) || docLevelStore;
+          const itemStoreMatch =
+            matchStoreReference(rawStoreText, storeList) || (!rawStoreText ? docLevelStore : null);
 
           return {
             id: `doc-cut-${Date.now()}-${idx}`,
             cutName: c.cutName.trim(),
             rawCategory: c.rawCategory?.trim() || undefined,
-            rawStore: rawStoreText || parsedJson.documentStoreName?.trim() || undefined,
+            rawStore:
+              rawStoreText ||
+              (!rawStoreText && distinctItemStores.size <= 1
+                ? parsedJson.documentStoreName?.trim()
+                : undefined) ||
+              undefined,
             matchedStoreId: itemStoreMatch?.storeId,
             matchedStoreName: itemStoreMatch?.storeName,
             category: classified.category,
