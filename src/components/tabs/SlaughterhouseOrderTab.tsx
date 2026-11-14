@@ -1900,10 +1900,10 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                             key={`main-rec-${row.storeId}-${cat}`}
                             className="py-1.5 px-2.5 text-right border-r border-slate-200 dark:border-slate-800"
                           >
-                            <div className="font-bold text-slate-900 dark:text-white">
-                              {formatNumberBR(saleKg, 1)}kg{' '}
-                              <span className="text-[10px] text-emerald-700 dark:text-emerald-400">
-                                ({formatNumberBR(salePc, 2)}pç)
+                            <div className="font-extrabold text-indigo-950 dark:text-indigo-200">
+                              {formatNumberBR(salePc, 2)}pç{' '}
+                              <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
+                                ({formatNumberBR(saleKg, 1)}kg)
                               </span>
                             </div>
                             <div className="text-[10px] text-slate-500 dark:text-slate-400">
@@ -1915,7 +1915,10 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
 
                       <td className="py-1.5 px-3 text-right">
                         <div className="font-extrabold text-slate-900 dark:text-white">
-                          Venda: {formatNumberBR(row.effectiveTotalKg, 2)} kg ({formatNumberBR(row.effectiveTotalPieces, 2)}pç)
+                          Venda: {formatNumberBR(row.effectiveTotalPieces, 2)} pç{' '}
+                          <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
+                            ({formatNumberBR(row.effectiveTotalKg, 1)} kg)
+                          </span>
                         </div>
                         <div className="text-[10px] text-slate-600 dark:text-slate-300">
                           Est: <strong>{row.stock.totalPieces}pç</strong> · Ped: <strong className="text-emerald-700 dark:text-emerald-400">{row.currentOrder.totalPieces}pç</strong> ({formatCurrencyBRL(row.currentOrder.totalCostR$)})
@@ -1974,7 +1977,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                   colSpan={5}
                   className="bg-indigo-800 text-center py-1.5 border-b border-r border-indigo-700"
                 >
-                  Venda Informada (KG → Peças Padrão)
+                  Venda Informada (Peças Padrão ← KG)
                 </th>
                 <th
                   colSpan={5}
@@ -2066,7 +2069,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                       );
                     })}
 
-                    {/* VENDA INFORMADA (KG -> PEÇAS PADRÃO) */}
+                    {/* VENDA INFORMADA (DESTAQUE EM PEÇAS NO TOPO + KG MENOR ABAIXO, IGUAL AO ESTOQUE ATUAL) */}
                     {SLAUGHTERHOUSE_CATEGORY_ORDER.map((cat, idx) => {
                       const field = SALES_FIELD_BY_CATEGORY[cat];
                       const kgVal = row.sales[field] || 0;
@@ -2077,27 +2080,31 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                       return (
                         <td
                           key={`sl-${cat}`}
-                          className={`px-1.5 py-1 text-center bg-indigo-50/30 dark:bg-indigo-950/15 ${
+                          className={`px-1.5 py-1.5 text-center tabular-nums bg-indigo-50/30 dark:bg-indigo-950/15 ${
                             idx === 4
                               ? 'border-r border-slate-300 dark:border-slate-600'
                               : 'border-r border-slate-100 dark:border-slate-800'
                           }`}
                         >
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.5"
-                            data-sh-row={rowIdx}
-                            data-sh-col={`sale-${cat}`}
-                            value={kgVal || ''}
-                            placeholder="0 kg"
-                            onFocus={(e) => e.target.select()}
-                            onKeyDown={(e) => handleCellKeyDown(e, rowIdx, `sale-${cat}`)}
-                            onChange={(e) => handleUpdateSalesKg(row.storeId, field, e.target.value)}
-                            className="w-16 px-1.5 py-1 text-center rounded border border-indigo-200 dark:border-indigo-800/70 bg-white dark:bg-slate-900 text-[11px] font-mono font-bold text-indigo-900 dark:text-indigo-200 tabular-nums focus:ring-2 focus:ring-indigo-500 outline-none"
-                          />
-                          <div className="text-[9px] font-mono text-indigo-600 dark:text-indigo-400 mt-0.5 tabular-nums">
-                            = {formatNumberBR(piecesEq, 2)} pç
+                          <div className="font-extrabold text-slate-800 dark:text-slate-100 leading-tight">
+                            {formatNumberBR(piecesEq, 2)}{' '}
+                            <span className="text-[9px] font-normal text-slate-400">pç</span>
+                          </div>
+                          <div className="mt-0.5 inline-flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded border border-indigo-200/80 dark:border-indigo-800/60 bg-white dark:bg-slate-900 focus-within:ring-2 focus-within:ring-indigo-500">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.5"
+                              data-sh-row={rowIdx}
+                              data-sh-col={`sale-${cat}`}
+                              value={kgVal || ''}
+                              placeholder="0"
+                              onFocus={(e) => e.target.select()}
+                              onKeyDown={(e) => handleCellKeyDown(e, rowIdx, `sale-${cat}`)}
+                              onChange={(e) => handleUpdateSalesKg(row.storeId, field, e.target.value)}
+                              className="w-12 text-center bg-transparent text-[9px] font-mono text-slate-500 dark:text-slate-400 tabular-nums outline-none"
+                            />
+                            <span className="text-[8px] font-mono text-slate-400 select-none">kg</span>
                           </div>
                         </td>
                       );
@@ -2152,32 +2159,62 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                 </td>
 
                 {/* Soma Estoque */}
-                <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700">{totals.stockDianteiroPc} pç</td>
-                <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700">{totals.stockTraseiroPc} pç</td>
-                <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700">{totals.stockCoxaoPc} pç</td>
-                <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700">{totals.stockAlcatraoPc} pç</td>
-                <td className="px-2 py-2 text-center border-r border-slate-300 dark:border-slate-600">{totals.stockCostelaPc} pç</td>
+                <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700">
+                  <div>{totals.stockDianteiroPc} <span className="text-[9px] font-normal text-slate-500">pç</span></div>
+                </td>
+                <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700">
+                  <div>{totals.stockTraseiroPc} <span className="text-[9px] font-normal text-slate-500">pç</span></div>
+                </td>
+                <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700">
+                  <div>{totals.stockCoxaoPc} <span className="text-[9px] font-normal text-slate-500">pç</span></div>
+                </td>
+                <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700">
+                  <div>{totals.stockAlcatraoPc} <span className="text-[9px] font-normal text-slate-500">pç</span></div>
+                </td>
+                <td className="px-2 py-2 text-center border-r border-slate-300 dark:border-slate-600">
+                  <div>{totals.stockCostelaPc} <span className="text-[9px] font-normal text-slate-500">pç</span></div>
+                </td>
 
-                {/* Soma Vendas */}
-                <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700 text-indigo-800 dark:text-indigo-300">
-                  <div>{formatNumberBR(totals.salesDianteiroKg, 1)}kg</div>
-                  <div className="text-[9px] font-mono">{formatNumberBR(totals.salesDianteiroPc, 2)} pç</div>
+                {/* Soma Vendas (Peças em destaque no topo + KG menor abaixo) */}
+                <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
+                  <div className="font-black">
+                    {formatNumberBR(totals.salesDianteiroPc, 2)} <span className="text-[9px] font-normal text-slate-500">pç</span>
+                  </div>
+                  <div className="text-[9px] font-mono font-normal text-slate-500 dark:text-slate-400">
+                    {formatNumberBR(totals.salesDianteiroKg, 1)}kg
+                  </div>
                 </td>
-                <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700 text-indigo-800 dark:text-indigo-300">
-                  <div>{formatNumberBR(totals.salesTraseiroKg, 1)}kg</div>
-                  <div className="text-[9px] font-mono">{formatNumberBR(totals.salesTraseiroPc, 2)} pç</div>
+                <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
+                  <div className="font-black">
+                    {formatNumberBR(totals.salesTraseiroPc, 2)} <span className="text-[9px] font-normal text-slate-500">pç</span>
+                  </div>
+                  <div className="text-[9px] font-mono font-normal text-slate-500 dark:text-slate-400">
+                    {formatNumberBR(totals.salesTraseiroKg, 1)}kg
+                  </div>
                 </td>
-                <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700 text-indigo-800 dark:text-indigo-300">
-                  <div>{formatNumberBR(totals.salesCoxaoKg, 1)}kg</div>
-                  <div className="text-[9px] font-mono">{formatNumberBR(totals.salesCoxaoPc, 2)} pç</div>
+                <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
+                  <div className="font-black">
+                    {formatNumberBR(totals.salesCoxaoPc, 2)} <span className="text-[9px] font-normal text-slate-500">pç</span>
+                  </div>
+                  <div className="text-[9px] font-mono font-normal text-slate-500 dark:text-slate-400">
+                    {formatNumberBR(totals.salesCoxaoKg, 1)}kg
+                  </div>
                 </td>
-                <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700 text-indigo-800 dark:text-indigo-300">
-                  <div>{formatNumberBR(totals.salesAlcatraoKg, 1)}kg</div>
-                  <div className="text-[9px] font-mono">{formatNumberBR(totals.salesAlcatraoPc, 2)} pç</div>
+                <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
+                  <div className="font-black">
+                    {formatNumberBR(totals.salesAlcatraoPc, 2)} <span className="text-[9px] font-normal text-slate-500">pç</span>
+                  </div>
+                  <div className="text-[9px] font-mono font-normal text-slate-500 dark:text-slate-400">
+                    {formatNumberBR(totals.salesAlcatraoKg, 1)}kg
+                  </div>
                 </td>
-                <td className="px-2 py-2 text-center border-r border-slate-300 dark:border-slate-600 text-indigo-800 dark:text-indigo-300">
-                  <div>{formatNumberBR(totals.salesCostelaKg, 1)}kg</div>
-                  <div className="text-[9px] font-mono">{formatNumberBR(totals.salesCostelaPc, 2)} pç</div>
+                <td className="px-2 py-2 text-center border-r border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white">
+                  <div className="font-black">
+                    {formatNumberBR(totals.salesCostelaPc, 2)} <span className="text-[9px] font-normal text-slate-500">pç</span>
+                  </div>
+                  <div className="text-[9px] font-mono font-normal text-slate-500 dark:text-slate-400">
+                    {formatNumberBR(totals.salesCostelaKg, 1)}kg
+                  </div>
                 </td>
 
                 {/* Soma Pedidos */}
@@ -2547,14 +2584,12 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                               {sum.desossaGroup}
                             </span>
                           </div>
-                          <div className="mt-1.5 text-sm font-black text-indigo-700 dark:text-indigo-300 tabular-nums">
-                            {formatNumberBR(sum.totalKg, 2)} kg
+                          <div className="mt-1.5 text-sm font-black text-emerald-700 dark:text-emerald-400 tabular-nums">
+                            {formatNumberBR(sum.exactPieces, 2)}{' '}
+                            <span className="text-[10px] font-bold">pçs</span>
                           </div>
                           <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
-                            ÷ {sum.standardWeightKg} kg/pç ={' '}
-                            <strong className="text-emerald-700 dark:text-emerald-400">
-                              {formatNumberBR(sum.exactPieces, 2)} pçs
-                            </strong>
+                            {formatNumberBR(sum.totalKg, 2)} kg ÷ {sum.standardWeightKg} kg/pç
                           </div>
                           <div className="mt-1.5 pt-1.5 border-t border-slate-200/80 dark:border-slate-700/70 flex items-center justify-between text-[10px] font-mono text-slate-600 dark:text-slate-300">
                             <span>Est. Lojas Arq.: <strong>{foundStockPc} pç</strong></span>
@@ -2755,11 +2790,11 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                                     title={stBreakdown}
                                     className="py-1.5 px-2.5 text-right border-r border-slate-200 dark:border-slate-800 align-top font-mono"
                                   >
-                                    {/* 1. Venda Reconhecida */}
+                                    {/* 1. Venda Reconhecida (Destaque em Peças + KG menor) */}
                                     <div className="font-extrabold text-slate-900 dark:text-white">
-                                      {formatNumberBR(saleKg, 1)}kg{' '}
-                                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400">
-                                        ({formatNumberBR(salePc, 2)}pç)
+                                      {formatNumberBR(salePc, 2)}pç{' '}
+                                      <span className="text-[9px] font-normal text-slate-500 dark:text-slate-400">
+                                        ({formatNumberBR(saleKg, 1)}kg)
                                       </span>
                                     </div>
                                     {/* 2. Estoque Atual que Já Temos na Planilha */}
@@ -2795,10 +2830,10 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                               {/* Resumo Consolidado da Filial */}
                               <td className="py-1.5 px-3 text-right align-top font-mono bg-emerald-100/40 dark:bg-emerald-950/30">
                                 <div className="font-black text-slate-900 dark:text-white text-xs">
-                                  Venda: {formatNumberBR(row.effectiveTotalKg, 2)} kg
+                                  Venda: {formatNumberBR(row.effectiveTotalPieces, 2)} pçs
                                 </div>
-                                <div className="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold">
-                                  Eq. Venda: {formatNumberBR(row.effectiveTotalPieces, 2)} pçs
+                                <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                  ({formatNumberBR(row.effectiveTotalKg, 2)} kg)
                                 </div>
                                 <div className="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5">
                                   Já Temos Est.: <strong>{row.stock.totalPieces} pçs</strong> ({formatNumberBR(row.stock.totalKg, 0)}kg)
@@ -2905,10 +2940,10 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                                           title={stBreakdown}
                                           className="py-1.5 px-2.5 text-right border-r border-slate-200 dark:border-slate-800 align-top font-mono"
                                         >
-                                          <div className="font-semibold text-slate-700 dark:text-slate-300">
-                                            {formatNumberBR(saleKg, 1)}kg{' '}
-                                            <span className="text-[10px] text-indigo-600 dark:text-indigo-400">
-                                              ({formatNumberBR(salePc, 2)}pç)
+                                          <div className="font-bold text-slate-800 dark:text-slate-100">
+                                            {formatNumberBR(salePc, 2)}pç{' '}
+                                            <span className="text-[9px] font-normal text-slate-400">
+                                              ({formatNumberBR(saleKg, 1)}kg)
                                             </span>
                                           </div>
                                           <div className="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5">
@@ -2937,7 +2972,10 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
 
                                     <td className="py-1.5 px-3 text-right align-top font-mono bg-slate-50/70 dark:bg-slate-800/30">
                                       <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">
-                                        Venda: {formatNumberBR(row.effectiveTotalKg, 2)} kg
+                                        Venda: {formatNumberBR(row.effectiveTotalPieces, 2)} pçs
+                                      </div>
+                                      <div className="text-[9px] text-slate-500 dark:text-slate-400">
+                                        ({formatNumberBR(row.effectiveTotalKg, 2)} kg)
                                       </div>
                                       <div className="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5">
                                         Já Temos Est.: <strong>{row.stock.totalPieces} pçs</strong> ({formatNumberBR(row.stock.totalKg, 0)}kg)
@@ -2959,27 +2997,27 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                               SUBTOTAL ENCONTRADAS NO ARQUIVO ({combinedStoreRecognitionData.foundRows.length} LOJAS)
                             </td>
                             <td className="py-2 px-2.5 text-right border-r border-emerald-300 dark:border-emerald-800">
-                              <div>V: {formatNumberBR(combinedStoreRecognitionData.foundTotals.dianteiroKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.foundTotals.dianteiroPecas, 2)}pç)</div>
+                              <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.foundTotals.dianteiroPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.foundTotals.dianteiroKg, 1)}kg)</div>
                               <div>Est: {combinedStoreRecognitionData.foundTotals.stockDianteiroPecas}pç · Ped: {combinedStoreRecognitionData.foundTotals.pedDianteiro}pç</div>
                             </td>
                             <td className="py-2 px-2.5 text-right border-r border-emerald-300 dark:border-emerald-800">
-                              <div>V: {formatNumberBR(combinedStoreRecognitionData.foundTotals.traseiroKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.foundTotals.traseiroPecas, 2)}pç)</div>
+                              <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.foundTotals.traseiroPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.foundTotals.traseiroKg, 1)}kg)</div>
                               <div>Est: {combinedStoreRecognitionData.foundTotals.stockTraseiroPecas}pç · Ped: {combinedStoreRecognitionData.foundTotals.pedTraseiro}pç</div>
                             </td>
                             <td className="py-2 px-2.5 text-right border-r border-emerald-300 dark:border-emerald-800">
-                              <div>V: {formatNumberBR(combinedStoreRecognitionData.foundTotals.coxaoKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.foundTotals.coxaoPecas, 2)}pç)</div>
+                              <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.foundTotals.coxaoPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.foundTotals.coxaoKg, 1)}kg)</div>
                               <div>Est: {combinedStoreRecognitionData.foundTotals.stockCoxaoPecas}pç · Ped: {combinedStoreRecognitionData.foundTotals.pedCoxao}pç</div>
                             </td>
                             <td className="py-2 px-2.5 text-right border-r border-emerald-300 dark:border-emerald-800">
-                              <div>V: {formatNumberBR(combinedStoreRecognitionData.foundTotals.alcatraoKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.foundTotals.alcatraoPecas, 2)}pç)</div>
+                              <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.foundTotals.alcatraoPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.foundTotals.alcatraoKg, 1)}kg)</div>
                               <div>Est: {combinedStoreRecognitionData.foundTotals.stockAlcatraoPecas}pç · Ped: {combinedStoreRecognitionData.foundTotals.pedAlcatrao}pç</div>
                             </td>
                             <td className="py-2 px-2.5 text-right border-r border-emerald-300 dark:border-emerald-800">
-                              <div>V: {formatNumberBR(combinedStoreRecognitionData.foundTotals.costelaKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.foundTotals.costelaPecas, 2)}pç)</div>
+                              <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.foundTotals.costelaPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.foundTotals.costelaKg, 1)}kg)</div>
                               <div>Est: {combinedStoreRecognitionData.foundTotals.stockCostelaPecas}pç · Ped: {combinedStoreRecognitionData.foundTotals.pedCostela}pç</div>
                             </td>
                             <td className="py-2 px-3 text-right">
-                              <div>Venda: {formatNumberBR(combinedStoreRecognitionData.foundTotals.totalSalesKg, 2)} kg</div>
+                              <div>Venda: <strong>{formatNumberBR(combinedStoreRecognitionData.foundTotals.totalSalesPieces, 2)} pç</strong> ({formatNumberBR(combinedStoreRecognitionData.foundTotals.totalSalesKg, 1)} kg)</div>
                               <div>Est: {combinedStoreRecognitionData.foundTotals.totalStockPieces} pç · Ped: {combinedStoreRecognitionData.foundTotals.totalOrderPieces} pç</div>
                             </td>
                           </tr>
@@ -2990,27 +3028,27 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                                 TOTAL GERAL CONSOLIDADO ({stores.length} FILIAIS DA PLANILHA)
                               </td>
                               <td className="py-2 px-2.5 text-right border-r border-slate-700">
-                                <div>V: {formatNumberBR(combinedStoreRecognitionData.networkTotals.dianteiroKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.networkTotals.dianteiroPecas, 2)}pç)</div>
+                                <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.networkTotals.dianteiroPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.networkTotals.dianteiroKg, 1)}kg)</div>
                                 <div className="text-emerald-300">Est: {combinedStoreRecognitionData.networkTotals.stockDianteiroPecas}pç · Ped: {combinedStoreRecognitionData.networkTotals.pedDianteiro}pç</div>
                               </td>
                               <td className="py-2 px-2.5 text-right border-r border-slate-700">
-                                <div>V: {formatNumberBR(combinedStoreRecognitionData.networkTotals.traseiroKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.networkTotals.traseiroPecas, 2)}pç)</div>
+                                <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.networkTotals.traseiroPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.networkTotals.traseiroKg, 1)}kg)</div>
                                 <div className="text-emerald-300">Est: {combinedStoreRecognitionData.networkTotals.stockTraseiroPecas}pç · Ped: {combinedStoreRecognitionData.networkTotals.pedTraseiro}pç</div>
                               </td>
                               <td className="py-2 px-2.5 text-right border-r border-slate-700">
-                                <div>V: {formatNumberBR(combinedStoreRecognitionData.networkTotals.coxaoKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.networkTotals.coxaoPecas, 2)}pç)</div>
+                                <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.networkTotals.coxaoPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.networkTotals.coxaoKg, 1)}kg)</div>
                                 <div className="text-emerald-300">Est: {combinedStoreRecognitionData.networkTotals.stockCoxaoPecas}pç · Ped: {combinedStoreRecognitionData.networkTotals.pedCoxao}pç</div>
                               </td>
                               <td className="py-2 px-2.5 text-right border-r border-slate-700">
-                                <div>V: {formatNumberBR(combinedStoreRecognitionData.networkTotals.alcatraoKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.networkTotals.alcatraoPecas, 2)}pç)</div>
+                                <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.networkTotals.alcatraoPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.networkTotals.alcatraoKg, 1)}kg)</div>
                                 <div className="text-emerald-300">Est: {combinedStoreRecognitionData.networkTotals.stockAlcatraoPecas}pç · Ped: {combinedStoreRecognitionData.networkTotals.pedAlcatrao}pç</div>
                               </td>
                               <td className="py-2 px-2.5 text-right border-r border-slate-700">
-                                <div>V: {formatNumberBR(combinedStoreRecognitionData.networkTotals.costelaKg, 1)}kg ({formatNumberBR(combinedStoreRecognitionData.networkTotals.costelaPecas, 2)}pç)</div>
+                                <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.networkTotals.costelaPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.networkTotals.costelaKg, 1)}kg)</div>
                                 <div className="text-emerald-300">Est: {combinedStoreRecognitionData.networkTotals.stockCostelaPecas}pç · Ped: {combinedStoreRecognitionData.networkTotals.pedCostela}pç</div>
                               </td>
                               <td className="py-2 px-3 text-right text-[#b5e550]">
-                                <div>Venda: {formatNumberBR(combinedStoreRecognitionData.networkTotals.totalSalesKg, 2)} kg</div>
+                                <div>Venda: <strong>{formatNumberBR(combinedStoreRecognitionData.networkTotals.totalSalesPieces, 2)} pç</strong> ({formatNumberBR(combinedStoreRecognitionData.networkTotals.totalSalesKg, 1)} kg)</div>
                                 <div>Est: {combinedStoreRecognitionData.networkTotals.totalStockPieces} pç · Ped: {combinedStoreRecognitionData.networkTotals.totalOrderPieces} pç ({formatCurrencyBRL(combinedStoreRecognitionData.networkTotals.totalOrderCostR$)})</div>
                               </td>
                             </tr>

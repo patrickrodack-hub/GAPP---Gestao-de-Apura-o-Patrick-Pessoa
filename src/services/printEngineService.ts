@@ -1237,7 +1237,7 @@ export class PrintEngineService {
       <tr>
         <th rowspan="2" style="background:#e2e8f0;color:#0f172a;">Filial (16)</th>
         <th colspan="5" style="background:#fef3c7;color:#92400e;">Estoque Atual Planilha (Peças)</th>
-        <th colspan="5" style="background:#e0f2fe;color:#075985;">Venda Informada (KG / Pçs)</th>
+        <th colspan="5" style="background:#e0f2fe;color:#075985;">Venda Informada (Pçs / KG)</th>
         <th colspan="5" style="background:#d1fae5;color:#065f46;">Pedido Frigorífico (Peças)</th>
         <th colspan="2" style="background:#113829;color:#ffffff;">Totais Filial</th>
       </tr>
@@ -1270,11 +1270,11 @@ export class PrintEngineService {
           <td class="num">${r.stock.coxaoPecas}</td>
           <td class="num">${r.stock.alcatraoPecas}</td>
           <td class="num">${r.stock.costelaPecas}</td>
-          <td class="num">${r.sales.dianteiroKg > 0 ? `${Math.round(r.sales.dianteiroKg)}kg/${r.sales.dianteiroPecas.toFixed(1)}` : '0'}</td>
-          <td class="num">${r.sales.traseiroKg > 0 ? `${Math.round(r.sales.traseiroKg)}kg/${r.sales.traseiroPecas.toFixed(1)}` : '0'}</td>
-          <td class="num">${r.sales.coxaoKg > 0 ? `${Math.round(r.sales.coxaoKg)}kg/${r.sales.coxaoPecas.toFixed(1)}` : '0'}</td>
-          <td class="num">${r.sales.alcatraoKg > 0 ? `${Math.round(r.sales.alcatraoKg)}kg/${r.sales.alcatraoPecas.toFixed(1)}` : '0'}</td>
-          <td class="num">${r.sales.costelaKg > 0 ? `${Math.round(r.sales.costelaKg)}kg/${r.sales.costelaPecas.toFixed(1)}` : '0'}</td>
+          <td class="num">${r.sales.dianteiroKg > 0 ? `<strong>${r.sales.dianteiroPecas.toFixed(2)}pç</strong> <span style="color:#64748b;font-size:5.6pt;">(${Math.round(r.sales.dianteiroKg)}kg)</span>` : '0'}</td>
+          <td class="num">${r.sales.traseiroKg > 0 ? `<strong>${r.sales.traseiroPecas.toFixed(2)}pç</strong> <span style="color:#64748b;font-size:5.6pt;">(${Math.round(r.sales.traseiroKg)}kg)</span>` : '0'}</td>
+          <td class="num">${r.sales.coxaoKg > 0 ? `<strong>${r.sales.coxaoPecas.toFixed(2)}pç</strong> <span style="color:#64748b;font-size:5.6pt;">(${Math.round(r.sales.coxaoKg)}kg)</span>` : '0'}</td>
+          <td class="num">${r.sales.alcatraoKg > 0 ? `<strong>${r.sales.alcatraoPecas.toFixed(2)}pç</strong> <span style="color:#64748b;font-size:5.6pt;">(${Math.round(r.sales.alcatraoKg)}kg)</span>` : '0'}</td>
+          <td class="num">${r.sales.costelaKg > 0 ? `<strong>${r.sales.costelaPecas.toFixed(2)}pç</strong> <span style="color:#64748b;font-size:5.6pt;">(${Math.round(r.sales.costelaKg)}kg)</span>` : '0'}</td>
           <td class="num ped">${r.order.pedidoDianteiro}</td>
           <td class="num ped">${r.order.pedidoTraseiro}</td>
           <td class="num ped">${r.order.pedidoCoxao}</td>
@@ -1293,11 +1293,11 @@ export class PrintEngineService {
         <td>${sumCol(r => r.stock.coxaoPecas)}</td>
         <td>${sumCol(r => r.stock.alcatraoPecas)}</td>
         <td>${sumCol(r => r.stock.costelaPecas)}</td>
-        <td>${Math.round(sumCol(r => r.sales.dianteiroKg))}kg</td>
-        <td>${Math.round(sumCol(r => r.sales.traseiroKg))}kg</td>
-        <td>${Math.round(sumCol(r => r.sales.coxaoKg))}kg</td>
-        <td>${Math.round(sumCol(r => r.sales.alcatraoKg))}kg</td>
-        <td>${Math.round(sumCol(r => r.sales.costelaKg))}kg</td>
+        <td><strong>${sumCol(r => r.sales.dianteiroPecas).toFixed(2)}pç</strong> <span style="font-weight:400;font-size:5.6pt;">(${Math.round(sumCol(r => r.sales.dianteiroKg))}kg)</span></td>
+        <td><strong>${sumCol(r => r.sales.traseiroPecas).toFixed(2)}pç</strong> <span style="font-weight:400;font-size:5.6pt;">(${Math.round(sumCol(r => r.sales.traseiroKg))}kg)</span></td>
+        <td><strong>${sumCol(r => r.sales.coxaoPecas).toFixed(2)}pç</strong> <span style="font-weight:400;font-size:5.6pt;">(${Math.round(sumCol(r => r.sales.coxaoKg))}kg)</span></td>
+        <td><strong>${sumCol(r => r.sales.alcatraoPecas).toFixed(2)}pç</strong> <span style="font-weight:400;font-size:5.6pt;">(${Math.round(sumCol(r => r.sales.alcatraoKg))}kg)</span></td>
+        <td><strong>${sumCol(r => r.sales.costelaPecas).toFixed(2)}pç</strong> <span style="font-weight:400;font-size:5.6pt;">(${Math.round(sumCol(r => r.sales.costelaKg))}kg)</span></td>
         <td class="ped">${sumCol(r => r.order.pedidoDianteiro)}</td>
         <td class="ped">${sumCol(r => r.order.pedidoTraseiro)}</td>
         <td class="ped">${sumCol(r => r.order.pedidoCoxao)}</td>
