@@ -19,6 +19,12 @@ import {
   History,
   Upload,
   RotateCcw,
+  Eye,
+  Edit3,
+  FolderOpen,
+  PlusCircle,
+  Search,
+  Copy,
 } from 'lucide-react';
 import {
   PdfSalesImportResult,
@@ -84,6 +90,16 @@ const ORDER_FIELD_BY_CATEGORY: Record<
   costela: 'pedidoCostela',
 };
 
+const roundSalesEntry = (
+  sales?: Partial<SlaughterhouseStoreOrderRow['sales']>
+): SlaughterhouseStoreOrderRow['sales'] => ({
+  dianteiroKg: Math.round(Number(sales?.dianteiroKg || 0)),
+  traseiroKg: Math.round(Number(sales?.traseiroKg || 0)),
+  coxaoKg: Math.round(Number(sales?.coxaoKg || 0)),
+  alcatraoKg: Math.round(Number(sales?.alcatraoKg || 0)),
+  costelaKg: Math.round(Number(sales?.costelaKg || 0)),
+});
+
 export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
   stores,
   suppliers,
@@ -96,11 +112,15 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
   const [draft, setDraft] = useState<SlaughterhouseOrderDraft>(() => {
     const saved = StorageService.getSlaughterhouseDraft();
     if (saved && saved.storeRows && saved.storeRows.length > 0) {
-      // Garante que todas as lojas atuais existam no rascunho
+      // Garante que todas as lojas atuais existam no rascunho e arredonda as vendas para inteiros precisos
       const syncedRows: SlaughterhouseStoreOrderRow[] = stores.map((store) => {
         const existing = saved.storeRows.find((r) => r.storeId === store.id);
         if (existing) {
-          return { ...existing, storeName: store.name };
+          return {
+            ...existing,
+            storeName: store.name,
+            sales: roundSalesEntry(existing.sales),
+          };
         }
         const sheetRow = sheetRows.find((r) => r.storeId === store.id);
         return {
@@ -132,6 +152,15 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
   const [isHistoryOpen, setIsHistoryOpen] = useState(true);
   const [orderStatus, setOrderStatus] = useState<'RASCUNHO' | 'ENVIADO' | 'CONFIRMADO'>('RASCUNHO');
 
+  // Menu Central de Pedidos Gerados (Visualizar, Abrir, Editar, Imprimir, PDF e Histórico)
+  const [isOrdersMenuModalOpen, setIsOrdersMenuModalOpen] = useState(false);
+  const [viewingOrder, setViewingOrder] = useState<SlaughterhouseOrderRecord | null>(null);
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<
+    'ALL' | 'RASCUNHO' | 'ENVIADO' | 'CONFIRMADO'
+  >('ALL');
+
   // Estado do Modal Importador de PDF / Imagem de Vendas
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [pdfMode, setPdfMode] = useState<'file' | 'text'>('file');
@@ -162,7 +191,13 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
           setSavedOrders(cloudOrders);
         }
         if (cloudDraft && cloudDraft.updatedAt > (draft.updatedAt || 0)) {
-          setDraft(cloudDraft);
+          setDraft({
+            ...cloudDraft,
+            storeRows: (cloudDraft.storeRows || []).map((r) => ({
+              ...r,
+              sales: roundSalesEntry(r.sales),
+            })),
+          });
           if (cloudDraft.lastPdfImport) {
             setPendingPdfResult(cloudDraft.lastPdfImport);
           }
@@ -194,7 +229,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
 
       const updatedRows: SlaughterhouseStoreOrderRow[] = stores.map((store) => {
         const existing = prev.storeRows.find((r) => r.storeId === store.id);
-        if (existing) return { ...existing, storeName: store.name };
+        if (existing) return { ...existing, storeName: store.name, sales: roundSalesEntry(existing.sales) };
         return {
           storeId: store.id,
           storeName: store.name,
@@ -396,7 +431,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
     rawVal: string
   ) => {
     const parsed = parseFloat(rawVal.replace(',', '.'));
-    const kg = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+    const kg = Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : 0;
     setDraft((prev) => ({
       ...prev,
       storeRows: prev.storeRows.map((row) =>
@@ -479,11 +514,14 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
 
   // Constrói snapshot oficial do pedido atual para Relatório PDF / Impressão / Gravação
   const buildOrderSnapshot = (
-    overrideStatus?: 'RASCUNHO' | 'ENVIADO' | 'CONFIRMADO'
+    overrideStatus?: 'RASCUNHO' | 'ENVIADO' | 'CONFIRMADO',
+    forceNewId = false
   ): SlaughterhouseOrderRecord => {
     const now = Date.now();
+    const existingOrder =
+      !forceNewId && editingOrderId ? savedOrders.find((o) => o.id === editingOrderId) : undefined;
     return {
-      id: `pf-${now}-${Math.random().toString(36).slice(2, 7)}`,
+      id: existingOrder ? existingOrder.id : `pf-${now}-${Math.random().toString(36).slice(2, 7)}`,
       orderType: 'FRIGORIFICO_CORTES',
       orderNumber: draft.orderNumber.trim() || `PF-${now}`,
       date: draft.orderDate,
@@ -502,19 +540,44 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
       standards: JSON.parse(JSON.stringify(draft.standards)),
       rows: reportRows,
       lastPdfImport: draft.lastPdfImport || null,
-      createdAt: now,
+      createdAt: existingOrder ? existingOrder.createdAt : now,
     };
   };
 
-  const handleSaveOrderRecord = () => {
+  const handleSaveOrderRecord = (saveAsNew = false) => {
     if (totals.totalPieces <= 0) {
       showToast('Informe ao menos 1 peça nos campos de pedido antes de salvar.');
       return;
     }
-    const record = buildOrderSnapshot(orderStatus);
+    const isUpdatingExisting = Boolean(editingOrderId && !saveAsNew);
+    const record = buildOrderSnapshot(orderStatus, saveAsNew);
     const updated = StorageService.saveSlaughterhouseOrder(record);
     setSavedOrders(updated);
-    showToast(`Pedido por Frigorífico ${record.orderNumber} salvo no histórico e na nuvem.`);
+    setEditingOrderId(record.id);
+    showToast(
+      isUpdatingExisting
+        ? `Pedido ${record.orderNumber} atualizado com sucesso no histórico e na nuvem!`
+        : `Pedido por Frigorífico ${record.orderNumber} salvo no histórico e na nuvem.`
+    );
+  };
+
+  const handleStartNewOrder = () => {
+    const nextOrderNumber = `PF-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`;
+    setEditingOrderId(null);
+    setOrderStatus('RASCUNHO');
+    setDraft((prev) => ({
+      ...prev,
+      orderNumber: nextOrderNumber,
+      storeRows: prev.storeRows.map((row) => ({
+        ...row,
+        pedidoDianteiro: 0,
+        pedidoTraseiro: 0,
+        pedidoCoxao: 0,
+        pedidoAlcatrao: 0,
+        pedidoCostela: 0,
+      })),
+    }));
+    showToast(`Novo pedido ${nextOrderNumber} iniciado.`);
   };
 
   const handleDownloadOrderPdf = async (orderToPrint?: SlaughterhouseOrderRecord) => {
@@ -536,12 +599,16 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
     });
   };
 
-  const handleLoadOrderIntoDraft = (record: SlaughterhouseOrderRecord) => {
+  const handleLoadOrderIntoDraft = (
+    record: SlaughterhouseOrderRecord,
+    mode: 'edit' | 'duplicate' = 'edit'
+  ) => {
+    const duplicateNum = `PF-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`;
     setDraft((prev) => ({
       ...prev,
       supplierId: record.supplierId || prev.supplierId,
       supplierName: record.supplier,
-      orderNumber: record.orderNumber,
+      orderNumber: mode === 'duplicate' ? duplicateNum : record.orderNumber,
       orderDate: record.date,
       deliveryDate: record.deliveryDate,
       buyer: record.buyer,
@@ -559,25 +626,69 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
           pedidoCoxao: matched?.order.pedidoCoxao || 0,
           pedidoAlcatrao: matched?.order.pedidoAlcatrao || 0,
           pedidoCostela: matched?.order.pedidoCostela || 0,
-          sales: {
-            dianteiroKg: matched?.sales.dianteiroKg || 0,
-            traseiroKg: matched?.sales.traseiroKg || 0,
-            coxaoKg: matched?.sales.coxaoKg || 0,
-            alcatraoKg: matched?.sales.alcatraoKg || 0,
-            costelaKg: matched?.sales.costelaKg || 0,
-          },
+          sales: roundSalesEntry(matched?.sales),
         };
       }),
     }));
-    setOrderStatus(record.status);
-    showToast(`Pedido ${record.orderNumber} carregado na planilha.`);
+    if (mode === 'edit') {
+      setEditingOrderId(record.id);
+      setOrderStatus(record.status);
+      showToast(`Pedido ${record.orderNumber} aberto para edição na planilha.`);
+    } else {
+      setEditingOrderId(null);
+      setOrderStatus('RASCUNHO');
+      showToast(`Pedido ${record.orderNumber} duplicado como novo pedido (${duplicateNum}).`);
+    }
+    setIsOrdersMenuModalOpen(false);
+    setViewingOrder(null);
+  };
+
+  const handleUpdateSavedOrderStatus = (
+    record: SlaughterhouseOrderRecord,
+    newStatus: 'RASCUNHO' | 'ENVIADO' | 'CONFIRMADO'
+  ) => {
+    const updatedRecord: SlaughterhouseOrderRecord = {
+      ...record,
+      status: newStatus,
+    };
+    const updatedList = StorageService.saveSlaughterhouseOrder(updatedRecord);
+    setSavedOrders(updatedList);
+    if (viewingOrder?.id === record.id) {
+      setViewingOrder(updatedRecord);
+    }
+    if (editingOrderId === record.id) {
+      setOrderStatus(newStatus);
+    }
+    showToast(`Status do pedido ${record.orderNumber} alterado para ${newStatus}.`);
   };
 
   const handleDeleteOrderRecord = (id: string) => {
     const updated = StorageService.deleteSlaughterhouseOrder(id);
     setSavedOrders(updated);
+    if (editingOrderId === id) {
+      setEditingOrderId(null);
+    }
+    if (viewingOrder?.id === id) {
+      setViewingOrder(null);
+    }
     showToast('Pedido removido do histórico.');
   };
+
+  const filteredSavedOrders = useMemo(() => {
+    const q = historySearch.trim().toLowerCase();
+    return savedOrders.filter((ord) => {
+      if (historyStatusFilter !== 'ALL' && ord.status !== historyStatusFilter) {
+        return false;
+      }
+      if (!q) return true;
+      return (
+        ord.orderNumber.toLowerCase().includes(q) ||
+        ord.supplier.toLowerCase().includes(q) ||
+        (ord.buyer || '').toLowerCase().includes(q) ||
+        (ord.date || '').toLowerCase().includes(q)
+      );
+    });
+  }, [savedOrders, historySearch, historyStatusFilter]);
 
   // ==========================================
   // IMPORTADOR DE PDF / IMAGEM DE VENDAS (REAL & POR FILIAL)
@@ -1294,7 +1405,9 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
         return;
       }
 
-      const byStoreMap = new Map(storeSummaries.map((s) => [s.storeId, s.salesEntry]));
+      const byStoreMap = new Map(
+        storeSummaries.map((s) => [s.storeId, roundSalesEntry(s.salesEntry)])
+      );
 
       setDraft((prev) => ({
         ...prev,
@@ -1314,7 +1427,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                 alcatraoKg: 0,
                 costelaKg: 0,
               }
-            : row.sales;
+            : roundSalesEntry(row.sales);
 
           if (!autoSuggestOrders || (!matchedSales && !clearAbsentStores)) {
             return {
@@ -1359,7 +1472,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
       storeRows: prev.storeRows.map((row) => {
         if (applyTargetMode === 'single') {
           if (row.storeId !== applyTargetStoreId) return row;
-          const nextSales = { ...salesEntry };
+          const nextSales = roundSalesEntry(salesEntry);
           const stock = storeStockMap.get(row.storeId);
           const salesPc = getSalesPiecesBreakdown(nextSales, prev.standards);
           return {
@@ -1376,13 +1489,13 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
               : {}),
           };
         }
-        const nextSales = {
-          dianteiroKg: Number((salesEntry.dianteiroKg / count).toFixed(2)),
-          traseiroKg: Number((salesEntry.traseiroKg / count).toFixed(2)),
-          coxaoKg: Number((salesEntry.coxaoKg / count).toFixed(2)),
-          alcatraoKg: Number((salesEntry.alcatraoKg / count).toFixed(2)),
-          costelaKg: Number((salesEntry.costelaKg / count).toFixed(2)),
-        };
+        const nextSales = roundSalesEntry({
+          dianteiroKg: salesEntry.dianteiroKg / count,
+          traseiroKg: salesEntry.traseiroKg / count,
+          coxaoKg: salesEntry.coxaoKg / count,
+          alcatraoKg: salesEntry.alcatraoKg / count,
+          costelaKg: salesEntry.costelaKg / count,
+        });
         const stock = storeStockMap.get(row.storeId);
         const salesPc = getSalesPiecesBreakdown(nextSales, prev.standards);
         return {
@@ -1426,6 +1539,20 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   16 Filiais • Estoque Planilha + Venda PDF
                 </span>
+                {editingOrderId && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                    <Edit3 className="w-3 h-3" />
+                    <span>Editando Pedido {draft.orderNumber}</span>
+                    <button
+                      type="button"
+                      onClick={() => setEditingOrderId(null)}
+                      className="ml-1 text-amber-700 hover:text-amber-950 dark:text-amber-300 cursor-pointer"
+                      title="Sair do modo edição deste registro"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Soma de cortes da Planilha de Compras pela base Desossa, conversão de venda (KG ÷ Peso Padrão) e emissão de pedido oficial.
@@ -1435,6 +1562,26 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
 
           {/* Barra de Ações Principais */}
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsOrdersMenuModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#b5e550] border border-slate-700 text-xs font-extrabold shadow-xs transition cursor-pointer whitespace-nowrap shrink-0"
+              title="Abrir Central de Pedidos Gerados: Visualizar, Abrir, Editar, Imprimir e Gerar PDF"
+            >
+              <FolderOpen className="w-3.5 h-3.5" />
+              <span>Pedidos Gerados ({savedOrders.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleStartNewOrder}
+              className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-700 text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0"
+              title="Iniciar um novo pedido limpando apenas os campos de peças pedidas"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>Novo Pedido</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setIsPdfModalOpen(true)}
@@ -1456,12 +1603,24 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
 
             <button
               type="button"
-              onClick={handleSaveOrderRecord}
+              onClick={() => handleSaveOrderRecord(false)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#113829] hover:bg-[#194d38] text-[#b5e550] text-xs font-bold shadow-xs transition cursor-pointer whitespace-nowrap shrink-0"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>Salvar Pedido</span>
+              <span>{editingOrderId ? 'Atualizar Pedido' : 'Salvar Pedido'}</span>
             </button>
+
+            {editingOrderId && (
+              <button
+                type="button"
+                onClick={() => handleSaveOrderRecord(true)}
+                className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs transition cursor-pointer whitespace-nowrap shrink-0"
+                title="Salvar uma cópia como novo registro no histórico"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Salvar como Novo</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -1750,7 +1909,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                   <div className="mt-2 pt-2 border-t border-slate-200/70 dark:border-slate-700/70 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
                     <span>Eq. @: {formatCurrencyBRL(std.costPerKg * 15)}</span>
                     <span className="font-mono" title="Simulação 350kg ÷ Peso Padrão">
-                      350kg = {formatNumberBR(examplePieces, 2)} pç
+                      350kg = {Math.round(examplePieces)} pç
                     </span>
                   </div>
                 </div>
@@ -1901,9 +2060,9 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                             className="py-1.5 px-2.5 text-right border-r border-slate-200 dark:border-slate-800"
                           >
                             <div className="font-extrabold text-indigo-950 dark:text-indigo-200">
-                              {formatNumberBR(salePc, 2)}pç{' '}
+                              {Math.round(salePc)} pç{' '}
                               <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
-                                ({formatNumberBR(saleKg, 1)}kg)
+                                ({formatNumberBR(Math.round(saleKg), 0)}kg)
                               </span>
                             </div>
                             <div className="text-[10px] text-slate-500 dark:text-slate-400">
@@ -1915,9 +2074,9 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
 
                       <td className="py-1.5 px-3 text-right">
                         <div className="font-extrabold text-slate-900 dark:text-white">
-                          Venda: {formatNumberBR(row.effectiveTotalPieces, 2)} pç{' '}
+                          Venda: {Math.round(row.effectiveTotalPieces)} pç{' '}
                           <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
-                            ({formatNumberBR(row.effectiveTotalKg, 1)} kg)
+                            ({formatNumberBR(Math.round(row.effectiveTotalKg), 0)} kg)
                           </span>
                         </div>
                         <div className="text-[10px] text-slate-600 dark:text-slate-300">
@@ -1941,7 +2100,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
               Matriz de Pedido por Frigorífico — 16 Filiais
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Passe o mouse sobre o Estoque para ver os cortes somados da Planilha. Vendas em KG convertem automaticamente em peças pelo Peso Padrão.
+              Passe o mouse sobre o Estoque para ver os cortes somados da Planilha. Vendas em KG e Peças são arredondadas automaticamente pelo Peso Padrão.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -2069,13 +2228,15 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                       );
                     })}
 
-                    {/* VENDA INFORMADA (DESTAQUE EM PEÇAS NO TOPO + KG MENOR ABAIXO, IGUAL AO ESTOQUE ATUAL) */}
+                    {/* VENDA INFORMADA (DESTAQUE EM PEÇAS ARREDONDADO NO TOPO + KG ARREDONDADO MENOR ABAIXO, IGUAL AO ESTOQUE ATUAL) */}
                     {SLAUGHTERHOUSE_CATEGORY_ORDER.map((cat, idx) => {
                       const field = SALES_FIELD_BY_CATEGORY[cat];
-                      const kgVal = row.sales[field] || 0;
-                      const piecesEq = convertSalesKgToPieces(
-                        kgVal,
-                        draft.standards[cat].standardWeightKg
+                      const kgVal = Math.round(row.sales[field] || 0);
+                      const piecesEq = Math.round(
+                        convertSalesKgToPieces(
+                          kgVal,
+                          draft.standards[cat].standardWeightKg
+                        )
                       );
                       return (
                         <td
@@ -2087,14 +2248,14 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                           }`}
                         >
                           <div className="font-extrabold text-slate-800 dark:text-slate-100 leading-tight">
-                            {formatNumberBR(piecesEq, 2)}{' '}
+                            {piecesEq}{' '}
                             <span className="text-[9px] font-normal text-slate-400">pç</span>
                           </div>
                           <div className="mt-0.5 inline-flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded border border-indigo-200/80 dark:border-indigo-800/60 bg-white dark:bg-slate-900 focus-within:ring-2 focus-within:ring-indigo-500">
                             <input
                               type="number"
                               min="0"
-                              step="0.5"
+                              step="1"
                               data-sh-row={rowIdx}
                               data-sh-col={`sale-${cat}`}
                               value={kgVal || ''}
@@ -2175,45 +2336,45 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                   <div>{totals.stockCostelaPc} <span className="text-[9px] font-normal text-slate-500">pç</span></div>
                 </td>
 
-                {/* Soma Vendas (Peças em destaque no topo + KG menor abaixo) */}
+                {/* Soma Vendas (Peças em destaque arredondado no topo + KG arredondado menor abaixo) */}
                 <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
                   <div className="font-black">
-                    {formatNumberBR(totals.salesDianteiroPc, 2)} <span className="text-[9px] font-normal text-slate-500">pç</span>
+                    {Math.round(totals.salesDianteiroPc)} <span className="text-[9px] font-normal text-slate-500">pç</span>
                   </div>
                   <div className="text-[9px] font-mono font-normal text-slate-500 dark:text-slate-400">
-                    {formatNumberBR(totals.salesDianteiroKg, 1)}kg
+                    {formatNumberBR(Math.round(totals.salesDianteiroKg), 0)}kg
                   </div>
                 </td>
                 <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
                   <div className="font-black">
-                    {formatNumberBR(totals.salesTraseiroPc, 2)} <span className="text-[9px] font-normal text-slate-500">pç</span>
+                    {Math.round(totals.salesTraseiroPc)} <span className="text-[9px] font-normal text-slate-500">pç</span>
                   </div>
                   <div className="text-[9px] font-mono font-normal text-slate-500 dark:text-slate-400">
-                    {formatNumberBR(totals.salesTraseiroKg, 1)}kg
+                    {formatNumberBR(Math.round(totals.salesTraseiroKg), 0)}kg
                   </div>
                 </td>
                 <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
                   <div className="font-black">
-                    {formatNumberBR(totals.salesCoxaoPc, 2)} <span className="text-[9px] font-normal text-slate-500">pç</span>
+                    {Math.round(totals.salesCoxaoPc)} <span className="text-[9px] font-normal text-slate-500">pç</span>
                   </div>
                   <div className="text-[9px] font-mono font-normal text-slate-500 dark:text-slate-400">
-                    {formatNumberBR(totals.salesCoxaoKg, 1)}kg
+                    {formatNumberBR(Math.round(totals.salesCoxaoKg), 0)}kg
                   </div>
                 </td>
                 <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
                   <div className="font-black">
-                    {formatNumberBR(totals.salesAlcatraoPc, 2)} <span className="text-[9px] font-normal text-slate-500">pç</span>
+                    {Math.round(totals.salesAlcatraoPc)} <span className="text-[9px] font-normal text-slate-500">pç</span>
                   </div>
                   <div className="text-[9px] font-mono font-normal text-slate-500 dark:text-slate-400">
-                    {formatNumberBR(totals.salesAlcatraoKg, 1)}kg
+                    {formatNumberBR(Math.round(totals.salesAlcatraoKg), 0)}kg
                   </div>
                 </td>
                 <td className="px-2 py-2 text-center border-r border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white">
                   <div className="font-black">
-                    {formatNumberBR(totals.salesCostelaPc, 2)} <span className="text-[9px] font-normal text-slate-500">pç</span>
+                    {Math.round(totals.salesCostelaPc)} <span className="text-[9px] font-normal text-slate-500">pç</span>
                   </div>
                   <div className="text-[9px] font-mono font-normal text-slate-500 dark:text-slate-400">
-                    {formatNumberBR(totals.salesCostelaKg, 1)}kg
+                    {formatNumberBR(Math.round(totals.salesCostelaKg), 0)}kg
                   </div>
                 </td>
 
@@ -2260,25 +2421,64 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
         </div>
       </div>
 
-      {/* 5. HISTÓRICO DE PEDIDOS POR FRIGORÍFICO EMITIDOS */}
+      {/* 5. HISTÓRICO DE PEDIDOS POR FRIGORÍFICO EMITIDOS (COM VISUALIZAR, ABRIR/EDITAR, DUPLICAR, PDF E IMPRIMIR) */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-        <div className="px-4 py-3 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800">
+        <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-2 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800">
           <button
             type="button"
             onClick={() => setIsHistoryOpen((v) => !v)}
             className="flex items-center gap-2 text-xs font-extrabold text-slate-800 dark:text-slate-100 cursor-pointer"
           >
-            <History className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+            <History className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>Histórico de Pedidos por Frigorífico Emitidos ({savedOrders.length})</span>
             {isHistoryOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+                placeholder="Buscar pedido, frigorífico ou data..."
+                className="pl-8 pr-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500 w-56"
+              />
+            </div>
+
+            <select
+              value={historyStatusFilter}
+              onChange={(e) => setHistoryStatusFilter(e.target.value as typeof historyStatusFilter)}
+              className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none"
+            >
+              <option value="ALL">Todos os Status ({savedOrders.length})</option>
+              <option value="RASCUNHO">RASCUNHO</option>
+              <option value="ENVIADO">ENVIADO</option>
+              <option value="CONFIRMADO">CONFIRMADO</option>
+            </select>
+
+            <button
+              type="button"
+              onClick={() => setIsOrdersMenuModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#113829] hover:bg-[#194d38] text-[#b5e550] text-xs font-bold transition cursor-pointer"
+            >
+              <FolderOpen className="w-3.5 h-3.5" />
+              <span>Abrir Central de Pedidos</span>
+            </button>
+          </div>
         </div>
 
         {isHistoryOpen && (
           <div className="p-4">
-            {savedOrders.length === 0 ? (
+            {filteredSavedOrders.length === 0 ? (
               <div className="text-center py-6 text-xs text-slate-500 dark:text-slate-400">
-                Nenhum pedido salvo ainda. Preencha os campos de pedido e clique em <strong>Salvar Pedido</strong> para registrar no histórico.
+                {savedOrders.length === 0 ? (
+                  <>
+                    Nenhum pedido salvo ainda. Preencha os campos de pedido e clique em <strong>Salvar Pedido</strong> para registrar no histórico.
+                  </>
+                ) : (
+                  <>Nenhum pedido encontrado para o filtro selecionado.</>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -2288,6 +2488,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                       <th className="py-2 px-2 text-left">N° Pedido</th>
                       <th className="py-2 px-2 text-left">Data / Entrega</th>
                       <th className="py-2 px-2 text-left">Frigorífico</th>
+                      <th className="py-2 px-2 text-left">Resumo de Cortes</th>
                       <th className="py-2 px-2 text-right">Peças</th>
                       <th className="py-2 px-2 text-right">Peso (kg)</th>
                       <th className="py-2 px-2 text-right">Total (R$)</th>
@@ -2296,66 +2497,127 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {savedOrders.map((ord) => (
-                      <tr key={ord.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <td className="py-2 px-2 font-mono font-bold text-slate-900 dark:text-white">
-                          {ord.orderNumber}
-                        </td>
-                        <td className="py-2 px-2 text-slate-600 dark:text-slate-300 tabular-nums">
-                          {ord.date} → {ord.deliveryDate}
-                        </td>
-                        <td className="py-2 px-2 font-semibold text-slate-800 dark:text-slate-200">
-                          {ord.supplier}
-                        </td>
-                        <td className="py-2 px-2 text-right font-mono tabular-nums">
-                          {formatNumberBR(ord.totalPieces, 0)}
-                        </td>
-                        <td className="py-2 px-2 text-right font-mono tabular-nums">
-                          {formatNumberBR(ord.totalWeightKg, 1)} kg
-                        </td>
-                        <td className="py-2 px-2 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
-                          {formatCurrencyBRL(ord.totalCostR$)}
-                        </td>
-                        <td className="py-2 px-2 text-center">
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                            {ord.status}
-                          </span>
-                        </td>
-                        <td className="py-2 px-2 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleLoadOrderIntoDraft(ord)}
-                              className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-200 transition cursor-pointer"
+                    {filteredSavedOrders.map((ord) => {
+                      const isCurrentlyEditing = editingOrderId === ord.id;
+                      const sumDiant = (ord.rows || []).reduce((acc, r) => acc + (r.order?.pedidoDianteiro || 0), 0);
+                      const sumTras = (ord.rows || []).reduce((acc, r) => acc + (r.order?.pedidoTraseiro || 0), 0);
+                      const sumCox = (ord.rows || []).reduce((acc, r) => acc + (r.order?.pedidoCoxao || 0), 0);
+                      const sumAlc = (ord.rows || []).reduce((acc, r) => acc + (r.order?.pedidoAlcatrao || 0), 0);
+                      const sumCost = (ord.rows || []).reduce((acc, r) => acc + (r.order?.pedidoCostela || 0), 0);
+
+                      return (
+                        <tr
+                          key={ord.id}
+                          className={`transition-colors ${
+                            isCurrentlyEditing
+                              ? 'bg-amber-50/70 dark:bg-amber-950/25'
+                              : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                          }`}
+                        >
+                          <td className="py-2 px-2 font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <span>{ord.orderNumber}</span>
+                              {isCurrentlyEditing && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200">
+                                  Em edição
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-2 px-2 text-slate-600 dark:text-slate-300 tabular-nums whitespace-nowrap">
+                            {ord.date} → {ord.deliveryDate}
+                          </td>
+                          <td className="py-2 px-2 font-semibold text-slate-800 dark:text-slate-200">
+                            <div>{ord.supplier}</div>
+                            <div className="text-[10px] text-slate-400 font-normal">
+                              Comprador: {ord.buyer || '—'} • Pagto: {ord.paymentTerms || '—'}
+                            </div>
+                          </td>
+                          <td className="py-2 px-2 text-[10px] font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                            D:{sumDiant} · T:{sumTras} · Cx:{sumCox} · Al:{sumAlc} · Co:{sumCost}
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono font-bold tabular-nums">
+                            {formatNumberBR(ord.totalPieces, 0)} pç
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono tabular-nums whitespace-nowrap">
+                            {formatNumberBR(ord.totalWeightKg, 1)} kg
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400 tabular-nums whitespace-nowrap">
+                            {formatCurrencyBRL(ord.totalCostR$)}
+                          </td>
+                          <td className="py-2 px-2 text-center">
+                            <select
+                              value={ord.status}
+                              onChange={(e) =>
+                                handleUpdateSavedOrderStatus(
+                                  ord,
+                                  e.target.value as 'RASCUNHO' | 'ENVIADO' | 'CONFIRMADO'
+                                )
+                              }
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold border outline-none cursor-pointer ${
+                                ord.status === 'CONFIRMADO'
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                                  : ord.status === 'ENVIADO'
+                                  ? 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800'
+                                  : 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                              }`}
                             >
-                              Carregar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDownloadOrderPdf(ord)}
-                              className="px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 transition cursor-pointer"
-                            >
-                              PDF
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handlePrintOrder(ord)}
-                              className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 transition cursor-pointer"
-                            >
-                              Imprimir
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteOrderRecord(ord.id)}
-                              className="p-1 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
-                              title="Excluir pedido"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                              <option value="RASCUNHO">RASCUNHO</option>
+                              <option value="ENVIADO">ENVIADO</option>
+                              <option value="CONFIRMADO">CONFIRMADO</option>
+                            </select>
+                          </td>
+                          <td className="py-2 px-2 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setViewingOrder(ord)}
+                                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 text-[11px] font-bold text-white transition cursor-pointer"
+                                title="Visualizar pedido completo"
+                              >
+                                <Eye className="w-3 h-3" />
+                                <span>Visualizar</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleLoadOrderIntoDraft(ord, 'edit')}
+                                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-[11px] font-bold text-amber-900 dark:text-amber-200 transition cursor-pointer"
+                                title="Abrir e editar pedido na planilha"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                                <span>Abrir / Editar</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadOrderPdf(ord)}
+                                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 transition cursor-pointer"
+                                title="Gerar e baixar PDF do pedido"
+                              >
+                                <FileText className="w-3 h-3" />
+                                <span>PDF</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handlePrintOrder(ord)}
+                                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 transition cursor-pointer"
+                                title="Imprimir pedido (A4 Paisagem)"
+                              >
+                                <Printer className="w-3 h-3" />
+                                <span>Imprimir</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteOrderRecord(ord.id)}
+                                className="p-1 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                                title="Excluir pedido"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -2585,11 +2847,11 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                             </span>
                           </div>
                           <div className="mt-1.5 text-sm font-black text-emerald-700 dark:text-emerald-400 tabular-nums">
-                            {formatNumberBR(sum.exactPieces, 2)}{' '}
+                            {Math.round(sum.exactPieces)}{' '}
                             <span className="text-[10px] font-bold">pçs</span>
                           </div>
                           <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
-                            {formatNumberBR(sum.totalKg, 2)} kg ÷ {sum.standardWeightKg} kg/pç
+                            {formatNumberBR(Math.round(sum.totalKg), 0)} kg ÷ {sum.standardWeightKg} kg/pç
                           </div>
                           <div className="mt-1.5 pt-1.5 border-t border-slate-200/80 dark:border-slate-700/70 flex items-center justify-between text-[10px] font-mono text-slate-600 dark:text-slate-300">
                             <span>Est. Lojas Arq.: <strong>{foundStockPc} pç</strong></span>
@@ -2608,7 +2870,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                           Vendas Reconhecidas por Filial + Informações que Já Temos na Planilha
                         </div>
                         <div className="text-[11px] text-emerald-800/90 dark:text-emerald-300/80">
-                          Cada filial exibe a <strong>Venda Reconhecida (KG e Peças)</strong> somada ao <strong>Estoque Atual da Planilha/Desossa (Peças e KG)</strong>, <strong>Giro</strong>, <strong>Sugestão</strong> e <strong>Pedido</strong>.
+                          Cada filial exibe a <strong>Venda Reconhecida (Peças e KG arredondados)</strong> somada ao <strong>Estoque Atual da Planilha/Desossa (Peças e KG)</strong>, <strong>Giro</strong>, <strong>Sugestão</strong> e <strong>Pedido</strong>.
                         </div>
                       </div>
 
@@ -2790,11 +3052,11 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                                     title={stBreakdown}
                                     className="py-1.5 px-2.5 text-right border-r border-slate-200 dark:border-slate-800 align-top font-mono"
                                   >
-                                    {/* 1. Venda Reconhecida (Destaque em Peças + KG menor) */}
+                                    {/* 1. Venda Reconhecida (Destaque em Peças arredondado + KG menor arredondado) */}
                                     <div className="font-extrabold text-slate-900 dark:text-white">
-                                      {formatNumberBR(salePc, 2)}pç{' '}
+                                      {Math.round(salePc)} pç{' '}
                                       <span className="text-[9px] font-normal text-slate-500 dark:text-slate-400">
-                                        ({formatNumberBR(saleKg, 1)}kg)
+                                        ({formatNumberBR(Math.round(saleKg), 0)}kg)
                                       </span>
                                     </div>
                                     {/* 2. Estoque Atual que Já Temos na Planilha */}
@@ -2830,10 +3092,10 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                               {/* Resumo Consolidado da Filial */}
                               <td className="py-1.5 px-3 text-right align-top font-mono bg-emerald-100/40 dark:bg-emerald-950/30">
                                 <div className="font-black text-slate-900 dark:text-white text-xs">
-                                  Venda: {formatNumberBR(row.effectiveTotalPieces, 2)} pçs
+                                  Venda: {Math.round(row.effectiveTotalPieces)} pçs
                                 </div>
                                 <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                                  ({formatNumberBR(row.effectiveTotalKg, 2)} kg)
+                                  ({formatNumberBR(Math.round(row.effectiveTotalKg), 0)} kg)
                                 </div>
                                 <div className="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5">
                                   Já Temos Est.: <strong>{row.stock.totalPieces} pçs</strong> ({formatNumberBR(row.stock.totalKg, 0)}kg)
@@ -2941,9 +3203,9 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                                           className="py-1.5 px-2.5 text-right border-r border-slate-200 dark:border-slate-800 align-top font-mono"
                                         >
                                           <div className="font-bold text-slate-800 dark:text-slate-100">
-                                            {formatNumberBR(salePc, 2)}pç{' '}
+                                            {Math.round(salePc)} pç{' '}
                                             <span className="text-[9px] font-normal text-slate-400">
-                                              ({formatNumberBR(saleKg, 1)}kg)
+                                              ({formatNumberBR(Math.round(saleKg), 0)}kg)
                                             </span>
                                           </div>
                                           <div className="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5">
@@ -2972,10 +3234,10 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
 
                                     <td className="py-1.5 px-3 text-right align-top font-mono bg-slate-50/70 dark:bg-slate-800/30">
                                       <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">
-                                        Venda: {formatNumberBR(row.effectiveTotalPieces, 2)} pçs
+                                        Venda: {Math.round(row.effectiveTotalPieces)} pçs
                                       </div>
                                       <div className="text-[9px] text-slate-500 dark:text-slate-400">
-                                        ({formatNumberBR(row.effectiveTotalKg, 2)} kg)
+                                        ({formatNumberBR(Math.round(row.effectiveTotalKg), 0)} kg)
                                       </div>
                                       <div className="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5">
                                         Já Temos Est.: <strong>{row.stock.totalPieces} pçs</strong> ({formatNumberBR(row.stock.totalKg, 0)}kg)
@@ -2997,27 +3259,27 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                               SUBTOTAL ENCONTRADAS NO ARQUIVO ({combinedStoreRecognitionData.foundRows.length} LOJAS)
                             </td>
                             <td className="py-2 px-2.5 text-right border-r border-emerald-300 dark:border-emerald-800">
-                              <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.foundTotals.dianteiroPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.foundTotals.dianteiroKg, 1)}kg)</div>
+                              <div>V: <strong>{Math.round(combinedStoreRecognitionData.foundTotals.dianteiroPecas)}pç</strong> ({formatNumberBR(Math.round(combinedStoreRecognitionData.foundTotals.dianteiroKg), 0)}kg)</div>
                               <div>Est: {combinedStoreRecognitionData.foundTotals.stockDianteiroPecas}pç · Ped: {combinedStoreRecognitionData.foundTotals.pedDianteiro}pç</div>
                             </td>
                             <td className="py-2 px-2.5 text-right border-r border-emerald-300 dark:border-emerald-800">
-                              <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.foundTotals.traseiroPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.foundTotals.traseiroKg, 1)}kg)</div>
+                              <div>V: <strong>{Math.round(combinedStoreRecognitionData.foundTotals.traseiroPecas)}pç</strong> ({formatNumberBR(Math.round(combinedStoreRecognitionData.foundTotals.traseiroKg), 0)}kg)</div>
                               <div>Est: {combinedStoreRecognitionData.foundTotals.stockTraseiroPecas}pç · Ped: {combinedStoreRecognitionData.foundTotals.pedTraseiro}pç</div>
                             </td>
                             <td className="py-2 px-2.5 text-right border-r border-emerald-300 dark:border-emerald-800">
-                              <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.foundTotals.coxaoPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.foundTotals.coxaoKg, 1)}kg)</div>
+                              <div>V: <strong>{Math.round(combinedStoreRecognitionData.foundTotals.coxaoPecas)}pç</strong> ({formatNumberBR(Math.round(combinedStoreRecognitionData.foundTotals.coxaoKg), 0)}kg)</div>
                               <div>Est: {combinedStoreRecognitionData.foundTotals.stockCoxaoPecas}pç · Ped: {combinedStoreRecognitionData.foundTotals.pedCoxao}pç</div>
                             </td>
                             <td className="py-2 px-2.5 text-right border-r border-emerald-300 dark:border-emerald-800">
-                              <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.foundTotals.alcatraoPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.foundTotals.alcatraoKg, 1)}kg)</div>
+                              <div>V: <strong>{Math.round(combinedStoreRecognitionData.foundTotals.alcatraoPecas)}pç</strong> ({formatNumberBR(Math.round(combinedStoreRecognitionData.foundTotals.alcatraoKg), 0)}kg)</div>
                               <div>Est: {combinedStoreRecognitionData.foundTotals.stockAlcatraoPecas}pç · Ped: {combinedStoreRecognitionData.foundTotals.pedAlcatrao}pç</div>
                             </td>
                             <td className="py-2 px-2.5 text-right border-r border-emerald-300 dark:border-emerald-800">
-                              <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.foundTotals.costelaPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.foundTotals.costelaKg, 1)}kg)</div>
+                              <div>V: <strong>{Math.round(combinedStoreRecognitionData.foundTotals.costelaPecas)}pç</strong> ({formatNumberBR(Math.round(combinedStoreRecognitionData.foundTotals.costelaKg), 0)}kg)</div>
                               <div>Est: {combinedStoreRecognitionData.foundTotals.stockCostelaPecas}pç · Ped: {combinedStoreRecognitionData.foundTotals.pedCostela}pç</div>
                             </td>
                             <td className="py-2 px-3 text-right">
-                              <div>Venda: <strong>{formatNumberBR(combinedStoreRecognitionData.foundTotals.totalSalesPieces, 2)} pç</strong> ({formatNumberBR(combinedStoreRecognitionData.foundTotals.totalSalesKg, 1)} kg)</div>
+                              <div>Venda: <strong>{Math.round(combinedStoreRecognitionData.foundTotals.totalSalesPieces)} pç</strong> ({formatNumberBR(Math.round(combinedStoreRecognitionData.foundTotals.totalSalesKg), 0)} kg)</div>
                               <div>Est: {combinedStoreRecognitionData.foundTotals.totalStockPieces} pç · Ped: {combinedStoreRecognitionData.foundTotals.totalOrderPieces} pç</div>
                             </td>
                           </tr>
@@ -3028,27 +3290,27 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                                 TOTAL GERAL CONSOLIDADO ({stores.length} FILIAIS DA PLANILHA)
                               </td>
                               <td className="py-2 px-2.5 text-right border-r border-slate-700">
-                                <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.networkTotals.dianteiroPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.networkTotals.dianteiroKg, 1)}kg)</div>
+                                <div>V: <strong>{Math.round(combinedStoreRecognitionData.networkTotals.dianteiroPecas)}pç</strong> ({formatNumberBR(Math.round(combinedStoreRecognitionData.networkTotals.dianteiroKg), 0)}kg)</div>
                                 <div className="text-emerald-300">Est: {combinedStoreRecognitionData.networkTotals.stockDianteiroPecas}pç · Ped: {combinedStoreRecognitionData.networkTotals.pedDianteiro}pç</div>
                               </td>
                               <td className="py-2 px-2.5 text-right border-r border-slate-700">
-                                <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.networkTotals.traseiroPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.networkTotals.traseiroKg, 1)}kg)</div>
+                                <div>V: <strong>{Math.round(combinedStoreRecognitionData.networkTotals.traseiroPecas)}pç</strong> ({formatNumberBR(Math.round(combinedStoreRecognitionData.networkTotals.traseiroKg), 0)}kg)</div>
                                 <div className="text-emerald-300">Est: {combinedStoreRecognitionData.networkTotals.stockTraseiroPecas}pç · Ped: {combinedStoreRecognitionData.networkTotals.pedTraseiro}pç</div>
                               </td>
                               <td className="py-2 px-2.5 text-right border-r border-slate-700">
-                                <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.networkTotals.coxaoPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.networkTotals.coxaoKg, 1)}kg)</div>
+                                <div>V: <strong>{Math.round(combinedStoreRecognitionData.networkTotals.coxaoPecas)}pç</strong> ({formatNumberBR(Math.round(combinedStoreRecognitionData.networkTotals.coxaoKg), 0)}kg)</div>
                                 <div className="text-emerald-300">Est: {combinedStoreRecognitionData.networkTotals.stockCoxaoPecas}pç · Ped: {combinedStoreRecognitionData.networkTotals.pedCoxao}pç</div>
                               </td>
                               <td className="py-2 px-2.5 text-right border-r border-slate-700">
-                                <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.networkTotals.alcatraoPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.networkTotals.alcatraoKg, 1)}kg)</div>
+                                <div>V: <strong>{Math.round(combinedStoreRecognitionData.networkTotals.alcatraoPecas)}pç</strong> ({formatNumberBR(Math.round(combinedStoreRecognitionData.networkTotals.alcatraoKg), 0)}kg)</div>
                                 <div className="text-emerald-300">Est: {combinedStoreRecognitionData.networkTotals.stockAlcatraoPecas}pç · Ped: {combinedStoreRecognitionData.networkTotals.pedAlcatrao}pç</div>
                               </td>
                               <td className="py-2 px-2.5 text-right border-r border-slate-700">
-                                <div>V: <strong>{formatNumberBR(combinedStoreRecognitionData.networkTotals.costelaPecas, 2)}pç</strong> ({formatNumberBR(combinedStoreRecognitionData.networkTotals.costelaKg, 1)}kg)</div>
+                                <div>V: <strong>{Math.round(combinedStoreRecognitionData.networkTotals.costelaPecas)}pç</strong> ({formatNumberBR(Math.round(combinedStoreRecognitionData.networkTotals.costelaKg), 0)}kg)</div>
                                 <div className="text-emerald-300">Est: {combinedStoreRecognitionData.networkTotals.stockCostelaPecas}pç · Ped: {combinedStoreRecognitionData.networkTotals.pedCostela}pç</div>
                               </td>
                               <td className="py-2 px-3 text-right text-[#b5e550]">
-                                <div>Venda: <strong>{formatNumberBR(combinedStoreRecognitionData.networkTotals.totalSalesPieces, 2)} pç</strong> ({formatNumberBR(combinedStoreRecognitionData.networkTotals.totalSalesKg, 1)} kg)</div>
+                                <div>Venda: <strong>{Math.round(combinedStoreRecognitionData.networkTotals.totalSalesPieces)} pç</strong> ({formatNumberBR(Math.round(combinedStoreRecognitionData.networkTotals.totalSalesKg), 0)} kg)</div>
                                 <div>Est: {combinedStoreRecognitionData.networkTotals.totalStockPieces} pç · Ped: {combinedStoreRecognitionData.networkTotals.totalOrderPieces} pç ({formatCurrencyBRL(combinedStoreRecognitionData.networkTotals.totalOrderCostR$)})</div>
                               </td>
                             </tr>
@@ -3128,7 +3390,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                                 </select>
                               </td>
                               <td className="py-1.5 px-3 text-right font-mono font-bold tabular-nums">
-                                {formatNumberBR(item.weightKg, 2)} kg
+                                {formatNumberBR(Math.round(item.weightKg), 0)} kg
                               </td>
                               <td className="py-1.5 px-3 text-[11px] text-slate-500 dark:text-slate-400">
                                 {item.matchedBy}
@@ -3239,6 +3501,457 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                   Aplicar Venda na Planilha
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. MODAL CENTRAL DE PEDIDOS GERADOS & HISTÓRICO COMPLETO (MENU) */}
+      {isOrdersMenuModalOpen && (
+        <div className="fixed inset-0 z-[10025] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-[1320px] max-h-[92vh] rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden">
+            {/* Cabeçalho */}
+            <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-[#113829] text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white/10 text-[#b5e550] flex items-center justify-center shrink-0">
+                  <FolderOpen className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-white">
+                    Central de Pedidos Gerados & Histórico de Pedidos por Frigorífico
+                  </h3>
+                  <p className="text-[11px] text-emerald-200/90">
+                    Visualize a matriz completa de cada pedido, abra para editar na planilha, duplique, altere o status, imprima ou gere o PDF.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOrdersMenuModalOpen(false);
+                    handleStartNewOrder();
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#b5e550] hover:bg-[#c5f065] text-slate-950 text-xs font-extrabold transition cursor-pointer"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>Novo Pedido em Branco</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsOrdersMenuModalOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-white/10 text-emerald-200 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Barra de Filtros e Resumo */}
+            <div className="px-5 py-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={historySearch}
+                    onChange={(e) => setHistorySearch(e.target.value)}
+                    placeholder="Filtrar por N° do pedido, frigorífico, comprador ou data..."
+                    className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 w-72"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1 p-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                  {(['ALL', 'RASCUNHO', 'ENVIADO', 'CONFIRMADO'] as const).map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setHistoryStatusFilter(st)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                        historyStatusFilter === st
+                          ? 'bg-[#113829] text-[#b5e550]'
+                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      {st === 'ALL' ? `Todos (${savedOrders.length})` : st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="text-xs font-mono text-slate-600 dark:text-slate-300">
+                Exibindo <strong>{filteredSavedOrders.length}</strong> de <strong>{savedOrders.length}</strong> pedido(s)
+              </div>
+            </div>
+
+            {/* Lista de Pedidos */}
+            <div className="flex-1 overflow-y-auto p-5">
+              {filteredSavedOrders.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                  <FolderOpen className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                    Nenhum pedido encontrado
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Preencha as quantidades na planilha e clique em Salvar Pedido para registrar no histórico.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
+                  <table className="w-full text-xs border-collapse">
+                    <thead className="bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider">
+                      <tr>
+                        <th className="py-2.5 px-3 text-left">N° Pedido</th>
+                        <th className="py-2.5 px-3 text-left">Emissão → Entrega</th>
+                        <th className="py-2.5 px-3 text-left">Frigorífico / Fornecedor</th>
+                        <th className="py-2.5 px-3 text-center">Diant / Tras / Cox / Alc / Cost</th>
+                        <th className="py-2.5 px-3 text-right">Total Peças</th>
+                        <th className="py-2.5 px-3 text-right">Peso (kg)</th>
+                        <th className="py-2.5 px-3 text-right">Valor Total</th>
+                        <th className="py-2.5 px-3 text-center">Status</th>
+                        <th className="py-2.5 px-3 text-right">Menu de Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                      {filteredSavedOrders.map((ord) => {
+                        const isEditing = editingOrderId === ord.id;
+                        const d = (ord.rows || []).reduce((a, r) => a + (r.order?.pedidoDianteiro || 0), 0);
+                        const t = (ord.rows || []).reduce((a, r) => a + (r.order?.pedidoTraseiro || 0), 0);
+                        const cx = (ord.rows || []).reduce((a, r) => a + (r.order?.pedidoCoxao || 0), 0);
+                        const al = (ord.rows || []).reduce((a, r) => a + (r.order?.pedidoAlcatrao || 0), 0);
+                        const co = (ord.rows || []).reduce((a, r) => a + (r.order?.pedidoCostela || 0), 0);
+
+                        return (
+                          <tr
+                            key={`modal-ord-${ord.id}`}
+                            className={
+                              isEditing
+                                ? 'bg-amber-50/70 dark:bg-amber-950/25'
+                                : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                            }
+                          >
+                            <td className="py-2.5 px-3 font-mono font-black text-slate-900 dark:text-white whitespace-nowrap">
+                              <div>{ord.orderNumber}</div>
+                              {isEditing && (
+                                <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-200 text-amber-900">
+                                  Aberto na planilha
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                              {ord.date} → <strong>{ord.deliveryDate}</strong>
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <div className="font-bold text-slate-900 dark:text-white">{ord.supplier}</div>
+                              <div className="text-[10px] text-slate-500">
+                                Comprador: {ord.buyer || '—'} • Pagto: {ord.paymentTerms || '—'}
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3 text-center font-mono text-[11px] text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
+                                D:<strong>{d}</strong> · T:<strong>{t}</strong> · Cx:<strong>{cx}</strong> · Al:<strong>{al}</strong> · Co:<strong>{co}</strong>
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono font-black text-slate-900 dark:text-white tabular-nums">
+                              {formatNumberBR(ord.totalPieces, 0)} pç
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono text-slate-700 dark:text-slate-200 tabular-nums whitespace-nowrap">
+                              {formatNumberBR(ord.totalWeightKg, 1)} kg
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-700 dark:text-emerald-400 tabular-nums whitespace-nowrap">
+                              {formatCurrencyBRL(ord.totalCostR$)}
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              <select
+                                value={ord.status}
+                                onChange={(e) =>
+                                  handleUpdateSavedOrderStatus(
+                                    ord,
+                                    e.target.value as 'RASCUNHO' | 'ENVIADO' | 'CONFIRMADO'
+                                  )
+                                }
+                                className="px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-[10px] font-bold text-slate-800 dark:text-slate-100 cursor-pointer"
+                              >
+                                <option value="RASCUNHO">RASCUNHO</option>
+                                <option value="ENVIADO">ENVIADO</option>
+                                <option value="CONFIRMADO">CONFIRMADO</option>
+                              </select>
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setViewingOrder(ord)}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 text-white text-[11px] font-bold transition cursor-pointer"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>Visualizar</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleLoadOrderIntoDraft(ord, 'edit')}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-[11px] font-bold transition cursor-pointer"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                  <span>Abrir / Editar</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleLoadOrderIntoDraft(ord, 'duplicate')}
+                                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold transition cursor-pointer"
+                                  title="Duplicar pedido como um novo rascunho"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span>Duplicar</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDownloadOrderPdf(ord)}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition cursor-pointer"
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                  <span>Gerar PDF</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handlePrintOrder(ord)}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold transition cursor-pointer"
+                                >
+                                  <Printer className="w-3.5 h-3.5" />
+                                  <span>Imprimir</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteOrderRecord(ord.id)}
+                                  className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                                  title="Excluir pedido"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Rodapé */}
+            <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setIsOrdersMenuModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-200/60 transition cursor-pointer"
+              >
+                Fechar Central de Pedidos
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 8. MODAL VISUALIZADOR DETALHADO DE PEDIDO GERADO (PREVIEW COMPLETO DAS 16 FILIAIS) */}
+      {viewingOrder && (
+        <div className="fixed inset-0 z-[10030] flex items-center justify-center p-3 sm:p-4 bg-black/65 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-[1380px] max-h-[94vh] rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-900 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#113829] text-[#b5e550] flex items-center justify-center shrink-0">
+                  <Eye className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-extrabold text-white">
+                      Visualização do Pedido por Frigorífico — {viewingOrder.orderNumber}
+                    </h3>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#113829] text-[#b5e550]">
+                      {viewingOrder.status}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300">
+                    Frigorífico: <strong>{viewingOrder.supplier}</strong> • Data: {viewingOrder.date} → Entrega: {viewingOrder.deliveryDate} • Comprador: {viewingOrder.buyer}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleLoadOrderIntoDraft(viewingOrder, 'edit')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold transition cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Abrir / Editar na Planilha</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadOrderPdf(viewingOrder)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Gerar PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePrintOrder(viewingOrder)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Imprimir</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewingOrder(null)}
+                  className="p-1.5 rounded-lg hover:bg-white/10 text-slate-300 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {/* Cards de Resumo do Pedido Visualizado */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="p-3.5 rounded-xl bg-[#113829] text-white">
+                  <div className="text-[10px] font-bold uppercase text-emerald-200">Total Peças do Pedido</div>
+                  <div className="text-xl font-black mt-1 font-mono">{formatNumberBR(viewingOrder.totalPieces, 0)} pçs</div>
+                </div>
+                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                  <div className="text-[10px] font-bold uppercase text-slate-500">Peso Total Estimado</div>
+                  <div className="text-xl font-black mt-1 font-mono text-slate-900 dark:text-white">
+                    {formatNumberBR(viewingOrder.totalWeightKg, 1)} kg
+                  </div>
+                </div>
+                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                  <div className="text-[10px] font-bold uppercase text-slate-500">Equiv. Carcaças / Pagto</div>
+                  <div className="text-xl font-black mt-1 font-mono text-slate-900 dark:text-white">
+                    {viewingOrder.totalBois} bois • {viewingOrder.paymentTerms || '14 dias'}
+                  </div>
+                </div>
+                <div className="p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/30">
+                  <div className="text-[10px] font-bold uppercase text-emerald-800 dark:text-emerald-300">Valor Total do Pedido</div>
+                  <div className="text-xl font-black mt-1 font-mono text-emerald-700 dark:text-emerald-400">
+                    {formatCurrencyBRL(viewingOrder.totalCostR$)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabela Completa das Filiais no Pedido */}
+              <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="text-[10px] font-extrabold uppercase text-white">
+                      <th rowSpan={2} className="bg-slate-900 py-2 px-3 text-left border-r border-slate-700">
+                        Filial ({viewingOrder.rows?.length || 0})
+                      </th>
+                      <th colSpan={5} className="bg-slate-700 py-1.5 text-center border-r border-slate-600">
+                        Estoque no Momento (pç)
+                      </th>
+                      <th colSpan={5} className="bg-indigo-800 py-1.5 text-center border-r border-indigo-700">
+                        Venda Informada (pç / kg)
+                      </th>
+                      <th colSpan={5} className="bg-[#113829] text-[#b5e550] py-1.5 text-center border-r border-emerald-800">
+                        Pedido por Corte (pç)
+                      </th>
+                      <th colSpan={2} className="bg-slate-800 py-1.5 text-center">
+                        Totais da Filial
+                      </th>
+                    </tr>
+                    <tr className="text-[10px] font-bold uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-b border-slate-300 dark:border-slate-700">
+                      <th className="py-1.5 px-2 text-center border-r border-slate-200 dark:border-slate-700">Diant</th>
+                      <th className="py-1.5 px-2 text-center border-r border-slate-200 dark:border-slate-700">Tras</th>
+                      <th className="py-1.5 px-2 text-center border-r border-slate-200 dark:border-slate-700">Coxão</th>
+                      <th className="py-1.5 px-2 text-center border-r border-slate-200 dark:border-slate-700">Alcat</th>
+                      <th className="py-1.5 px-2 text-center border-r border-slate-300 dark:border-slate-600">Cost</th>
+
+                      <th className="py-1.5 px-2 text-center border-r border-slate-200 dark:border-slate-700">V.Diant</th>
+                      <th className="py-1.5 px-2 text-center border-r border-slate-200 dark:border-slate-700">V.Tras</th>
+                      <th className="py-1.5 px-2 text-center border-r border-slate-200 dark:border-slate-700">V.Coxão</th>
+                      <th className="py-1.5 px-2 text-center border-r border-slate-200 dark:border-slate-700">V.Alcat</th>
+                      <th className="py-1.5 px-2 text-center border-r border-slate-300 dark:border-slate-600">V.Cost</th>
+
+                      <th className="py-1.5 px-2 text-center border-r border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30">PED.DIANT</th>
+                      <th className="py-1.5 px-2 text-center border-r border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30">PED.TRAS</th>
+                      <th className="py-1.5 px-2 text-center border-r border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30">PED.COX</th>
+                      <th className="py-1.5 px-2 text-center border-r border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30">PED.ALC</th>
+                      <th className="py-1.5 px-2 text-center border-r border-slate-300 bg-emerald-50 dark:bg-emerald-950/30">PED.COST</th>
+
+                      <th className="py-1.5 px-2 text-right border-r border-slate-200 dark:border-slate-700">Peso (kg)</th>
+                      <th className="py-1.5 px-3 text-right">Custo (R$)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-mono text-[11px] tabular-nums">
+                    {(viewingOrder.rows || []).map((r) => (
+                      <tr key={`view-row-${r.storeId}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                        <td className="py-1.5 px-3 font-sans font-bold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-700">
+                          {r.storeName}
+                        </td>
+                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">{r.stock?.dianteiroPecas || 0}pç</td>
+                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">{r.stock?.traseiroPecas || 0}pç</td>
+                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">{r.stock?.coxaoPecas || 0}pç</td>
+                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">{r.stock?.alcatraoPecas || 0}pç</td>
+                        <td className="py-1.5 px-2 text-center border-r border-slate-300 dark:border-slate-600">{r.stock?.costelaPecas || 0}pç</td>
+
+                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">
+                          <div className="font-bold">{Math.round(r.sales?.dianteiroPecas || 0)}pç</div>
+                          <div className="text-[9px] text-slate-400">{Math.round(r.sales?.dianteiroKg || 0)}kg</div>
+                        </td>
+                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">
+                          <div className="font-bold">{Math.round(r.sales?.traseiroPecas || 0)}pç</div>
+                          <div className="text-[9px] text-slate-400">{Math.round(r.sales?.traseiroKg || 0)}kg</div>
+                        </td>
+                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">
+                          <div className="font-bold">{Math.round(r.sales?.coxaoPecas || 0)}pç</div>
+                          <div className="text-[9px] text-slate-400">{Math.round(r.sales?.coxaoKg || 0)}kg</div>
+                        </td>
+                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">
+                          <div className="font-bold">{Math.round(r.sales?.alcatraoPecas || 0)}pç</div>
+                          <div className="text-[9px] text-slate-400">{Math.round(r.sales?.alcatraoKg || 0)}kg</div>
+                        </td>
+                        <td className="py-1.5 px-2 text-center border-r border-slate-300 dark:border-slate-600">
+                          <div className="font-bold">{Math.round(r.sales?.costelaPecas || 0)}pç</div>
+                          <div className="text-[9px] text-slate-400">{Math.round(r.sales?.costelaKg || 0)}kg</div>
+                        </td>
+
+                        <td className="py-1.5 px-2 text-center font-black text-emerald-800 dark:text-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/20 border-r border-emerald-100">
+                          {r.order?.pedidoDianteiro || 0}
+                        </td>
+                        <td className="py-1.5 px-2 text-center font-black text-emerald-800 dark:text-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/20 border-r border-emerald-100">
+                          {r.order?.pedidoTraseiro || 0}
+                        </td>
+                        <td className="py-1.5 px-2 text-center font-black text-emerald-800 dark:text-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/20 border-r border-emerald-100">
+                          {r.order?.pedidoCoxao || 0}
+                        </td>
+                        <td className="py-1.5 px-2 text-center font-black text-emerald-800 dark:text-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/20 border-r border-emerald-100">
+                          {r.order?.pedidoAlcatrao || 0}
+                        </td>
+                        <td className="py-1.5 px-2 text-center font-black text-emerald-800 dark:text-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/20 border-r border-slate-300">
+                          {r.order?.pedidoCostela || 0}
+                        </td>
+
+                        <td className="py-1.5 px-2 text-right font-bold border-r border-slate-100 dark:border-slate-800">
+                          {formatNumberBR(r.order?.totalWeightKg || 0, 1)} kg
+                        </td>
+                        <td className="py-1.5 px-3 text-right font-extrabold text-emerald-700 dark:text-emerald-400">
+                          {formatCurrencyBRL(r.order?.totalCostR$ || 0)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {viewingOrder.notes && (
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200">
+                  <strong>Observações:</strong> {viewingOrder.notes}
+                </div>
+              )}
             </div>
           </div>
         </div>

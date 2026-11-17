@@ -491,13 +491,18 @@ export function calculateStoreStockFromSheetRow(
 }
 
 /**
- * Converte Venda em KG para Peças usando o Peso Padrão da peça:
- * Ex.: "Padrão do dianteiro 45kg, venda informada 350kg -> 350 / 45 = 7,78 peças"
+ * Converte Venda em KG para Peças usando o Peso Padrão da peça com arredondamento padrão:
+ * Ex.: "Padrão do dianteiro 45kg, venda informada 153,63kg -> 153,63 / 45 = 3,41 -> 3 peças"
  */
-export function convertSalesKgToPieces(weightKg: number, standardWeightKg: number): number {
+export function convertSalesKgToPieces(
+  weightKg: number,
+  standardWeightKg: number,
+  roundToInteger: boolean = true
+): number {
   if (!Number.isFinite(weightKg) || weightKg <= 0) return 0;
   if (!Number.isFinite(standardWeightKg) || standardWeightKg <= 0) return 0;
-  return Number((weightKg / standardWeightKg).toFixed(2));
+  const raw = weightKg / standardWeightKg;
+  return roundToInteger ? Math.round(raw) : Number(raw.toFixed(2));
 }
 
 export function getSalesPiecesBreakdown(
@@ -505,16 +510,17 @@ export function getSalesPiecesBreakdown(
   standards: Record<SlaughterhouseCutCategory, SlaughterhouseCategoryStandard>
 ) {
   return {
-    dianteiroPecas: convertSalesKgToPieces(sales.dianteiroKg, standards.dianteiro.standardWeightKg),
-    traseiroPecas: convertSalesKgToPieces(sales.traseiroKg, standards.traseiro.standardWeightKg),
-    coxaoPecas: convertSalesKgToPieces(sales.coxaoKg, standards.coxao.standardWeightKg),
-    alcatraoPecas: convertSalesKgToPieces(sales.alcatraoKg, standards.alcatrao.standardWeightKg),
-    costelaPecas: convertSalesKgToPieces(sales.costelaKg, standards.costela.standardWeightKg),
+    dianteiroPecas: convertSalesKgToPieces(sales.dianteiroKg, standards.dianteiro.standardWeightKg, true),
+    traseiroPecas: convertSalesKgToPieces(sales.traseiroKg, standards.traseiro.standardWeightKg, true),
+    coxaoPecas: convertSalesKgToPieces(sales.coxaoKg, standards.coxao.standardWeightKg, true),
+    alcatraoPecas: convertSalesKgToPieces(sales.alcatraoKg, standards.alcatrao.standardWeightKg, true),
+    costelaPecas: convertSalesKgToPieces(sales.costelaKg, standards.costela.standardWeightKg, true),
   };
 }
 
 /**
- * Consolida os itens extraídos de um PDF de vendas pelas 5 categorias da Desossa.
+ * Consolida os itens extraídos de um PDF de vendas pelas 5 categorias da Desossa,
+ * arredondando os valores em KG e em Peças para maior precisão operacional.
  * Importante: na Desossa, Traseiro = Nobre (Alcatrão) + Coxão + Traseiro direto.
  */
 export function summarizePdfSalesByCategory(
@@ -540,25 +546,26 @@ export function summarizePdfSalesByCategory(
     sums[item.category].count += 1;
   }
 
-  const directTraseiroKg = Number(sums.traseiro.kg.toFixed(2));
-  const dianteiroKg = Number(sums.dianteiro.kg.toFixed(2));
-  const coxaoKg = Number(sums.coxao.kg.toFixed(2));
-  const alcatraoKg = Number(sums.alcatrao.kg.toFixed(2));
-  const costelaKg = Number(sums.costela.kg.toFixed(2));
+  const directTraseiroKg = Math.round(sums.traseiro.kg);
+  const dianteiroKg = Math.round(sums.dianteiro.kg);
+  const coxaoKg = Math.round(sums.coxao.kg);
+  const alcatraoKg = Math.round(sums.alcatrao.kg);
+  const costelaKg = Math.round(sums.costela.kg);
   // Traseiro combina Traseiro direto + Alcatrão (Nobre) + Coxão conforme Desossa
-  const combinedTraseiroKg = Number((directTraseiroKg + alcatraoKg + coxaoKg).toFixed(2));
+  const combinedTraseiroKg = Math.round(directTraseiroKg + alcatraoKg + coxaoKg);
 
   const buildSummary = (cat: SlaughterhouseCutCategory, totalKg: number, itemsCount: number): PdfSalesCategorySummary => {
     const stdW = standards[cat].standardWeightKg;
-    const exactPieces = convertSalesKgToPieces(totalKg, stdW);
+    const exactPieces = convertSalesKgToPieces(totalKg, stdW, false);
+    const roundedPieces = convertSalesKgToPieces(totalKg, stdW, true);
     return {
       category: cat,
       label: standards[cat].label,
       desossaGroup: standards[cat].desossaGroup,
       totalKg,
       standardWeightKg: stdW,
-      exactPieces,
-      roundedPieces: Math.round(exactPieces),
+      exactPieces: roundedPieces,
+      roundedPieces,
       itemsCount,
     };
   };
@@ -797,8 +804,8 @@ export function summarizePdfSalesByStore(
     if (!storeItems || storeItems.length === 0) continue;
     const { salesEntry } = summarizePdfSalesByCategory(storeItems, standards);
     const pieces = getSalesPiecesBreakdown(salesEntry, standards);
-    const totalKg = Number(
-      storeItems.reduce((acc, it) => acc + (Number(it.weightKg) || 0), 0).toFixed(2)
+    const totalKg = Math.round(
+      storeItems.reduce((acc, it) => acc + (Number(it.weightKg) || 0), 0)
     );
     storeSummaries.push({
       storeId: store.id,
@@ -816,8 +823,8 @@ export function summarizePdfSalesByStore(
   for (const [rawKey, group] of rawGrouped.entries()) {
     const { salesEntry } = summarizePdfSalesByCategory(group.items, standards);
     const pieces = getSalesPiecesBreakdown(salesEntry, standards);
-    const totalKg = Number(
-      group.items.reduce((acc, it) => acc + (Number(it.weightKg) || 0), 0).toFixed(2)
+    const totalKg = Math.round(
+      group.items.reduce((acc, it) => acc + (Number(it.weightKg) || 0), 0)
     );
     storeSummaries.push({
       storeId: rawKey,
@@ -1214,17 +1221,23 @@ export function buildSlaughterhouseReportRows(
     totals.stockAlcatraoPc += stock.alcatrao.pieces;
     totals.stockCostelaPc += stock.costela.pieces;
 
-    totals.salesDianteiroKg += sr.sales.dianteiroKg;
-    totals.salesTraseiroKg += sr.sales.traseiroKg;
-    totals.salesCoxaoKg += sr.sales.coxaoKg;
-    totals.salesAlcatraoKg += sr.sales.alcatraoKg;
-    totals.salesCostelaKg += sr.sales.costelaKg;
+    const sDiantKg = Math.round(Number(sr.sales.dianteiroKg) || 0);
+    const sTrasKg = Math.round(Number(sr.sales.traseiroKg) || 0);
+    const sCoxKg = Math.round(Number(sr.sales.coxaoKg) || 0);
+    const sAlcKg = Math.round(Number(sr.sales.alcatraoKg) || 0);
+    const sCostKg = Math.round(Number(sr.sales.costelaKg) || 0);
 
-    totals.salesDianteiroPc += salesPc.dianteiroPecas;
-    totals.salesTraseiroPc += salesPc.traseiroPecas;
-    totals.salesCoxaoPc += salesPc.coxaoPecas;
-    totals.salesAlcatraoPc += salesPc.alcatraoPecas;
-    totals.salesCostelaPc += salesPc.costelaPecas;
+    totals.salesDianteiroKg += sDiantKg;
+    totals.salesTraseiroKg += sTrasKg;
+    totals.salesCoxaoKg += sCoxKg;
+    totals.salesAlcatraoKg += sAlcKg;
+    totals.salesCostelaKg += sCostKg;
+
+    totals.salesDianteiroPc += Math.round(salesPc.dianteiroPecas);
+    totals.salesTraseiroPc += Math.round(salesPc.traseiroPecas);
+    totals.salesCoxaoPc += Math.round(salesPc.coxaoPecas);
+    totals.salesAlcatraoPc += Math.round(salesPc.alcatraoPecas);
+    totals.salesCostelaPc += Math.round(salesPc.costelaPecas);
 
     return {
       storeId: sr.storeId,
@@ -1242,16 +1255,16 @@ export function buildSlaughterhouseReportRows(
         costelaKg: stock.costela.kg,
       },
       sales: {
-        dianteiroKg: Number(sr.sales.dianteiroKg.toFixed(2)),
-        dianteiroPecas: salesPc.dianteiroPecas,
-        traseiroKg: Number(sr.sales.traseiroKg.toFixed(2)),
-        traseiroPecas: salesPc.traseiroPecas,
-        coxaoKg: Number(sr.sales.coxaoKg.toFixed(2)),
-        coxaoPecas: salesPc.coxaoPecas,
-        alcatraoKg: Number(sr.sales.alcatraoKg.toFixed(2)),
-        alcatraoPecas: salesPc.alcatraoPecas,
-        costelaKg: Number(sr.sales.costelaKg.toFixed(2)),
-        costelaPecas: salesPc.costelaPecas,
+        dianteiroKg: sDiantKg,
+        dianteiroPecas: Math.round(salesPc.dianteiroPecas),
+        traseiroKg: sTrasKg,
+        traseiroPecas: Math.round(salesPc.traseiroPecas),
+        coxaoKg: sCoxKg,
+        coxaoPecas: Math.round(salesPc.coxaoPecas),
+        alcatraoKg: sAlcKg,
+        alcatraoPecas: Math.round(salesPc.alcatraoPecas),
+        costelaKg: sCostKg,
+        costelaPecas: Math.round(salesPc.costelaPecas),
       },
       order: {
         pedidoDianteiro: pDiant,
