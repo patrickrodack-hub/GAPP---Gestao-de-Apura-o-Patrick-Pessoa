@@ -511,7 +511,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
         </div>
 
         {/* Ticker Badges Carousel */}
-        <div className="flex items-center gap-2.5 pt-2.5 overflow-x-auto no-scrollbar py-0.5">
+        <div className="flex items-center gap-2.5 pt-2.5 overflow-x-auto erp-scrollbar py-0.5 pb-2">
           {snapshot.indicators.map((ind) => (
             <div 
               key={ind.id} 
@@ -774,7 +774,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
       </div>
 
       {/* 4. ABAS DE NAVEGAÇÃO INTERNA DO MÓDULO */}
-      <div className="flex space-x-1.5 border-b border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar pb-1.5">
+      <div className="flex space-x-1.5 border-b border-slate-200 dark:border-slate-800 overflow-x-auto erp-scrollbar pb-2.5">
         {[
           { id: 'cepea', label: '🏛️ Cotação Oficial CEPEA', badge: 'TEMPO REAL', count: 18 },
           { id: 'foco_rj', label: '🌟 1. Hub Foco Rio de Janeiro', badge: 'DESTAQUE RJ' },
@@ -1328,7 +1328,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
               )}
             </div>
 
-            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">
+            <div className="flex items-center gap-1 overflow-x-auto erp-scrollbar pb-2">
               {[
                 { id: 'all', label: 'Todos os Cortes' },
                 { id: 'nobres', label: 'Traseiro Nobre' },
@@ -1398,7 +1398,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
               </div>
 
               {/* Filtros Regionais */}
-              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-1 overflow-x-auto erp-scrollbar pb-2">
                 {[
                   { id: 'all', label: 'Todas (19)' },
                   { id: 'RJ', label: '📍 Foco RJ (3)' },

@@ -533,13 +533,13 @@ export const SolidconHeader: React.FC<SolidconHeaderProps> = ({
 
         {/* 3. DESKTOP SHORTCUT TOOLBAR (Interactive Standardized Menu & Tool Boxes) */}
         <div 
-          className="h-10 sm:h-11 px-2 flex items-center justify-between border-b border-[#b0bec5] relative z-[100]"
+          className="min-h-[44px] py-1 px-2 flex items-center justify-between border-b border-[#b0bec5] relative z-[100]"
           style={{
             background: 'linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%)'
           }}
         >
           {/* Segmented Standardized Button Boxes */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto erp-scrollbar py-0.5 pb-1.5">
             
             {/* Box 1: Matriz & Gravação */}
             <div className="bg-[#d5dce4] p-0.5 rounded-md border border-[#b8c4d0] shadow-inner flex items-center gap-0.5 shrink-0">

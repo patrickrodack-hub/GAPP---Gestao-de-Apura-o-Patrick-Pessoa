@@ -369,7 +369,7 @@ export const EditPurchaseBatchModal: React.FC<EditPurchaseBatchModalProps> = ({
                 <span>Ajustar Quantidades Pedidas por Filial</span>
                 <span className="text-[10px] text-slate-500">16 Lojas</span>
               </div>
-              <div className="max-h-48 overflow-y-auto">
+              <div className="max-h-48 overflow-auto erp-scrollbar">
                 <table className="w-full text-[11px] border-collapse font-mono">
                   <thead className="bg-slate-50 dark:bg-slate-950 sticky top-0 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-500">
                     <tr>

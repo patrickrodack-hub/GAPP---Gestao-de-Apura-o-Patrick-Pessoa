@@ -122,7 +122,7 @@ export const ERPMenuDialogs: React.FC<ERPMenuDialogsProps> = ({
               Utilize os atalhos de teclado para navegação rápida entre os módulos do sistema:
             </p>
 
-            <div className="bg-white border border-slate-300 rounded overflow-hidden max-h-72 overflow-y-auto">
+            <div className="bg-white border border-slate-300 rounded max-h-72 overflow-auto erp-scrollbar">
               <table className="w-full text-left border-collapse text-[11px]">
                 <thead className="bg-slate-100 border-b border-slate-200 font-bold text-slate-700">
                   <tr>

@@ -2115,7 +2115,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto erp-scrollbar">
           <table className="w-full text-xs border-collapse">
             <thead>
               {/* Super Cabeçalho Agrupado */}
@@ -3330,7 +3330,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                         Você pode alterar a filial ou categoria de qualquer corte individualmente abaixo
                       </span>
                     </div>
-                    <div className="max-h-52 overflow-y-auto">
+                    <div className="max-h-52 overflow-auto erp-scrollbar">
                       <table className="w-full text-xs">
                         <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800/90 text-[10px] font-bold uppercase text-slate-600 dark:text-slate-300">
                           <tr>

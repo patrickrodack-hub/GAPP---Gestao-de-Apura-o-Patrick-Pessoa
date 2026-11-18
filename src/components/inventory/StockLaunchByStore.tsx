@@ -543,7 +543,7 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
         </div>
 
         {/* Store pills quick bar */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-3 mt-3 border-t border-slate-100 dark:border-slate-800/80">
+        <div className="flex items-center gap-1.5 overflow-x-auto erp-scrollbar pt-3 pb-2.5 mt-3 border-t border-slate-100 dark:border-slate-800/80">
           {stores.map((s, idx) => {
             const isCurr = s.id === selectedStoreId;
             const isLaunched = isStoreLaunched(s.id);
@@ -554,7 +554,7 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
                   if (draftRow) onUpdateRow(draftRow);
                   setSelectedStoreId(s.id);
                 }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-150 flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all duration-150 flex items-center gap-1.5 cursor-pointer ${
                   isCurr
                     ? `bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-md ring-2 ${isLaunched ? 'ring-emerald-500 dark:ring-emerald-400' : 'ring-white/90 dark:ring-amber-300'}`
                     : isLaunched

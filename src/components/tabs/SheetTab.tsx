@@ -742,7 +742,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
         onKeyDown={handleTableKeyDown}
         className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40"
       >
-        <div className="overflow-x-auto max-h-[72vh] relative outline-none">
+        <div className="overflow-auto max-h-[72vh] relative outline-none erp-scrollbar">
           <table className="w-full text-xs text-left border-collapse select-none">
             
             {/* Header Tier 1: Section Groups */}

@@ -507,7 +507,7 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
         </div>
 
         {/* Linha com as Sub-abas com visual ergonômico */}
-        <div className="flex space-x-1.5 overflow-x-auto no-scrollbar pt-3">
+        <div className="flex space-x-1.5 overflow-x-auto erp-scrollbar pt-3 pb-2.5">
           {PERISHABLE_CATEGORIES.map(cat => {
             const isActive = activeCategoryId === cat.id;
             const prodsInCat = products.filter(p => p.categoryId === cat.id).length;
@@ -708,7 +708,7 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
           </div>
 
           {/* Filtro por Meio de Publicação da Oferta (TV, Encarte, Clube, Lâmina, Redes) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+          <div className="flex items-center gap-1.5 overflow-x-auto erp-scrollbar py-1 pb-2">
             <span className="text-[10px] font-bold uppercase text-slate-400 mr-1 hidden sm:inline">
               Filtro Mídia:
             </span>

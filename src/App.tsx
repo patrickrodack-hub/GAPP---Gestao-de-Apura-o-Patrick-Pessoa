@@ -996,8 +996,8 @@ export default function App() {
                 </div>
 
                 {/* Window Sub-navigation bar inside ERP (FIXED) */}
-                <div className="shrink-0 bg-[#f1f5f9] border-b border-slate-300 px-3 py-1 flex items-center justify-between text-xs select-none">
-                  <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar py-0.5">
+                <div className="shrink-0 bg-[#f1f5f9] border-b border-slate-300 px-3 py-1 flex items-center justify-between gap-3 text-xs select-none">
+                  <div className="flex items-center space-x-1 overflow-x-auto erp-scrollbar py-0.5 pb-1.5 min-w-0">
                     {[
                       { id: 'sheet', label: 'Planilha v11.1' },
                       { id: 'dashboard', label: 'Dashboard' },
@@ -1032,7 +1032,7 @@ export default function App() {
                 </div>
 
                 {/* Window Body (Scrollable Tab Content strictly inside the window) */}
-                <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 bg-slate-50">
+                <div className="flex-1 min-h-0 overflow-auto p-3 sm:p-4 bg-slate-50">
                   {activeTab === 'dashboard' && (
                     <DashboardTab
                       rows={sheetRows}
@@ -1382,7 +1382,7 @@ export default function App() {
               />
             </div>
 
-            <main className="flex-1 min-h-0 overflow-y-auto w-full px-4 sm:px-6 py-5">
+            <main className="flex-1 min-h-0 overflow-auto w-full px-4 sm:px-6 py-5">
               <div className="max-w-[1920px] mx-auto pb-4">
                 {activeTab === 'dashboard' && (
                   <GappNewDashboardView
@@ -1581,7 +1581,7 @@ export default function App() {
           </div>
 
           {/* Content Body (ONLY THIS AREA SCROLLS, AUTO-ADJUSTS TO WINDOW RESIZE) */}
-          <main className="flex-1 min-h-0 overflow-y-auto w-full px-3 sm:px-6 py-4">
+          <main className="flex-1 min-h-0 overflow-auto w-full px-3 sm:px-6 py-4">
             <div className="max-w-[1920px] mx-auto pb-4">
               {activeTab === 'dashboard' && (
                 <DashboardTab

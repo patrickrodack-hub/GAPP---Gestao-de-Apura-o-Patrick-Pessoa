@@ -459,7 +459,7 @@ export const PortalLogin: React.FC<PortalLoginProps> = ({
             <span className="text-[10px] uppercase font-bold text-slate-400 block mb-2">
               Ou toque rápido para selecionar sua filial:
             </span>
-            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto no-scrollbar py-0.5">
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto erp-scrollbar py-0.5 pr-1.5">
               {stores.slice(0, 10).map((s) => (
                 <button
                   key={s.id}

@@ -304,7 +304,7 @@ export const ProductManagementModal: React.FC<ProductManagementModalProps> = ({
 
         {/* Product Table */}
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xs">
+          <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto erp-scrollbar shadow-2xs">
             <table className="w-full text-xs text-left border-collapse">
               <thead className="bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-800 font-semibold">
                 <tr>

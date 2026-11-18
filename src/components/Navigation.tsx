@@ -71,7 +71,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   return (
     <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors">
       <div className="max-w-[1920px] mx-auto px-4 sm:px-6 flex items-center">
-        <nav className="flex space-x-1 overflow-x-auto py-2.5 no-scrollbar w-full" aria-label="Tabs">
+        <nav className="flex space-x-1 overflow-x-auto pt-2.5 pb-3 erp-scrollbar w-full" aria-label="Tabs">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

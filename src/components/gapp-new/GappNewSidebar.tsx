@@ -148,8 +148,8 @@ export const GappNewSidebar: React.FC<GappNewSidebarProps> = ({
         {/* Top Brand + Greeting + Navigation */}
         <div
           className={`${
-            collapsed ? 'px-2.5 py-4' : 'p-5'
-          } flex-1 min-h-0 flex flex-col overflow-y-auto no-scrollbar`}
+            collapsed ? 'px-2 py-4' : 'p-5 pr-3.5'
+          } flex-1 min-h-0 flex flex-col overflow-y-auto erp-scrollbar`}
         >
           {/* 1. Brand Header */}
           <div

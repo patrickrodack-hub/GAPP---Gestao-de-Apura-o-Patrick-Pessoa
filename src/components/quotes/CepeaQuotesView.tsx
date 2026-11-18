@@ -657,7 +657,7 @@ export const CepeaQuotesView: React.FC<CepeaQuotesViewProps> = ({
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-2">
         
         {/* Abas */}
-        <div className="flex space-x-1.5 overflow-x-auto no-scrollbar pb-1">
+        <div className="flex space-x-1.5 overflow-x-auto erp-scrollbar pb-2.5">
           {[
             { id: 'bovino', label: '🐂 Bovinos CEPEA', badge: 'Principal' },
             { id: 'suino', label: '🐖 Suínos CEPEA', badge: 'Destaque' },

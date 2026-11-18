@@ -211,7 +211,7 @@ export const DiscrepancyAuditModal: React.FC<DiscrepancyAuditModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                  <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto erp-scrollbar shadow-sm">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead className="bg-[#113829] text-white font-bold text-[11px]">
                         <tr>
