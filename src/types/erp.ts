@@ -60,6 +60,7 @@ export interface SheetRowData {
   pedidoCostelaGaucha: number;     // Costela G. Estoque / Câmara
   pedidoCostelaReal?: number;      // PEDIDO COSTELA (Quantidade pedida pela filial)
   venda?: number;              // Venda projetada / giro da filial (alias de boiAVenda)
+  vendaReportQtyKg?: number;   // Total QTDE (kg) importado do relatório de vendas para recálculo dinâmico por Desossa (Carcaça / Meia Carcaça)
   boiAVenda: number;           // Mantido para compatibilidade total
   boi?: number;                // Somatório: (dianteiro + traseiro + coxão + alcatrão) / 2
   sugestaoPedido: number;      // Fórmula: venda - boi

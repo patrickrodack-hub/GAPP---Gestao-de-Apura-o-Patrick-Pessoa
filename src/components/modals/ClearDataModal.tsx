@@ -75,6 +75,7 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({
           pedidoAlcatrao: 0,
           pedidoCostelaGaucha: 0,
           venda: 0,
+          vendaReportQtyKg: 0,
           boiAVenda: 0,
           boi: 0,
           sugestaoPedido: 0,
@@ -157,6 +158,7 @@ export const ClearDataModal: React.FC<ClearDataModalProps> = ({
           r.pedidoAlcatrao = 0;
           r.pedidoCostelaGaucha = 0;
           r.venda = 0;
+          r.vendaReportQtyKg = 0;
           r.boiAVenda = 0;
           r.pedidoFinal = 0;
           r.pTransito = 0;

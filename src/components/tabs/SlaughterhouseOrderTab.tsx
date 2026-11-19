@@ -1498,10 +1498,13 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
           stores.map((s) => ({ id: s.id, code: s.code, name: s.name, city: s.city })),
           effectiveDesossaCarcassDivisor
         );
-        const vendaByStoreId = new Map<string, number>();
+        const vendaByStoreId = new Map<string, { roundedVenda: number; totalQtyKg: number }>();
         for (const res of resolvedSheetVendas) {
           if (res.storeId) {
-            vendaByStoreId.set(res.storeId, res.roundedVenda);
+            vendaByStoreId.set(res.storeId, {
+              roundedVenda: res.roundedVenda,
+              totalQtyKg: Number(res.totalQtyKg.toFixed(2)),
+            });
           }
         }
         // Garante cobertura caso algum storeSummary não estivesse em resolvedSheetVendas
@@ -1511,23 +1514,33 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
               s.totalKg,
               effectiveDesossaCarcassDivisor
             );
-            vendaByStoreId.set(s.storeId, roundedVenda);
+            vendaByStoreId.set(s.storeId, {
+              roundedVenda,
+              totalQtyKg: Number(s.totalKg.toFixed(2)),
+            });
           }
         }
 
         const updatedSheetRows = sheetRows.map((row) => {
-          const calcVenda = vendaByStoreId.get(row.storeId);
-          if (calcVenda !== undefined) {
+          const calc = vendaByStoreId.get(row.storeId);
+          if (calc !== undefined) {
             syncedSheetVendaCount += 1;
             return recalculateRowOrderFormulas(
-              { ...row, venda: calcVenda, boiAVenda: calcVenda },
-              cutWeights
+              {
+                ...row,
+                vendaReportQtyKg: calc.totalQtyKg,
+                venda: calc.roundedVenda,
+                boiAVenda: calc.roundedVenda,
+              },
+              cutWeights,
+              effectiveDesossaCarcassDivisor
             );
           }
           if (clearAbsentStores) {
             return recalculateRowOrderFormulas(
-              { ...row, venda: 0, boiAVenda: 0 },
-              cutWeights
+              { ...row, vendaReportQtyKg: 0, venda: 0, boiAVenda: 0 },
+              cutWeights,
+              effectiveDesossaCarcassDivisor
             );
           }
           return row;
@@ -1615,22 +1628,26 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
       const updatedSheetRows = sheetRows.map((row) => {
         if (applyTargetMode === 'single') {
           if (row.storeId !== applyTargetStoreId) return row;
+          const qtyKg = Number(totalReportQtyKg.toFixed(2));
           const { roundedVenda } = calculateSheetVendaFromReportQty(
-            totalReportQtyKg,
+            qtyKg,
             effectiveDesossaCarcassDivisor
           );
           return recalculateRowOrderFormulas(
-            { ...row, venda: roundedVenda, boiAVenda: roundedVenda },
-            cutWeights
+            { ...row, vendaReportQtyKg: qtyKg, venda: roundedVenda, boiAVenda: roundedVenda },
+            cutWeights,
+            effectiveDesossaCarcassDivisor
           );
         }
+        const qtyPerStoreKg = Number((totalReportQtyKg / count).toFixed(2));
         const { roundedVenda } = calculateSheetVendaFromReportQty(
-          totalReportQtyKg / count,
+          qtyPerStoreKg,
           effectiveDesossaCarcassDivisor
         );
         return recalculateRowOrderFormulas(
-          { ...row, venda: roundedVenda, boiAVenda: roundedVenda },
-          cutWeights
+          { ...row, vendaReportQtyKg: qtyPerStoreKg, venda: roundedVenda, boiAVenda: roundedVenda },
+          cutWeights,
+          effectiveDesossaCarcassDivisor
         );
       });
       onUpdateSheetRows(updatedSheetRows);

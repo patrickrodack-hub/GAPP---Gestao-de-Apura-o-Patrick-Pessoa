@@ -217,6 +217,43 @@ export const SheetTab: React.FC<SheetTabProps> = ({
     return getCutYieldWeightsFromSimulation(technicalCarcassWeight, yieldBasis);
   }, [technicalCarcassWeight, yieldBasis]);
 
+  const prevDivisorRef = useRef<number>(effectiveDesossaCarcassWeight);
+
+  const recalculateRowsWithDesossaDivisor = useCallback(
+    (
+      sourceRows: SheetRowData[],
+      cutWeights: CutYieldWeights,
+      prevDivisor: number,
+      nextDivisor: number
+    ): SheetRowData[] => {
+      const safePrev = Math.max(1, prevDivisor);
+      const safeNext = Math.max(1, nextDivisor);
+
+      return sourceRows.map((row) => {
+        const currentVenda = Math.round(
+          Number(row.venda !== undefined ? row.venda : row.boiAVenda) || 0
+        );
+        let nextRow = row;
+
+        // Se a linha já tiver venda lançada mas ainda não possuir vendaReportQtyKg gravado (ex.: importação anterior ou edição manual),
+        // reconstrói o peso base proporcional antes de dividir pelo novo padrão de Desossa para manter ida e volta exatas.
+        if (
+          safePrev !== safeNext &&
+          (!row.vendaReportQtyKg || row.vendaReportQtyKg <= 0) &&
+          currentVenda > 0
+        ) {
+          nextRow = {
+            ...row,
+            vendaReportQtyKg: Number((currentVenda * safePrev).toFixed(2)),
+          };
+        }
+
+        return recalculateRowOrderFormulas(nextRow, cutWeights, safeNext);
+      });
+    },
+    []
+  );
+
   const handleApplyImportedStoreSales = useCallback(
     (
       storeVendaMap: Record<string, { venda: number; totalQtyKg: number; exactBois: number }>,
@@ -227,24 +264,29 @@ export const SheetTab: React.FC<SheetTabProps> = ({
         const entry = storeVendaMap[row.storeId];
         if (entry) {
           updatedCount += 1;
+          const baseQtyKg = Number(Number(entry.totalQtyKg || 0).toFixed(2));
           const rounded = Math.round(entry.venda);
           return recalculateRowOrderFormulas(
             {
               ...row,
+              vendaReportQtyKg: baseQtyKg,
               venda: rounded,
               boiAVenda: rounded,
             },
-            currentCutWeights
+            currentCutWeights,
+            effectiveDesossaCarcassWeight
           );
         }
         if (options.clearAbsentStores) {
           return recalculateRowOrderFormulas(
             {
               ...row,
+              vendaReportQtyKg: 0,
               venda: 0,
               boiAVenda: 0,
             },
-            currentCutWeights
+            currentCutWeights,
+            effectiveDesossaCarcassWeight
           );
         }
         return row;
@@ -272,6 +314,13 @@ export const SheetTab: React.FC<SheetTabProps> = ({
 
   const handleToggleYieldBasis = () => {
     const nextBasis: 'carcass' | 'piece' = yieldBasis === 'carcass' ? 'piece' : 'carcass';
+    const prevDivisor = effectiveDesossaCarcassWeight;
+    const nextDivisor =
+      nextBasis === 'carcass'
+        ? Math.max(1, technicalCarcassWeight)
+        : Math.max(1, Math.round(technicalCarcassWeight / 2));
+
+    prevDivisorRef.current = nextDivisor;
     setYieldBasis(nextBasis);
     const newWeights = getCutYieldWeightsFromSimulation(technicalCarcassWeight, nextBasis);
     const currentParams = yieldParams || StorageService.getYieldParams();
@@ -280,27 +329,34 @@ export const SheetTab: React.FC<SheetTabProps> = ({
     if (onUpdateYieldParams) {
       onUpdateYieldParams(updatedParams);
     }
-    const updated = rows.map(r => recalculateRowOrderFormulas(r, newWeights));
+    const updated = recalculateRowsWithDesossaDivisor(rows, newWeights, prevDivisor, nextDivisor);
     onUpdateMultiple(updated);
   };
 
-  // Quando o peso da carcaça do módulo de Rendimento mudar, sincroniza os cálculos na planilha
+  // Quando o peso da carcaça ou a base (Carcaça / Meia Carcaça) do módulo de Rendimento mudar, sincroniza todos os cálculos na planilha (incluindo VENDA e SUGESTÃO)
   useEffect(() => {
+    const prevDivisor = prevDivisorRef.current;
+    const nextDivisor = effectiveDesossaCarcassWeight;
+    prevDivisorRef.current = nextDivisor;
+
     const newWeights = getCutYieldWeightsFromSimulation(technicalCarcassWeight, yieldBasis);
-    const updated = rows.map(r => recalculateRowOrderFormulas(r, newWeights));
+    const updated = recalculateRowsWithDesossaDivisor(rows, newWeights, prevDivisor, nextDivisor);
     const hasChanged = updated.some((row, idx) => {
       const orig = rows[idx];
       return orig && (
         orig.totalAlcatrao !== row.totalAlcatrao ||
         orig.totalDianteiro !== row.totalDianteiro ||
         orig.totalCoxao !== row.totalCoxao ||
-        orig.boi !== row.boi
+        orig.boi !== row.boi ||
+        orig.venda !== row.venda ||
+        orig.sugestaoPedido !== row.sugestaoPedido ||
+        orig.vendaReportQtyKg !== row.vendaReportQtyKg
       );
     });
     if (hasChanged) {
       onUpdateMultiple(updated);
     }
-  }, [technicalCarcassWeight, yieldBasis]);
+  }, [technicalCarcassWeight, yieldBasis, effectiveDesossaCarcassWeight]);
 
   // Custos Negociados de Compra (Alcatrão, Costela G, Banda Suína e Boi Quarto)
   const [alcatraoCost, setAlcatraoCost] = useState<number>(() => {
@@ -374,6 +430,14 @@ export const SheetTab: React.FC<SheetTabProps> = ({
     } else if (col.field === 'fileMignon' || col.field === 'fileMignonPecas') {
       updated.fileMignon = validNum;
       updated.fileMignonPecas = validNum;
+    } else if (col.field === 'venda' || col.field === 'boiAVenda') {
+      const roundedVenda = Math.round(validNum);
+      updated.venda = roundedVenda;
+      updated.boiAVenda = roundedVenda;
+      updated.vendaReportQtyKg =
+        roundedVenda > 0
+          ? Number((roundedVenda * effectiveDesossaCarcassWeight).toFixed(2))
+          : 0;
     } else if (col.field === 'bandaVenda' || col.field === 'vendaSuino') {
       updated.bandaVenda = validNum;
       updated.vendaSuino = validNum;
@@ -389,7 +453,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
 
     updated = recalculateRowOrderFormulas(updated, currentCutWeights);
     onUpdateRow(updated);
-  }, [filteredRows, currentCutWeights, onUpdateRow]);
+  }, [filteredRows, currentCutWeights, onUpdateRow, effectiveDesossaCarcassWeight]);
 
   // Select a cell and optionally enter edit mode
   const selectCell = useCallback((
@@ -576,7 +640,9 @@ export const SheetTab: React.FC<SheetTabProps> = ({
 
   // Recalcular com base nas regras operacionais da Direção
   const handleRecalculateSuggestions = () => {
-    const updated = rows.map(r => recalculateRowOrderFormulas(r, currentCutWeights));
+    const updated = rows.map(r =>
+      recalculateRowOrderFormulas(r, currentCutWeights, effectiveDesossaCarcassWeight)
+    );
     onUpdateMultiple(updated);
   };
 
@@ -1135,7 +1201,15 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                     })()}
 
                     {/* Venda */}
-                    {renderCell(row, idx, 'venda', 'text-amber-700 dark:text-amber-400 font-bold')}
+                    {renderCell(
+                      row,
+                      idx,
+                      'venda',
+                      'text-amber-700 dark:text-amber-400 font-bold',
+                      row.vendaReportQtyKg && row.vendaReportQtyKg > 0
+                        ? `Venda = QTDE (${row.vendaReportQtyKg.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg) ÷ Desossa ${yieldBasis === 'carcass' ? 'Carcaça' : 'Meia Carcaça'} (${effectiveDesossaCarcassWeight} kg) = ${(row.vendaReportQtyKg / effectiveDesossaCarcassWeight).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} → ${row.venda ?? row.boiAVenda}`
+                        : `Venda (Desossa ${yieldBasis === 'carcass' ? 'Carcaça' : 'Meia Carcaça'} ${effectiveDesossaCarcassWeight}kg)`
+                    )}
 
                     {/* Sugestão = Venda - Boi */}
                     <td 

@@ -267,7 +267,8 @@ export function getCutYieldWeightsFromSimulation(
  */
 export function recalculateRowOrderFormulas(
   row: SheetRowData, 
-  cutWeights: CutYieldWeights = DEFAULT_CUT_YIELD_WEIGHTS
+  cutWeights: CutYieldWeights = DEFAULT_CUT_YIELD_WEIGHTS,
+  desossaCarcassDivisor?: number
 ): SheetRowData {
   // 1. --- BALCAO / CAMARA / DESOSSA (NOBRES / ALCATRÃO) ---
   const fileMignonPecas = Number(
@@ -355,8 +356,16 @@ export function recalculateRowOrderFormulas(
   // Coluna Boi: somatório de (dianteiro + traseiro + coxão + alcatrão) dividido por 2
   const boi = Math.round((pedidoDianteiro + pedidoTraseiro + pedidoCoxao + pedidoAlcatrao) / 2);
   
+  // Coluna Venda: se houver QTDE base do relatório e divisor de Desossa ativo, recalcula dinamicamente (QTDE ÷ Desossa Carcaça) arredondado
+  const hasReportQtyBase =
+    typeof desossaCarcassDivisor === 'number' &&
+    desossaCarcassDivisor > 0 &&
+    typeof row.vendaReportQtyKg === 'number' &&
+    row.vendaReportQtyKg > 0;
+  const venda = hasReportQtyBase
+    ? Math.round(row.vendaReportQtyKg! / desossaCarcassDivisor!)
+    : Math.round(Number(row.venda !== undefined ? row.venda : row.boiAVenda) || 0);
   // Coluna Sugestão: (venda – boi)
-  const venda = Math.round(Number(row.venda !== undefined ? row.venda : row.boiAVenda) || 0);
   const sugestaoPedido = Math.round(venda - boi);
 
   // Coluna "Pedido" para o usuário adicionar a quantidade pedida (assume a quantidade real lançada)
