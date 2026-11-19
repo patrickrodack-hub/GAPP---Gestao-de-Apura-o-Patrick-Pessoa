@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { SheetRowData, Store } from '../../types/erp';
 import { 
   recalculateRowOrderFormulas, 
-  DEFAULT_CUT_YIELD_WEIGHTS,
-  HALF_CARCASS_CUT_YIELD_WEIGHTS,
+  getCutYieldWeightsFromSimulation,
+  getEffectiveDesossaCarcassWeight,
   CutYieldWeights,
   formatNumberBR
 } from '../../services/calculationService';
@@ -75,9 +75,15 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
   }, []);
 
   const yieldParams = StorageService.getYieldParams();
-  const currentWeights: CutYieldWeights = yieldParams.basis === 'piece' 
-    ? HALF_CARCASS_CUT_YIELD_WEIGHTS 
-    : DEFAULT_CUT_YIELD_WEIGHTS;
+  const currentWeights: CutYieldWeights = getCutYieldWeightsFromSimulation(
+    yieldParams.carcassWeight,
+    yieldParams.basis || 'carcass',
+    yieldParams
+  );
+  const currentDivisor = getEffectiveDesossaCarcassWeight(
+    yieldParams.carcassWeight,
+    yieldParams.basis || 'carcass'
+  );
 
   // Verifica de forma robusta se a filial possui dados de estoque lançados na planilha
   const isStoreLaunched = (storeId: string): boolean => {
@@ -104,7 +110,7 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
   useEffect(() => {
     const row = rows.find(r => r.storeId === selectedStoreId);
     if (row) {
-      const recalculated = recalculateRowOrderFormulas({ ...row }, currentWeights);
+      const recalculated = recalculateRowOrderFormulas({ ...row }, currentWeights, currentDivisor);
       setDraftRow(prev => {
         if (prev && prev.storeId === selectedStoreId && JSON.stringify(prev) === JSON.stringify(recalculated)) {
           return prev;
@@ -123,13 +129,13 @@ export const StockLaunchByStore: React.FC<StockLaunchByStoreProps> = ({
     const updated = recalculateRowOrderFormulas({
       ...draftRow,
       [field]: val
-    }, currentWeights);
+    }, currentWeights, currentDivisor);
     setDraftRow(updated);
   };
 
   const handleSave = () => {
     if (!draftRow || !selectedStore) return;
-    const finalRow = recalculateRowOrderFormulas(draftRow, currentWeights);
+    const finalRow = recalculateRowOrderFormulas(draftRow, currentWeights, currentDivisor);
     
     // 1. Atualiza e mantém na Planilha de Compras Oficial
     onUpdateRow(finalRow);

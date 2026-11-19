@@ -1,4 +1,4 @@
-import { SheetRowData, Product, YieldAnalysisCuts, PrimaryDesmembramentoMesa } from '../types/erp';
+import { SheetRowData, Product, YieldAnalysisCuts, PrimaryDesmembramentoMesa, YieldParams } from '../types/erp';
 import { INITIAL_PRODUCTS } from '../data/initialData';
 
 export interface ColumnTotals {
@@ -204,31 +204,240 @@ export const HALF_CARCASS_CUT_YIELD_WEIGHTS: CutYieldWeights = {
   contraFile: 9.00,
 };
 
-export function getCutYieldWeightsFromSimulation(
-  carcassWeightKg: number = 240, 
+/**
+ * Retorna exatamente o peso ativo exibido em "Desossa: Carcaça XXkg" ou "Desossa: Meia Carcaça XXkg"
+ * para que todos os cálculos da planilha respeitem 100% o valor informado nesse campo.
+ */
+export function getEffectiveDesossaCarcassWeight(
+  carcassWeightKg: number = 240,
   basis: 'carcass' | 'piece' = 'carcass'
+): number {
+  const raw = Number(carcassWeightKg);
+  const safeCarcass = Number.isFinite(raw) && raw > 0 ? raw : 240;
+  return basis === 'piece'
+    ? Math.max(1, Math.round(safeCarcass / 2))
+    : Math.max(1, Number(safeCarcass.toFixed(2)));
+}
+
+export function getCutYieldWeightsFromSimulation(
+  carcassWeightKg: number = 240,
+  basis: 'carcass' | 'piece' = 'carcass',
+  yieldParams?: Partial<YieldParams> | null,
+  productsCatalog?: Product[]
 ): CutYieldWeights {
-  const effectiveWeight = basis === 'piece' ? carcassWeightKg / 2 : carcassWeightKg;
-  const sim = simulateBeefYield(effectiveWeight, 26.00);
-  
-  const getWeight = (nameKeyword: string, fallback: number): number => {
-    const cut = sim.cuts.find(c => c.name.toLowerCase().includes(nameKeyword.toLowerCase()));
-    return cut ? Number(cut.weightKg.toFixed(2)) : fallback;
+  const effectiveWeight = getEffectiveDesossaCarcassWeight(carcassWeightKg, basis);
+  const realYield = calculateRealBeefYield(
+    effectiveWeight,
+    yieldParams?.costPerKg && yieldParams.costPerKg > 0 ? yieldParams.costPerKg : 26.00,
+    productsCatalog,
+    yieldParams?.fatPriceKg ?? 4.85,
+    yieldParams?.bonePriceKg ?? 0.90,
+    yieldParams?.targetMargin ?? 28,
+    yieldParams?.breakagePercent ?? 25.0,
+    yieldParams?.costFormationMode ?? 'VAREJO_PADRAO',
+    yieldParams?.mesaCarcassPercents,
+    yieldParams?.mesaCostFactors,
+    yieldParams?.mesaProfitMargins
+  );
+
+  const getWeight = (nameKeyword: string, fallbackPct: number): number => {
+    const cut = realYield.cuts.find(
+      c => !c.isPrimaryPiece && c.name.toLowerCase().includes(nameKeyword.toLowerCase())
+    );
+    return cut
+      ? Number(cut.weightKg.toFixed(2))
+      : Number(((fallbackPct / 100) * effectiveWeight).toFixed(2));
   };
 
   return {
-    paleta: getWeight('Paleta', 22.80),
-    acem: getWeight('Acém', 28.80),
-    peito: getWeight('Peito', 14.88),
-    musculo: getWeight('Músculo', 11.52),
-    cha: getWeight('Chã', 21.12),
-    patinho: getWeight('Patinho', 16.56),
-    lagartoRedondo: getWeight('Lagarto Redondo', 7.68),
-    lagartoPlano: getWeight('Lagarto Plano', 13.44),
-    fileMignon: getWeight('Filé Mignon', 4.56),
-    picanha: getWeight('Picanha', 3.84),
-    alcatra: getWeight('Alcatra', 16.32),
-    contraFile: getWeight('Contra Filé', 18.00),
+    paleta: getWeight('Paleta', 9.5),
+    acem: getWeight('Acém', 12.0),
+    peito: getWeight('Peito', 6.2),
+    musculo: getWeight('Músculo', 4.8),
+    cha: getWeight('Chã', 8.8),
+    patinho: getWeight('Patinho', 6.9),
+    lagartoRedondo: getWeight('Lagarto Redondo', 3.2),
+    lagartoPlano: getWeight('Lagarto Plano', 5.6),
+    fileMignon: getWeight('Filé Mignon', 1.9),
+    picanha: getWeight('Picanha', 1.6),
+    alcatra: getWeight('Alcatra', 6.8),
+    contraFile: getWeight('Contra Filé', 7.5),
+  };
+}
+
+/**
+ * Recalcula todas as linhas da Planilha de Compras quando o peso ou base de Desossa é alterado,
+ * garantindo que VENDA, Dianteiro, Coxão, Alcatrão, Boi e Sugestão respeitem sempre o valor informado.
+ */
+export function recalculateRowsForDesossaChange(
+  sourceRows: SheetRowData[],
+  prevDivisor: number,
+  nextDivisor: number,
+  cutWeights: CutYieldWeights
+): SheetRowData[] {
+  const safePrev = Math.max(1, Number(prevDivisor) || 1);
+  const safeNext = Math.max(1, Number(nextDivisor) || 1);
+
+  return sourceRows.map((row) => {
+    const currentVenda = Math.round(
+      Number(row.venda !== undefined ? row.venda : row.boiAVenda) || 0
+    );
+    let nextRow = row;
+
+    if (
+      safePrev !== safeNext &&
+      (!row.vendaReportQtyKg || row.vendaReportQtyKg <= 0) &&
+      currentVenda > 0
+    ) {
+      nextRow = {
+        ...row,
+        vendaReportQtyKg: Number((currentVenda * safePrev).toFixed(2)),
+      };
+    }
+
+    return recalculateRowOrderFormulas(nextRow, cutWeights, safeNext);
+  });
+}
+
+export interface SheetFooterRealMetrics {
+  effectiveDesossaWeight: number;
+  basis: 'carcass' | 'piece';
+  dianteiroPieceKg: number;
+  traseiroPieceKg: number;
+  coxaoPieceKg: number;
+  alcatraoPieceKg: number;
+  costelaPieceKg: number;
+  camaraDianteiroKg: number;
+  camaraTraseiroKg: number;
+  camaraCoxaoKg: number;
+  camaraAlcatraoKg: number;
+  camaraCostelaGauchaKg: number;
+  pedidoDianteiroKg: number;
+  pedidoTraseiroKg: number;
+  pedidoCoxaoKg: number;
+  pedidoAlcatraoKg: number;
+  pedidoAlcatraoRealKg: number;
+  pedidoCostelaGauchaKg: number;
+  pedidoCostelaRealKg: number;
+  costelaCongKg: number;
+  boiKg: number;
+  vendaKg: number;
+  sugestaoPedidoKg: number;
+  pedidoFinalKg: number;
+  pTransitoKg: number;
+  bandaPedidoKg: number;
+  totalOrderKg: number;
+  totalGeralR$: number;
+  boiCostKg: number;
+}
+
+/**
+ * Calcula todos os totais reais em KG e R$ do rodapé da Planilha de Compras
+ * respeitando estritamente o peso informado em "Desossa: Carcaça / Meia Carcaça" e os custos reais do ERP.
+ */
+export function calculateSheetFooterRealMetrics(
+  rows: SheetRowData[],
+  totals: ColumnTotals,
+  yieldParams?: Partial<YieldParams> | null,
+  basisOverride?: 'carcass' | 'piece'
+): SheetFooterRealMetrics {
+  const basis: 'carcass' | 'piece' = basisOverride || yieldParams?.basis || 'carcass';
+  const effectiveDesossaWeight = getEffectiveDesossaCarcassWeight(
+    yieldParams?.carcassWeight ?? 240,
+    basis
+  );
+
+  const mesaPercents = {
+    ...DEFAULT_MESA_CARCASS_PERCENTS,
+    ...(yieldParams?.mesaCarcassPercents || {}),
+  };
+
+  const dianteiroPieceKg = Number((effectiveDesossaWeight * ((mesaPercents['BOI-DIANT'] ?? 39.0) / 100)).toFixed(2));
+  const traseiroPieceKg = Number((effectiveDesossaWeight * ((mesaPercents['BOI-TRAS'] ?? 48.0) / 100)).toFixed(2));
+  const coxaoPieceKg = Number((effectiveDesossaWeight * ((mesaPercents['BOI-COXAO'] ?? 30.0) / 100)).toFixed(2));
+  const alcatraoPieceKg = Number((effectiveDesossaWeight * ((mesaPercents['BOI-ALCAT'] ?? 18.0) / 100)).toFixed(2));
+  const costelaPieceKg = Number((effectiveDesossaWeight * ((mesaPercents['BOI-COST-GAU'] ?? 13.0) / 100)).toFixed(2));
+
+  const camaraDianteiroKg = Math.round(totals.camaraDianteiro * dianteiroPieceKg);
+  const camaraTraseiroKg = Math.round(totals.camaraTraseiro * traseiroPieceKg);
+  const camaraCoxaoKg = Math.round(totals.camaraCoxao * coxaoPieceKg);
+  const camaraAlcatraoKg = Math.round(totals.camaraAlcatrao * alcatraoPieceKg);
+  const camaraCostelaGauchaKg = Math.round(totals.camaraCostelaGaucha * costelaPieceKg);
+
+  const debonedDianteiroKg = Math.round(totals.paletaKg + totals.acemKg + totals.peitoKg + totals.musculoKg);
+  const debonedCoxaoKg = Math.round(totals.chaKg + totals.patinhoKg + totals.lagartoRedondoKg + totals.lagartoPlanoKg);
+  const debonedAlcatraoKg = Math.round(totals.alcatraKg + totals.contraFileKg + totals.picanhaKg + totals.fileMignonKg);
+
+  const pedidoDianteiroKg = camaraDianteiroKg + debonedDianteiroKg;
+  const pedidoTraseiroKg = camaraTraseiroKg;
+  const pedidoCoxaoKg = camaraCoxaoKg + debonedCoxaoKg;
+  const pedidoAlcatraoKg = camaraAlcatraoKg + debonedAlcatraoKg;
+  const pedidoCostelaGauchaKg = camaraCostelaGauchaKg;
+
+  const pedidoAlcatraoRealKg = Math.round((totals.pedidoAlcatraoReal || 0) * alcatraoPieceKg);
+  const pedidoCostelaRealKg = Math.round((totals.pedidoCostelaReal || 0) * costelaPieceKg);
+  const costelaCongKg = Math.round((totals.costelaCong || 0) * costelaPieceKg);
+
+  const boiKg = Math.round(totals.boi * effectiveDesossaWeight);
+  const vendaKg = Math.round(
+    rows.reduce((sum, r) => {
+      if (typeof r.vendaReportQtyKg === 'number' && r.vendaReportQtyKg > 0) {
+        return sum + r.vendaReportQtyKg;
+      }
+      const rowVenda = Number(r.venda !== undefined ? r.venda : r.boiAVenda) || 0;
+      return sum + rowVenda * effectiveDesossaWeight;
+    }, 0)
+  );
+  const sugestaoPedidoKg = Math.round(totals.sugestaoPedido * effectiveDesossaWeight);
+  const pedidoFinalKg = Math.round(totals.pedidoFinal * effectiveDesossaWeight);
+  const pTransitoKg = Math.round(totals.pTransito * effectiveDesossaWeight);
+  const bandaPedidoKg = Math.round((totals.bandaPedido || 0) * 36);
+
+  const boiCostKg = yieldParams?.costPerKg && yieldParams.costPerKg > 0 ? yieldParams.costPerKg : 26.00;
+  const alcatraoCostKg = yieldParams?.alcatraoCostKg && yieldParams.alcatraoCostKg > 0 ? yieldParams.alcatraoCostKg : 29.00;
+  const costelaCostKg = yieldParams?.costelaCostKg && yieldParams.costelaCostKg > 0 ? yieldParams.costelaCostKg : 25.50;
+  const bandaCostKg = yieldParams?.bandaCostKg && yieldParams.bandaCostKg > 0 ? yieldParams.bandaCostKg : 26.00;
+
+  const totalOrderKg = pedidoFinalKg + pedidoAlcatraoRealKg + pedidoCostelaRealKg + bandaPedidoKg;
+  const totalGeralR$ = Number(
+    (
+      pedidoFinalKg * boiCostKg +
+      pedidoAlcatraoRealKg * alcatraoCostKg +
+      pedidoCostelaRealKg * costelaCostKg +
+      bandaPedidoKg * bandaCostKg
+    ).toFixed(2)
+  );
+
+  return {
+    effectiveDesossaWeight,
+    basis,
+    dianteiroPieceKg,
+    traseiroPieceKg,
+    coxaoPieceKg,
+    alcatraoPieceKg,
+    costelaPieceKg,
+    camaraDianteiroKg,
+    camaraTraseiroKg,
+    camaraCoxaoKg,
+    camaraAlcatraoKg,
+    camaraCostelaGauchaKg,
+    pedidoDianteiroKg,
+    pedidoTraseiroKg,
+    pedidoCoxaoKg,
+    pedidoAlcatraoKg,
+    pedidoAlcatraoRealKg,
+    pedidoCostelaGauchaKg,
+    pedidoCostelaRealKg,
+    costelaCongKg,
+    boiKg,
+    vendaKg,
+    sugestaoPedidoKg,
+    pedidoFinalKg,
+    pTransitoKg,
+    bandaPedidoKg,
+    totalOrderKg,
+    totalGeralR$,
+    boiCostKg,
   };
 }
 

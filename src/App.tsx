@@ -46,6 +46,14 @@ import { startRealDeviceHeartbeat, stopRealDeviceHeartbeat } from './services/de
 import { GappNewSidebar } from './components/gapp-new/GappNewSidebar';
 import { GappNewTopBar } from './components/gapp-new/GappNewTopBar';
 import { GappNewDashboardView } from './components/gapp-new/GappNewDashboardView';
+import {
+  calculateSheetFooterRealMetrics,
+  calculateSheetTotals,
+  formatCurrencyBRL,
+  getCutYieldWeightsFromSimulation,
+  getEffectiveDesossaCarcassWeight,
+  recalculateRowsForDesossaChange,
+} from './services/calculationService';
 
 export default function App() {
   const { theme, isSolidcon, isGappNew, toggleTheme, setTheme } = useTheme();
@@ -566,9 +574,44 @@ export default function App() {
 
   // Yield & Technical Parameters handler (Parâmetros assumidos globalmente)
   const handleUpdateYieldParams = (params: any) => {
-    setYieldParams(params);
-    StorageService.saveYieldParams(params);
-    showToast('Parâmetros técnicos e comerciais salvos e assumidos no ERP!');
+    const prevParams = yieldParams || StorageService.getYieldParams();
+    const mergedParams = {
+      ...prevParams,
+      ...params,
+      basis: params?.basis || prevParams?.basis || 'carcass',
+    };
+    const prevDivisor = getEffectiveDesossaCarcassWeight(
+      prevParams.carcassWeight,
+      prevParams.basis || 'carcass'
+    );
+    const nextDivisor = getEffectiveDesossaCarcassWeight(
+      mergedParams.carcassWeight,
+      mergedParams.basis || 'carcass'
+    );
+    const nextCutWeights = getCutYieldWeightsFromSimulation(
+      mergedParams.carcassWeight,
+      mergedParams.basis || 'carcass',
+      mergedParams,
+      products
+    );
+
+    setYieldParams(mergedParams);
+    StorageService.saveYieldParams(mergedParams);
+
+    setSheetRows((prevRows) => {
+      const recalculated = recalculateRowsForDesossaChange(
+        prevRows,
+        prevDivisor,
+        nextDivisor,
+        nextCutWeights
+      );
+      StorageService.saveSheetRows(recalculated, true);
+      return recalculated;
+    });
+
+    showToast(
+      `Desossa (${mergedParams.basis === 'piece' ? 'Meia Carcaça' : 'Carcaça'} ${nextDivisor}kg) aplicada e planilha recalculada!`
+    );
   };
 
   // Batch handler
@@ -576,29 +619,51 @@ export default function App() {
     setBatches(prev => [batch, ...prev]);
     StorageService.saveSingleBatch(batch);
 
+    let activeParams = yieldParams || StorageService.getYieldParams();
+    let workingRows = sheetRows;
+
     // Assume os dados do lote nos parâmetros globais se fornecidos
     if (batch.costPerKg || batch.arrobaPrice) {
-      const currentCarcass = yieldParams?.carcassWeight || StorageService.getYieldParams()?.carcassWeight || 240;
+      const currentCarcass = activeParams.carcassWeight || 240;
       const avgWeight = (batch.headsCount > 0 && batch.totalGrossWeightKg > 0)
         ? Math.round(batch.totalGrossWeightKg / batch.headsCount)
         : currentCarcass;
       const costPerKg = batch.costPerKg || (batch.arrobaPrice / 15);
+      const prevDivisor = getEffectiveDesossaCarcassWeight(
+        activeParams.carcassWeight,
+        activeParams.basis || 'carcass'
+      );
       const newParams = {
+        ...activeParams,
         carcassWeight: avgWeight,
         costPerKg: Number(costPerKg.toFixed(2)),
-        fatPriceKg: yieldParams?.fatPriceKg || 4.85,
-        bonePriceKg: yieldParams?.bonePriceKg || 0.90,
-        targetMargin: yieldParams?.targetMargin || 28,
-        basis: yieldParams?.basis || ('carcass' as const),
-        recoverGraxaria: yieldParams?.recoverGraxaria ?? true
+        fatPriceKg: activeParams.fatPriceKg || 4.85,
+        bonePriceKg: activeParams.bonePriceKg || 0.90,
+        targetMargin: activeParams.targetMargin || 28,
+        basis: activeParams.basis || ('carcass' as const),
+        recoverGraxaria: activeParams.recoverGraxaria ?? true
       };
+      const nextDivisor = getEffectiveDesossaCarcassWeight(
+        newParams.carcassWeight,
+        newParams.basis || 'carcass'
+      );
+      const nextCutWeights = getCutYieldWeightsFromSimulation(
+        newParams.carcassWeight,
+        newParams.basis || 'carcass',
+        newParams,
+        products
+      );
+      activeParams = newParams;
       setYieldParams(newParams);
       StorageService.saveYieldParams(newParams);
+      workingRows = recalculateRowsForDesossaChange(workingRows, prevDivisor, nextDivisor, nextCutWeights);
+      setSheetRows(workingRows);
+      StorageService.saveSheetRows(workingRows, true);
     }
 
     // Se o lote contiver distribuição por filiais, propaga e assume na planilha
     if (batch.items && batch.items.length > 0) {
-      const updatedRows = StorageService.propagateOrderToSheetRows(sheetRows, batch.items.map(it => ({
+      const updatedRows = StorageService.propagateOrderToSheetRows(workingRows, batch.items.map(it => ({
         storeId: it.storeId,
         pedido: it.pedido,
         bandaPedido: it.bandaPedido
@@ -613,27 +678,49 @@ export default function App() {
     setBatches(prev => prev.map(b => b.id === updatedBatch.id ? updatedBatch : b));
     StorageService.saveSingleBatch(updatedBatch);
 
+    let activeParams = yieldParams || StorageService.getYieldParams();
+    let workingRows = sheetRows;
+
     if (updatedBatch.costPerKg || updatedBatch.arrobaPrice) {
-      const currentCarcass = yieldParams?.carcassWeight || StorageService.getYieldParams()?.carcassWeight || 240;
+      const currentCarcass = activeParams.carcassWeight || 240;
       const avgWeight = (updatedBatch.headsCount > 0 && updatedBatch.totalGrossWeightKg > 0)
         ? Math.round(updatedBatch.totalGrossWeightKg / updatedBatch.headsCount)
         : currentCarcass;
       const costPerKg = updatedBatch.costPerKg || (updatedBatch.arrobaPrice / 15);
+      const prevDivisor = getEffectiveDesossaCarcassWeight(
+        activeParams.carcassWeight,
+        activeParams.basis || 'carcass'
+      );
       const newParams = {
+        ...activeParams,
         carcassWeight: avgWeight,
         costPerKg: Number(costPerKg.toFixed(2)),
-        fatPriceKg: yieldParams?.fatPriceKg || 4.85,
-        bonePriceKg: yieldParams?.bonePriceKg || 0.90,
-        targetMargin: yieldParams?.targetMargin || 28,
-        basis: yieldParams?.basis || ('carcass' as const),
-        recoverGraxaria: yieldParams?.recoverGraxaria ?? true
+        fatPriceKg: activeParams.fatPriceKg || 4.85,
+        bonePriceKg: activeParams.bonePriceKg || 0.90,
+        targetMargin: activeParams.targetMargin || 28,
+        basis: activeParams.basis || ('carcass' as const),
+        recoverGraxaria: activeParams.recoverGraxaria ?? true
       };
+      const nextDivisor = getEffectiveDesossaCarcassWeight(
+        newParams.carcassWeight,
+        newParams.basis || 'carcass'
+      );
+      const nextCutWeights = getCutYieldWeightsFromSimulation(
+        newParams.carcassWeight,
+        newParams.basis || 'carcass',
+        newParams,
+        products
+      );
+      activeParams = newParams;
       setYieldParams(newParams);
       StorageService.saveYieldParams(newParams);
+      workingRows = recalculateRowsForDesossaChange(workingRows, prevDivisor, nextDivisor, nextCutWeights);
+      setSheetRows(workingRows);
+      StorageService.saveSheetRows(workingRows, true);
     }
 
     if (updatedBatch.items && updatedBatch.items.length > 0) {
-      const updatedRows = StorageService.propagateOrderToSheetRows(sheetRows, updatedBatch.items.map(it => ({
+      const updatedRows = StorageService.propagateOrderToSheetRows(workingRows, updatedBatch.items.map(it => ({
         storeId: it.storeId,
         pedido: it.pedido,
         bandaPedido: it.bandaPedido
@@ -1025,9 +1112,17 @@ export default function App() {
                   </div>
 
                   <div className="hidden md:flex items-center gap-2 text-[10px] text-slate-500 font-mono">
-                    <span>16 Filiais</span>
+                    <span>{stores.length} Filiais</span>
                     <span>•</span>
-                    <span>Compra: R$ 376.311,95</span>
+                    <span>
+                      Compra: {formatCurrencyBRL(
+                        calculateSheetFooterRealMetrics(
+                          sheetRows,
+                          calculateSheetTotals(sheetRows),
+                          yieldParams
+                        ).totalGeralR$
+                      )}
+                    </span>
                   </div>
                 </div>
 

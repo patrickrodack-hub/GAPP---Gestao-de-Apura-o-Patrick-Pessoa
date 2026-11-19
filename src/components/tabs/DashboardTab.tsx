@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { SheetRowData, Store, PurchaseBatch } from '../../types/erp';
-import { formatCurrencyBRL, formatNumberBR, calculateSheetTotals } from '../../services/calculationService';
+import { formatCurrencyBRL, formatNumberBR, calculateSheetTotals, calculateSheetFooterRealMetrics } from '../../services/calculationService';
 import { 
   Beef, 
   TrendingUp, 
@@ -254,9 +254,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             </div>
 
             <div className="flex items-center gap-2 text-xs">
-              <span className="text-slate-400">Base Contábil:</span>
+              <span className="text-slate-400">Base Real (Desossa):</span>
               <span className="font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
-                R$ 376.311,95 / 14.473,5 kg
+                {(() => {
+                  const fm = calculateSheetFooterRealMetrics(rows, calculateSheetTotals(rows), StorageService.getYieldParams());
+                  return `${formatCurrencyBRL(fm.totalGeralR$)} / ${fm.totalOrderKg.toLocaleString('pt-BR')} kg (${fm.effectiveDesossaWeight}kg)`;
+                })()}
               </span>
             </div>
           </div>

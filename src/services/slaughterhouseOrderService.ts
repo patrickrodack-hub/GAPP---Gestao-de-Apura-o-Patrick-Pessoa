@@ -340,7 +340,11 @@ export function calculateStoreStockFromSheetRow(
   yieldParams?: Partial<YieldParams> | null
 ): SlaughterhouseStoreStock {
   const cutWeights = yieldParams?.carcassWeight
-    ? getCutYieldWeightsFromSimulation(yieldParams.carcassWeight, yieldParams.basis || 'carcass')
+    ? getCutYieldWeightsFromSimulation(
+        yieldParams.carcassWeight,
+        yieldParams.basis || 'carcass',
+        yieldParams
+      )
     : DEFAULT_CUT_YIELD_WEIGHTS;
 
   const num = (v: unknown): number => {

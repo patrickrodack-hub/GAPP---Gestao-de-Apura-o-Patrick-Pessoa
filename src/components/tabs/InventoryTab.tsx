@@ -17,7 +17,12 @@ import {
   X,
   Eraser
 } from 'lucide-react';
-import { formatNumberBR, recalculateRowOrderFormulas, DEFAULT_CUT_YIELD_WEIGHTS, HALF_CARCASS_CUT_YIELD_WEIGHTS } from '../../services/calculationService';
+import {
+  formatNumberBR,
+  recalculateRowOrderFormulas,
+  getCutYieldWeightsFromSimulation,
+  getEffectiveDesossaCarcassWeight,
+} from '../../services/calculationService';
 import { StockLaunchByStore } from '../inventory/StockLaunchByStore';
 import { ClearAllStoresConfirmModal } from '../modals/ClearAllStoresConfirmModal';
 import { StorageService } from '../../services/storageService';
@@ -48,9 +53,15 @@ export const InventoryTab: React.FC<InventoryTabProps> = ({
   const [transferAmount, setTransferAmount] = useState(2);
 
   const yieldParams = StorageService.getYieldParams();
-  const currentWeights = yieldParams.basis === 'piece' 
-    ? HALF_CARCASS_CUT_YIELD_WEIGHTS 
-    : DEFAULT_CUT_YIELD_WEIGHTS;
+  const currentWeights = getCutYieldWeightsFromSimulation(
+    yieldParams.carcassWeight,
+    yieldParams.basis || 'carcass',
+    yieldParams
+  );
+  const currentDivisor = getEffectiveDesossaCarcassWeight(
+    yieldParams.carcassWeight,
+    yieldParams.basis || 'carcass'
+  );
 
   const handleClearAllStores = (resetOption: 'all_zero' | 'restore_initial') => {
     StorageService.clearAllStockLaunchRecords();
@@ -58,7 +69,7 @@ export const InventoryTab: React.FC<InventoryTabProps> = ({
     let updatedRows: SheetRowData[] = [];
 
     if (resetOption === 'restore_initial') {
-      updatedRows = INITIAL_SHEET_ROWS.map(r => recalculateRowOrderFormulas(r, currentWeights));
+      updatedRows = INITIAL_SHEET_ROWS.map(r => recalculateRowOrderFormulas(r, currentWeights, currentDivisor));
     } else {
       updatedRows = rows.map(r => {
         const emptyRow: SheetRowData = {
@@ -121,7 +132,7 @@ export const InventoryTab: React.FC<InventoryTabProps> = ({
           pernilPecas: 0,
           recebeuBoiHoje: undefined
         };
-        return recalculateRowOrderFormulas(emptyRow, currentWeights);
+        return recalculateRowOrderFormulas(emptyRow, currentWeights, currentDivisor);
       });
     }
 

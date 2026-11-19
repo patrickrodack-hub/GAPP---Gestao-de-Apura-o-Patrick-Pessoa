@@ -1,7 +1,12 @@
 import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, StockLaunchRecord, SheetSnapshotRecord, PortalLockConfig, PortalDaySchedule, DayOfWeekKey, SystemUser, ConnectedDevice, DeviceAccessStatus, SlaughterhouseOrderDraft, SlaughterhouseOrderRecord } from '../types/erp';
 import { INITIAL_PRODUCTS, INITIAL_STORES, INITIAL_SHEET_ROWS, INITIAL_BATCHES, INITIAL_WASTE_RECORDS, INITIAL_SUPPLIERS, INITIAL_USERS, ALL_SYSTEM_MODULES } from '../data/initialData';
 import { INITIAL_CONNECTED_DEVICES } from '../data/initialDevices';
-import { recalculateRowOrderFormulas, calculateSheetTotals } from './calculationService';
+import {
+  recalculateRowOrderFormulas,
+  calculateSheetTotals,
+  getCutYieldWeightsFromSimulation,
+  getEffectiveDesossaCarcassWeight,
+} from './calculationService';
 import { FirebaseService } from './firebase';
 
 const STORAGE_KEYS = {
@@ -154,11 +159,17 @@ export const StorageService = {
 
   getSheetRows(): SheetRowData[] {
     try {
+      const yp = this.getYieldParams();
+      const cutWeights = getCutYieldWeightsFromSimulation(yp.carcassWeight, yp.basis || 'carcass', yp);
+      const divisor = getEffectiveDesossaCarcassWeight(yp.carcassWeight, yp.basis || 'carcass');
       const data = localStorage.getItem(STORAGE_KEYS.SHEET_ROWS);
       const parsed: SheetRowData[] = data ? JSON.parse(data) : INITIAL_SHEET_ROWS;
-      return parsed.map(r => recalculateRowOrderFormulas(r));
+      return parsed.map(r => recalculateRowOrderFormulas(r, cutWeights, divisor));
     } catch {
-      return INITIAL_SHEET_ROWS.map(r => recalculateRowOrderFormulas(r));
+      const yp = this.getYieldParams();
+      const cutWeights = getCutYieldWeightsFromSimulation(yp.carcassWeight, yp.basis || 'carcass', yp);
+      const divisor = getEffectiveDesossaCarcassWeight(yp.carcassWeight, yp.basis || 'carcass');
+      return INITIAL_SHEET_ROWS.map(r => recalculateRowOrderFormulas(r, cutWeights, divisor));
     }
   },
 
@@ -354,6 +365,9 @@ export const StorageService = {
     }>,
     options?: { updateTransit?: boolean }
   ): SheetRowData[] {
+    const yp = this.getYieldParams();
+    const cutWeights = getCutYieldWeightsFromSimulation(yp.carcassWeight, yp.basis || 'carcass', yp);
+    const divisor = getEffectiveDesossaCarcassWeight(yp.carcassWeight, yp.basis || 'carcass');
     const itemMap = new Map(orderItems.map(it => [it.storeId, it]));
     const updated = currentRows.map(row => {
       const item = itemMap.get(row.storeId);
@@ -373,7 +387,7 @@ export const StorageService = {
         pedidoCostelaReal: costelaPedido,
         pTransito: transitVal
       };
-      return recalculateRowOrderFormulas(draft);
+      return recalculateRowOrderFormulas(draft, cutWeights, divisor);
     });
     this.saveSheetRows(updated);
     return updated;

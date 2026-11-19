@@ -1,5 +1,5 @@
 import { SheetRowData, SlaughterhouseOrderRecord, Store, Supplier, PurchaseBatch } from '../types/erp';
-import { formatCurrencyBRL, formatNumberBR, calculateSheetTotals } from './calculationService';
+import { formatCurrencyBRL, formatNumberBR, calculateSheetTotals, calculateSheetFooterRealMetrics } from './calculationService';
 import { SLAUGHTERHOUSE_CATEGORY_ORDER } from './slaughterhouseOrderService';
 import { StorageService } from './storageService';
 import { ReportBrandingService } from './reportBrandingService';
@@ -784,6 +784,8 @@ export class PrintEngineService {
     const { rows, stores, title = 'PLANILHA OFICIAL DE COMPRAS E APURAÇÃO DO BOI', currentUser = 'Patrick Pessoa (Direção de Carnes)' } = params;
     const totals = calculateSheetTotals(rows);
     const yieldParams = StorageService.getYieldParams();
+    const footerMetrics = calculateSheetFooterRealMetrics(rows, totals, yieldParams);
+    const desossaLabel = footerMetrics.basis === 'piece' ? 'Meia Carcaça' : 'Carcaça';
     const alcatraoCost = yieldParams.alcatraoCostKg || 29.00;
     const costelaCost = yieldParams.costelaCostKg || 25.50;
     const bandaCost = yieldParams.bandaCostKg || 26.00;
@@ -1109,24 +1111,24 @@ export class PrintEngineService {
         <td>${totals.bandaPecas}</td><td>${totals.bandaVenda}</td><td>${Math.round(totals.bandaSugestao)}</td>
         <td style="color:#115e59; font-weight:900;">${totals.bandaPedido}</td><td>${totals.costelaSuinaPecas}</td><td>${totals.pernilPecas}</td>
       </tr>
-      <!-- Totais em KG -->
+      <!-- Totais em KG (100% Real com base na Desossa informada) -->
       <tr class="row-tot2">
-        <td class="store-col">TOTAL EM KG</td>
-        <td>5.775</td><td>2.975</td><td>1.881</td><td>1.820</td><td>${Math.round((totals.pedidoAlcatraoReal || 0) * 22)}</td><td>1.848</td><td>${Math.round((totals.pedidoCostelaReal || 0) * 20)}</td>
-        <td style="color:#1e40af;">${(totals.boi * 260).toFixed(0)}</td><td>${(totals.venda * 260).toFixed(0)}</td><td>${(totals.sugestaoPedido * 260).toFixed(0)}</td>
-        <td style="color:#312e81; font-weight:900;">${(totals.pedidoFinal * 260).toFixed(0)}</td>
-        <td>4.675</td>
-        <td>182</td><td>1.035</td><td>7.535</td><td>1.848</td><td>400</td>
-        <td>${Math.round(totals.alcatraKg)}</td><td>${Math.round(totals.contraFileKg)}</td><td>${Math.round(totals.picanhaKg)}</td><td>${Math.round(totals.fileMignonKg)}</td><td>112</td>
-        <td>${Math.round(totals.paletaKg)}</td><td>${Math.round(totals.acemKg)}</td><td>${Math.round(totals.peitoKg)}</td><td>${Math.round(totals.musculoKg)}</td>
-        <td>${Math.round(totals.chaKg)}</td><td>${Math.round(totals.patinhoKg)}</td><td>${Math.round(totals.lagartoRedondoKg)}</td><td>${Math.round(totals.lagartoPlanoKg)}</td>
-        <td>-</td><td>-</td><td>-</td><td style="color:#115e59; font-weight:900;">${(totals.bandaPedido * 36).toFixed(0)}</td><td>-</td><td>-</td>
+        <td class="store-col">TOTAL EM KG (${footerMetrics.effectiveDesossaWeight}kg)</td>
+        <td>${footerMetrics.pedidoDianteiroKg.toLocaleString('pt-BR')}</td><td>${footerMetrics.pedidoTraseiroKg.toLocaleString('pt-BR')}</td><td>${footerMetrics.pedidoCoxaoKg.toLocaleString('pt-BR')}</td><td>${footerMetrics.pedidoAlcatraoKg.toLocaleString('pt-BR')}</td><td>${footerMetrics.pedidoAlcatraoRealKg.toLocaleString('pt-BR')}</td><td>${footerMetrics.pedidoCostelaGauchaKg.toLocaleString('pt-BR')}</td><td>${footerMetrics.pedidoCostelaRealKg.toLocaleString('pt-BR')}</td>
+        <td style="color:#1e40af;">${footerMetrics.boiKg.toLocaleString('pt-BR')}</td><td>${footerMetrics.vendaKg.toLocaleString('pt-BR')}</td><td>${footerMetrics.sugestaoPedidoKg.toLocaleString('pt-BR')}</td>
+        <td style="color:#312e81; font-weight:900;">${footerMetrics.pedidoFinalKg.toLocaleString('pt-BR')}</td>
+        <td>${footerMetrics.pTransitoKg.toLocaleString('pt-BR')}</td>
+        <td>${footerMetrics.camaraDianteiroKg.toLocaleString('pt-BR')}</td><td>${footerMetrics.camaraTraseiroKg.toLocaleString('pt-BR')}</td><td>${footerMetrics.camaraCoxaoKg.toLocaleString('pt-BR')}</td><td>${footerMetrics.camaraAlcatraoKg.toLocaleString('pt-BR')}</td><td>${footerMetrics.camaraCostelaGauchaKg.toLocaleString('pt-BR')}</td>
+        <td>${Math.round(totals.alcatraKg).toLocaleString('pt-BR')}</td><td>${Math.round(totals.contraFileKg).toLocaleString('pt-BR')}</td><td>${Math.round(totals.picanhaKg).toLocaleString('pt-BR')}</td><td>${Math.round(totals.fileMignonKg).toLocaleString('pt-BR')}</td><td>${footerMetrics.costelaCongKg.toLocaleString('pt-BR')}</td>
+        <td>${Math.round(totals.paletaKg).toLocaleString('pt-BR')}</td><td>${Math.round(totals.acemKg).toLocaleString('pt-BR')}</td><td>${Math.round(totals.peitoKg).toLocaleString('pt-BR')}</td><td>${Math.round(totals.musculoKg).toLocaleString('pt-BR')}</td>
+        <td>${Math.round(totals.chaKg).toLocaleString('pt-BR')}</td><td>${Math.round(totals.patinhoKg).toLocaleString('pt-BR')}</td><td>${Math.round(totals.lagartoRedondoKg).toLocaleString('pt-BR')}</td><td>${Math.round(totals.lagartoPlanoKg).toLocaleString('pt-BR')}</td>
+        <td>-</td><td>-</td><td>-</td><td style="color:#115e59; font-weight:900;">${footerMetrics.bandaPedidoKg.toLocaleString('pt-BR')}</td><td>-</td><td>-</td>
       </tr>
       <!-- Total Geral R$ -->
       <tr class="row-grand">
         <td class="store-col" style="background:#a7f3d0; color:#065f46; font-size:7pt;">TOTAL GERAL R$</td>
         <td colspan="36" style="text-align: right; padding-right: 8px;">
-          Validação Contábil Conforme Planilha da Direção: <strong>R$ 376.311,95</strong> (Lote de Compra Consolidado das 16 Lojas)
+          Total Real do Pedido (${desossaLabel} ${footerMetrics.effectiveDesossaWeight}kg • ${footerMetrics.totalOrderKg.toLocaleString('pt-BR')} kg): <strong>${formatCurrencyBRL(footerMetrics.totalGeralR$)}</strong> (Consolidado ${rows.length} Lojas)
         </td>
       </tr>
     </tfoot>

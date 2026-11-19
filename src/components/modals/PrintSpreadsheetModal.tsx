@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SheetRowData, Store } from '../../types/erp';
-import { calculateSheetTotals } from '../../services/calculationService';
+import { calculateSheetTotals, calculateSheetFooterRealMetrics, formatCurrencyBRL } from '../../services/calculationService';
 import { PrintEngineService } from '../../services/printEngineService';
 import { PdfReportService } from '../../services/pdfReportService';
 import { StorageService } from '../../services/storageService';
@@ -52,6 +52,9 @@ export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
   if (!isOpen) return null;
 
   const totals = calculateSheetTotals(rows);
+  const activeYieldParams = StorageService.getYieldParams();
+  const footerMetrics = calculateSheetFooterRealMetrics(rows, totals, activeYieldParams);
+  const desossaLabel = footerMetrics.basis === 'piece' ? 'Meia Carcaça' : 'Carcaça';
   const sessionUser = StorageService.getSessionUser();
 
   const activeDate = emissionDate || new Date();
@@ -531,46 +534,46 @@ export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
                     <td className="border border-slate-300 text-center">{totals.pernilPecas}</td>
                   </tr>
 
-                  {/* Totais em KG */}
+                  {/* Totais em KG (100% Real com base na Desossa informada) */}
                   <tr className="bg-slate-50 text-[9px] text-slate-600 font-bold border-b border-slate-300">
-                    <td className="px-2 py-1 border border-slate-300 font-sans text-left">TOTAL EM KG</td>
-                    <td className="border border-slate-300 text-center">5.775</td>
-                    <td className="border border-slate-300 text-center">2.975</td>
-                    <td className="border border-slate-300 text-center">1.881</td>
-                    <td className="border border-slate-300 text-center">1.820</td>
-                    <td className="border border-slate-300 text-center">1.848</td>
-                    <td className="border border-slate-300 text-center text-blue-700">{(totals.boi * 260).toFixed(0)}</td>
-                    <td className="border border-slate-300 text-center">{(totals.venda * 260).toFixed(0)}</td>
-                    <td className="border border-slate-300 text-center">{(totals.sugestaoPedido * 260).toFixed(0)}</td>
-                    <td className="border border-slate-300 text-center font-black text-indigo-900">{(totals.pedidoFinal * 260).toFixed(0)}</td>
-                    <td className="border border-slate-300 text-center">4.675</td>
+                    <td className="px-2 py-1 border border-slate-300 font-sans text-left">TOTAL EM KG ({footerMetrics.effectiveDesossaWeight}kg)</td>
+                    <td className="border border-slate-300 text-center">{footerMetrics.pedidoDianteiroKg.toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{footerMetrics.pedidoTraseiroKg.toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{footerMetrics.pedidoCoxaoKg.toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{footerMetrics.pedidoAlcatraoKg.toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{footerMetrics.pedidoCostelaGauchaKg.toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center text-blue-700">{footerMetrics.boiKg.toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{footerMetrics.vendaKg.toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{footerMetrics.sugestaoPedidoKg.toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center font-black text-indigo-900">{footerMetrics.pedidoFinalKg.toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{footerMetrics.pTransitoKg.toLocaleString('pt-BR')}</td>
 
-                    <td className="border border-slate-300 text-center">182</td>
-                    <td className="border border-slate-300 text-center">1.035</td>
-                    <td className="border border-slate-300 text-center">7.535</td>
-                    <td className="border border-slate-300 text-center">1.848</td>
-                    <td className="border border-slate-300 text-center">400</td>
+                    <td className="border border-slate-300 text-center">{footerMetrics.camaraDianteiroKg.toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{footerMetrics.camaraTraseiroKg.toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{footerMetrics.camaraCoxaoKg.toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{footerMetrics.camaraAlcatraoKg.toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{footerMetrics.camaraCostelaGauchaKg.toLocaleString('pt-BR')}</td>
 
-                    <td className="border border-slate-300 text-center">{Math.round(totals.alcatraKg)}</td>
-                    <td className="border border-slate-300 text-center">{Math.round(totals.contraFileKg)}</td>
-                    <td className="border border-slate-300 text-center">{Math.round(totals.picanhaKg)}</td>
-                    <td className="border border-slate-300 text-center">{Math.round(totals.fileMignonKg)}</td>
-                    <td className="border border-slate-300 text-center">112</td>
+                    <td className="border border-slate-300 text-center">{Math.round(totals.alcatraKg).toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{Math.round(totals.contraFileKg).toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{Math.round(totals.picanhaKg).toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{Math.round(totals.fileMignonKg).toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{footerMetrics.costelaCongKg.toLocaleString('pt-BR')}</td>
 
-                    <td className="border border-slate-300 text-center">{Math.round(totals.paletaKg)}</td>
-                    <td className="border border-slate-300 text-center">{Math.round(totals.acemKg)}</td>
-                    <td className="border border-slate-300 text-center">{Math.round(totals.peitoKg)}</td>
-                    <td className="border border-slate-300 text-center">{Math.round(totals.musculoKg)}</td>
+                    <td className="border border-slate-300 text-center">{Math.round(totals.paletaKg).toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{Math.round(totals.acemKg).toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{Math.round(totals.peitoKg).toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{Math.round(totals.musculoKg).toLocaleString('pt-BR')}</td>
 
-                    <td className="border border-slate-300 text-center">{Math.round(totals.chaKg)}</td>
-                    <td className="border border-slate-300 text-center">{Math.round(totals.patinhoKg)}</td>
-                    <td className="border border-slate-300 text-center">{Math.round(totals.lagartoRedondoKg)}</td>
-                    <td className="border border-slate-300 text-center">{Math.round(totals.lagartoPlanoKg)}</td>
+                    <td className="border border-slate-300 text-center">{Math.round(totals.chaKg).toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{Math.round(totals.patinhoKg).toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{Math.round(totals.lagartoRedondoKg).toLocaleString('pt-BR')}</td>
+                    <td className="border border-slate-300 text-center">{Math.round(totals.lagartoPlanoKg).toLocaleString('pt-BR')}</td>
 
                     <td className="border border-slate-300 text-center">-</td>
                     <td className="border border-slate-300 text-center">-</td>
                     <td className="border border-slate-300 text-center">-</td>
-                    <td className="border border-slate-300 text-center font-black text-teal-900">{(totals.bandaPedido * 36).toFixed(0)}</td>
+                    <td className="border border-slate-300 text-center font-black text-teal-900">{footerMetrics.bandaPedidoKg.toLocaleString('pt-BR')}</td>
                     <td className="border border-slate-300 text-center">-</td>
                     <td className="border border-slate-300 text-center">-</td>
                   </tr>
@@ -581,7 +584,7 @@ export const PrintSpreadsheetModal: React.FC<PrintSpreadsheetModalProps> = ({
                       TOTAL GERAL R$
                     </td>
                     <td colSpan={34} className="px-3 py-1.5 border border-emerald-300 text-right font-sans text-[11px]">
-                      Validação Contábil Conforme Planilha da Direção: <strong className="font-mono text-emerald-950 font-black text-xs">R$ 376.311,95</strong> (Lote de Compra Consolidado das 16 Lojas)
+                      Total Real do Pedido ({desossaLabel} {footerMetrics.effectiveDesossaWeight}kg • {footerMetrics.totalOrderKg.toLocaleString('pt-BR')} kg): <strong className="font-mono text-emerald-950 font-black text-xs">{formatCurrencyBRL(footerMetrics.totalGeralR$)}</strong> (Consolidado {rows.length} Lojas)
                     </td>
                   </tr>
                 </tfoot>

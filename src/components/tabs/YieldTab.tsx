@@ -576,7 +576,9 @@ export const YieldTab: React.FC<YieldTabProps> = ({
       onUpdateProducts(updatedProducts);
     }
 
+    const currentParams = yieldParams || StorageService.getYieldParams();
     const updatedParams = {
+      ...currentParams,
       carcassWeight,
       costPerKg: Number(costPerKg.toFixed(2)),
       fatPriceKg: Number(fatPriceKg.toFixed(2)),
@@ -584,7 +586,7 @@ export const YieldTab: React.FC<YieldTabProps> = ({
       targetMargin: Number(targetMargin),
       breakagePercent: Number(breakagePercent),
       costFormationMode,
-      basis: 'carcass' as const,
+      basis: currentParams.basis || ('carcass' as const),
       mesaProfitMargins,
       mesaCarcassPercents,
       mesaCostFactors
@@ -744,7 +746,9 @@ export const YieldTab: React.FC<YieldTabProps> = ({
 
   // Salva parâmetros técnicos no ERP
   const handleSaveToSettings = () => {
+    const currentParams = yieldParams || StorageService.getYieldParams();
     const updated = {
+      ...currentParams,
       carcassWeight,
       costPerKg: Number(costPerKg.toFixed(2)),
       fatPriceKg: Number(fatPriceKg.toFixed(2)),
@@ -752,7 +756,7 @@ export const YieldTab: React.FC<YieldTabProps> = ({
       targetMargin: Number(targetMargin),
       breakagePercent: Number(breakagePercent),
       costFormationMode,
-      basis: 'carcass' as const,
+      basis: currentParams.basis || ('carcass' as const),
       mesaProfitMargins,
       mesaCarcassPercents,
       mesaCostFactors

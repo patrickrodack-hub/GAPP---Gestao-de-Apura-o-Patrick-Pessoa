@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { SheetRowData, SlaughterhouseOrderRecord, Store, Supplier } from '../types/erp';
-import { formatCurrencyBRL, formatNumberBR, calculateSheetTotals } from './calculationService';
+import { formatCurrencyBRL, formatNumberBR, calculateSheetTotals, calculateSheetFooterRealMetrics } from './calculationService';
 import { SLAUGHTERHOUSE_CATEGORY_ORDER, summarizePdfSalesByCategory } from './slaughterhouseOrderService';
 import { StorageService } from './storageService';
 import { ReportBrandingService } from './reportBrandingService';
@@ -612,7 +612,11 @@ export class PdfReportService {
       ];
     });
 
-    // Rodapé de Totais (Totais Peças, Totais em KG, Total Geral)
+    // Rodapé de Totais (Totais Peças, Totais em KG reais, Total Geral real)
+    const activeYieldParams = StorageService.getYieldParams();
+    const footerMetrics = calculateSheetFooterRealMetrics(rows, totals, activeYieldParams);
+    const desossaLabel = footerMetrics.basis === 'piece' ? 'Meia Carcaça' : 'Carcaça';
+
     const foot: any[] = [
       [
         { content: 'TOTAL PEÇAS', styles: { fontStyle: 'bold', halign: 'left', fillColor: [241, 245, 249] } },
@@ -633,20 +637,42 @@ export class PdfReportService {
         totals.costelaSuinaPecas, totals.pernilPecas
       ],
       [
-        { content: 'TOTAL EM KG', styles: { fontStyle: 'bold', halign: 'left', fillColor: [248, 250, 252] } },
-        '5.775', '2.975', '1.881', '1.820', `${Math.round((totals.pedidoAlcatraoReal || 0) * 22)}`,
-        '1.848', `${Math.round((totals.pedidoCostelaReal || 0) * 20)}`,
-        (totals.boi * 260).toFixed(0), (totals.venda * 260).toFixed(0), (totals.sugestaoPedido * 260).toFixed(0),
-        (totals.pedidoFinal * 260).toFixed(0), '4.675',
-        '182', '1.035', '7.535', '1.848', '400',
-        Math.round(totals.alcatraKg), Math.round(totals.contraFileKg), Math.round(totals.picanhaKg), Math.round(totals.fileMignonKg), '112',
-        Math.round(totals.paletaKg), Math.round(totals.acemKg), Math.round(totals.peitoKg), Math.round(totals.musculoKg),
-        Math.round(totals.chaKg), Math.round(totals.patinhoKg), Math.round(totals.lagartoRedondoKg), Math.round(totals.lagartoPlanoKg),
-        '-', '-', '-', (totals.bandaPedido * 36).toFixed(0), '-', '-'
+        { content: `TOTAL EM KG (${footerMetrics.effectiveDesossaWeight}kg)`, styles: { fontStyle: 'bold', halign: 'left', fillColor: [248, 250, 252] } },
+        footerMetrics.pedidoDianteiroKg.toLocaleString('pt-BR'),
+        footerMetrics.pedidoTraseiroKg.toLocaleString('pt-BR'),
+        footerMetrics.pedidoCoxaoKg.toLocaleString('pt-BR'),
+        footerMetrics.pedidoAlcatraoKg.toLocaleString('pt-BR'),
+        footerMetrics.pedidoAlcatraoRealKg.toLocaleString('pt-BR'),
+        footerMetrics.pedidoCostelaGauchaKg.toLocaleString('pt-BR'),
+        footerMetrics.pedidoCostelaRealKg.toLocaleString('pt-BR'),
+        footerMetrics.boiKg.toLocaleString('pt-BR'),
+        footerMetrics.vendaKg.toLocaleString('pt-BR'),
+        footerMetrics.sugestaoPedidoKg.toLocaleString('pt-BR'),
+        footerMetrics.pedidoFinalKg.toLocaleString('pt-BR'),
+        footerMetrics.pTransitoKg.toLocaleString('pt-BR'),
+        footerMetrics.camaraDianteiroKg.toLocaleString('pt-BR'),
+        footerMetrics.camaraTraseiroKg.toLocaleString('pt-BR'),
+        footerMetrics.camaraCoxaoKg.toLocaleString('pt-BR'),
+        footerMetrics.camaraAlcatraoKg.toLocaleString('pt-BR'),
+        footerMetrics.camaraCostelaGauchaKg.toLocaleString('pt-BR'),
+        Math.round(totals.alcatraKg).toLocaleString('pt-BR'),
+        Math.round(totals.contraFileKg).toLocaleString('pt-BR'),
+        Math.round(totals.picanhaKg).toLocaleString('pt-BR'),
+        Math.round(totals.fileMignonKg).toLocaleString('pt-BR'),
+        footerMetrics.costelaCongKg.toLocaleString('pt-BR'),
+        Math.round(totals.paletaKg).toLocaleString('pt-BR'),
+        Math.round(totals.acemKg).toLocaleString('pt-BR'),
+        Math.round(totals.peitoKg).toLocaleString('pt-BR'),
+        Math.round(totals.musculoKg).toLocaleString('pt-BR'),
+        Math.round(totals.chaKg).toLocaleString('pt-BR'),
+        Math.round(totals.patinhoKg).toLocaleString('pt-BR'),
+        Math.round(totals.lagartoRedondoKg).toLocaleString('pt-BR'),
+        Math.round(totals.lagartoPlanoKg).toLocaleString('pt-BR'),
+        '-', '-', '-', footerMetrics.bandaPedidoKg.toLocaleString('pt-BR'), '-', '-'
       ],
       [
         { content: 'TOTAL GERAL R$', styles: { fontStyle: 'bold', halign: 'left', fillColor: [167, 243, 208], textColor: [6, 95, 70] } },
-        { content: 'Validação Contábil Conforme Planilha da Direção: R$ 376.311,95 (Lote de Compra Consolidado das 16 Lojas)', colSpan: 36, styles: { halign: 'right', fontStyle: 'bold', fillColor: [209, 250, 229], textColor: [6, 95, 70] } }
+        { content: `Total Real do Pedido (${desossaLabel} ${footerMetrics.effectiveDesossaWeight}kg • ${footerMetrics.totalOrderKg.toLocaleString('pt-BR')} kg): ${formatCurrencyBRL(footerMetrics.totalGeralR$)} (Consolidado ${rows.length} Lojas)`, colSpan: 36, styles: { halign: 'right', fontStyle: 'bold', fillColor: [209, 250, 229], textColor: [6, 95, 70] } }
       ]
     ];
 
@@ -813,6 +839,10 @@ export class PdfReportService {
       ];
     });
 
+    const activeYieldParams = StorageService.getYieldParams();
+    const footerMetrics = calculateSheetFooterRealMetrics(rows, totals, activeYieldParams);
+    const desossaLabel = footerMetrics.basis === 'piece' ? 'Meia Carcaça' : 'Carcaça';
+
     const foot: any[] = [
       [
         { content: 'TOTAL GERAL', styles: { fontStyle: 'bold', halign: 'left', fillColor: [15, 23, 42], textColor: [255, 255, 255] } },
@@ -825,18 +855,18 @@ export class PdfReportService {
         totals.bandaKg, totals.bandaPecas, totals.bandaVenda, totals.bandaSugestao, totals.bandaPedido, totals.costelaSuinaPecas, totals.pernilPecas
       ],
       [
-        { content: 'TOTAL GERAL KG', styles: { fontStyle: 'bold', halign: 'left', fillColor: [241, 245, 249], textColor: [15, 23, 42] } },
-        totals.pedidoDianteiro * 60, totals.pedidoTraseiro * 60, totals.pedidoCoxao * 36, totals.pedidoAlcatrao * 24, totals.pedidoCostelaGaucha * 20,
-        Math.round(totals.boi * 240), Math.round(totals.venda * 240), Math.round(totals.sugestaoPedido * 240), Math.round(totals.pedidoFinal * 240), totals.pTransito * 240,
-        totals.camaraDianteiro * 60, totals.camaraTraseiro * 60, totals.camaraCoxao * 36, totals.camaraAlcatrao * 24, totals.camaraCostelaGaucha * 20,
-        Math.round(totals.alcatraKg), Math.round(totals.contraFileKg), Math.round(totals.picanhaKg), Math.round(totals.fileMignonKg), '-',
+        { content: `TOTAL GERAL KG (${footerMetrics.effectiveDesossaWeight}kg)`, styles: { fontStyle: 'bold', halign: 'left', fillColor: [241, 245, 249], textColor: [15, 23, 42] } },
+        footerMetrics.pedidoDianteiroKg, footerMetrics.pedidoTraseiroKg, footerMetrics.pedidoCoxaoKg, footerMetrics.pedidoAlcatraoKg, footerMetrics.pedidoCostelaGauchaKg,
+        footerMetrics.boiKg, footerMetrics.vendaKg, footerMetrics.sugestaoPedidoKg, footerMetrics.pedidoFinalKg, footerMetrics.pTransitoKg,
+        footerMetrics.camaraDianteiroKg, footerMetrics.camaraTraseiroKg, footerMetrics.camaraCoxaoKg, footerMetrics.camaraAlcatraoKg, footerMetrics.camaraCostelaGauchaKg,
+        Math.round(totals.alcatraKg), Math.round(totals.contraFileKg), Math.round(totals.picanhaKg), Math.round(totals.fileMignonKg), footerMetrics.costelaCongKg,
         Math.round(totals.paletaKg), Math.round(totals.acemKg), Math.round(totals.peitoKg), Math.round(totals.musculoKg),
         Math.round(totals.chaKg), Math.round(totals.patinhoKg), Math.round(totals.lagartoRedondoKg), Math.round(totals.lagartoPlanoKg),
-        '-', '-', '-', (totals.bandaPedido * 36).toFixed(0), '-', '-'
+        '-', '-', '-', footerMetrics.bandaPedidoKg, '-', '-'
       ],
       [
         { content: 'TOTAL GERAL R$', styles: { fontStyle: 'bold', halign: 'left', fillColor: [167, 243, 208], textColor: [6, 95, 70] } },
-        { content: 'Validação Contábil Conforme Planilha da Direção: R$ 376.311,95 (Lote de Compra Consolidado das 16 Lojas)', colSpan: 34, styles: { halign: 'right', fontStyle: 'bold', fillColor: [209, 250, 229], textColor: [6, 95, 70] } }
+        { content: `Total Real do Pedido (${desossaLabel} ${footerMetrics.effectiveDesossaWeight}kg • ${footerMetrics.totalOrderKg.toLocaleString('pt-BR')} kg): ${formatCurrencyBRL(footerMetrics.totalGeralR$)} (Consolidado ${rows.length} Lojas)`, colSpan: 34, styles: { halign: 'right', fontStyle: 'bold', fillColor: [209, 250, 229], textColor: [6, 95, 70] } }
       ]
     ];
 

@@ -3,8 +3,8 @@ import { SheetRowData, Store, StockLaunchRecord, PortalLockConfig } from '../../
 import { 
   recalculateRowOrderFormulas, 
   CutYieldWeights, 
-  DEFAULT_CUT_YIELD_WEIGHTS,
-  HALF_CARCASS_CUT_YIELD_WEIGHTS,
+  getCutYieldWeightsFromSimulation,
+  getEffectiveDesossaCarcassWeight,
   formatNumberBR
 } from '../../services/calculationService';
 import { StorageService } from '../../services/storageService';
@@ -110,12 +110,18 @@ export const PortalForm: React.FC<PortalFormProps> = ({
   const [missingTabsWarning, setMissingTabsWarning] = useState<string[] | null>(null);
 
   const yieldParams = StorageService.getYieldParams();
-  const currentWeights: CutYieldWeights = yieldParams.basis === 'piece' 
-    ? HALF_CARCASS_CUT_YIELD_WEIGHTS 
-    : DEFAULT_CUT_YIELD_WEIGHTS;
+  const currentWeights: CutYieldWeights = getCutYieldWeightsFromSimulation(
+    yieldParams.carcassWeight,
+    yieldParams.basis || 'carcass',
+    yieldParams
+  );
+  const currentDivisor = getEffectiveDesossaCarcassWeight(
+    yieldParams.carcassWeight,
+    yieldParams.basis || 'carcass'
+  );
 
   const [draft, setDraft] = useState<SheetRowData>(() => {
-    return recalculateRowOrderFormulas({ ...initialRow }, currentWeights);
+    return recalculateRowOrderFormulas({ ...initialRow }, currentWeights, currentDivisor);
   });
   const [isSavedToast, setIsSavedToast] = useState(false);
   const [savedSummaryMsg, setSavedSummaryMsg] = useState<string>('');
@@ -140,7 +146,7 @@ export const PortalForm: React.FC<PortalFormProps> = ({
     const updated = recalculateRowOrderFormulas({
       ...draft,
       [field]: num
-    }, currentWeights);
+    }, currentWeights, currentDivisor);
     setDraft(updated);
   };
 

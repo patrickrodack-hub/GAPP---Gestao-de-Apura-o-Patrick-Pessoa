@@ -1,6 +1,7 @@
 import { SheetRowData, Store, Supplier } from '../types/erp';
-import { calculateSheetTotals, formatCurrencyBRL } from './calculationService';
+import { calculateSheetTotals, calculateSheetFooterRealMetrics, formatCurrencyBRL } from './calculationService';
 import { PdfReportService, GeneratePurchaseOrderPdfOptions, GenerateBeefYieldPdfOptions } from './pdfReportService';
+import { StorageService } from './storageService';
 
 export class WhatsAppShareService {
   /**
@@ -57,29 +58,32 @@ export class WhatsAppShareService {
     const pdfBlob = doc.output('blob');
     const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-    // 2. Monta a mensagem de WhatsApp formatada
+    // 2. Monta a mensagem de WhatsApp formatada (100% Real com base na Desossa informada)
+    const activeYieldParams = StorageService.getYieldParams();
+    const footerMetrics = calculateSheetFooterRealMetrics(rows, totals, activeYieldParams);
+    const desossaLabel = footerMetrics.basis === 'piece' ? 'Meia Carcaça' : 'Carcaça';
     const totalPecasBovino = totals.pedidoDianteiro + totals.pedidoTraseiro + totals.pedidoCoxao + totals.pedidoAlcatrao + totals.pedidoCostelaGaucha;
-    const totalKgEst = Math.round(totals.boi * 240);
     const totalBandas = totals.bandaPedido || 0;
 
     const messageLines = [
       `📊 *GRUPO GAPP SISTEMAS • PLANILHA OFICIAL DE COMPRAS*`,
       `📅 *Emissão:* ${dateFormatted} às ${timeFormatted}`,
       `👤 *Responsável:* ${currentUser}`,
-      `🏪 *Rede:* 16 Filiais Consolidadas`,
+      `🏪 *Rede:* ${rows.length} Filiais Consolidadas`,
+      `⚖️ *Desossa Base:* ${desossaLabel} ${footerMetrics.effectiveDesossaWeight}kg`,
       ``,
       `🐂 *RESUMO CONSOLIDADO DE COMPRA (BOVINO):*`,
-      `• *Total de Bois Equivalente:* ${totals.boi.toFixed(1)} cabeças`,
-      `• *Quarto Dianteiro:* ${totals.pedidoDianteiro} peças (${totals.pedidoDianteiro * 60} kg)`,
-      `• *Quarto Traseiro:* ${totals.pedidoTraseiro} peças (${totals.pedidoTraseiro * 60} kg)`,
-      `• *Coxão com Osso:* ${totals.pedidoCoxao} peças (${totals.pedidoCoxao * 36} kg)`,
-      `• *Alcatrão com Osso:* ${totals.pedidoAlcatrao} peças (${totals.pedidoAlcatrao * 24} kg)`,
-      `• *Costela Gaúcha:* ${totals.pedidoCostelaGaucha} peças (${totals.pedidoCostelaGaucha * 20} kg)`,
+      `• *Total de Bois Equivalente:* ${totals.boi.toFixed(1)} cabeças (${footerMetrics.boiKg.toLocaleString('pt-BR')} kg)`,
+      `• *Quarto Dianteiro:* ${totals.pedidoDianteiro} peças (${footerMetrics.pedidoDianteiroKg.toLocaleString('pt-BR')} kg)`,
+      `• *Quarto Traseiro:* ${totals.pedidoTraseiro} peças (${footerMetrics.pedidoTraseiroKg.toLocaleString('pt-BR')} kg)`,
+      `• *Coxão com Osso:* ${totals.pedidoCoxao} peças (${footerMetrics.pedidoCoxaoKg.toLocaleString('pt-BR')} kg)`,
+      `• *Alcatrão com Osso:* ${totals.pedidoAlcatrao} peças (${footerMetrics.pedidoAlcatraoKg.toLocaleString('pt-BR')} kg)`,
+      `• *Costela Gaúcha:* ${totals.pedidoCostelaGaucha} peças (${footerMetrics.pedidoCostelaGauchaKg.toLocaleString('pt-BR')} kg)`,
       `• *Total de Peças Bovinas:* ${totalPecasBovino} peças`,
-      `• *Volume Estimado:* ${totalKgEst.toLocaleString('pt-BR')} kg`,
-      `• *Custo Estimado Base (@ R$ 390,00):* R$ 376.311,95`,
+      `• *Volume Real do Pedido:* ${footerMetrics.totalOrderKg.toLocaleString('pt-BR')} kg`,
+      `• *Custo Total Real (@ ${formatCurrencyBRL(footerMetrics.boiCostKg * 15)}):* ${formatCurrencyBRL(footerMetrics.totalGeralR$)}`,
       ``,
-      totalBandas > 0 ? `🐖 *SUÍNO (CÂMARA / BALCÃO):* ${totalBandas} bandas (${(totalBandas * 36).toLocaleString('pt-BR')} kg)\n` : '',
+      totalBandas > 0 ? `🐖 *SUÍNO (CÂMARA / BALCÃO):* ${totalBandas} bandas (${footerMetrics.bandaPedidoKg.toLocaleString('pt-BR')} kg)\n` : '',
       `📄 _O arquivo PDF completo em formato A4 Paisagem foi gerado para anexo._`,
       `🔒 _Autenticação Oficial Grupo GAPP • v11.1_`
     ].filter(Boolean);

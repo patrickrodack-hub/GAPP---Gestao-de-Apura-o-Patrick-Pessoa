@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import { SheetRowData, Store, PurchaseBatch, WasteRecord } from '../types/erp';
-import { calculateSheetTotals } from './calculationService';
+import { calculateSheetTotals, calculateSheetFooterRealMetrics, formatCurrencyBRL } from './calculationService';
+import { StorageService } from './storageService';
 import { ReportBrandingService } from './reportBrandingService';
 
 interface ExportExcelOptions {
@@ -275,19 +276,22 @@ export const ExcelExportService = {
       };
     }
 
-    // Totals Row 2: TOTAL GERAL FINANCEIRO R$
+    // Totals Row 2: TOTAL GERAL FINANCEIRO R$ (100% Real com base na Desossa informada)
+    const activeYieldParams = StorageService.getYieldParams();
+    const footerMetrics = calculateSheetFooterRealMetrics(sheetRows, totals, activeYieldParams);
+    const desossaLabel = footerMetrics.basis === 'piece' ? 'Meia Carcaça' : 'Carcaça';
     const totalGeralRow = totalsRowPeça + 1;
     ws1.getRow(totalGeralRow).height = 26;
     ws1.mergeCells(`A${totalGeralRow}:F${totalGeralRow}`);
     const tgCell = ws1.getCell(`A${totalGeralRow}`);
-    tgCell.value = 'TOTAL GERAL COMPRA: R$ 376.311,95 (14.473,5 kg)';
+    tgCell.value = `TOTAL GERAL COMPRA: ${formatCurrencyBRL(footerMetrics.totalGeralR$)} (${footerMetrics.totalOrderKg.toLocaleString('pt-BR')} kg)`;
     tgCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
     tgCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF065F46' } }; // Dark Emerald
     tgCell.alignment = { horizontal: 'left', vertical: 'middle' };
 
     ws1.mergeCells(`G${totalGeralRow}:BA${totalGeralRow}`);
     const tgNote = ws1.getCell(`G${totalGeralRow}`);
-    tgNote.value = 'Validação Contábil Oficial da Direção Conforme Matriz v11.1 • 16 Filiais Consolidadas • Custo Médio Quarto: R$ 26,00/kg (@ R$ 390,00)';
+    tgNote.value = `Cálculo Real Oficial Matriz v11.1 • ${sheetRows.length} Filiais • Desossa: ${desossaLabel} ${footerMetrics.effectiveDesossaWeight}kg • Custo Base: ${formatCurrencyBRL(footerMetrics.boiCostKg)}/kg (@ ${formatCurrencyBRL(footerMetrics.boiCostKg * 15)})`;
     tgNote.font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FFFFFFFF' } };
     tgNote.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF047857' } };
     tgNote.alignment = { horizontal: 'left', vertical: 'middle' };

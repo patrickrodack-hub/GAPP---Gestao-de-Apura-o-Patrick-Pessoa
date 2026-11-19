@@ -2,11 +2,13 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { SheetRowData } from '../../types/erp';
 import { 
   calculateSheetTotals, 
+  calculateSheetFooterRealMetrics,
+  formatCurrencyBRL,
   recalculateRowOrderFormulas,
+  recalculateRowsForDesossaChange,
   CutYieldWeights,
-  DEFAULT_CUT_YIELD_WEIGHTS,
-  HALF_CARCASS_CUT_YIELD_WEIGHTS,
-  getCutYieldWeightsFromSimulation
+  getCutYieldWeightsFromSimulation,
+  getEffectiveDesossaCarcassWeight
 } from '../../services/calculationService';
 import { StorageService } from '../../services/storageService';
 import { 
@@ -202,20 +204,30 @@ export const SheetTab: React.FC<SheetTabProps> = ({
     }
   }, [yieldParams?.basis]);
 
+  const activeYieldParams = useMemo(() => {
+    return yieldParams || StorageService.getYieldParams();
+  }, [yieldParams]);
+
   // Peso da Carcaça / Lote vinculado e importado sempre do módulo de Análise Técnica de Rendimento e Desossa do Boi
-  const technicalCarcassWeight = yieldParams?.carcassWeight || StorageService.getYieldParams().carcassWeight || 240;
+  const technicalCarcassWeight = activeYieldParams.carcassWeight || 240;
 
   // Divisor ativo exibido em "Desossa: Carcaça XXkg" (ou "Meia Carcaça XXkg")
   const effectiveDesossaCarcassWeight = useMemo(() => {
-    return yieldBasis === 'carcass'
-      ? Math.max(1, technicalCarcassWeight)
-      : Math.max(1, Math.round(technicalCarcassWeight / 2));
+    return getEffectiveDesossaCarcassWeight(technicalCarcassWeight, yieldBasis);
   }, [technicalCarcassWeight, yieldBasis]);
 
-  // Multiplicadores dos cortes calculados dinamicamente com base no Peso da Carcaça / Lote do módulo de Rendimento
+  // Input inline editável para o valor exato de Desossa diretamente no cabeçalho da planilha
+  const [desossaWeightInput, setDesossaWeightInput] = useState<string>(() =>
+    String(effectiveDesossaCarcassWeight)
+  );
+  useEffect(() => {
+    setDesossaWeightInput(String(effectiveDesossaCarcassWeight));
+  }, [effectiveDesossaCarcassWeight]);
+
+  // Multiplicadores dos cortes calculados dinamicamente com base no Peso Real informado em Desossa + parâmetros reais do ERP
   const currentCutWeights: CutYieldWeights = useMemo(() => {
-    return getCutYieldWeightsFromSimulation(technicalCarcassWeight, yieldBasis);
-  }, [technicalCarcassWeight, yieldBasis]);
+    return getCutYieldWeightsFromSimulation(technicalCarcassWeight, yieldBasis, activeYieldParams);
+  }, [technicalCarcassWeight, yieldBasis, activeYieldParams]);
 
   const prevDivisorRef = useRef<number>(effectiveDesossaCarcassWeight);
 
@@ -226,33 +238,58 @@ export const SheetTab: React.FC<SheetTabProps> = ({
       prevDivisor: number,
       nextDivisor: number
     ): SheetRowData[] => {
-      const safePrev = Math.max(1, prevDivisor);
-      const safeNext = Math.max(1, nextDivisor);
-
-      return sourceRows.map((row) => {
-        const currentVenda = Math.round(
-          Number(row.venda !== undefined ? row.venda : row.boiAVenda) || 0
-        );
-        let nextRow = row;
-
-        // Se a linha já tiver venda lançada mas ainda não possuir vendaReportQtyKg gravado (ex.: importação anterior ou edição manual),
-        // reconstrói o peso base proporcional antes de dividir pelo novo padrão de Desossa para manter ida e volta exatas.
-        if (
-          safePrev !== safeNext &&
-          (!row.vendaReportQtyKg || row.vendaReportQtyKg <= 0) &&
-          currentVenda > 0
-        ) {
-          nextRow = {
-            ...row,
-            vendaReportQtyKg: Number((currentVenda * safePrev).toFixed(2)),
-          };
-        }
-
-        return recalculateRowOrderFormulas(nextRow, cutWeights, safeNext);
-      });
+      return recalculateRowsForDesossaChange(sourceRows, prevDivisor, nextDivisor, cutWeights);
     },
     []
   );
+
+  const handleCommitInlineDesossaWeight = useCallback(() => {
+    const parsed = parseFloat(desossaWeightInput.replace(',', '.'));
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setDesossaWeightInput(String(effectiveDesossaCarcassWeight));
+      return;
+    }
+
+    const sanitizedDisplayWeight = Math.max(1, Math.min(2000, Number(parsed.toFixed(2))));
+    const nextCarcassWeight =
+      yieldBasis === 'carcass'
+        ? sanitizedDisplayWeight
+        : Number((sanitizedDisplayWeight * 2).toFixed(2));
+    const nextDivisor = getEffectiveDesossaCarcassWeight(nextCarcassWeight, yieldBasis);
+
+    if (nextDivisor === effectiveDesossaCarcassWeight && nextCarcassWeight === technicalCarcassWeight) {
+      setDesossaWeightInput(String(effectiveDesossaCarcassWeight));
+      return;
+    }
+
+    const prevDivisor = effectiveDesossaCarcassWeight;
+    prevDivisorRef.current = nextDivisor;
+
+    const updatedParams = {
+      ...activeYieldParams,
+      carcassWeight: nextCarcassWeight,
+      basis: yieldBasis,
+    };
+
+    if (onUpdateYieldParams) {
+      onUpdateYieldParams(updatedParams);
+    } else {
+      StorageService.saveYieldParams(updatedParams);
+      const newWeights = getCutYieldWeightsFromSimulation(nextCarcassWeight, yieldBasis, updatedParams);
+      const updated = recalculateRowsWithDesossaDivisor(rows, newWeights, prevDivisor, nextDivisor);
+      onUpdateMultiple(updated);
+    }
+  }, [
+    desossaWeightInput,
+    effectiveDesossaCarcassWeight,
+    yieldBasis,
+    technicalCarcassWeight,
+    activeYieldParams,
+    onUpdateYieldParams,
+    rows,
+    recalculateRowsWithDesossaDivisor,
+    onUpdateMultiple,
+  ]);
 
   const handleApplyImportedStoreSales = useCallback(
     (
@@ -315,32 +352,28 @@ export const SheetTab: React.FC<SheetTabProps> = ({
   const handleToggleYieldBasis = () => {
     const nextBasis: 'carcass' | 'piece' = yieldBasis === 'carcass' ? 'piece' : 'carcass';
     const prevDivisor = effectiveDesossaCarcassWeight;
-    const nextDivisor =
-      nextBasis === 'carcass'
-        ? Math.max(1, technicalCarcassWeight)
-        : Math.max(1, Math.round(technicalCarcassWeight / 2));
+    const nextDivisor = getEffectiveDesossaCarcassWeight(technicalCarcassWeight, nextBasis);
 
     prevDivisorRef.current = nextDivisor;
     setYieldBasis(nextBasis);
-    const newWeights = getCutYieldWeightsFromSimulation(technicalCarcassWeight, nextBasis);
-    const currentParams = yieldParams || StorageService.getYieldParams();
-    const updatedParams = { ...currentParams, basis: nextBasis };
-    StorageService.saveYieldParams(updatedParams);
+    const updatedParams = { ...activeYieldParams, basis: nextBasis };
     if (onUpdateYieldParams) {
       onUpdateYieldParams(updatedParams);
+    } else {
+      StorageService.saveYieldParams(updatedParams);
+      const newWeights = getCutYieldWeightsFromSimulation(technicalCarcassWeight, nextBasis, updatedParams);
+      const updated = recalculateRowsWithDesossaDivisor(rows, newWeights, prevDivisor, nextDivisor);
+      onUpdateMultiple(updated);
     }
-    const updated = recalculateRowsWithDesossaDivisor(rows, newWeights, prevDivisor, nextDivisor);
-    onUpdateMultiple(updated);
   };
 
-  // Quando o peso da carcaça ou a base (Carcaça / Meia Carcaça) do módulo de Rendimento mudar, sincroniza todos os cálculos na planilha (incluindo VENDA e SUGESTÃO)
+  // Quando o peso da carcaça, a base (Carcaça / Meia Carcaça) ou parâmetros reais de rendimento mudarem, sincroniza todos os cálculos na planilha
   useEffect(() => {
     const prevDivisor = prevDivisorRef.current;
     const nextDivisor = effectiveDesossaCarcassWeight;
     prevDivisorRef.current = nextDivisor;
 
-    const newWeights = getCutYieldWeightsFromSimulation(technicalCarcassWeight, yieldBasis);
-    const updated = recalculateRowsWithDesossaDivisor(rows, newWeights, prevDivisor, nextDivisor);
+    const updated = recalculateRowsWithDesossaDivisor(rows, currentCutWeights, prevDivisor, nextDivisor);
     const hasChanged = updated.some((row, idx) => {
       const orig = rows[idx];
       return orig && (
@@ -356,7 +389,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
     if (hasChanged) {
       onUpdateMultiple(updated);
     }
-  }, [technicalCarcassWeight, yieldBasis, effectiveDesossaCarcassWeight]);
+  }, [technicalCarcassWeight, yieldBasis, effectiveDesossaCarcassWeight, currentCutWeights]);
 
   // Custos Negociados de Compra (Alcatrão, Costela G, Banda Suína e Boi Quarto)
   const [alcatraoCost, setAlcatraoCost] = useState<number>(() => {
@@ -381,6 +414,33 @@ export const SheetTab: React.FC<SheetTabProps> = ({
   }, [yieldParams]);
 
   const totals = calculateSheetTotals(rows);
+
+  const footerMetrics = useMemo(() => {
+    return calculateSheetFooterRealMetrics(
+      rows,
+      totals,
+      {
+        ...activeYieldParams,
+        carcassWeight: technicalCarcassWeight,
+        costPerKg: boiCost,
+        alcatraoCostKg: alcatraoCost,
+        costelaCostKg: costelaCost,
+        bandaCostKg: bandaCost,
+        basis: yieldBasis,
+      },
+      yieldBasis
+    );
+  }, [
+    rows,
+    totals,
+    activeYieldParams,
+    technicalCarcassWeight,
+    boiCost,
+    alcatraoCost,
+    costelaCost,
+    bandaCost,
+    yieldBasis,
+  ]);
 
   const filteredRows = rows.filter(r => 
     r.storeName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -451,7 +511,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
       updated.somaDoTraseiro = (updated.camaraTraseiro || 0) + (updated.camaraCoxao || 0) + (updated.camaraAlcatrao || 0);
     }
 
-    updated = recalculateRowOrderFormulas(updated, currentCutWeights);
+    updated = recalculateRowOrderFormulas(updated, currentCutWeights, effectiveDesossaCarcassWeight);
     onUpdateRow(updated);
   }, [filteredRows, currentCutWeights, onUpdateRow, effectiveDesossaCarcassWeight]);
 
@@ -649,7 +709,7 @@ export const SheetTab: React.FC<SheetTabProps> = ({
   // Preencher a coluna 'Pedido' com as sugestões calculadas (venda - boi)
   const handleApplySuggestionsToOrder = () => {
     const updated = rows.map(r => {
-      const recalculated = recalculateRowOrderFormulas(r, currentCutWeights);
+      const recalculated = recalculateRowOrderFormulas(r, currentCutWeights, effectiveDesossaCarcassWeight);
       return {
         ...recalculated,
         pedidoFinal: recalculated.sugestaoPedido > 0 ? Math.ceil(recalculated.sugestaoPedido) : 0
@@ -683,25 +743,49 @@ export const SheetTab: React.FC<SheetTabProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-          {/* Base de Desossa dos Cortes - Importada e vinculada do campo "Peso da Carcaça / Lote" do módulo de Rendimento */}
-          <div className="flex items-center">
+          {/* Base de Desossa dos Cortes - Valor real editável e sincronizado com o módulo de Rendimento */}
+          <div className="flex items-center rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/60 shadow-sm overflow-hidden">
             <button
+              type="button"
               onClick={handleToggleYieldBasis}
-              className={`px-2.5 py-1.5 ${onNavigateToYieldTab ? 'rounded-l-lg' : 'rounded-lg'} bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-semibold text-xs flex items-center gap-1.5 transition shadow-sm active:scale-95`}
-              title={`Importado e vinculado ao módulo de Análise Técnica de Rendimento e Desossa do Boi (Campo: Peso da Carcaça / Lote = ${technicalCarcassWeight}kg). Clique para alternar entre Carcaça Inteira (${technicalCarcassWeight}kg) ou Meia Carcaça (${Math.round(technicalCarcassWeight / 2)}kg).`}
+              className="px-2.5 py-1.5 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-semibold text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+              title={`Base ativa: ${yieldBasis === 'carcass' ? 'Carcaça Inteira' : 'Meia Carcaça'} (${effectiveDesossaCarcassWeight}kg). Clique para alternar entre Carcaça Inteira (${technicalCarcassWeight}kg) e Meia Carcaça (${Math.max(1, Math.round(technicalCarcassWeight / 2))}kg).`}
             >
               <Scissors className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
               <span>Desossa:</span>
               <span className="font-bold underline">
-                {yieldBasis === 'carcass' ? `Carcaça ${technicalCarcassWeight}kg` : `Meia Carcaça ${Math.round(technicalCarcassWeight / 2)}kg`}
+                {yieldBasis === 'carcass' ? 'Carcaça' : 'Meia Carcaça'}
               </span>
             </button>
+            <div className="flex items-center border-l border-purple-200/80 dark:border-purple-800/80 bg-white/80 dark:bg-slate-900/70 px-1.5 py-0.5">
+              <input
+                type="number"
+                min={1}
+                max={2000}
+                step="1"
+                value={desossaWeightInput}
+                onChange={(e) => setDesossaWeightInput(e.target.value)}
+                onBlur={handleCommitInlineDesossaWeight}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur();
+                  } else if (e.key === 'Escape') {
+                    setDesossaWeightInput(String(effectiveDesossaCarcassWeight));
+                    e.currentTarget.blur();
+                  }
+                }}
+                aria-label="Peso da Desossa em kg"
+                title="Informe o peso real (kg) da Desossa e pressione Enter para recalcular toda a planilha"
+                className="w-12 text-right font-mono font-bold text-xs text-purple-800 dark:text-purple-200 bg-transparent focus:outline-none focus:ring-1 focus:ring-purple-400 rounded px-0.5"
+              />
+              <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400 ml-0.5">kg</span>
+            </div>
             {onNavigateToYieldTab && (
               <button
                 type="button"
                 onClick={onNavigateToYieldTab}
-                className="px-1.5 py-1.5 rounded-r-lg bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/60 dark:hover:bg-purple-800/80 border-y border-r border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 transition shadow-sm"
-                title={`Alterar Peso da Carcaça / Lote (${technicalCarcassWeight}kg) no Módulo de Rendimento`}
+                className="px-1.5 py-1.5 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/60 dark:hover:bg-purple-800/80 border-l border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 transition cursor-pointer"
+                title={`Abrir Módulo Técnico de Rendimento e Desossa (${technicalCarcassWeight}kg)`}
               >
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
@@ -1365,63 +1449,103 @@ export const SheetTab: React.FC<SheetTabProps> = ({
                 <td className="text-center py-2">{totals.pernilPecas}</td>
               </tr>
 
-              {/* Row 2: TOTAL EM KG */}
+              {/* Row 2: TOTAL EM KG (100% Real com base na Desossa informada) */}
               <tr className="text-slate-600 dark:text-slate-300 text-[10px] bg-slate-50 dark:bg-slate-950 font-mono">
                 <td className="px-3 py-1.5 sticky left-0 z-30 bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 font-sans tracking-wide text-slate-800 dark:text-slate-200">
-                  TOTAL EM KG
+                  TOTAL EM KG ({effectiveDesossaCarcassWeight}kg)
                 </td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">5.775</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">2.975</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">1.881</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">1.820</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-indigo-700 dark:text-indigo-300 font-mono font-bold">{Math.round((totals.pedidoAlcatraoReal || 0) * 22)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">1.848</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-indigo-700 dark:text-indigo-300 font-mono font-bold">{Math.round((totals.pedidoCostelaReal || 0) * 20)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-blue-600 dark:text-blue-400 font-mono">{(totals.boi * 260).toFixed(0)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-400 font-mono">{(totals.venda * 260).toFixed(0)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-500 font-mono">{(totals.sugestaoPedido * 260).toFixed(0)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 font-mono font-bold">{(totals.pedidoFinal * 260).toFixed(0)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">4.675</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800" title={`Câmara (${footerMetrics.camaraDianteiroKg.toLocaleString('pt-BR')} kg) + Desossa Dianteiro`}>
+                  {footerMetrics.pedidoDianteiroKg.toLocaleString('pt-BR')}
+                </td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800" title={`${totals.camaraTraseiro} pç × ${footerMetrics.traseiroPieceKg} kg`}>
+                  {footerMetrics.pedidoTraseiroKg.toLocaleString('pt-BR')}
+                </td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800" title={`Câmara (${footerMetrics.camaraCoxaoKg.toLocaleString('pt-BR')} kg) + Desossa Coxão`}>
+                  {footerMetrics.pedidoCoxaoKg.toLocaleString('pt-BR')}
+                </td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800" title={`Câmara (${footerMetrics.camaraAlcatraoKg.toLocaleString('pt-BR')} kg) + Desossa Alcatrão`}>
+                  {footerMetrics.pedidoAlcatraoKg.toLocaleString('pt-BR')}
+                </td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-indigo-700 dark:text-indigo-300 font-mono font-bold" title={`${totals.pedidoAlcatraoReal || 0} pç × ${footerMetrics.alcatraoPieceKg} kg`}>
+                  {footerMetrics.pedidoAlcatraoRealKg.toLocaleString('pt-BR')}
+                </td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800" title={`${totals.camaraCostelaGaucha} pç × ${footerMetrics.costelaPieceKg} kg`}>
+                  {footerMetrics.pedidoCostelaGauchaKg.toLocaleString('pt-BR')}
+                </td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-indigo-700 dark:text-indigo-300 font-mono font-bold" title={`${totals.pedidoCostelaReal || 0} pç × ${footerMetrics.costelaPieceKg} kg`}>
+                  {footerMetrics.pedidoCostelaRealKg.toLocaleString('pt-BR')}
+                </td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-blue-600 dark:text-blue-400 font-mono" title={`${Math.round(totals.boi)} × ${effectiveDesossaCarcassWeight} kg`}>
+                  {footerMetrics.boiKg.toLocaleString('pt-BR')}
+                </td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-amber-600 dark:text-amber-400 font-mono" title={`Total real de vendas (base ${effectiveDesossaCarcassWeight} kg)`}>
+                  {footerMetrics.vendaKg.toLocaleString('pt-BR')}
+                </td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-500 font-mono" title={`${Math.round(totals.sugestaoPedido)} × ${effectiveDesossaCarcassWeight} kg`}>
+                  {footerMetrics.sugestaoPedidoKg.toLocaleString('pt-BR')}
+                </td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 font-mono font-bold" title={`${totals.pedidoFinal} × ${effectiveDesossaCarcassWeight} kg`}>
+                  {footerMetrics.pedidoFinalKg.toLocaleString('pt-BR')}
+                </td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800" title={`${totals.pTransito} × ${effectiveDesossaCarcassWeight} kg`}>
+                  {footerMetrics.pTransitoKg.toLocaleString('pt-BR')}
+                </td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
 
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">182</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">1.035</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">7.535</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">1.848</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">400</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800" title={`${totals.camaraDianteiro} pç × ${footerMetrics.dianteiroPieceKg} kg`}>
+                  {footerMetrics.camaraDianteiroKg.toLocaleString('pt-BR')}
+                </td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800" title={`${totals.camaraTraseiro} pç × ${footerMetrics.traseiroPieceKg} kg`}>
+                  {footerMetrics.camaraTraseiroKg.toLocaleString('pt-BR')}
+                </td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800" title={`${totals.camaraCoxao} pç × ${footerMetrics.coxaoPieceKg} kg`}>
+                  {footerMetrics.camaraCoxaoKg.toLocaleString('pt-BR')}
+                </td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800" title={`${totals.camaraAlcatrao} pç × ${footerMetrics.alcatraoPieceKg} kg`}>
+                  {footerMetrics.camaraAlcatraoKg.toLocaleString('pt-BR')}
+                </td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800" title={`${totals.camaraCostelaGaucha} pç × ${footerMetrics.costelaPieceKg} kg`}>
+                  {footerMetrics.camaraCostelaGauchaKg.toLocaleString('pt-BR')}
+                </td>
 
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.alcatraKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.contraFileKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.picanhaKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.fileMignonKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">112</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.alcatraKg).toLocaleString('pt-BR')}</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.contraFileKg).toLocaleString('pt-BR')}</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.picanhaKg).toLocaleString('pt-BR')}</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.fileMignonKg).toLocaleString('pt-BR')}</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{footerMetrics.costelaCongKg.toLocaleString('pt-BR')}</td>
 
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.paletaKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.acemKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.peitoKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.musculoKg)}</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.paletaKg).toLocaleString('pt-BR')}</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.acemKg).toLocaleString('pt-BR')}</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.peitoKg).toLocaleString('pt-BR')}</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.musculoKg).toLocaleString('pt-BR')}</td>
 
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.chaKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.patinhoKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.lagartoRedondoKg)}</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.lagartoPlanoKg)}</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.chaKg).toLocaleString('pt-BR')}</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.patinhoKg).toLocaleString('pt-BR')}</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.lagartoRedondoKg).toLocaleString('pt-BR')}</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800">{Math.round(totals.lagartoPlanoKg).toLocaleString('pt-BR')}</td>
 
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
-                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 font-bold text-indigo-600 dark:text-indigo-400 font-mono">{(totals.bandaPedido * 36).toFixed(0)}</td>
+                <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 font-bold text-indigo-600 dark:text-indigo-400 font-mono">{footerMetrics.bandaPedidoKg.toLocaleString('pt-BR')}</td>
                 <td className="text-center py-1 border-r border-slate-200 dark:border-slate-800 text-slate-400">-</td>
                 <td className="text-center py-1 text-slate-400">-</td>
               </tr>
 
-              {/* Row 3: TOTAL GERAL EM R$ */}
+              {/* Row 3: TOTAL GERAL EM R$ (100% Real com base no pedido e Desossa informada) */}
               <tr className="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400 font-mono text-xs border-t border-emerald-300 dark:border-emerald-800/60">
-                <td className="px-3 py-2.5 sticky left-0 z-30 bg-emerald-100 dark:bg-emerald-950 border-r border-slate-200 dark:border-slate-800 font-sans font-bold flex items-center justify-between">
+                <td className="px-3 py-2.5 sticky left-0 z-30 bg-emerald-100 dark:bg-emerald-950 border-r border-slate-200 dark:border-slate-800 font-sans font-bold flex items-center justify-between gap-2">
                   <span>TOTAL GERAL</span>
-                  <span className="text-xs font-mono text-emerald-900 dark:text-emerald-300">R$ 376.311,95</span>
+                  <span className="text-xs font-mono text-emerald-900 dark:text-emerald-300">
+                    {formatCurrencyBRL(footerMetrics.totalGeralR$)}
+                  </span>
                 </td>
                 <td colSpan={37} className="px-4 py-2 text-right text-emerald-900 dark:text-emerald-300 font-sans text-xs">
-                  Validação Contábil Conforme Planilha da Direção: <strong className="font-mono text-slate-900 dark:text-white text-sm">R$ 376.311,95</strong> (Lote de Compra Consolidado das 16 Lojas)
+                  Total Real do Pedido ({yieldBasis === 'carcass' ? 'Carcaça' : 'Meia Carcaça'} {effectiveDesossaCarcassWeight}kg • {footerMetrics.totalOrderKg.toLocaleString('pt-BR')} kg):{' '}
+                  <strong className="font-mono text-slate-900 dark:text-white text-sm">
+                    {formatCurrencyBRL(footerMetrics.totalGeralR$)}
+                  </strong>{' '}
+                  (Lote Consolidado das {rows.length} Lojas)
                 </td>
               </tr>
             </tfoot>
