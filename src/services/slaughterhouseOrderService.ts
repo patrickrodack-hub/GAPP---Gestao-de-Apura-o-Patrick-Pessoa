@@ -1,8 +1,10 @@
 import {
   DesossaCategoryGroup,
   PdfSalesCategorySummary,
+  PdfSalesImportResult,
   PdfSalesParsedCutItem,
   PdfSalesStoreSummary,
+  PdfSalesStoreTotal,
   SheetRowData,
   SlaughterhouseCategoryStandard,
   SlaughterhouseCategoryStock,
@@ -850,6 +852,7 @@ export function parseRawSalesText(
   stores: StoreRefLike[] = []
 ): {
   items: PdfSalesParsedCutItem[];
+  storeTotals: PdfSalesStoreTotal[];
   unclassifiedLines: string[];
 } {
   const rawLines = String(rawText || '')
@@ -858,6 +861,7 @@ export function parseRawSalesText(
     .filter(l => l.length > 0);
 
   const items: PdfSalesParsedCutItem[] = [];
+  const storeTotalsMap = new Map<string, PdfSalesStoreTotal>();
   const unclassifiedLines: string[] = [];
 
   const knownCutHints = [
@@ -913,6 +917,83 @@ export function parseRawSalesText(
     const hasCutWord = knownCutHints.some(h => norm.includes(normalizeTextForClassification(h)));
     const inlineStore = stores.length > 0 ? matchStoreReference(line, stores) : null;
 
+    // Detecta explicitamente linhas totalizadoras por loja (ex.: "TOTAL DE CM SANTA ROSA  1.450,80  R$ 42.100,00")
+    const isStoreTotalLine =
+      /\btotal\b/i.test(norm) &&
+      !/\b(total geral|total rede|total relatorio|total empresa|total consolidado|totalizador geral)\b/i.test(norm);
+
+    if (isStoreTotalLine && !hasCutWord) {
+      let totalLine = line;
+      const hasNumOnTotalLine = /\d+(?:[.,]\d+)?/.test(
+        totalLine.replace(/^\s*\d{1,4}\s*[-–|]\s*/, '')
+      );
+      if (!hasNumOnTotalLine && idx + 1 < rawLines.length) {
+        const nextLine = rawLines[idx + 1];
+        const nextNorm = normalizeTextForClassification(nextLine);
+        const nextHasCut = knownCutHints.some(h => nextNorm.includes(normalizeTextForClassification(h)));
+        const nextHasStore = stores.length > 0 ? Boolean(matchStoreReference(nextLine, stores)) : false;
+        if (!nextHasCut && !nextHasStore && /\d+(?:[.,]\d+)?/.test(nextLine)) {
+          totalLine = `${totalLine} ${nextLine}`;
+          idx += 1;
+        }
+      }
+
+      const afterTotalMatch = totalLine.match(/\btotal\s+(?:de\s+|da\s+|do\s+|loja\s+|filial\s+)?(.+)/i);
+      const labelCandidate = (afterTotalMatch ? afterTotalMatch[1] : totalLine)
+        .replace(/R\$\s*[\d.,]+/gi, '')
+        .replace(/\d+(?:[.\s]\d{3})*(?:[.,]\d+)?\s*(?:kg|kilos?|quilos?|un|pç|pcs?)?/gi, ' ')
+        .replace(/[|;:\t]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const matchedTotalStore =
+        inlineStore ||
+        (labelCandidate ? matchStoreReference(labelCandidate, stores) : null) ||
+        (activeStore?.storeId
+          ? { storeId: activeStore.storeId, storeName: activeStore.storeName || activeStore.rawLabel }
+          : null);
+
+      const kgMatchTotal = totalLine.match(
+        /(\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{1,3})?|\d+(?:[.,]\d{1,3})?)\s*(?:kg|kilos?|quilos?)\b/i
+      );
+      let totalQtyKg = kgMatchTotal ? parseBrNumber(kgMatchTotal[1]) : 0;
+
+      const moneyMatchTotal = totalLine.match(
+        /R\$\s*(\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)/i
+      );
+      const revenueR$ = moneyMatchTotal ? parseBrNumber(moneyMatchTotal[1]) : undefined;
+
+      if (totalQtyKg <= 0) {
+        // Remove valores com R$ e códigos iniciais de loja (ex.: 01 - CM SANTA ROSA) antes de ler a coluna QTDE
+        const strippedForQty = totalLine
+          .replace(/R\$\s*[\d.,]+/gi, '')
+          .replace(/\btotal\s+(?:de\s+|da\s+|do\s+)?(?:filial\s+|loja\s+)?\d{1,3}\b/i, '');
+        const nums = Array.from(
+          strippedForQty.matchAll(/(\d{1,3}(?:\.\d{3})*(?:,\d{1,3})|\d+(?:[.,]\d{1,3})?)/g)
+        )
+          .map(m => parseBrNumber(m[1]))
+          .filter(n => n > 0 && n < 500000);
+        if (nums.length > 0) {
+          totalQtyKg = nums[0];
+        }
+      }
+
+      if (totalQtyKg > 0 && (matchedTotalStore || labelCandidate.length >= 3)) {
+        const key = matchedTotalStore?.storeId
+          ? matchedTotalStore.storeId
+          : `raw:${normalizeTextForClassification(labelCandidate || totalLine)}`;
+        storeTotalsMap.set(key, {
+          storeId: matchedTotalStore?.storeId,
+          storeName: matchedTotalStore?.storeName || labelCandidate || totalLine,
+          rawLabel: line,
+          totalQtyKg: Number(totalQtyKg.toFixed(2)),
+          revenueR$,
+          source: 'report_total_row',
+        });
+      }
+      continue;
+    }
+
     // Se a linha é um cabeçalho de filial/loja (sem corte bovino), atualiza o contexto da filial ativa
     if (!hasCutWord) {
       if (inlineStore) {
@@ -937,7 +1018,7 @@ export function parseRawSalesText(
     }
 
     // Evita linhas de totalização sem corte específico
-    if (/^(total geral|resumo|subtotal|relatorio|pagina)\b/i.test(norm)) {
+    if (/^(total geral|total de |total da |total do |resumo|subtotal|relatorio|pagina)\b/i.test(norm)) {
       continue;
     }
 
@@ -1021,7 +1102,206 @@ export function parseRawSalesText(
     }
   }
 
-  return { items, unclassifiedLines };
+  return {
+    items,
+    storeTotals: Array.from(storeTotalsMap.values()),
+    unclassifiedLines,
+  };
+}
+
+/**
+ * Retorna o peso padrão ativo de "Desossa: Carcaça" da Planilha de Compras
+ * (Carcaça Inteira = carcassWeight; Meia Carcaça = Math.round(carcassWeight / 2)).
+ */
+export function getEffectiveDesossaCarcassDivisor(
+  yieldParams?: Partial<YieldParams> | null,
+  basisOverride?: 'carcass' | 'piece'
+): number {
+  const rawWeight = Number(yieldParams?.carcassWeight) || 240;
+  const basis = basisOverride || yieldParams?.basis || 'carcass';
+  const divisor = basis === 'piece' ? Math.round(rawWeight / 2) : rawWeight;
+  return Math.max(1, divisor);
+}
+
+/**
+ * Calcula a coluna VENDA da Planilha de Compras a partir do total da coluna QTDE da loja
+ * dividido pelo padrão de "Desossa: Carcaça" e arredondado para o inteiro exato.
+ */
+export function calculateSheetVendaFromReportQty(
+  totalQtyKg: number,
+  carcassWeightKg: number
+): { exactBois: number; roundedVenda: number } {
+  const safeDivisor = Math.max(1, Number(carcassWeightKg) || 1);
+  const safeQty = Math.max(0, Number(totalQtyKg) || 0);
+  const exactBois = safeQty / safeDivisor;
+  return {
+    exactBois: Number(exactBois.toFixed(2)),
+    roundedVenda: Math.round(exactBois),
+  };
+}
+
+export interface SheetStoreVendaResolution {
+  key: string;
+  storeId?: string;
+  storeName: string;
+  rawLabel?: string;
+  isUnmappedStore: boolean;
+  totalQtyKg: number;
+  sumOfCutsKg: number;
+  reportTotalQtyKg?: number;
+  source: 'report_total_row' | 'sum_of_cuts';
+  itemsCount: number;
+  carcassWeightKg: number;
+  exactBois: number;
+  roundedVenda: number;
+}
+
+/**
+ * Consolida o total de quantidade (QTDE) de cada loja presente no relatório importado
+ * priorizando a linha explícita "TOTAL DE <LOJA>" (coluna QTDE) quando encontrada e usando
+ * o somatório dos cortes da filial como fallback automático.
+ */
+export function resolveStoreTotalsForSheetVenda(
+  importResult: Pick<PdfSalesImportResult, 'items' | 'storeTotals'>,
+  stores: StoreRefLike[],
+  carcassWeightKg: number
+): SheetStoreVendaResolution[] {
+  const safeDivisor = Math.max(1, Number(carcassWeightKg) || 1);
+
+  const itemsByStoreId = new Map<string, { sumKg: number; count: number; rawLabel?: string }>();
+  const unmappedItemsByKey = new Map<
+    string,
+    { rawLabel: string; sumKg: number; count: number }
+  >();
+
+  for (const item of importResult.items || []) {
+    const kg = Number(item.weightKg) || 0;
+    if (kg <= 0) continue;
+    if (item.matchedStoreId) {
+      const prev = itemsByStoreId.get(item.matchedStoreId) || { sumKg: 0, count: 0 };
+      itemsByStoreId.set(item.matchedStoreId, {
+        sumKg: prev.sumKg + kg,
+        count: prev.count + 1,
+        rawLabel: prev.rawLabel || item.rawStore,
+      });
+    } else if (item.rawStore && item.rawStore.trim().length > 0) {
+      const rawLabel = item.rawStore.trim();
+      const rawKey = `raw:${normalizeTextForClassification(rawLabel)}`;
+      const prev = unmappedItemsByKey.get(rawKey) || { rawLabel, sumKg: 0, count: 0 };
+      unmappedItemsByKey.set(rawKey, {
+        rawLabel: prev.rawLabel,
+        sumKg: prev.sumKg + kg,
+        count: prev.count + 1,
+      });
+    }
+  }
+
+  const reportTotalsByStoreId = new Map<string, PdfSalesStoreTotal>();
+  const unmappedReportTotals = new Map<string, PdfSalesStoreTotal>();
+
+  for (const st of importResult.storeTotals || []) {
+    const qty = Number(st.totalQtyKg) || 0;
+    if (qty <= 0) continue;
+    const resolvedMatch =
+      st.storeId && stores.some(s => s.id === st.storeId)
+        ? { storeId: st.storeId, storeName: stores.find(s => s.id === st.storeId)!.name }
+        : matchStoreReference(st.storeName || st.rawLabel, stores);
+
+    if (resolvedMatch) {
+      const existing = reportTotalsByStoreId.get(resolvedMatch.storeId);
+      // Em caso de importação acumulada da mesma loja, preserva o maior/mais recente ou soma se for de arquivos diferentes já mesclados
+      reportTotalsByStoreId.set(resolvedMatch.storeId, {
+        ...st,
+        storeId: resolvedMatch.storeId,
+        storeName: resolvedMatch.storeName,
+        totalQtyKg: existing
+          ? Number((existing.totalQtyKg + qty).toFixed(2))
+          : Number(qty.toFixed(2)),
+        source: 'report_total_row',
+      });
+    } else {
+      const rawLabel = (st.storeName || st.rawLabel || '').trim();
+      if (!rawLabel) continue;
+      const rawKey = `raw:${normalizeTextForClassification(rawLabel)}`;
+      const existing = unmappedReportTotals.get(rawKey);
+      unmappedReportTotals.set(rawKey, {
+        ...st,
+        storeName: rawLabel,
+        totalQtyKg: existing
+          ? Number((existing.totalQtyKg + qty).toFixed(2))
+          : Number(qty.toFixed(2)),
+        source: 'report_total_row',
+      });
+    }
+  }
+
+  const resolved: SheetStoreVendaResolution[] = [];
+
+  // 1. Filiais oficiais cadastradas (preservando ordem da planilha)
+  for (const store of stores) {
+    const reportTot = reportTotalsByStoreId.get(store.id);
+    const itemsAgg = itemsByStoreId.get(store.id);
+    if (!reportTot && !itemsAgg) continue;
+
+    const sumOfCutsKg = Number((itemsAgg?.sumKg || 0).toFixed(2));
+    const hasExplicitReportTotal = Boolean(reportTot && reportTot.totalQtyKg > 0);
+    const totalQtyKg = hasExplicitReportTotal
+      ? Number(reportTot!.totalQtyKg.toFixed(2))
+      : sumOfCutsKg;
+    const { exactBois, roundedVenda } = calculateSheetVendaFromReportQty(totalQtyKg, safeDivisor);
+
+    resolved.push({
+      key: store.id,
+      storeId: store.id,
+      storeName: store.name,
+      rawLabel: reportTot?.rawLabel || itemsAgg?.rawLabel,
+      isUnmappedStore: false,
+      totalQtyKg,
+      sumOfCutsKg,
+      reportTotalQtyKg: hasExplicitReportTotal ? reportTot!.totalQtyKg : undefined,
+      source: hasExplicitReportTotal ? 'report_total_row' : 'sum_of_cuts',
+      itemsCount: itemsAgg?.count || 0,
+      carcassWeightKg: safeDivisor,
+      exactBois,
+      roundedVenda,
+    });
+  }
+
+  // 2. Filiais detectadas no relatório que ainda aguardam vínculo manual
+  const unmappedKeys = new Set<string>([
+    ...unmappedReportTotals.keys(),
+    ...unmappedItemsByKey.keys(),
+  ]);
+
+  for (const rawKey of unmappedKeys) {
+    const reportTot = unmappedReportTotals.get(rawKey);
+    const itemsAgg = unmappedItemsByKey.get(rawKey);
+    const sumOfCutsKg = Number((itemsAgg?.sumKg || 0).toFixed(2));
+    const hasExplicitReportTotal = Boolean(reportTot && reportTot.totalQtyKg > 0);
+    const totalQtyKg = hasExplicitReportTotal
+      ? Number(reportTot!.totalQtyKg.toFixed(2))
+      : sumOfCutsKg;
+    if (totalQtyKg <= 0) continue;
+
+    const { exactBois, roundedVenda } = calculateSheetVendaFromReportQty(totalQtyKg, safeDivisor);
+    resolved.push({
+      key: rawKey,
+      storeId: undefined,
+      storeName: reportTot?.storeName || itemsAgg?.rawLabel || 'Filial não vinculada',
+      rawLabel: reportTot?.rawLabel || itemsAgg?.rawLabel,
+      isUnmappedStore: true,
+      totalQtyKg,
+      sumOfCutsKg,
+      reportTotalQtyKg: hasExplicitReportTotal ? reportTot!.totalQtyKg : undefined,
+      source: hasExplicitReportTotal ? 'report_total_row' : 'sum_of_cuts',
+      itemsCount: itemsAgg?.count || 0,
+      carcassWeightKg: safeDivisor,
+      exactBois,
+      roundedVenda,
+    });
+  }
+
+  return resolved;
 }
 
 export function createInitialSlaughterhouseDraft(

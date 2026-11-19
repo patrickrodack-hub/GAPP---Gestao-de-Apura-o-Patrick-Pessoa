@@ -556,6 +556,15 @@ export interface PdfSalesStoreSummary {
   };
 }
 
+export interface PdfSalesStoreTotal {
+  storeId?: string;
+  storeName: string;
+  rawLabel?: string;
+  totalQtyKg: number;
+  revenueR$?: number;
+  source: 'report_total_row' | 'sum_of_cuts';
+}
+
 export interface PdfSalesImportResult {
   fileName: string;
   parsedAt: number;
@@ -563,6 +572,7 @@ export interface PdfSalesImportResult {
   rawSummaryNote?: string;
   targetStoreId?: string;
   recognizedStores?: { storeId: string; storeName: string; rawLabels: string[] }[];
+  storeTotals?: PdfSalesStoreTotal[];
   unassignedCount?: number;
   items: PdfSalesParsedCutItem[];
   unclassifiedLines: string[];

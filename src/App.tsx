@@ -1047,6 +1047,7 @@ export default function App() {
                     <SheetTab
                       rows={sheetRows}
                       stores={stores}
+                      yieldParams={yieldParams}
                       onUpdateRow={handleUpdateRow}
                       onUpdateMultiple={handleUpdateMultipleRows}
                       onExportXLSX={handleExportXLSX}
@@ -1055,6 +1056,8 @@ export default function App() {
                       onSaveSheetSnapshot={handleSaveSheetSnapshot}
                       onRestoreSheetSnapshot={handleRestoreSheetSnapshot}
                       onDeleteSheetSnapshot={handleDeleteSheetSnapshot}
+                      onUpdateYieldParams={handleUpdateYieldParams}
+                      onNavigateToYieldTab={() => handleTabSelect('yield')}
                     />
                   )}
 
@@ -1126,6 +1129,7 @@ export default function App() {
                       yieldParams={yieldParams}
                       currentUser={currentUser}
                       onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+                      onUpdateSheetRows={handleUpdateMultipleRows}
                       showToast={showToast}
                     />
                   )}
@@ -1402,6 +1406,7 @@ export default function App() {
                       <SheetTab
                         rows={sheetRows}
                         stores={stores}
+                        yieldParams={yieldParams}
                         onUpdateRow={handleUpdateRow}
                         onUpdateMultiple={handleUpdateMultipleRows}
                         onExportXLSX={handleExportXLSX}
@@ -1410,6 +1415,8 @@ export default function App() {
                         onSaveSheetSnapshot={handleSaveSheetSnapshot}
                         onRestoreSheetSnapshot={handleRestoreSheetSnapshot}
                         onDeleteSheetSnapshot={handleDeleteSheetSnapshot}
+                        onUpdateYieldParams={handleUpdateYieldParams}
+                        onNavigateToYieldTab={() => handleTabSelect('yield')}
                       />
                     )}
 
@@ -1481,6 +1488,7 @@ export default function App() {
                         yieldParams={yieldParams}
                         currentUser={currentUser}
                         onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+                        onUpdateSheetRows={handleUpdateMultipleRows}
                         showToast={showToast}
                       />
                     )}
@@ -1597,6 +1605,7 @@ export default function App() {
                 <SheetTab
                   rows={sheetRows}
                   stores={stores}
+                  yieldParams={yieldParams}
                   onUpdateRow={handleUpdateRow}
                   onUpdateMultiple={handleUpdateMultipleRows}
                   onExportXLSX={handleExportXLSX}
@@ -1605,6 +1614,8 @@ export default function App() {
                   onSaveSheetSnapshot={handleSaveSheetSnapshot}
                   onRestoreSheetSnapshot={handleRestoreSheetSnapshot}
                   onDeleteSheetSnapshot={handleDeleteSheetSnapshot}
+                  onUpdateYieldParams={handleUpdateYieldParams}
+                  onNavigateToYieldTab={() => handleTabSelect('yield')}
                 />
               )}
 
@@ -1676,6 +1687,7 @@ export default function App() {
                   yieldParams={yieldParams}
                   currentUser={currentUser}
                   onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
+                  onUpdateSheetRows={handleUpdateMultipleRows}
                   showToast={showToast}
                 />
               )}

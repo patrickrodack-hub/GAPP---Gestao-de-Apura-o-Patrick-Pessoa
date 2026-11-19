@@ -1,6 +1,6 @@
 import { GoogleGenAI, ThinkingLevel, Type } from '@google/genai';
 import { INITIAL_STORES } from '../data/initialData';
-import { PdfSalesImportResult, PdfSalesParsedCutItem } from '../types/erp';
+import { PdfSalesImportResult, PdfSalesParsedCutItem, PdfSalesStoreTotal } from '../types/erp';
 import {
   StoreRefLike,
   buildRecognizedStoresMetadata,
@@ -16,6 +16,14 @@ interface GeminiExtractedCut {
   storeCode?: string;
   weightKg: number;
   units?: number;
+  revenueR$?: number;
+}
+
+interface GeminiExtractedStoreTotal {
+  storeName: string;
+  storeCode?: string;
+  rawLabel?: string;
+  totalQtyKg: number;
   revenueR$?: number;
 }
 
@@ -409,9 +417,9 @@ export async function parseSalesDocumentClientSide(params: {
   // 1. Texto colado diretamente
   if (rawText && rawText.trim().length > 0 && !rawBase64) {
     const parsed = parseRawSalesText(rawText, storeList);
-    if (parsed.items.length === 0) {
+    if (parsed.items.length === 0 && parsed.storeTotals.length === 0) {
       throw new Error(
-        'Não foi possível identificar cortes bovinos com peso (KG) no texto informado. Verifique se cada linha contém o nome do corte e a quantidade em KG.'
+        'Não foi possível identificar cortes bovinos ou linhas de "TOTAL DE <LOJA>" com peso/QTDE no texto informado.'
       );
     }
     const storeMeta = buildRecognizedStoresMetadata(parsed.items);
@@ -419,8 +427,9 @@ export async function parseSalesDocumentClientSide(params: {
       fileName: fileName || 'relatorio-vendas.txt',
       parsedAt: Date.now(),
       parserEngine: 'text_parser',
-      rawSummaryNote: `Leitura tabular determinística: ${parsed.items.length} corte(s) identificado(s) em ${storeMeta.recognizedStores.length} filial(is).`,
+      rawSummaryNote: `Leitura tabular determinística: ${parsed.items.length} corte(s) e ${parsed.storeTotals.length} total(is) por loja identificado(s).`,
       recognizedStores: storeMeta.recognizedStores,
+      storeTotals: parsed.storeTotals,
       unassignedCount: storeMeta.unassignedCount,
       items: parsed.items,
       unclassifiedLines: parsed.unclassifiedLines,
@@ -477,8 +486,11 @@ REGRAS ESTRITAS E OBRIGATÓRIAS:
    - Se o documento mostrar vendas separadas por loja/filial (em blocos/seções por filial, colunas por filial ou uma coluna de loja), informe em CADA item os campos storeName e storeCode exatamente da filial a que aquele valor pertence.
    - Somente preencha documentStoreName se o documento inteiro pertencer a uma única loja; se houver 2 ou mais lojas no documento, deixe documentStoreName em branco e preencha storeName/storeCode em cada item.
    - NUNCA misture ou divida valores entre lojas: cada filial deve manter estritamente o seu próprio valor vendido em KG.
-3. Ignore linhas de subtotais gerais ou totalizadores finais ("Total Geral", "Total Rede") para não duplicar o peso vendido.
-4. Converta pesos expressos em gramas ou toneladas para KG (ex.: 500g = 0.5). Padrão brasileiro (ex.: 350,45 kg) deve virar número decimal 350.45.
+3. LINHAS DE TOTAL POR LOJA (CRÍTICO — NÃO DUPLICAR EM "cuts"):
+   - Sempre que houver uma linha totalizadora de loja/filial no relatório — como "TOTAL DE CM SANTA ROSA", "TOTAL CM SANTA ROSA", "TOTAL DA FILIAL ...", "TOTAL LOJA ..." — NÃO coloque essa linha dentro de "cuts".
+   - Em vez disso, extraia OBRIGATORIAMENTE cada linha de total de loja no array "storeTotals", capturando exatamente o valor numérico da coluna "QTDE" / "QTD" / "QUANTIDADE" (em KG) no campo "totalQtyKg", o nome oficial da loja em "storeName" e o texto original da linha em "rawLabel".
+   - Ignore apenas o "Total Geral" / "Total da Rede" (soma de todas as lojas juntas).
+4. Converta pesos expressos em gramas ou toneladas para KG (ex.: 500g = 0.5). Padrão brasileiro (ex.: 1.350,45) deve virar número decimal 1350.45.
 5. Preserve o nome original do corte em cutName e, se houver seção/grupo (Segunda, Nobre, Traseiro, Coxão, Costela), preencha rawCategory.`,
         ],
         config: {
@@ -496,6 +508,21 @@ REGRAS ESTRITAS E OBRIGATÓRIAS:
               documentStoreName: {
                 type: Type.STRING,
                 description: 'Preencha SOMENTE se o arquivo inteiro for de uma única filial. Deixe vazio se houver múltiplas filiais.',
+              },
+              storeTotals: {
+                type: Type.ARRAY,
+                description: 'Totais individuais por filial encontrados em linhas como "TOTAL DE CM SANTA ROSA" na coluna "QTDE". Nunca inclua "Total Geral" da rede aqui.',
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    storeName: { type: Type.STRING },
+                    storeCode: { type: Type.STRING },
+                    rawLabel: { type: Type.STRING },
+                    totalQtyKg: { type: Type.NUMBER },
+                    revenueR$: { type: Type.NUMBER },
+                  },
+                  required: ['storeName', 'totalQtyKg'],
+                },
               },
               cuts: {
                 type: Type.ARRAY,
@@ -522,17 +549,19 @@ REGRAS ESTRITAS E OBRIGATÓRIAS:
       const parsedJson = safeParseModelJson<{
         summaryNote?: string;
         documentStoreName?: string;
+        storeTotals?: GeminiExtractedStoreTotal[];
         cuts?: GeminiExtractedCut[];
       }>(response.text || '');
 
       const rawCuts = Array.isArray(parsedJson.cuts) ? parsedJson.cuts : [];
+      const rawStoreTotals = Array.isArray(parsedJson.storeTotals) ? parsedJson.storeTotals : [];
       const distinctItemStores = new Set(
         rawCuts
           .map(c => [c?.storeCode, c?.storeName].filter(Boolean).join(' ').trim().toLowerCase())
           .filter(Boolean)
       );
       const docLevelStore =
-        distinctItemStores.size <= 1
+        distinctItemStores.size <= 1 && rawStoreTotals.length <= 1
           ? matchStoreReference(parsedJson.documentStoreName, storeList)
           : null;
 
@@ -565,7 +594,23 @@ REGRAS ESTRITAS E OBRIGATÓRIAS:
           };
         });
 
-      if (items.length > 0) {
+      const storeTotals: PdfSalesStoreTotal[] = rawStoreTotals
+        .filter(st => st && Number(st.totalQtyKg) > 0)
+        .map(st => {
+          const rawTextRef = [st.storeCode, st.storeName, st.rawLabel].filter(Boolean).join(' ').trim();
+          const matched = matchStoreReference(rawTextRef, storeList);
+          return {
+            storeId: matched?.storeId,
+            storeName: matched?.storeName || String(st.storeName || st.rawLabel || '').trim(),
+            rawLabel: st.rawLabel?.trim() || st.storeName?.trim() || undefined,
+            totalQtyKg: Number(Number(st.totalQtyKg).toFixed(2)),
+            revenueR$: st.revenueR$ && Number(st.revenueR$) > 0 ? Number(st.revenueR$) : undefined,
+            source: 'report_total_row' as const,
+          };
+        })
+        .filter(st => st.storeName.length > 0);
+
+      if (items.length > 0 || storeTotals.length > 0) {
         const storeMeta = buildRecognizedStoresMetadata(items);
         return {
           fileName: fileName || (isImageUpload ? 'relatorio-vendas.png' : 'relatorio-vendas.pdf'),
@@ -573,8 +618,9 @@ REGRAS ESTRITAS E OBRIGATÓRIAS:
           parserEngine: 'gemini',
           rawSummaryNote:
             parsedJson.summaryNote ||
-            `${items.length} corte(s) extraído(s) e vinculados a ${storeMeta.recognizedStores.length} filial(is).`,
+            `${items.length} corte(s) e ${storeTotals.length} total(is) de loja extraído(s) em ${Math.max(storeMeta.recognizedStores.length, storeTotals.length)} filial(is).`,
           recognizedStores: storeMeta.recognizedStores,
+          storeTotals,
           unassignedCount: storeMeta.unassignedCount,
           items,
           unclassifiedLines: [],
@@ -592,14 +638,15 @@ REGRAS ESTRITAS E OBRIGATÓRIAS:
       const extractedText = await extractTextFromPdfBase64InBrowser(cleanBase64);
       if (extractedText && extractedText.trim().length > 5) {
         const parsed = parseRawSalesText(extractedText, storeList);
-        if (parsed.items.length > 0) {
+        if (parsed.items.length > 0 || parsed.storeTotals.length > 0) {
           const storeMeta = buildRecognizedStoresMetadata(parsed.items);
           return {
             fileName: fileName || 'relatorio-vendas.pdf',
             parsedAt: Date.now(),
             parserEngine: 'text_parser',
-            rawSummaryNote: `Extração nativa do PDF: ${parsed.items.length} corte(s) identificado(s) em ${storeMeta.recognizedStores.length} filial(is).`,
+            rawSummaryNote: `Extração nativa do PDF: ${parsed.items.length} corte(s) e ${parsed.storeTotals.length} total(is) por loja identificado(s).`,
             recognizedStores: storeMeta.recognizedStores,
+            storeTotals: parsed.storeTotals,
             unassignedCount: storeMeta.unassignedCount,
             items: parsed.items,
             unclassifiedLines: parsed.unclassifiedLines,

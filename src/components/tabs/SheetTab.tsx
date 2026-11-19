@@ -38,7 +38,8 @@ import {
   History,
   Calendar,
   Printer,
-  FileText
+  FileText,
+  FileUp
 } from 'lucide-react';
 import { ClearDataModal } from '../modals/ClearDataModal';
 import { FormulaAuditModal } from '../modals/FormulaAuditModal';
@@ -46,6 +47,7 @@ import { SaveSheetModal } from '../modals/SaveSheetModal';
 import { SheetHistoryModal } from '../modals/SheetHistoryModal';
 import { PrintSpreadsheetModal } from '../modals/PrintSpreadsheetModal';
 import { PrintReportModal } from '../modals/PrintReportModal';
+import { SheetSalesImportModal } from '../modals/SheetSalesImportModal';
 import { SheetSnapshotRecord, Store, YieldParams } from '../../types/erp';
 
 interface SheetTabProps {
@@ -133,6 +135,8 @@ export const SheetTab: React.FC<SheetTabProps> = ({
   const [isFormulaProtected, setIsFormulaProtected] = useState(true);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isSalesImportModalOpen, setIsSalesImportModalOpen] = useState(false);
+  const [salesImportNotice, setSalesImportNotice] = useState<string | null>(null);
   
   // Snapshots & History States
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
@@ -192,13 +196,74 @@ export const SheetTab: React.FC<SheetTabProps> = ({
     return p.basis || 'carcass';
   });
 
+  useEffect(() => {
+    if (yieldParams?.basis && yieldParams.basis !== yieldBasis) {
+      setYieldBasis(yieldParams.basis);
+    }
+  }, [yieldParams?.basis]);
+
   // Peso da Carcaça / Lote vinculado e importado sempre do módulo de Análise Técnica de Rendimento e Desossa do Boi
   const technicalCarcassWeight = yieldParams?.carcassWeight || StorageService.getYieldParams().carcassWeight || 240;
+
+  // Divisor ativo exibido em "Desossa: Carcaça XXkg" (ou "Meia Carcaça XXkg")
+  const effectiveDesossaCarcassWeight = useMemo(() => {
+    return yieldBasis === 'carcass'
+      ? Math.max(1, technicalCarcassWeight)
+      : Math.max(1, Math.round(technicalCarcassWeight / 2));
+  }, [technicalCarcassWeight, yieldBasis]);
 
   // Multiplicadores dos cortes calculados dinamicamente com base no Peso da Carcaça / Lote do módulo de Rendimento
   const currentCutWeights: CutYieldWeights = useMemo(() => {
     return getCutYieldWeightsFromSimulation(technicalCarcassWeight, yieldBasis);
   }, [technicalCarcassWeight, yieldBasis]);
+
+  const handleApplyImportedStoreSales = useCallback(
+    (
+      storeVendaMap: Record<string, { venda: number; totalQtyKg: number; exactBois: number }>,
+      options: { clearAbsentStores: boolean }
+    ) => {
+      let updatedCount = 0;
+      const updatedRows = rows.map((row) => {
+        const entry = storeVendaMap[row.storeId];
+        if (entry) {
+          updatedCount += 1;
+          const rounded = Math.round(entry.venda);
+          return recalculateRowOrderFormulas(
+            {
+              ...row,
+              venda: rounded,
+              boiAVenda: rounded,
+            },
+            currentCutWeights
+          );
+        }
+        if (options.clearAbsentStores) {
+          return recalculateRowOrderFormulas(
+            {
+              ...row,
+              venda: 0,
+              boiAVenda: 0,
+            },
+            currentCutWeights
+          );
+        }
+        return row;
+      });
+
+      onUpdateMultiple(updatedRows);
+      setSalesImportNotice(
+        `Coluna VENDA atualizada em ${updatedCount} filial(is) usando Desossa: ${
+          yieldBasis === 'carcass' ? 'Carcaça' : 'Meia Carcaça'
+        } ${effectiveDesossaCarcassWeight}kg (arredondado para valor exato).`
+      );
+      window.setTimeout(() => {
+        setSalesImportNotice((prev) =>
+          prev && prev.includes(`${updatedCount} filial(is)`) ? null : prev
+        );
+      }, 6500);
+    },
+    [rows, currentCutWeights, onUpdateMultiple, effectiveDesossaCarcassWeight, yieldBasis]
+  );
 
   // Real-time formula audit engine
   const auditReport = useMemo(() => {
@@ -649,6 +714,16 @@ export const SheetTab: React.FC<SheetTabProps> = ({
             )}
           </button>
 
+          {/* Importar Relatório de Vendas -> Coluna VENDA (QTDE ÷ Desossa Carcaça) */}
+          <button
+            onClick={() => setIsSalesImportModalOpen(true)}
+            className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md hover:shadow-lg transition active:scale-95 cursor-pointer"
+            title={`Importar relatório de vendas (PDF/Imagem/Texto) e preencher a coluna VENDA com o TOTAL DE CADA LOJA (QTDE) ÷ ${effectiveDesossaCarcassWeight}kg arredondado`}
+          >
+            <FileUp className="w-4 h-4 text-slate-950" />
+            <span>Importar Vendas (Relatório)</span>
+          </button>
+
           {/* Gerar Pedido de Compra Padrão */}
           {onOpenPurchaseOrder && (
             <button
@@ -734,6 +809,22 @@ export const SheetTab: React.FC<SheetTabProps> = ({
           </button>
         </div>
       </div>
+
+      {salesImportNotice && (
+        <div className="px-4 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>{salesImportNotice}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSalesImportNotice(null)}
+            className="text-amber-700 dark:text-amber-300 hover:opacity-75 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Main Matrix Table with Excel Style Keyboard Focus */}
       <div 
@@ -1356,6 +1447,19 @@ export const SheetTab: React.FC<SheetTabProps> = ({
             chamberCapacityPieces: 100,
             active: true
           }))}
+        />
+      )}
+
+      {/* Modal de Importação de Relatório de Vendas -> Coluna VENDA (QTDE ÷ Desossa Carcaça) */}
+      {isSalesImportModalOpen && (
+        <SheetSalesImportModal
+          isOpen={isSalesImportModalOpen}
+          onClose={() => setIsSalesImportModalOpen(false)}
+          rows={rows}
+          stores={stores || StorageService.getStores()}
+          effectiveCarcassWeight={effectiveDesossaCarcassWeight}
+          yieldBasis={yieldBasis}
+          onApplyStoreSales={handleApplyImportedStoreSales}
         />
       )}
     </div>

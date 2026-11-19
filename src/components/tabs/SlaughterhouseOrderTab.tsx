@@ -49,13 +49,20 @@ import {
   SLAUGHTERHOUSE_CATEGORY_ORDER,
   buildSlaughterhouseReportRows,
   buildSlaughterhouseStandardsFromDesossa,
+  calculateSheetVendaFromReportQty,
   calculateStoreStockFromSheetRow,
   convertSalesKgToPieces,
   createInitialSlaughterhouseDraft,
+  getEffectiveDesossaCarcassDivisor,
   getSalesPiecesBreakdown,
+  resolveStoreTotalsForSheetVenda,
   summarizePdfSalesByCategory,
   summarizePdfSalesByStore,
 } from '../../services/slaughterhouseOrderService';
+import {
+  getCutYieldWeightsFromSimulation,
+  recalculateRowOrderFormulas,
+} from '../../services/calculationService';
 import { parseSalesDocumentClientSide } from '../../services/pdfSalesClientParser';
 
 interface SlaughterhouseOrderTabProps {
@@ -65,6 +72,7 @@ interface SlaughterhouseOrderTabProps {
   yieldParams: Partial<YieldParams> | null;
   currentUser?: SystemUser | null;
   onOpenSupplierManager: () => void;
+  onUpdateSheetRows?: (rows: SheetRowData[]) => void;
   showToast: (msg: string) => void;
 }
 
@@ -107,6 +115,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
   yieldParams,
   currentUser,
   onOpenSupplierManager,
+  onUpdateSheetRows,
   showToast,
 }) => {
   const [draft, setDraft] = useState<SlaughterhouseOrderDraft>(() => {
@@ -178,6 +187,12 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
   const [applyTargetMode, setApplyTargetMode] = useState<'by_store' | 'single' | 'equal'>('by_store');
   const [applyTargetStoreId, setApplyTargetStoreId] = useState<string>(stores[0]?.id || '');
   const [clearAbsentStores, setClearAbsentStores] = useState<boolean>(false);
+  const [syncSheetVendaColumn, setSyncSheetVendaColumn] = useState<boolean>(true);
+
+  const effectiveDesossaCarcassDivisor = useMemo(() => {
+    const activeParams = yieldParams || StorageService.getYieldParams();
+    return getEffectiveDesossaCarcassDivisor(activeParams);
+  }, [yieldParams]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -867,6 +882,21 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
         })),
       ];
 
+      // Mescla também os totais explícitos por loja ("TOTAL DE <LOJA>" -> QTDE)
+      const incomingTotalKeys = new Set(
+        (incoming.storeTotals || [])
+          .map((st) => st.storeId || `raw:${st.storeName.toLowerCase()}`)
+          .filter(Boolean)
+      );
+      const keptPreviousStoreTotals = (prev.storeTotals || []).filter((st) => {
+        const key = st.storeId || `raw:${st.storeName.toLowerCase()}`;
+        return !incomingTotalKeys.has(key) && !incomingStoreIds.has(key);
+      });
+      const combinedStoreTotals = [
+        ...keptPreviousStoreTotals,
+        ...(incoming.storeTotals || []),
+      ];
+
       const prevNames = prev.fileName.split(' + ').map((s) => s.trim());
       const combinedFileName = prevNames.includes(incoming.fileName)
         ? prev.fileName
@@ -880,6 +910,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
         fileName: combinedFileName,
         parsedAt: Date.now(),
         items: combinedItems,
+        storeTotals: combinedStoreTotals,
         unclassifiedLines: [...(prev.unclassifiedLines || []), ...(incoming.unclassifiedLines || [])],
       };
     });
@@ -1454,9 +1485,64 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
         }),
       }));
 
+      // Sincroniza também a coluna VENDA na Planilha de Compra de Boi (QTDE ÷ Desossa Carcaça arredondado)
+      let syncedSheetVendaCount = 0;
+      if (syncSheetVendaColumn && onUpdateSheetRows && sheetRows.length > 0) {
+        const activeParams = yieldParams || StorageService.getYieldParams();
+        const carcassW = Number(activeParams?.carcassWeight) || 240;
+        const basis = (activeParams?.basis as 'carcass' | 'piece') || 'carcass';
+        const cutWeights = getCutYieldWeightsFromSimulation(carcassW, basis);
+
+        const resolvedSheetVendas = resolveStoreTotalsForSheetVenda(
+          pendingPdfResult,
+          stores.map((s) => ({ id: s.id, code: s.code, name: s.name, city: s.city })),
+          effectiveDesossaCarcassDivisor
+        );
+        const vendaByStoreId = new Map<string, number>();
+        for (const res of resolvedSheetVendas) {
+          if (res.storeId) {
+            vendaByStoreId.set(res.storeId, res.roundedVenda);
+          }
+        }
+        // Garante cobertura caso algum storeSummary não estivesse em resolvedSheetVendas
+        for (const s of storeSummaries) {
+          if (!vendaByStoreId.has(s.storeId)) {
+            const { roundedVenda } = calculateSheetVendaFromReportQty(
+              s.totalKg,
+              effectiveDesossaCarcassDivisor
+            );
+            vendaByStoreId.set(s.storeId, roundedVenda);
+          }
+        }
+
+        const updatedSheetRows = sheetRows.map((row) => {
+          const calcVenda = vendaByStoreId.get(row.storeId);
+          if (calcVenda !== undefined) {
+            syncedSheetVendaCount += 1;
+            return recalculateRowOrderFormulas(
+              { ...row, venda: calcVenda, boiAVenda: calcVenda },
+              cutWeights
+            );
+          }
+          if (clearAbsentStores) {
+            return recalculateRowOrderFormulas(
+              { ...row, venda: 0, boiAVenda: 0 },
+              cutWeights
+            );
+          }
+          return row;
+        });
+
+        if (syncedSheetVendaCount > 0 || clearAbsentStores) {
+          onUpdateSheetRows(updatedSheetRows);
+        }
+      }
+
       setIsPdfModalOpen(false);
       showToast(
-        autoSuggestOrders
+        syncedSheetVendaCount > 0
+          ? `Vendas aplicadas em ${storeSummaries.length} filial(is) + coluna VENDA preenchida na Planilha (QTDE ÷ ${effectiveDesossaCarcassDivisor}kg)!`
+          : autoSuggestOrders
           ? `Vendas e pedidos sugeridos aplicados em ${storeSummaries.length} filial(is) reconhecida(s)!`
           : `Vendas aplicadas fielmente em ${storeSummaries.length} filial(is) reconhecida(s)!`
       );
@@ -1514,11 +1600,47 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
       }),
     }));
 
+    // Atualiza também coluna VENDA na Planilha de Compras nos modos 'single' e 'equal'
+    if (syncSheetVendaColumn && onUpdateSheetRows && sheetRows.length > 0) {
+      const activeParams = yieldParams || StorageService.getYieldParams();
+      const carcassW = Number(activeParams?.carcassWeight) || 240;
+      const basis = (activeParams?.basis as 'carcass' | 'piece') || 'carcass';
+      const cutWeights = getCutYieldWeightsFromSimulation(carcassW, basis);
+
+      const totalReportQtyKg =
+        (pendingPdfResult.storeTotals || []).length > 0
+          ? (pendingPdfResult.storeTotals || []).reduce((acc, st) => acc + (Number(st.totalQtyKg) || 0), 0)
+          : pendingPdfResult.items.reduce((acc, it) => acc + (Number(it.weightKg) || 0), 0);
+
+      const updatedSheetRows = sheetRows.map((row) => {
+        if (applyTargetMode === 'single') {
+          if (row.storeId !== applyTargetStoreId) return row;
+          const { roundedVenda } = calculateSheetVendaFromReportQty(
+            totalReportQtyKg,
+            effectiveDesossaCarcassDivisor
+          );
+          return recalculateRowOrderFormulas(
+            { ...row, venda: roundedVenda, boiAVenda: roundedVenda },
+            cutWeights
+          );
+        }
+        const { roundedVenda } = calculateSheetVendaFromReportQty(
+          totalReportQtyKg / count,
+          effectiveDesossaCarcassDivisor
+        );
+        return recalculateRowOrderFormulas(
+          { ...row, venda: roundedVenda, boiAVenda: roundedVenda },
+          cutWeights
+        );
+      });
+      onUpdateSheetRows(updatedSheetRows);
+    }
+
     setIsPdfModalOpen(false);
     showToast(
       applyTargetMode === 'single'
-        ? 'Vendas aplicadas na filial selecionada!'
-        : `Vendas distribuídas igualmente nas ${count} filiais e convertidas para peças.`
+        ? `Vendas aplicadas na filial selecionada${syncSheetVendaColumn && onUpdateSheetRows ? ` e coluna VENDA atualizada (÷ ${effectiveDesossaCarcassDivisor}kg)` : ''}!`
+        : `Vendas distribuídas igualmente nas ${count} filiais${syncSheetVendaColumn && onUpdateSheetRows ? ` e coluna VENDA atualizada (÷ ${effectiveDesossaCarcassDivisor}kg)` : ''}.`
     );
   };
 
@@ -3471,6 +3593,22 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                       onChange={(e) => setClearAbsentStores(e.target.checked)}
                     />
                     <span>Zerar vendas das filiais ausentes</span>
+                  </label>
+                )}
+
+                {onUpdateSheetRows && (
+                  <label
+                    className="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-amber-700 dark:text-amber-300 border-l border-slate-300 dark:border-slate-700 pl-3"
+                    title={`Divide o total da coluna QTDE de cada loja pelo padrão Desossa: Carcaça ${effectiveDesossaCarcassDivisor}kg e arredonda para o inteiro exato na coluna VENDA da Planilha de Compras`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={syncSheetVendaColumn}
+                      onChange={(e) => setSyncSheetVendaColumn(e.target.checked)}
+                    />
+                    <span>
+                      Preencher coluna VENDA na Planilha (QTDE ÷ {effectiveDesossaCarcassDivisor}kg)
+                    </span>
                   </label>
                 )}
               </div>
