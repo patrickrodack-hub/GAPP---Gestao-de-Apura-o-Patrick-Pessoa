@@ -17,6 +17,7 @@ import {
   Euro,
   Gem,
   Bitcoin,
+  Beef,
   Calendar,
   Activity,
   Clock,
@@ -93,6 +94,8 @@ function getAssetIcon(assetId: FinancialAssetId) {
       return Gem;
     case 'BTC':
       return Bitcoin;
+    case 'BOI':
+      return Beef;
   }
 }
 
@@ -162,7 +165,20 @@ const CustomChartTooltip: React.FC<CustomChartTooltipProps> = ({ active, payload
       </div>
       <div className="text-base font-black font-mono tabular-nums text-white">
         {formatAssetValueBrl(asset.id, point.valueBrl)}
+        {asset.id === 'BOI' && (
+          <span className="text-xs font-bold text-emerald-200/80 ml-1">/ @</span>
+        )}
       </div>
+      {asset.id === 'BOI' && (
+        <div className="text-[11px] font-mono text-emerald-100/85 tabular-nums mt-0.5">
+          R$ {(point.valueBrl / 15).toFixed(2).replace('.', ',')}/kg
+          {point.valueUsd !== undefined && (
+            <span className="text-[10px] text-emerald-200/70">
+              {' '}• {formatUsdValue(asset.id, point.valueUsd)}/@
+            </span>
+          )}
+        </div>
+      )}
       {point.valueUsd !== undefined && (asset.id === 'GOLD' || asset.id === 'BTC') && (
         <div className="text-[11px] font-mono text-emerald-100/80 tabular-nums mt-0.5">
           {formatUsdValue(asset.id, point.valueUsd)}{' '}
@@ -336,7 +352,7 @@ export const FinancialMarketsTickerCard: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Dólar Comercial, Euro, Ouro 24k (COMEX) e Bitcoin Spot com histórico interativo da bolsa
+              Dólar Comercial, Euro, Ouro 24k (COMEX), Bitcoin Spot e Boi Gordo (CEPEA/B3) com histórico interativo da bolsa
             </p>
           </div>
         </div>
@@ -391,11 +407,11 @@ export const FinancialMarketsTickerCard: React.FC = () => {
       )}
 
       {/* ===================================================================== */}
-      {/* 4 TICKER CARDS ESTILO BOLSA DE VALORES (CLICÁVEIS)                   */}
+      {/* 5 TICKER CARDS ESTILO BOLSA DE VALORES (CLICÁVEIS)                   */}
       {/* ===================================================================== */}
       {loading && !data ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
-          {[1, 2, 3, 4].map(i => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
+          {[1, 2, 3, 4, 5].map(i => (
             <div
               key={i}
               className="h-32 rounded-2xl bg-slate-100 animate-pulse border border-slate-200/70"
@@ -403,7 +419,7 @@ export const FinancialMarketsTickerCard: React.FC = () => {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
           {(data?.assets || []).map(asset => {
             const isSelected = asset.id === activeAsset?.id;
             const isUp24h = asset.changePercent24h >= 0;
@@ -480,8 +496,15 @@ export const FinancialMarketsTickerCard: React.FC = () => {
                         isSelected ? 'text-emerald-100/80' : 'text-slate-500'
                       }`}
                     >
-                      {asset.secondaryPriceUsd !== undefined &&
-                      (asset.id === 'GOLD' || asset.id === 'BTC') ? (
+                      {asset.id === 'BOI' ? (
+                        <span>
+                          {asset.unitLabel}
+                          {asset.secondaryPriceUsd !== undefined
+                            ? ` • ${formatUsdValue(asset.id, asset.secondaryPriceUsd)}/@`
+                            : ''}
+                        </span>
+                      ) : asset.secondaryPriceUsd !== undefined &&
+                        (asset.id === 'GOLD' || asset.id === 'BTC') ? (
                         <span>
                           {formatUsdValue(asset.id, asset.secondaryPriceUsd)}{' '}
                           {asset.id === 'GOLD' ? '/ oz' : 'USD'}
