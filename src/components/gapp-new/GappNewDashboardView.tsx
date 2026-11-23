@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { DeboningYieldKpiPanel } from '../dashboard/DeboningYieldKpiPanel';
 import { FinancialMarketsTickerCard } from '../dashboard/FinancialMarketsTickerCard';
+import { CepeaProvenanceBadge } from '../quotes/CepeaProvenanceBadge';
 
 interface GappNewDashboardViewProps {
   rows: SheetRowData[];
@@ -332,12 +333,12 @@ export const GappNewDashboardView: React.FC<GappNewDashboardViewProps> = ({
     <div className="space-y-5 pb-6">
       {/* Subtle Top Action Bar for Quick Switching between GAPP-NEW Bento Grid & Detailed Charts */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
           <span className="font-extrabold text-[#113829]">Visão Consolidada 16 Filiais</span>
           <span aria-hidden="true">·</span>
           <span>Boi Calc e Sugestão arredondados</span>
           <span aria-hidden="true">·</span>
-          <span>17 Colunas Oficiais Integradas</span>
+          <CepeaProvenanceBadge variant="pill" showPrice={true} showRefreshButton={true} />
         </div>
 
         <div className="flex items-center gap-2">

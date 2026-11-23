@@ -54,9 +54,25 @@ import {
   getEffectiveDesossaCarcassWeight,
   recalculateRowsForDesossaChange,
 } from './services/calculationService';
+import { QuoteService, CentralizedCepeaQuoteState } from './services/quoteService';
 
 export default function App() {
   const { theme, isSolidcon, isGappNew, toggleTheme, setTheme } = useTheme();
+  const [cepeaQuoteState, setCepeaQuoteState] = useState<CentralizedCepeaQuoteState>(() =>
+    QuoteService.getState()
+  );
+
+  // Worker global em segundo plano para atualização contínua das cotações oficiais do Boi Gordo CEPEA
+  useEffect(() => {
+    QuoteService.startBackgroundWorker(45_000);
+    const unsubscribe = QuoteService.subscribe(nextState => {
+      setCepeaQuoteState(nextState);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
   const [isGappMobileMenuOpen, setIsGappMobileMenuOpen] = useState(false);
   const [isGappSidebarCollapsed, setIsGappSidebarCollapsed] = useState<boolean>(() => {
     try {

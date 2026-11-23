@@ -37,6 +37,7 @@ import { NavigationTab } from '../Navigation';
 import { D3TrendsChart } from '../dashboard/D3TrendsChart';
 import { DeboningYieldKpiPanel } from '../dashboard/DeboningYieldKpiPanel';
 import { FinancialMarketsTickerCard } from '../dashboard/FinancialMarketsTickerCard';
+import { CepeaProvenanceBadge } from '../quotes/CepeaProvenanceBadge';
 import { StorageService } from '../../services/storageService';
 
 interface DashboardTabProps {
@@ -222,6 +223,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* ---------------------------------------------------- */}
+      {/* INDICADOR DE PROCEDÊNCIA OFICIAL (FONTE: CEPEA) & TIMESTAMP */}
+      {/* ---------------------------------------------------- */}
+      <CepeaProvenanceBadge variant="banner" />
       
       {/* ---------------------------------------------------- */}
       {/* CARD: INDICADORES DE PERFORMANCE (NO TOPO DO DASHBOARD) */}

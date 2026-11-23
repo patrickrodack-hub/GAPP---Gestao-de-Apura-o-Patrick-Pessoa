@@ -18,7 +18,9 @@ import {
 import { CepeaQuotesView } from '../quotes/CepeaQuotesView';
 import { MarketSyncStatusBar } from '../quotes/MarketSyncStatusBar';
 import { PerishablesQuotesView } from '../quotes/PerishablesQuotesView';
+import { CepeaProvenanceBadge } from '../quotes/CepeaProvenanceBadge';
 import { MarketDataSyncService } from '../../services/marketDataSyncService';
+import { useCentralizedCepeaQuote } from '../../services/quoteService';
 import { formatCurrencyBRL } from '../../services/calculationService';
 import { 
   TrendingUp, 
@@ -70,6 +72,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
 }) => {
   const [snapshot, setSnapshot] = useState<MarketQuotesSnapshot>(() => MarketQuotesService.getQuotesSnapshot());
   const [syncDetails, setSyncDetails] = useState(() => MarketDataSyncService.getStatusDetails());
+  const { quoteState, refreshNow: refreshCepeaWorker } = useCentralizedCepeaQuote();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeSection, setActiveSection] = useState<
     'cepea' | 'foco_rj' | 'cortes' | 'pracas' | 'b3_futuros' | 'varejo_rj' | 'pereciveis_rj' | 'simulador_rj' | 'suino' | 'carcacas' | 'graxaria' | 'indicadores' | 'arbitragem' | 'fontes'
@@ -102,11 +105,11 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
   const systemCostPerKg = yieldParams?.costPerKg || 26.00;
   const systemArrobaPrice = Number((systemCostPerKg * 15).toFixed(2));
 
-  // Cotação Oficial de Referência (CEPEA SP e RJ Entrada)
+  // Cotação Oficial de Referência sincronizada com o background worker (QuoteService)
   const cepeaIndicator = snapshot.indicators.find(i => i.id === 'ind-cepea-sp') || snapshot.indicators[0];
   const rjIndicator = snapshot.indicators.find(i => i.id === 'ind-rj-ceasa');
-  const marketBenchmarkArroba = cepeaIndicator ? cepeaIndicator.price : 393.30;
-  const rjBenchmarkArroba = rjIndicator ? rjIndicator.price : 388.50;
+  const marketBenchmarkArroba = quoteState.boiGordoPriceBrl || (cepeaIndicator ? cepeaIndicator.price : 395.50);
+  const rjBenchmarkArroba = quoteState.rjArrobaBenchmarkBrl || (rjIndicator ? rjIndicator.price : 390.70);
 
   // Spread entre Mercado e Custo Atual do ERP
   const spreadDiff = marketBenchmarkArroba - systemArrobaPrice;
@@ -483,13 +486,17 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
   return (
     <div className="space-y-4 font-sans pb-10">
       
-      {/* 1. TICKER SUPERIOR DE COTAÇÕES EM TEMPO REAL COM FONTES REAIS */}
+      {/* 1. TICKER SUPERIOR DE COTAÇÕES EM TEMPO REAL COM FONTES REAIS E SELO FONTE: CEPEA */}
       <div className="bg-slate-900 text-white rounded-2xl p-3 shadow-lg border border-slate-800 overflow-hidden">
         <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-800 text-xs flex-wrap">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="relative flex h-2.5 w-2.5">
               <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${snapshot.marketStatus === 'ABERTO' ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
               <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${snapshot.marketStatus === 'ABERTO' ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#b5e550] text-[#0c281e] font-mono font-black text-[10px] uppercase tracking-wider shadow-2xs">
+              <ShieldCheck className="w-3 h-3 text-[#0c281e]" />
+              <span>Fonte: CEPEA</span>
             </span>
             <span className="font-extrabold text-[11px] tracking-wider uppercase text-emerald-400 flex items-center gap-1.5 flex-wrap">
               <span>Cotação Oficial em Tempo Real</span>
@@ -500,13 +507,17 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-[11px] text-slate-400">
+          <div className="flex items-center gap-3 text-[11px] text-slate-400 flex-wrap">
             <span className="hidden sm:inline">
               Pregão B3: <strong className={snapshot.marketStatus === 'ABERTO' ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
                 {snapshot.marketStatus === 'ABERTO' ? '🟢 Aberto' : '🔴 Fechado'}
               </strong>
             </span>
-            <span>Atualizado: <strong className="text-slate-200 font-mono">{snapshot.lastUpdatedDate}</strong></span>
+            <span className="inline-flex items-center gap-1 text-emerald-300 font-mono">
+              <Clock className="w-3 h-3 text-[#b5e550]" />
+              <span>Última atualização bem-sucedida:</span>
+              <strong className="text-white font-bold">{quoteState.lastSuccessFormatted || snapshot.lastUpdatedDate}</strong>
+            </span>
           </div>
         </div>
 
@@ -564,6 +575,10 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#113829] text-[#b5e550] text-[10px] font-mono font-black uppercase tracking-wider shadow-2xs">
+                  <ShieldCheck className="w-3 h-3 text-[#b5e550]" />
+                  <span>Fonte: CEPEA</span>
+                </span>
                 <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">
                   FOCO: RIO DE JANEIRO & NÍVEL BRASIL
                 </span>

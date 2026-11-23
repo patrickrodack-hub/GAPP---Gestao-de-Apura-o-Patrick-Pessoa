@@ -23,6 +23,8 @@ import {
   Clock,
   Filter,
   X,
+  ShieldCheck,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   FINANCIAL_PERIOD_OPTIONS,
@@ -33,6 +35,7 @@ import {
   FinancialPeriod,
   fetchFinancialMarkets,
 } from '../../services/financialMarketsService';
+import { useCentralizedCepeaQuote } from '../../services/quoteService';
 
 function formatAssetValueBrl(assetId: FinancialAssetId, value: number): string {
   if (!Number.isFinite(value)) return '—';
@@ -210,6 +213,7 @@ export const FinancialMarketsTickerCard: React.FC = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState<boolean>(true);
+  const { quoteState, refreshNow: refreshCepeaWorker } = useCentralizedCepeaQuote();
 
   // Filtro opcional por intervalo de datas dentro do período carregado
   const [startDateFilter, setStartDateFilter] = useState<string>('');
@@ -224,6 +228,9 @@ export const FinancialMarketsTickerCard: React.FC = () => {
           if (!data) setLoading(true);
         }
         setError(null);
+        if (forceFresh) {
+          refreshCepeaWorker().catch(() => {});
+        }
         const res = await fetchFinancialMarkets(targetPeriod, forceFresh);
         setData(res);
       } catch (err: any) {
@@ -238,7 +245,7 @@ export const FinancialMarketsTickerCard: React.FC = () => {
         setRefreshing(false);
       }
     },
-    [data]
+    [data, refreshCepeaWorker]
   );
 
   useEffect(() => {
@@ -258,10 +265,29 @@ export const FinancialMarketsTickerCard: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [autoRefreshEnabled, period, loadMarkets]);
 
+  // Sincroniza o ativo BOI com o estado centralizado do background worker (QuoteService)
+  const synchronizedAssets: FinancialAssetQuote[] = useMemo(() => {
+    if (!data?.assets?.length) return [];
+    return data.assets.map(asset => {
+      if (asset.id !== 'BOI') return asset;
+      return {
+        ...asset,
+        priceBrl: quoteState.boiGordoPriceBrl || asset.priceBrl,
+        previousCloseBrl: quoteState.prevBoiGordoPriceBrl || asset.previousCloseBrl,
+        secondaryPriceUsd: quoteState.boiGordoPriceUsd || asset.secondaryPriceUsd,
+        changeAbsBrl24h: quoteState.varDiaValueBrl ?? asset.changeAbsBrl24h,
+        changePercent24h: quoteState.varDiaPercent ?? asset.changePercent24h,
+        unitLabel: `R$/@ • R$ ${(quoteState.carcassKgBrl || asset.priceBrl / 15).toFixed(2).replace('.', ',')}/kg`,
+        source: 'Fonte: CEPEA (ESALQ/USP & B3)',
+        updatedAtFormatted: quoteState.lastSuccessFormatted || asset.updatedAtFormatted,
+      };
+    });
+  }, [data, quoteState]);
+
   const activeAsset: FinancialAssetQuote | undefined = useMemo(() => {
-    if (!data?.assets?.length) return undefined;
-    return data.assets.find(a => a.id === selectedAssetId) || data.assets[0];
-  }, [data, selectedAssetId]);
+    if (!synchronizedAssets.length) return undefined;
+    return synchronizedAssets.find(a => a.id === selectedAssetId) || synchronizedAssets[0];
+  }, [synchronizedAssets, selectedAssetId]);
 
   // Aplica filtro de data customizada (se preenchido) e calcula métricas do intervalo exibido
   const filteredChartInfo = useMemo(() => {
@@ -350,6 +376,10 @@ export const FinancialMarketsTickerCard: React.FC = () => {
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 PREGÃO AO VIVO
               </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#113829] text-[#b5e550] text-[10px] font-mono font-extrabold shadow-2xs">
+                <ShieldCheck className="w-3 h-3 text-[#b5e550]" />
+                <span>Fonte: CEPEA</span>
+              </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
               Dólar Comercial, Euro, Ouro 24k (COMEX), Bitcoin Spot e Boi Gordo (CEPEA/B3) com histórico interativo da bolsa
@@ -359,13 +389,19 @@ export const FinancialMarketsTickerCard: React.FC = () => {
 
         {/* Status de Atualização + Controles */}
         <div className="flex flex-wrap items-center gap-2">
-          {data && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#f4f6f4] text-[11px] font-semibold text-slate-600">
-              <Clock className="w-3.5 h-3.5 text-[#113829]" />
-              <span className="font-mono">{data.fetchedAtFormatted}</span>
-              <span className="text-slate-400">• {data.latencyMs}ms</span>
-            </div>
-          )}
+          <div
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#f4f6f4] border border-emerald-500/20 text-[11px] font-semibold text-slate-700"
+            title="Timestamp da última atualização bem-sucedida das cotações oficiais"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span className="text-slate-500">Última atualização:</span>
+            <span className="font-mono font-bold text-[#113829]">
+              {quoteState.lastSuccessFormatted || data?.fetchedAtFormatted || 'Agora'}
+            </span>
+            {data?.latencyMs ? (
+              <span className="text-slate-400 font-mono">• {data.latencyMs}ms</span>
+            ) : null}
+          </div>
 
           <button
             type="button"
@@ -420,7 +456,7 @@ export const FinancialMarketsTickerCard: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
-          {(data?.assets || []).map(asset => {
+          {synchronizedAssets.map(asset => {
             const isSelected = asset.id === activeAsset?.id;
             const isUp24h = asset.changePercent24h >= 0;
             const Icon = getAssetIcon(asset.id);
@@ -454,12 +490,25 @@ export const FinancialMarketsTickerCard: React.FC = () => {
                           {asset.name}
                         </span>
                       </div>
-                      <div
-                        className={`text-[10px] font-mono font-bold ${
-                          isSelected ? 'text-emerald-200/80' : 'text-slate-400'
-                        }`}
-                      >
-                        {asset.ticker}
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span
+                          className={`text-[10px] font-mono font-bold ${
+                            isSelected ? 'text-emerald-200/80' : 'text-slate-400'
+                          }`}
+                        >
+                          {asset.ticker}
+                        </span>
+                        {asset.id === 'BOI' && (
+                          <span
+                            className={`inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-mono font-extrabold ${
+                              isSelected
+                                ? 'bg-[#b5e550] text-[#113829]'
+                                : 'bg-[#113829] text-[#b5e550]'
+                            }`}
+                          >
+                            Fonte: CEPEA
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

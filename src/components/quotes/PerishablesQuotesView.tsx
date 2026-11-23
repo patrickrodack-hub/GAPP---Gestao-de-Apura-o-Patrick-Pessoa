@@ -48,6 +48,7 @@ import {
 } from 'lucide-react';
 import { MarketDataSyncService } from '../../services/marketDataSyncService';
 import { BgrjMarketDailyService } from '../../services/bgrjMarketDailyService';
+import { CepeaProvenanceBadge } from './CepeaProvenanceBadge';
 
 interface PerishablesQuotesViewProps {
   showToast?: (message: string) => void;
@@ -501,8 +502,11 @@ export const PerishablesQuotesView: React.FC<PerishablesQuotesViewProps> = ({ sh
             </h2>
           </div>
 
-          <div className="text-xs text-slate-500 font-mono">
-            Sub-aba ativa: <strong className="text-slate-900 dark:text-white">{activeCategory.label}</strong>
+          <div className="flex flex-wrap items-center gap-2">
+            <CepeaProvenanceBadge variant="compact" showPrice={false} showRefreshButton={false} />
+            <div className="text-xs text-slate-500 font-mono">
+              Sub-aba ativa: <strong className="text-slate-900 dark:text-white">{activeCategory.label}</strong>
+            </div>
           </div>
         </div>
 

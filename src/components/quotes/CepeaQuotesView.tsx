@@ -48,6 +48,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { MarketDataSyncService } from '../../services/marketDataSyncService';
+import { useCentralizedCepeaQuote } from '../../services/quoteService';
 
 interface CepeaQuotesViewProps {
   yieldParams?: YieldParams;
@@ -66,6 +67,7 @@ export const CepeaQuotesView: React.FC<CepeaQuotesViewProps> = ({
 }) => {
   const [snapshot, setSnapshot] = useState<CepeaSnapshot>(() => CepeaService.getSnapshot());
   const [syncDetails, setSyncDetails] = useState(() => MarketDataSyncService.getStatusDetails());
+  const { quoteState, refreshNow: refreshCepeaWorker } = useCentralizedCepeaQuote();
   const [isSyncing, setIsSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState<'bovino' | 'suino' | 'milho_soja' | 'frango' | 'leite' | 'cafe_outros' | 'troca' | 'metodologia'>('bovino');
   const [searchQuery, setSearchQuery] = useState('');
@@ -288,7 +290,11 @@ export const CepeaQuotesView: React.FC<CepeaQuotesViewProps> = ({
           {/* Lado Esquerdo: Identidade CEPEA */}
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-1 rounded-md text-[11px] font-mono font-extrabold bg-[#b5e550] text-[#0c281e] tracking-wider uppercase shadow-xs">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-extrabold bg-[#b5e550] text-[#0c281e] tracking-wider uppercase shadow-xs">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#0c281e]" />
+                <span>Fonte: CEPEA</span>
+              </span>
+              <span className="px-2.5 py-1 rounded-md text-[11px] font-mono font-extrabold bg-white/15 text-white tracking-wider uppercase shadow-xs">
                 🏛️ CEPEA.ORG • OFICIAL
               </span>
               <span className="px-2.5 py-1 rounded-md text-[11px] font-mono font-semibold bg-white/10 text-emerald-200 border border-white/15">
@@ -299,7 +305,7 @@ export const CepeaQuotesView: React.FC<CepeaQuotesViewProps> = ({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
                 </span>
-                <span>Tempo Real Ativo</span>
+                <span>Worker em Segundo Plano Ativo</span>
               </div>
             </div>
 
@@ -313,12 +319,12 @@ export const CepeaQuotesView: React.FC<CepeaQuotesViewProps> = ({
             <div className="flex items-center gap-4 text-[11px] text-emerald-200/80 font-mono pt-1 flex-wrap">
               <span className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-[#b5e550]" />
-                <span>Última Sincronização: <strong className="text-white">{snapshot.lastUpdated}</strong></span>
+                <span>Última atualização bem-sucedida: <strong className="text-white">{quoteState.lastSuccessFormatted || snapshot.lastUpdated}</strong></span>
               </span>
               <span>•</span>
               <span className="flex items-center gap-1.5">
                 <DollarSign className="w-3.5 h-3.5 text-[#b5e550]" />
-                <span>Dólar PTAX Oficial: <strong className="text-[#b5e550]">R$ {snapshot.dolarPtax.toFixed(4)}</strong>/US$</span>
+                <span>Dólar PTAX Oficial: <strong className="text-[#b5e550]">R$ {(quoteState.dolarPtax || snapshot.dolarPtax).toFixed(4)}</strong>/US$</span>
               </span>
               <span>•</span>
               <span className="flex items-center gap-1.5">
@@ -463,10 +469,16 @@ export const CepeaQuotesView: React.FC<CepeaQuotesViewProps> = ({
         {boiSp && (
           <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/50 rounded-2xl p-4 shadow-sm hover:shadow-md transition relative flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono font-extrabold bg-[#113829] text-[#b5e550] px-2 py-0.5 rounded shadow-2xs">
-                  🐂 BOI GORDO • CEPEA/B3
-                </span>
+              <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono font-extrabold bg-[#113829] text-[#b5e550] px-2 py-0.5 rounded shadow-2xs">
+                    🐂 BOI GORDO • CEPEA/B3
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono font-black bg-[#b5e550] text-[#0c281e] px-2 py-0.5 rounded shadow-2xs">
+                    <ShieldCheck className="w-3 h-3" />
+                    <span>Fonte: CEPEA</span>
+                  </span>
+                </div>
                 <span className={`text-xs font-bold font-mono flex items-center gap-0.5 ${boiSp.changeMonth >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                   {boiSp.changeMonth >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                   Mês: +{boiSp.changeMonth.toFixed(2)}%

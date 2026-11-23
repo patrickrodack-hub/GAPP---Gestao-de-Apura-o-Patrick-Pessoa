@@ -93,6 +93,11 @@ export const MarketSyncStatusBar: React.FC<MarketSyncStatusBarProps> = ({
 
           <div>
             <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#b5e550] text-[#0c281e] text-[10px] font-mono font-black uppercase tracking-wider shadow-2xs">
+                <ShieldCheck className="w-3 h-3 text-[#0c281e]" />
+                <span>Fonte: CEPEA</span>
+              </span>
+
               <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-[#b5e550] border border-emerald-400/30 font-mono">
                 {isSyncing ? 'ATUALIZANDO MATRIZ...' : 'CONEXÃO EM TEMPO REAL ATIVA'}
               </span>
@@ -105,7 +110,7 @@ export const MarketSyncStatusBar: React.FC<MarketSyncStatusBarProps> = ({
 
               <span className="text-[10px] font-mono text-emerald-300/80 hidden sm:inline-flex items-center gap-1">
                 <Database className="w-3 h-3 text-emerald-400" />
-                Cache TTL: {cacheTtlSeconds}s • Polling Contínuo
+                Cache TTL: {cacheTtlSeconds}s • Worker em Segundo Plano
               </span>
             </div>
 
