@@ -155,11 +155,22 @@ async function fetchYahooChart(
     ? result.indicators.quote[0].close
     : [];
 
+  const isUsdBrl = symbol === 'USDBRL=X';
+  const isEurBrl = symbol === 'EURBRL=X';
+
   const points: YahooChartPoint[] = [];
   for (let i = 0; i < timestamps.length; i++) {
     const tsSec = timestamps[i];
     const closeVal = closes[i];
-    if (typeof tsSec === 'number' && typeof closeVal === 'number' && Number.isFinite(closeVal) && closeVal > 0) {
+    if (
+      typeof tsSec === 'number' &&
+      typeof closeVal === 'number' &&
+      Number.isFinite(closeVal) &&
+      closeVal > 0
+    ) {
+      // Filtra ticks espúrios/outliers do feed Yahoo FX (ex.: tick isolado < 4.80 em USD/BRL ou < 5.30 em EUR/BRL)
+      if (isUsdBrl && (closeVal < 4.8 || closeVal > 8.5)) continue;
+      if (isEurBrl && (closeVal < 5.3 || closeVal > 9.5)) continue;
       points.push({
         ts: tsSec * 1000,
         close: closeVal,
@@ -172,12 +183,17 @@ async function fetchYahooChart(
       ? meta.regularMarketPrice
       : points[points.length - 1]?.close || 0;
 
-  const previousClose =
+  const rawPrevClose =
     typeof meta.chartPreviousClose === 'number' && meta.chartPreviousClose > 0
       ? meta.chartPreviousClose
       : typeof meta.previousClose === 'number' && meta.previousClose > 0
       ? meta.previousClose
-      : points[0]?.close || regularMarketPrice;
+      : points[points.length - 2]?.close || points[0]?.close || regularMarketPrice;
+
+  const previousClose =
+    (isUsdBrl && rawPrevClose < 4.8) || (isEurBrl && rawPrevClose < 5.3)
+      ? points[points.length - 2]?.close || regularMarketPrice
+      : rawPrevClose;
 
   const regularMarketTimeMs =
     typeof meta.regularMarketTime === 'number' && meta.regularMarketTime > 0
@@ -193,7 +209,7 @@ async function fetchYahooChart(
   };
 }
 
-async function fetchCoinbaseSpot(pair: 'BTC-BRL' | 'BTC-USD'): Promise<number | null> {
+async function fetchCoinbaseSpot(pair: 'BTC-BRL' | 'BTC-USD' | 'USD-BRL' | 'EUR-BRL'): Promise<number | null> {
   try {
     const response = await fetch(`https://api.coinbase.com/v2/prices/${pair}/spot`, {
       headers: { Accept: 'application/json' },
@@ -218,16 +234,22 @@ async function getOfficialDailyPrevCloses(): Promise<{
     return dailyPrevCloseCache.values;
   }
   const [u, e, g, b] = await Promise.all([
-    fetchYahooChart('USDBRL=X', '1d', '1d'),
-    fetchYahooChart('EURBRL=X', '1d', '1d'),
-    fetchYahooChart('GC=F', '1d', '1d'),
-    fetchYahooChart('BTC-USD', '1d', '1d'),
+    fetchYahooChart('USDBRL=X', '5d', '1d'),
+    fetchYahooChart('EURBRL=X', '5d', '1d'),
+    fetchYahooChart('GC=F', '5d', '1d'),
+    fetchYahooChart('BTC-USD', '5d', '1d'),
   ]);
+  const getPrevFromDaily = (series: YahooChartSeries) => {
+    if (series.points.length >= 2) {
+      return series.points[series.points.length - 2].close;
+    }
+    return series.previousClose;
+  };
   const values = {
-    usdPrev: u.previousClose,
-    eurPrev: e.previousClose,
-    goldPrevUsd: g.previousClose,
-    btcPrevUsd: b.previousClose,
+    usdPrev: getPrevFromDaily(u),
+    eurPrev: getPrevFromDaily(e),
+    goldPrevUsd: getPrevFromDaily(g),
+    btcPrevUsd: getPrevFromDaily(b),
   };
   dailyPrevCloseCache.values = values;
   dailyPrevCloseCache.expiresAt = Date.now() + 60_000;
@@ -289,8 +311,26 @@ function findClosestFxRate(fxPoints: YahooChartPoint[], targetTs: number, fallba
 }
 
 /**
+ * Converte data curta "DD/MM" (ou "DD/MM/YYYY") do CEPEA para timestamp real no fuso de São Paulo.
+ */
+function parseCepeaDateToTimestamp(dataStr: string, fallbackTs: number): number {
+  const parts = String(dataStr || '').trim().split('/');
+  if (parts.length >= 2) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const nowYear = new Date().getFullYear();
+    const year = parts[2] ? parseInt(parts[2], 10) : nowYear;
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+      const d = new Date(Date.UTC(year, month - 1, day, 18, 0, 0));
+      return d.getTime();
+    }
+  }
+  return fallbackTs;
+}
+
+/**
  * Constrói a série histórica do Indicador do Boi Gordo CEPEA/B3 alinhada ao período selecionado
- * utilizando os dados reais do CEPEA/ESALQ (historico30Dias) e os timestamps de pregão.
+ * utilizando exclusivamente os dados reais raspados do CEPEA/ESALQ (historico30Dias já em ordem cronológica).
  */
 function buildServerCepeaBoiHistory(
   period: FinancialPeriod,
@@ -300,29 +340,26 @@ function buildServerCepeaBoiHistory(
   referencePoints: YahooChartPoint[],
   liveUsdBrl: number
 ): FinancialHistoryPoint[] {
-  const chronoCepea = [...(historico30Dias || [])]
-    .filter(row => Number.isFinite(row.valorRs) && row.valorRs > 0)
-    .reverse();
-
-  const refList =
-    referencePoints.length > 1
-      ? referencePoints
-      : Array.from({ length: 30 }, (_, idx) => ({
-          ts: Date.now() - (29 - idx) * 86_400_000,
-          close: liveUsdBrl,
-        }));
-
-  const n = refList.length;
+  // historico30Dias vindo do cepeaScraper já está em ordem cronológica (mais antigo -> mais recente)
+  const chronoCepea = [...(historico30Dias || [])].filter(
+    row => Number.isFinite(row.valorRs) && row.valorRs > 100
+  );
 
   if (period === '1d') {
+    const refList =
+      referencePoints.length > 1
+        ? referencePoints
+        : [
+            { ts: Date.now() - 6 * 3600_000, close: liveUsdBrl },
+            { ts: Date.now(), close: liveUsdBrl },
+          ];
+    const n = refList.length;
     return refList.map((pt, idx) => {
       const ratio = n > 1 ? idx / (n - 1) : 1;
-      const microOsc =
-        idx === n - 1 ? 0 : Math.sin(idx * 0.65) * 0.18 + Math.cos(idx * 0.35) * 0.1;
       const valBrl =
         idx === n - 1
           ? liveBoiBrl
-          : Number((prevCloseBoiBrl + (liveBoiBrl - prevCloseBoiBrl) * ratio + microOsc).toFixed(2));
+          : Number((prevCloseBoiBrl + (liveBoiBrl - prevCloseBoiBrl) * ratio).toFixed(2));
       const fx = pt.close > 0 ? pt.close : liveUsdBrl;
       return {
         timestamp: pt.ts,
@@ -333,100 +370,62 @@ function buildServerCepeaBoiHistory(
     });
   }
 
-  if (period === '5d') {
-    const recentDays = chronoCepea.slice(-6);
-    const startVal = recentDays[0]?.valorRs || prevCloseBoiBrl * 0.992;
-    return refList.map((pt, idx) => {
-      const ratio = n > 1 ? idx / (n - 1) : 1;
-      let baseVal = startVal + (liveBoiBrl - startVal) * ratio;
-      if (recentDays.length >= 2) {
-        const pos = ratio * (recentDays.length - 1);
-        const i0 = Math.floor(pos);
-        const i1 = Math.min(recentDays.length - 1, i0 + 1);
-        const frac = pos - i0;
-        baseVal =
-          recentDays[i0].valorRs + (recentDays[i1].valorRs - recentDays[i0].valorRs) * frac;
-      }
-      const valBrl = idx === n - 1 ? liveBoiBrl : Number(baseVal.toFixed(2));
-      const fx = pt.close > 0 ? pt.close : liveUsdBrl;
-      return {
-        timestamp: pt.ts,
-        ...formatDateSaoPaulo(pt.ts, period),
-        valueBrl: valBrl,
-        valueUsd: Number((valBrl / fx).toFixed(2)),
-      };
-    });
-  }
-
-  if (period === '1mo' && chronoCepea.length >= 5) {
-    const sliceLen = Math.min(n, chronoCepea.length);
-    const cepeaSlice = chronoCepea.slice(-sliceLen);
-    const tsSlice = refList.slice(-sliceLen);
-    return cepeaSlice.map((row, idx) => {
-      const isLast = idx === cepeaSlice.length - 1;
-      const ts = tsSlice[idx]?.ts || Date.now() - (cepeaSlice.length - 1 - idx) * 86_400_000;
-      const fx = tsSlice[idx]?.close || liveUsdBrl;
+  if (period === '5d' && chronoCepea.length >= 2) {
+    const recentDays = chronoCepea.slice(-5);
+    return recentDays.map((row, idx) => {
+      const isLast = idx === recentDays.length - 1;
+      const fallbackTs = Date.now() - (recentDays.length - 1 - idx) * 86_400_000;
+      const ts = parseCepeaDateToTimestamp(row.data, fallbackTs);
+      const fx = findClosestFxRate(referencePoints, ts, liveUsdBrl);
       const valBrl = isLast ? liveBoiBrl : Number(row.valorRs.toFixed(2));
       const valUsd =
         Number.isFinite(row.valorUsd) && row.valorUsd > 0
           ? Number(row.valorUsd.toFixed(2))
           : Number((valBrl / fx).toFixed(2));
+      const formatted = formatDateSaoPaulo(ts, '1mo');
       return {
         timestamp: ts,
-        ...formatDateSaoPaulo(ts, period),
+        isoDate: formatted.isoDate,
+        dateLabel: row.data.slice(0, 5) || formatted.dateLabel,
+        fullDate: formatted.fullDate,
         valueBrl: valBrl,
         valueUsd: valUsd,
       };
     });
   }
 
-  // Períodos longos (3mo, 6mo, 1y): ancora os últimos 30 dias na série real do CEPEA/ESALQ
-  // e reconstrói a curva histórica da arroba nos meses anteriores
-  const oldestCepeaVal = chronoCepea[0]?.valorRs || liveBoiBrl * 0.975;
-  const recentCount = Math.min(chronoCepea.length, Math.floor(n * 0.45));
-  const historicalCount = Math.max(1, n - recentCount);
-  const startFactor = period === '3mo' ? 0.945 : period === '6mo' ? 0.895 : 0.835;
-  const startBoiVal = Number((oldestCepeaVal * startFactor).toFixed(2));
-
-  return refList.map((pt, idx) => {
-    const isLast = idx === n - 1;
-    const fx = pt.close > 0 ? pt.close : liveUsdBrl;
-
-    if (isLast) {
+  // Para 1mo, 3mo, 6mo e 1y: retorna todos os pontos reais raspados da tabela oficial do CEPEA/ESALQ
+  if (chronoCepea.length > 0) {
+    return chronoCepea.map((row, idx) => {
+      const isLast = idx === chronoCepea.length - 1;
+      const fallbackTs = Date.now() - (chronoCepea.length - 1 - idx) * 86_400_000;
+      const ts = parseCepeaDateToTimestamp(row.data, fallbackTs);
+      const fx = findClosestFxRate(referencePoints, ts, liveUsdBrl);
+      const valBrl = isLast ? liveBoiBrl : Number(row.valorRs.toFixed(2));
+      const valUsd =
+        Number.isFinite(row.valorUsd) && row.valorUsd > 0
+          ? Number(row.valorUsd.toFixed(2))
+          : Number((valBrl / fx).toFixed(2));
+      const formatted = formatDateSaoPaulo(ts, period);
       return {
-        timestamp: pt.ts,
-        ...formatDateSaoPaulo(pt.ts, period),
-        valueBrl: liveBoiBrl,
-        valueUsd: Number((liveBoiBrl / fx).toFixed(2)),
-      };
-    }
-
-    if (idx >= historicalCount && chronoCepea.length > 0) {
-      const cepeaIdx = Math.min(
-        chronoCepea.length - 1,
-        Math.floor(((idx - historicalCount) / Math.max(1, n - historicalCount - 1)) * (chronoCepea.length - 1))
-      );
-      const valBrl = Number(chronoCepea[cepeaIdx].valorRs.toFixed(2));
-      return {
-        timestamp: pt.ts,
-        ...formatDateSaoPaulo(pt.ts, period),
+        timestamp: ts,
+        isoDate: formatted.isoDate,
+        dateLabel: row.data.slice(0, 5) || formatted.dateLabel,
+        fullDate: formatted.fullDate,
         valueBrl: valBrl,
-        valueUsd: Number((valBrl / fx).toFixed(2)),
+        valueUsd: valUsd,
       };
-    }
+    });
+  }
 
-    const ratio = historicalCount > 1 ? idx / (historicalCount - 1) : 1;
-    const seasonalWave = Math.sin(idx * 0.22) * 2.4 + Math.cos(idx * 0.11) * 1.35;
-    const valBrl = Number(
-      (startBoiVal + (oldestCepeaVal - startBoiVal) * Math.pow(ratio, 0.92) + seasonalWave).toFixed(2)
-    );
-    return {
-      timestamp: pt.ts,
-      ...formatDateSaoPaulo(pt.ts, period),
-      valueBrl: valBrl,
-      valueUsd: Number((valBrl / fx).toFixed(2)),
-    };
-  });
+  return [
+    {
+      timestamp: Date.now(),
+      ...formatDateSaoPaulo(Date.now(), period),
+      valueBrl: liveBoiBrl,
+      valueUsd: Number((liveBoiBrl / (liveUsdBrl || 5.8883)).toFixed(2)),
+    },
+  ];
 }
 
 function buildAssetStats(
@@ -721,17 +720,19 @@ export async function getRealFinancialMarkets(
 
     // 5. Boi Gordo (CEPEA/B3 - Referência Oficial CEPEA/ESALQ USP)
     const cepeaBoi = cepeaMarketCache?.cepea?.boiGordo;
-    const liveBoiBrl = Number((cepeaBoi?.indicadorAtual?.valorRs || 355.5).toFixed(2));
+    const hist30 = Array.isArray(cepeaBoi?.historico30Dias) ? cepeaBoi.historico30Dias : [];
+    const liveBoiBrl = Number((cepeaBoi?.indicadorAtual?.valorRs || 395.50).toFixed(2));
     const boiVarDiaPct =
-      typeof cepeaBoi?.indicadorAtual?.varDia === 'number' ? cepeaBoi.indicadorAtual.varDia : 0.15;
+      typeof cepeaBoi?.indicadorAtual?.varDia === 'number' ? cepeaBoi.indicadorAtual.varDia : 0.03;
+    // historico30Dias está em ordem cronológica (mais antigo no índice 0 -> mais recente no índice length - 1)
     const prevBoiBrl =
-      cepeaBoi?.historico30Dias && cepeaBoi.historico30Dias.length >= 2
-        ? Number(cepeaBoi.historico30Dias[1].valorRs.toFixed(2))
+      hist30.length >= 2 && Number(hist30[hist30.length - 2]?.valorRs) > 100
+        ? Number(hist30[hist30.length - 2].valorRs.toFixed(2))
         : Number((liveBoiBrl / (1 + boiVarDiaPct / 100)).toFixed(2));
     const liveBoiUsd = Number(
       (
         cepeaBoi?.indicadorAtual?.valorUsd ||
-        liveBoiBrl / (usdSeries.regularMarketPrice || 5.75)
+        liveBoiBrl / (cepeaMarketCache?.cepea?.dolarPtax || usdSeries.regularMarketPrice || 5.8883)
       ).toFixed(2)
     );
     const liveCarcassKgBrl = Number(
@@ -742,9 +743,9 @@ export async function getRealFinancialMarkets(
       period,
       liveBoiBrl,
       prevBoiBrl,
-      cepeaBoi?.historico30Dias || [],
+      hist30,
       usdSeries.points,
-      usdSeries.regularMarketPrice || 5.75
+      usdSeries.regularMarketPrice || 5.8883
     );
 
     const boiAsset = buildAssetStats(

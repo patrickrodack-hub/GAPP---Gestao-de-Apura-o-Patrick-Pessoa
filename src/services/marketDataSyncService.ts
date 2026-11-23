@@ -215,10 +215,14 @@ class MarketDataSyncServiceImpl {
           });
           clearTimeout(timer);
 
-          if (response.ok) {
-            serverData = await response.json();
-            if (serverData && serverData.cepea) {
-              successSource = 'Motor Back-End Oficial • CEPEA/ESALQ + B3 + BACEN';
+          const contentType = response.headers.get('content-type') || '';
+          if (response.ok && contentType.includes('application/json')) {
+            const text = await response.text();
+            if (text.trimStart().startsWith('{')) {
+              serverData = JSON.parse(text);
+              if (serverData && serverData.cepea) {
+                successSource = 'Motor Back-End Oficial • CEPEA/ESALQ + B3 + BACEN';
+              }
             }
           }
         } catch (fetchErr) {
@@ -235,11 +239,15 @@ class MarketDataSyncServiceImpl {
               signal: controller.signal
             });
             clearTimeout(timer);
-            if (scrapeRes.ok) {
-              const scraped = await scrapeRes.json();
-              if (scraped && (scraped.boiGordo || scraped.suinos)) {
-                serverData = { cepea: scraped };
-                successSource = 'Scraping Oficial CEPEA/ESALQ (USP) em Tempo Real';
+            const scrapeType = scrapeRes.headers.get('content-type') || '';
+            if (scrapeRes.ok && scrapeType.includes('application/json')) {
+              const text = await scrapeRes.text();
+              if (text.trimStart().startsWith('{')) {
+                const scraped = JSON.parse(text);
+                if (scraped && (scraped.boiGordo || scraped.suinos)) {
+                  serverData = { cepea: scraped };
+                  successSource = 'Scraping Oficial CEPEA/ESALQ (USP) em Tempo Real';
+                }
               }
             }
           } catch (scrapeErr) {

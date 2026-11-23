@@ -170,7 +170,7 @@ export async function parseSalesPdfDocument(params: {
   }
 
   const isImageUpload = resolvedMimeType.startsWith('image/');
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
   let geminiErrorMsg = '';
 
   // 2. Motor principal multimodal (PDF ou Imagem) via Gemini API (server-side)

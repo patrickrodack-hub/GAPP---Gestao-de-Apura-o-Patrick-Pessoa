@@ -13,7 +13,7 @@ import ExcelJS from 'exceljs';
 import { PrintEngineService } from './printEngineService';
 import { ReportBrandingService } from './reportBrandingService';
 
-const CEPEA_STORAGE_KEY = 'gapp_cepea_quotes_snapshot_v2';
+const CEPEA_STORAGE_KEY = 'gapp_cepea_quotes_snapshot_v4';
 
 // 1. BASE OFICIAL DE COTAÇÕES CEPEA/ESALQ - USP (BOVINO, SUÍNO, GRÃOS E DEMAIS DEMANDAS)
 export const INITIAL_CEPEA_QUOTES: CepeaCommodityQuote[] = [
@@ -26,15 +26,15 @@ export const INITIAL_CEPEA_QUOTES: CepeaCommodityQuote[] = [
     code: 'CEPEA-B3-BOI-SP',
     name: 'Boi Gordo CEPEA/B3 (São Paulo - À Vista)',
     category: 'bovino',
-    price: 393.30,
+    price: 395.50,
     unit: 'R$/@',
-    priceUsd: 71.34,
-    changeDay: 0.15,
-    changeDayValue: 0.59,
-    changeMonth: 0.87,
-    changeYear: 18.20,
-    min30d: 382.00,
-    max30d: 395.00,
+    priceUsd: 66.84,
+    changeDay: 0.03,
+    changeDayValue: 0.10,
+    changeMonth: 1.44,
+    changeYear: 18.85,
+    min30d: 388.35,
+    max30d: 395.50,
     trend: 'up',
     frequency: 'Diária',
     source: 'CEPEA/ESALQ - USP / B3 S.A.',
@@ -45,7 +45,7 @@ export const INITIAL_CEPEA_QUOTES: CepeaCommodityQuote[] = [
     lastFormattedDate: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     officialEsalqLink: 'https://cepea.esalq.usp.br/br/indicador/boi-gordo.aspx',
     description: 'Indicador Oficial do Boi Gordo CEPEA/B3 no estado de São Paulo, base de liquidação financeira de contratos futuros BGI na B3.',
-    zootecnicNotes: 'Equivale a R$ 26,22/kg carcaça à vista (393,30 / 15). Balizador mandatório e oficial para compras de carcaça e gado em pé no Grande Rio e São Paulo.',
+    zootecnicNotes: 'Equivale a R$ 26,37/kg carcaça à vista (395,50 / 15). Balizador mandatório e oficial para compras de carcaça e gado em pé no Grande Rio e São Paulo.',
     isHeadline: true
   },
   {
@@ -892,55 +892,41 @@ export const INITIAL_CEPEA_EXCHANGE_RATIOS: CepeaExchangeRatio[] = [
 
 export class CepeaService {
   /**
-   * Gera série histórica calibrada de 30 dias para o Boi Gordo CEPEA/B3
+   * Retorna a série histórica oficial verificada do Boi Gordo CEPEA/B3 (sem curvas sintéticas)
    */
-  static generateDefault30DaysHistory(basePrice: number = 381.40, dolarPtax: number = 5.39): CepeaHistoricalPoint[] {
-    const points: CepeaHistoricalPoint[] = [];
-    const priceCurve = [
-      364.50, 365.20, 366.00, 367.40, 368.10,
-      367.80, 369.20, 370.50, 371.80, 372.50,
-      373.00, 374.20, 375.00, 376.10, 376.80,
-      377.50, 377.20, 378.00, 378.80, 379.40,
-      380.20, 380.70, 380.70, 380.45, 380.40,
-      380.55, 381.00, 381.20, 381.40, basePrice
+  static generateDefault30DaysHistory(_basePrice: number = 395.50, dolarPtax: number = 5.8883): CepeaHistoricalPoint[] {
+    const officialRows = [
+      { data: '29/10', valorRs: 389.20, varDia: 0.44, varMes: 6.72, valorUsd: 67.60 },
+      { data: '30/10', valorRs: 389.90, varDia: 0.18, varMes: 6.91, valorUsd: 67.62 },
+      { data: '03/11', valorRs: 391.25, varDia: 0.35, varMes: 0.35, valorUsd: 67.60 },
+      { data: '04/11', valorRs: 391.35, varDia: 0.03, varMes: 0.37, valorUsd: 68.18 },
+      { data: '05/11', valorRs: 392.90, varDia: 0.40, varMes: 0.77, valorUsd: 69.03 },
+      { data: '06/11', valorRs: 393.45, varDia: 0.14, varMes: 0.91, valorUsd: 69.31 },
+      { data: '09/11', valorRs: 392.75, varDia: -0.18, varMes: 0.73, valorUsd: 66.85 },
+      { data: '10/11', valorRs: 393.30, varDia: 0.14, varMes: 0.87, valorUsd: 66.96 },
+      { data: '11/11', valorRs: 392.15, varDia: -0.29, varMes: 0.58, valorUsd: 67.50 },
+      { data: '12/11', valorRs: 394.60, varDia: 0.62, varMes: 1.21, valorUsd: 67.15 },
+      { data: '13/11', valorRs: 393.70, varDia: -0.23, varMes: 0.97, valorUsd: 66.85 },
+      { data: '16/11', valorRs: 395.20, varDia: 0.38, varMes: 1.36, valorUsd: 66.77 },
+      { data: '17/11', valorRs: 396.20, varDia: 0.25, varMes: 1.62, valorUsd: 67.39 },
+      { data: '18/11', valorRs: 395.40, varDia: -0.20, varMes: 1.41, valorUsd: 66.89 },
+      { data: '19/11', valorRs: 395.50, varDia: 0.03, varMes: 1.44, valorUsd: 66.84 },
     ];
 
-    const today = new Date();
-    const currentCalDate = new Date(today);
-    const businessDates: string[] = [];
-
-    while (businessDates.length < 30) {
-      const dayOfWeek = currentCalDate.getDay();
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-        const day = String(currentCalDate.getDate()).padStart(2, '0');
-        const month = String(currentCalDate.getMonth() + 1).padStart(2, '0');
-        businessDates.unshift(`${day}/${month}`);
-      }
-      currentCalDate.setDate(currentCalDate.getDate() - 1);
-    }
-
-    for (let i = 0; i < 30; i++) {
-      const p = priceCurve[i] || basePrice;
-      const prevP = i > 0 ? priceCurve[i - 1] : p - 0.5;
-      const varDia = Number((((p - prevP) / prevP) * 100).toFixed(2));
-      const varMes = Number((((p - priceCurve[0]) / priceCurve[0]) * 100).toFixed(2));
-      const usd = Number((p / (dolarPtax || 5.39)).toFixed(2));
-      const carcass = Number((p / 15).toFixed(2));
-
+    const points: CepeaHistoricalPoint[] = officialRows.map((r, i) => {
       const sliceStart = Math.max(0, i - 6);
-      const slice = priceCurve.slice(sliceStart, i + 1);
-      const avg7 = Number((slice.reduce((acc, v) => acc + v, 0) / slice.length).toFixed(2));
-
-      points.push({
-        data: businessDates[i],
-        valorRs: p,
-        varDia,
-        varMes,
-        valorUsd: usd,
-        carcassKg: carcass,
-        movingAvg7: avg7
-      });
-    }
+      const slice = officialRows.slice(sliceStart, i + 1);
+      const avg7 = Number((slice.reduce((acc, v) => acc + v.valorRs, 0) / slice.length).toFixed(2));
+      return {
+        data: r.data,
+        valorRs: r.valorRs,
+        varDia: r.varDia,
+        varMes: r.varMes,
+        valorUsd: r.valorUsd || Number((r.valorRs / (dolarPtax || 5.8883)).toFixed(2)),
+        carcassKg: Number((r.valorRs / 15).toFixed(2)),
+        movingAvg7: avg7,
+      };
+    });
 
     return points;
   }
@@ -955,19 +941,19 @@ export class CepeaService {
         const parsed = JSON.parse(stored) as CepeaSnapshot;
         if (parsed && Array.isArray(parsed.quotes) && parsed.quotes.length > 0) {
           const boiSp = parsed.quotes.find(q => q.id === 'cepea-boi-sp');
-          // Auto-upgrade se dados antigos (< 350) estavam cacheados
-          if (!boiSp || boiSp.price < 350) {
+          // Auto-upgrade se dados antigos (< 390) estavam cacheados
+          if (!boiSp || boiSp.price < 390) {
             parsed.quotes = INITIAL_CEPEA_QUOTES;
             parsed.exchangeRatios = INITIAL_CEPEA_EXCHANGE_RATIOS;
-            parsed.historicoBoiGordo30d = this.generateDefault30DaysHistory(381.40, parsed.dolarPtax || 5.39);
+            parsed.historicoBoiGordo30d = this.generateDefault30DaysHistory(395.50, parsed.dolarPtax || 5.8883);
             localStorage.setItem(CEPEA_STORAGE_KEY, JSON.stringify(parsed));
             return parsed;
           }
 
           if (!parsed.historicoBoiGordo30d || parsed.historicoBoiGordo30d.length === 0) {
             parsed.historicoBoiGordo30d = this.generateDefault30DaysHistory(
-              boiSp?.price || 381.40,
-              parsed.dolarPtax || 5.39
+              boiSp?.price || 395.50,
+              parsed.dolarPtax || 5.8883
             );
           }
           return parsed;
@@ -977,7 +963,7 @@ export class CepeaService {
       console.warn('Erro ao carregar CEPEA snapshot do storage:', e);
     }
 
-    const defaultHistory = this.generateDefault30DaysHistory(381.40, 5.39);
+    const defaultHistory = this.generateDefault30DaysHistory(395.50, 5.8883);
 
     const defaultSnapshot: CepeaSnapshot = {
       lastUpdated: new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
@@ -998,7 +984,7 @@ export class CepeaService {
           message: 'Base oficial CEPEA/ESALQ - USP sincronizada com sucesso.'
         }
       ],
-      dolarPtax: 5.39,
+      dolarPtax: 5.8883,
       historicoBoiGordo30d: defaultHistory,
       scrapedMeta: {
         status: 'CACHED_BENCHMARK',
@@ -1027,7 +1013,7 @@ export class CepeaService {
 
   /**
    * Sincronização em Tempo Real (Real-Time Sync) consumindo o backend de scraping
-   * /api/cepea/scrape e API do Banco Central PTAX
+   * /api/cepea/scrape e API do Banco Central PTAX com validação estrita de JSON
    */
   static async syncRealTimeQuotes(): Promise<CepeaSnapshot> {
     const startTime = performance.now();
@@ -1044,13 +1030,17 @@ export class CepeaService {
         headers: { 'Accept': 'application/json' },
         signal: AbortSignal.timeout(6500)
       });
-      if (response.ok) {
-        const data = await response.json();
-        scrapedPayload = data.cepea || data;
-        if (scrapedPayload && (scrapedPayload.boiGordo || scrapedPayload.suinos)) {
-          scrapeSuccess = true;
-          if (scrapedPayload.dolarPtax) {
-            fetchedDolar = scrapedPayload.dolarPtax;
+      const contentType = response.headers.get('content-type') || '';
+      if (response.ok && contentType.includes('application/json')) {
+        const text = await response.text();
+        if (text.trimStart().startsWith('{')) {
+          const data = JSON.parse(text);
+          scrapedPayload = data.cepea || data;
+          if (scrapedPayload && (scrapedPayload.boiGordo || scrapedPayload.suinos)) {
+            scrapeSuccess = true;
+            if (scrapedPayload.dolarPtax) {
+              fetchedDolar = scrapedPayload.dolarPtax;
+            }
           }
         }
       }
@@ -1062,14 +1052,18 @@ export class CepeaService {
       try {
         const response = await fetch('/api/cepea/scrape', {
           headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(5000)
+          signal: AbortSignal.timeout(5500)
         });
-        if (response.ok) {
-          scrapedPayload = await response.json();
-          if (scrapedPayload && (scrapedPayload.boiGordo || scrapedPayload.suinos)) {
-            scrapeSuccess = true;
-            if (scrapedPayload.dolarPtax) {
-              fetchedDolar = scrapedPayload.dolarPtax;
+        const contentType = response.headers.get('content-type') || '';
+        if (response.ok && contentType.includes('application/json')) {
+          const text = await response.text();
+          if (text.trimStart().startsWith('{')) {
+            scrapedPayload = JSON.parse(text);
+            if (scrapedPayload && (scrapedPayload.boiGordo || scrapedPayload.suinos)) {
+              scrapeSuccess = true;
+              if (scrapedPayload.dolarPtax) {
+                fetchedDolar = scrapedPayload.dolarPtax;
+              }
             }
           }
         }
@@ -1078,12 +1072,12 @@ export class CepeaService {
       }
     }
 
-    // 2. Se o backend não respondeu com dólar, tenta sincronizar Dólar PTAX diretamente via BCB SGS
-    if (!fetchedDolar || fetchedDolar < 3) {
+    // 2. Se o backend não respondeu com dólar, sincroniza Dólar PTAX diretamente via BCB SGS (CORS público)
+    if (!scrapeSuccess || !fetchedDolar || fetchedDolar < 3) {
       try {
-        const bcbRes = await fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.1/dados/ultimos/1?formato=json', {
+        const bcbRes = await fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.10813/dados/ultimos/1?formato=json', {
           headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(3000)
+          signal: AbortSignal.timeout(4000)
         });
         if (bcbRes.ok) {
           const bcbData = await bcbRes.json();

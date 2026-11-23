@@ -19,7 +19,7 @@ import ExcelJS from 'exceljs';
 import { PrintEngineService } from './printEngineService';
 import { ReportBrandingService } from './reportBrandingService';
 
-const QUOTES_STORAGE_KEY = 'apuracao_boi_market_quotes_v8';
+const QUOTES_STORAGE_KEY = 'apuracao_boi_market_quotes_v10';
 
 // 1. INDICADORES GERAIS OFICIAIS (CEPEA, B3, SCOT, IMEA, NIELSENIQ RJ)
 export const INITIAL_MARKET_INDICATORS: MarketIndicator[] = [
@@ -28,19 +28,19 @@ export const INITIAL_MARKET_INDICATORS: MarketIndicator[] = [
     code: 'CEPEA-B3-SP',
     name: 'Boi Gordo CEPEA/B3 (São Paulo - À Vista)',
     category: 'bovino_gordo',
-    price: 393.30,
+    price: 395.50,
     unit: 'R$/@',
-    changeDay: 0.15,
-    changeDayValue: 0.59,
-    changeWeek: 0.45,
-    changeMonth: 0.87,
+    changeDay: 0.03,
+    changeDayValue: 0.10,
+    changeWeek: 0.79,
+    changeMonth: 1.44,
     trend: 'up',
-    min30d: 382.00,
-    max30d: 395.00,
+    min30d: 388.35,
+    max30d: 395.50,
     source: 'CEPEA/ESALQ - USP / B3 S.A.',
     lastUpdated: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     description: 'Indicador Oficial do Boi Gordo CEPEA/B3 no estado de São Paulo para liquidação financeira do contrato BGI na B3.',
-    benchmarkPrice: 393.30
+    benchmarkPrice: 395.50
   },
   {
     id: 'ind-boi-china',
@@ -2041,14 +2041,14 @@ export class MarketQuotesService {
     const formattedDate = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} às ${timeStr}:${pad(now.getSeconds())}`;
     const surveyTimestamp = `Hoje às ${timeStr} (Aferição Sincronizada)`;
 
-    // Balizador Oficial do Boi Gordo CEPEA/B3 SP (393,30/@ oficial)
-    const cepeaSpPrice = liveData?.cepeaSpPrice || 393.30;
+    // Balizador Oficial do Boi Gordo CEPEA/B3 SP (395,50/@ oficial)
+    const cepeaSpPrice = liveData?.cepeaSpPrice || 395.50;
     // Boi Gordo Entrada RJ: Spread zootécnico e de frete interestadual (-R$ 4,80/@ vs SP)
     const rjArrobaPrice = Math.round((cepeaSpPrice - 4.80) * 100) / 100;
     const rjKgCarcaca = Math.round((rjArrobaPrice / 15) * 100) / 100;
-    const dolarPtax = liveData?.dolarPtax || 5.5140;
+    const dolarPtax = liveData?.dolarPtax || 5.8883;
 
-    const liveVarDia = liveData?.varDia !== undefined ? liveData.varDia : 0.15;
+    const liveVarDia = liveData?.varDia !== undefined ? liveData.varDia : 0.03;
 
     // 1. Indicadores Oficiais Sincronizados com Fontes Oficiais
     const updatedIndicators: MarketIndicator[] = current.indicators.map(ind => {
@@ -2403,35 +2403,12 @@ export class MarketQuotesService {
         });
       }
 
-      if (response && response.ok) {
-        const data = await response.json();
-        const cepea = data.cepea || data;
-        if (cepea && cepea.boiGordo && cepea.boiGordo.indicadorAtual) {
-          liveData = {
-            cepeaSpPrice: cepea.boiGordo.indicadorAtual.valorRs,
-            varDia: cepea.boiGordo.indicadorAtual.varDia,
-            dolarPtax: cepea.dolarPtax,
-            bezerroMs: cepea.bezerro?.indicadorAtual?.valorRs,
-            suinoSp: cepea.suinos?.destaqueSp?.valorRs,
-            suinoSc: cepea.suinos?.destaqueSc?.valorRs,
-            suinoCarcaca: cepea.suinos?.destaqueCarcaca?.valorRs,
-            milhoSp: cepea.milho?.indicadorAtual?.valorRs,
-            sojaPr: cepea.soja?.indicadorAtual?.valorRs,
-            frangoCong: cepea.frango?.congelado?.valorRs,
-            frangoResf: cepea.frango?.resfriado?.valorRs,
-            lastSyncTimestamp: data.lastSyncTimestamp || Date.now(),
-            lastSyncFormatted: data.lastSyncFormatted,
-            latencyMs: data.latencyMs || 120
-          };
-        }
-      } else {
-        // Fallback para /api/cepea/scrape
-        const fallbackRes = await fetch('/api/cepea/scrape', {
-          headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(6000)
-        });
-        if (fallbackRes.ok) {
-          const cepea = await fallbackRes.json();
+      const contentType = response?.headers.get('content-type') || '';
+      if (response && response.ok && contentType.includes('application/json')) {
+        const text = await response.text();
+        if (text.trimStart().startsWith('{')) {
+          const data = JSON.parse(text);
+          const cepea = data.cepea || data;
           if (cepea && cepea.boiGordo && cepea.boiGordo.indicadorAtual) {
             liveData = {
               cepeaSpPrice: cepea.boiGordo.indicadorAtual.valorRs,
@@ -2445,10 +2422,43 @@ export class MarketQuotesService {
               sojaPr: cepea.soja?.indicadorAtual?.valorRs,
               frangoCong: cepea.frango?.congelado?.valorRs,
               frangoResf: cepea.frango?.resfriado?.valorRs,
-              lastSyncTimestamp: Date.now(),
-              lastSyncFormatted: new Date().toLocaleTimeString('pt-BR'),
-              latencyMs: cepea.latencyMs || 150
+              lastSyncTimestamp: data.lastSyncTimestamp || Date.now(),
+              lastSyncFormatted: data.lastSyncFormatted,
+              latencyMs: data.latencyMs || 120
             };
+          }
+        }
+      }
+
+      if (!liveData) {
+        // Fallback para /api/cepea/scrape
+        const fallbackRes = await fetch('/api/cepea/scrape', {
+          headers: { 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(6000)
+        });
+        const fbType = fallbackRes.headers.get('content-type') || '';
+        if (fallbackRes.ok && fbType.includes('application/json')) {
+          const text = await fallbackRes.text();
+          if (text.trimStart().startsWith('{')) {
+            const cepea = JSON.parse(text);
+            if (cepea && cepea.boiGordo && cepea.boiGordo.indicadorAtual) {
+              liveData = {
+                cepeaSpPrice: cepea.boiGordo.indicadorAtual.valorRs,
+                varDia: cepea.boiGordo.indicadorAtual.varDia,
+                dolarPtax: cepea.dolarPtax,
+                bezerroMs: cepea.bezerro?.indicadorAtual?.valorRs,
+                suinoSp: cepea.suinos?.destaqueSp?.valorRs,
+                suinoSc: cepea.suinos?.destaqueSc?.valorRs,
+                suinoCarcaca: cepea.suinos?.destaqueCarcaca?.valorRs,
+                milhoSp: cepea.milho?.indicadorAtual?.valorRs,
+                sojaPr: cepea.soja?.indicadorAtual?.valorRs,
+                frangoCong: cepea.frango?.congelado?.valorRs,
+                frangoResf: cepea.frango?.resfriado?.valorRs,
+                lastSyncTimestamp: Date.now(),
+                lastSyncFormatted: new Date().toLocaleTimeString('pt-BR'),
+                latencyMs: cepea.latencyMs || 150
+              };
+            }
           }
         }
       }
