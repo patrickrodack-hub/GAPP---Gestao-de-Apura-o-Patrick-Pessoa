@@ -76,7 +76,10 @@
             var args = Array.prototype.slice.call(arguments);
             var text = args.map(function(a) {
               if (a instanceof Error) return a.stack || a.message;
-              return typeof a === 'object' ? JSON.stringify(a) : String(a);
+              if (typeof a === 'object' && a !== null) {
+                try { return JSON.stringify(a); } catch (e) { return String(a); }
+              }
+              return String(a);
             }).join(' ');
 
             if (

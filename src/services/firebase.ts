@@ -37,7 +37,19 @@ if (typeof window !== 'undefined') {
   const originalConsoleError = console.error;
   console.error = function (...args: any[]) {
     const firstArg = args[0] ? String(args[0]) : '';
-    const fullLog = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+    const fullLog = args
+      .map(a => {
+        if (a instanceof Error) return a.stack || a.message;
+        if (typeof a === 'object' && a !== null) {
+          try {
+            return JSON.stringify(a);
+          } catch {
+            return String(a);
+          }
+        }
+        return String(a);
+      })
+      .join(' ');
     if (
       firstArg.includes('Disconnecting idle stream') ||
       firstArg.includes('Timed out waiting for new targets') ||

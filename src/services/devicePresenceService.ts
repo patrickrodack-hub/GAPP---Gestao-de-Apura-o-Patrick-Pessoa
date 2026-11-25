@@ -205,7 +205,8 @@ export async function registerCurrentRealDevice(params?: {
 /**
  * Inicia o heartbeat automático do dispositivo atual a cada X segundos
  */
-let heartbeatIntervalId: any = null;
+let heartbeatIntervalId: ReturnType<typeof setInterval> | null = null;
+let beforeUnloadHandler: (() => void) | null = null;
 
 export function startRealDeviceHeartbeat(params?: {
   storeId?: string;
@@ -218,10 +219,8 @@ export function startRealDeviceHeartbeat(params?: {
   // Executa registro inicial
   registerCurrentRealDevice(params).catch(() => {});
 
-  // Limpa intervalo anterior se houver
-  if (heartbeatIntervalId) {
-    clearInterval(heartbeatIntervalId);
-  }
+  // Limpa intervalo e listener anteriores se houver
+  stopRealDeviceHeartbeat();
 
   // Heartbeat a cada 3 minutos (180 segundos) para preservar a cota diária do Firestore
   heartbeatIntervalId = setInterval(() => {
@@ -232,11 +231,11 @@ export function startRealDeviceHeartbeat(params?: {
 
   // Listeners de encerramento
   if (typeof window !== 'undefined') {
-    const handleBeforeUnload = () => {
+    beforeUnloadHandler = () => {
       StorageService.markDeviceOffline(deviceId);
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('beforeunload', beforeUnloadHandler);
   }
 }
 
@@ -244,5 +243,9 @@ export function stopRealDeviceHeartbeat() {
   if (heartbeatIntervalId) {
     clearInterval(heartbeatIntervalId);
     heartbeatIntervalId = null;
+  }
+  if (beforeUnloadHandler && typeof window !== 'undefined') {
+    window.removeEventListener('beforeunload', beforeUnloadHandler);
+    beforeUnloadHandler = null;
   }
 }

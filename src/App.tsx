@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { StorageService, DEFAULT_PORTAL_LOCK, normalizePortalWeeklySchedule } from './services/storageService';
 import { FirebaseService } from './services/firebase';
 import { Product, Store, SheetRowData, PurchaseBatch, WasteRecord, Supplier, SheetSnapshotRecord, PortalLockConfig, SystemUser } from './types/erp';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Header } from './components/Header';
 import { Navigation, NavigationTab } from './components/Navigation';
 import { DashboardTab } from './components/tabs/DashboardTab';
@@ -94,17 +95,20 @@ export default function App() {
 
   // Service Worker Update Detection & Instant Reload logic
   const [isUpdatingSW, setIsUpdatingSW] = useState(false);
+  const swCleanupRef = useRef<(() => void) | null>(null);
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegisteredSW(swUrl, r) {
+    onRegisteredSW(_swUrl, r) {
+      if (swCleanupRef.current) {
+        swCleanupRef.current();
+        swCleanupRef.current = null;
+      }
       if (r) {
-        // Checa imediatamente por atualização na inicialização
         r.update().catch(() => {});
 
-        // Checa por novas versões a cada 10 minutos ou quando a janela ganha foco
-        const intervalId = setInterval(() => {
+        const intervalId = window.setInterval(() => {
           r.update().catch(() => {});
         }, 10 * 60 * 1000);
 
@@ -113,8 +117,8 @@ export default function App() {
         };
 
         window.addEventListener('focus', handleTabFocus);
-        return () => {
-          clearInterval(intervalId);
+        swCleanupRef.current = () => {
+          window.clearInterval(intervalId);
           window.removeEventListener('focus', handleTabFocus);
         };
       }
@@ -123,6 +127,15 @@ export default function App() {
       console.warn('Erro ao verificar Service Worker:', error);
     },
   });
+
+  useEffect(() => {
+    return () => {
+      if (swCleanupRef.current) {
+        swCleanupRef.current();
+        swCleanupRef.current = null;
+      }
+    };
+  }, []);
 
   const handleApplySWUpdate = async () => {
     setIsUpdatingSW(true);
@@ -343,7 +356,7 @@ export default function App() {
             if (JSON.stringify(prev) === JSON.stringify(remoteRows)) {
               return prev; // Mesma referência, sem re-render em cascata
             }
-            localStorage.setItem('apuracao_boi_sheet_rows_v1', JSON.stringify(remoteRows));
+            try { localStorage.setItem('apuracao_boi_sheet_rows_v1', JSON.stringify(remoteRows)); } catch {}
             return remoteRows;
           });
           setIsCloudConnected(true);
@@ -361,7 +374,7 @@ export default function App() {
         if (remoteBatches && remoteBatches.length > 0) {
           setBatches(prev => {
             if (JSON.stringify(prev) === JSON.stringify(remoteBatches)) return prev;
-            localStorage.setItem('apuracao_boi_batches_v1', JSON.stringify(remoteBatches));
+            try { localStorage.setItem('apuracao_boi_batches_v1', JSON.stringify(remoteBatches)); } catch {}
             return remoteBatches;
           });
         }
@@ -378,7 +391,7 @@ export default function App() {
         if (remoteWaste && remoteWaste.length > 0) {
           setWasteRecords(prev => {
             if (JSON.stringify(prev) === JSON.stringify(remoteWaste)) return prev;
-            localStorage.setItem('apuracao_boi_waste_v1', JSON.stringify(remoteWaste));
+            try { localStorage.setItem('apuracao_boi_waste_v1', JSON.stringify(remoteWaste)); } catch {}
             return remoteWaste;
           });
         }
@@ -395,7 +408,7 @@ export default function App() {
         if (remoteSuppliers && remoteSuppliers.length > 0) {
           setSuppliers(prev => {
             if (JSON.stringify(prev) === JSON.stringify(remoteSuppliers)) return prev;
-            localStorage.setItem('apuracao_boi_suppliers_v1', JSON.stringify(remoteSuppliers));
+            try { localStorage.setItem('apuracao_boi_suppliers_v1', JSON.stringify(remoteSuppliers)); } catch {}
             return remoteSuppliers;
           });
         }
@@ -420,7 +433,7 @@ export default function App() {
             )
           };
           setPortalLockConfig(normalized);
-          localStorage.setItem('apuracao_boi_portal_lock_v1', JSON.stringify(normalized));
+          try { localStorage.setItem('apuracao_boi_portal_lock_v1', JSON.stringify(normalized)); } catch {}
         }
       });
     } catch (e) {
@@ -440,7 +453,7 @@ export default function App() {
             if (!map.has(u.id)) map.set(u.id, u);
           });
           const merged = Array.from(map.values());
-          localStorage.setItem('apuracao_boi_users_v1', JSON.stringify(merged));
+          try { localStorage.setItem('apuracao_boi_users_v1', JSON.stringify(merged)); } catch {}
         }
       });
     } catch (e) {
@@ -458,12 +471,18 @@ export default function App() {
     };
   }, []);
 
+  const storesRef = useRef<Store[]>(stores);
+  storesRef.current = stores;
+
   // Inicia o registro e o heartbeat do dispositivo real (somente no modo Desktop ERP)
   useEffect(() => {
     if (!isPortalMode) {
+      const currentStores = storesRef.current;
       startRealDeviceHeartbeat({
         storeId: currentUser?.storeId || 'matriz',
-        storeName: currentUser?.storeId && currentUser.storeId !== 'matriz' ? (stores.find(s => s.id === currentUser.storeId)?.name || 'Filial ERP') : 'Diretoria / Matriz GAPP',
+        storeName: currentUser?.storeId && currentUser.storeId !== 'matriz'
+          ? (currentStores.find(s => s.id === currentUser.storeId)?.name || 'Filial ERP')
+          : 'Diretoria / Matriz GAPP',
         operatorName: currentUser ? `${currentUser.name} (${currentUser.role})` : 'Usuário Desktop ERP',
         connectionType: 'DESKTOP_ERP'
       });
@@ -472,7 +491,7 @@ export default function App() {
     return () => {
       stopRealDeviceHeartbeat();
     };
-  }, [currentUser, isPortalMode, stores]);
+  }, [currentUser?.id, currentUser?.storeId, currentUser?.name, currentUser?.role, isPortalMode]);
 
   const handleSavePortalLockConfig = (config: PortalLockConfig) => {
     const updated = StorageService.savePortalLockConfig(config);
@@ -480,31 +499,49 @@ export default function App() {
     showToast('Regras de acesso e horários semanais do Portal salvos com sucesso!');
   };
 
-  // Sync to local storage
-  useEffect(() => {
-    StorageService.saveProducts(products);
-  }, [products]);
+  // Handlers explícitos para alterações de cadastros em lote (evita sobrescrita acidental na nuvem ao montar ou receber snapshots)
+  const handleUpdateProducts = useCallback((nextProducts: Product[]) => {
+    setProducts(nextProducts);
+    StorageService.saveProducts(nextProducts);
+  }, []);
 
-  useEffect(() => {
-    StorageService.saveStores(stores);
-  }, [stores]);
+  const handleUpdateStores = useCallback((nextStores: Store[]) => {
+    setStores(nextStores);
+    StorageService.saveStores(nextStores);
+  }, []);
 
-  useEffect(() => {
-    StorageService.saveBatches(batches);
-  }, [batches]);
-
-  useEffect(() => {
-    StorageService.saveWasteRecords(wasteRecords);
-  }, [wasteRecords]);
-
-  useEffect(() => {
-    StorageService.saveSuppliers(suppliers);
-  }, [suppliers]);
-
-  const showToast = (message: string) => {
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback((message: string) => {
     setFeedbackToast(message);
-    setTimeout(() => setFeedbackToast(null), 3500);
-  };
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    toastTimerRef.current = setTimeout(() => {
+      setFeedbackToast(null);
+      toastTimerRef.current = null;
+    }, 3500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleRestoreBackupCompleted = useCallback((closeModal = false) => {
+    if (closeModal) setIsBackupModalOpen(false);
+    setSheetRows(StorageService.getSheetRows());
+    setStores(StorageService.getStores());
+    setBatches(StorageService.getBatches());
+    setWasteRecords(StorageService.getWasteRecords());
+    setSuppliers(StorageService.getSuppliers());
+    setProducts(StorageService.getProducts());
+    setYieldParams(StorageService.getYieldParams());
+    setSheetSnapshots(StorageService.getSheetSnapshots());
+    showToast('Backup restaurado com sucesso! Todos os dados foram atualizados.');
+  }, [showToast]);
 
   // Supplier CRUD handlers
   const handleAddSupplier = (newSupplier: Supplier) => {
@@ -873,12 +910,30 @@ export default function App() {
     onExitSystem: () => setIsExitModalOpen(true),
   });
 
-  // Global counts for header
-  const totalPieces = sheetRows.reduce((acc, r) => 
-    acc + r.pedidoDianteiro + r.pedidoTraseiro + r.pedidoCoxao + r.pedidoAlcatrao + r.pedidoCostelaGaucha, 0
-  );
-  const totalKg = 14473.5;
-  const totalPurchaseR$ = 376311.95;
+  // Global real-time counts and financial metrics for header (sempre calculados sobre os dados reais da planilha)
+  const globalSheetMetrics = useMemo(() => {
+    const totals = calculateSheetTotals(sheetRows);
+    const footer = calculateSheetFooterRealMetrics(sheetRows, totals, yieldParams);
+    const pieces = sheetRows.reduce(
+      (acc, r) =>
+        acc +
+        (Number(r.pedidoDianteiro) || 0) +
+        (Number(r.pedidoTraseiro) || 0) +
+        (Number(r.pedidoCoxao) || 0) +
+        (Number(r.pedidoAlcatrao) || 0) +
+        (Number(r.pedidoCostelaGaucha) || 0),
+      0
+    );
+    return {
+      totalPieces: pieces,
+      totalKg: footer.totalOrderKg > 0 ? footer.totalOrderKg : footer.boiKg,
+      totalPurchaseR$: footer.totalGeralR$,
+    };
+  }, [sheetRows, yieldParams]);
+
+  const totalPieces = globalSheetMetrics.totalPieces;
+  const totalKg = globalSheetMetrics.totalKg;
+  const totalPurchaseR$ = globalSheetMetrics.totalPurchaseR$;
 
   const getActiveTabTitle = () => {
     switch (activeTab) {
@@ -1104,19 +1159,24 @@ export default function App() {
                     {[
                       { id: 'sheet', label: 'Planilha v11.1' },
                       { id: 'dashboard', label: 'Dashboard' },
+                      { id: 'quotes', label: 'Cotações' },
+                      { id: 'perishables', label: 'Perecíveis RJ' },
                       { id: 'yield', label: 'Rendimento & Desossa' },
                       { id: 'results', label: 'DRE & Margens' },
                       { id: 'inventory', label: 'Estoque Câmaras' },
                       { id: 'purchases', label: 'Compras & Lotes' },
                       { id: 'slaughterhouse_order', label: 'Pedido por Frigorífico' },
                       { id: 'waste', label: 'Descarte (Sebo/Osso)' },
+                      { id: 'devices', label: 'Aparelhos' },
                       { id: 'parameters', label: 'Módulo 1: Parâmetros' },
                       { id: 'backup', label: 'Backup Online' },
-                    ].map(tab => (
+                    ]
+                      .filter(tab => currentUser.role === 'DESENVOLVEDOR' || !currentUser.allowedModules || currentUser.allowedModules.includes(tab.id as NavigationTab))
+                      .map(tab => (
                       <button
                         key={tab.id}
                         onClick={() => handleTabSelect(tab.id as NavigationTab)}
-                        className={`px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer ${
+                        className={`px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer shrink-0 ${
                           activeTab === tab.id
                             ? 'bg-[#0078d7] text-white shadow-xs'
                             : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-300'
@@ -1127,23 +1187,22 @@ export default function App() {
                     ))}
                   </div>
 
-                  <div className="hidden md:flex items-center gap-2 text-[10px] text-slate-500 font-mono">
+                  <div className="hidden md:flex items-center gap-2 text-[10px] text-slate-500 font-mono shrink-0">
                     <span>{stores.length} Filiais</span>
                     <span>•</span>
                     <span>
-                      Compra: {formatCurrencyBRL(
-                        calculateSheetFooterRealMetrics(
-                          sheetRows,
-                          calculateSheetTotals(sheetRows),
-                          yieldParams
-                        ).totalGeralR$
-                      )}
+                      Compra: {formatCurrencyBRL(totalPurchaseR$)}
                     </span>
                   </div>
                 </div>
 
                 {/* Window Body (Scrollable Tab Content strictly inside the window) */}
                 <div className="flex-1 min-h-0 overflow-auto p-3 sm:p-4 bg-slate-50">
+                  <ErrorBoundary
+                    scopeLabel={getActiveTabTitle()}
+                    resetKey={activeTab}
+                    onReturnHome={() => handleTabSelect('dashboard')}
+                  >
                   {activeTab === 'dashboard' && (
                     <DashboardTab
                       rows={sheetRows}
@@ -1191,7 +1250,7 @@ export default function App() {
                       latestBatch={batches[0]}
                       products={products}
                       batches={batches}
-                      onUpdateProducts={setProducts}
+                      onUpdateProducts={handleUpdateProducts}
                     />
                   )}
 
@@ -1263,8 +1322,8 @@ export default function App() {
                       stores={stores}
                       sheetRows={sheetRows}
                       suppliers={suppliers}
-                      onUpdateProducts={setProducts}
-                      onUpdateStores={setStores}
+                      onUpdateProducts={handleUpdateProducts}
+                      onUpdateStores={handleUpdateStores}
                       onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
                       onOpenProductManager={() => setIsProductManagerOpen(true)}
                       onOpenUserManagement={handleOpenUserManagement}
@@ -1276,15 +1335,7 @@ export default function App() {
                   {activeTab === 'backup' && (
                     <BackupManagerView
                       showToast={showToast}
-                      onRestoreCompleted={() => {
-                        showToast('Backup restaurado com sucesso! Dados atualizados.');
-                        setSheetRows(StorageService.getSheetRows());
-                        setStores(StorageService.getStores());
-                        setBatches(StorageService.getBatches());
-                        setSuppliers(StorageService.getSuppliers());
-                        setProducts(StorageService.getProducts());
-                        setSheetSnapshots(StorageService.getSheetSnapshots());
-                      }}
+                      onRestoreCompleted={() => handleRestoreBackupCompleted(false)}
                     />
                   )}
 
@@ -1296,6 +1347,7 @@ export default function App() {
                       onOpenMobilePortal={() => setIsPortalMode(true)}
                     />
                   )}
+                  </ErrorBoundary>
                 </div>
 
               </div>
@@ -1383,6 +1435,16 @@ export default function App() {
           }}
         />
 
+        <ChangePasswordModal
+          isOpen={isChangePasswordOpen}
+          onClose={() => setIsChangePasswordOpen(false)}
+          currentUser={currentUser}
+          onPasswordChanged={(updatedUser) => {
+            setCurrentUser(updatedUser);
+            showToast('Sua senha foi alterada com sucesso!');
+          }}
+        />
+
         <ExitSystemModal
           isOpen={isExitModalOpen}
           onClose={() => setIsExitModalOpen(false)}
@@ -1397,6 +1459,12 @@ export default function App() {
           onConfirm={handleConfirmFactoryReset}
         />
 
+        <UserManualsModal
+          isOpen={isUserManualsModalOpen}
+          onClose={() => setIsUserManualsModalOpen(false)}
+          showToast={showToast}
+        />
+
         {/* Modal da Central de Backup Online no Tema GAPP Classic */}
         {isBackupModalOpen && (
           <div className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
@@ -1404,16 +1472,7 @@ export default function App() {
               <BackupManagerView
                 onClose={() => setIsBackupModalOpen(false)}
                 showToast={showToast}
-                onRestoreCompleted={() => {
-                  showToast('Backup restaurado com sucesso! Dados atualizados.');
-                  setIsBackupModalOpen(false);
-                  setSheetRows(StorageService.getSheetRows());
-                  setStores(StorageService.getStores());
-                  setBatches(StorageService.getBatches());
-                  setSuppliers(StorageService.getSuppliers());
-                  setProducts(StorageService.getProducts());
-                  setSheetSnapshots(StorageService.getSheetSnapshots());
-                }}
+                onRestoreCompleted={() => handleRestoreBackupCompleted(true)}
               />
             </div>
           </div>
@@ -1499,6 +1558,11 @@ export default function App() {
 
             <main className="flex-1 min-h-0 overflow-auto w-full px-4 sm:px-6 py-5">
               <div className="max-w-[1920px] mx-auto pb-4">
+                <ErrorBoundary
+                  scopeLabel={getActiveTabTitle()}
+                  resetKey={activeTab}
+                  onReturnHome={() => handleTabSelect('dashboard')}
+                >
                 {activeTab === 'dashboard' && (
                   <GappNewDashboardView
                     rows={sheetRows}
@@ -1550,7 +1614,7 @@ export default function App() {
                         latestBatch={batches[0]}
                         products={products}
                         batches={batches}
-                        onUpdateProducts={setProducts}
+                        onUpdateProducts={handleUpdateProducts}
                       />
                     )}
 
@@ -1622,8 +1686,8 @@ export default function App() {
                         stores={stores}
                         sheetRows={sheetRows}
                         suppliers={suppliers}
-                        onUpdateProducts={setProducts}
-                        onUpdateStores={setStores}
+                        onUpdateProducts={handleUpdateProducts}
+                        onUpdateStores={handleUpdateStores}
                         onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
                         onOpenProductManager={() => setIsProductManagerOpen(true)}
                         onOpenUserManagement={handleOpenUserManagement}
@@ -1635,15 +1699,7 @@ export default function App() {
                     {activeTab === 'backup' && (
                       <BackupManagerView
                         showToast={showToast}
-                        onRestoreCompleted={() => {
-                          showToast('Backup restaurado com sucesso! Dados atualizados.');
-                          setSheetRows(StorageService.getSheetRows());
-                          setStores(StorageService.getStores());
-                          setBatches(StorageService.getBatches());
-                          setSuppliers(StorageService.getSuppliers());
-                          setProducts(StorageService.getProducts());
-                          setSheetSnapshots(StorageService.getSheetSnapshots());
-                        }}
+                        onRestoreCompleted={() => handleRestoreBackupCompleted(false)}
                       />
                     )}
 
@@ -1657,6 +1713,7 @@ export default function App() {
                     )}
                   </div>
                 )}
+                </ErrorBoundary>
               </div>
             </main>
           </div>
@@ -1702,6 +1759,11 @@ export default function App() {
           {/* Content Body (ONLY THIS AREA SCROLLS, AUTO-ADJUSTS TO WINDOW RESIZE) */}
           <main className="flex-1 min-h-0 overflow-auto w-full px-3 sm:px-6 py-4">
             <div className="max-w-[1920px] mx-auto pb-4">
+              <ErrorBoundary
+                scopeLabel={getActiveTabTitle()}
+                resetKey={activeTab}
+                onReturnHome={() => handleTabSelect('dashboard')}
+              >
               {activeTab === 'dashboard' && (
                 <DashboardTab
                   rows={sheetRows}
@@ -1749,7 +1811,7 @@ export default function App() {
                   latestBatch={batches[0]}
                   products={products}
                   batches={batches}
-                  onUpdateProducts={setProducts}
+                  onUpdateProducts={handleUpdateProducts}
                 />
               )}
 
@@ -1821,8 +1883,8 @@ export default function App() {
                   stores={stores}
                   sheetRows={sheetRows}
                   suppliers={suppliers}
-                  onUpdateProducts={setProducts}
-                  onUpdateStores={setStores}
+                  onUpdateProducts={handleUpdateProducts}
+                  onUpdateStores={handleUpdateStores}
                   onOpenSupplierManager={() => setIsSupplierModalOpen(true)}
                   onOpenProductManager={() => setIsProductManagerOpen(true)}
                   onOpenUserManagement={handleOpenUserManagement}
@@ -1834,15 +1896,7 @@ export default function App() {
               {activeTab === 'backup' && (
                 <BackupManagerView
                   showToast={showToast}
-                  onRestoreCompleted={() => {
-                    showToast('Backup restaurado com sucesso! Dados atualizados.');
-                    setSheetRows(StorageService.getSheetRows());
-                    setStores(StorageService.getStores());
-                    setBatches(StorageService.getBatches());
-                    setSuppliers(StorageService.getSuppliers());
-                    setProducts(StorageService.getProducts());
-                    setSheetSnapshots(StorageService.getSheetSnapshots());
-                  }}
+                  onRestoreCompleted={() => handleRestoreBackupCompleted(false)}
                 />
               )}
 
@@ -1854,6 +1908,7 @@ export default function App() {
                   onOpenMobilePortal={() => setIsPortalMode(true)}
                 />
               )}
+              </ErrorBoundary>
             </div>
           </main>
 
@@ -1988,16 +2043,7 @@ export default function App() {
             <BackupManagerView
               onClose={() => setIsBackupModalOpen(false)}
               showToast={showToast}
-              onRestoreCompleted={() => {
-                showToast('Backup restaurado com sucesso! Dados atualizados.');
-                setIsBackupModalOpen(false);
-                setSheetRows(StorageService.getSheetRows());
-                setStores(StorageService.getStores());
-                setBatches(StorageService.getBatches());
-                setSuppliers(StorageService.getSuppliers());
-                setProducts(StorageService.getProducts());
-                setSheetSnapshots(StorageService.getSheetSnapshots());
-              }}
+              onRestoreCompleted={() => handleRestoreBackupCompleted(true)}
             />
           </div>
         </div>

@@ -4,6 +4,15 @@ import { SLAUGHTERHOUSE_CATEGORY_ORDER } from './slaughterhouseOrderService';
 import { StorageService } from './storageService';
 import { ReportBrandingService } from './reportBrandingService';
 
+export function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export interface PrintEngineOptions {
   documentTitle: string;
   landscape?: boolean;
@@ -18,7 +27,7 @@ export interface PrintEngineOptions {
  */
 export class PrintEngineService {
   /**
-   * Executa a impressão isolada via iframe seguro
+   * Executa a impressão isolada via iframe seguro (sem race condition de onload)
    */
   public static printDocument(htmlContent: string, options: PrintEngineOptions): void {
     if (options.onBeforePrint) options.onBeforePrint();
@@ -31,6 +40,7 @@ export class PrintEngineService {
 
     const iframe = document.createElement('iframe');
     iframe.id = 'gipp-print-engine-iframe';
+    iframe.title = options.documentTitle || 'Documento de Impressão';
     iframe.style.position = 'fixed';
     iframe.style.right = '0';
     iframe.style.bottom = '0';
@@ -42,17 +52,16 @@ export class PrintEngineService {
 
     const doc = iframe.contentWindow?.document;
     if (!doc) {
-      // Fallback para window.print se iframe não estiver acessível
+      iframe.remove();
       window.print();
+      if (options.onAfterPrint) options.onAfterPrint();
       return;
     }
 
-    doc.open();
-    doc.write(htmlContent);
-    doc.close();
-
-    // Aguarda o carregamento dos estilos e renderização do iframe
-    iframe.onload = () => {
+    let hasTriggered = false;
+    const triggerPrint = () => {
+      if (hasTriggered) return;
+      hasTriggered = true;
       setTimeout(() => {
         try {
           iframe.contentWindow?.focus();
@@ -63,11 +72,23 @@ export class PrintEngineService {
         } finally {
           if (options.onAfterPrint) options.onAfterPrint();
           setTimeout(() => {
-            iframe.remove();
-          }, 2000);
+            if (iframe.parentNode) {
+              iframe.remove();
+            }
+          }, 2500);
         }
-      }, 300);
+      }, 250);
     };
+
+    // Registra onload ANTES de escrever o HTML para evitar perda do evento em navegadores rápidos
+    iframe.onload = triggerPrint;
+
+    doc.open();
+    doc.write(htmlContent);
+    doc.close();
+
+    // Garantia de disparo caso o navegador conclua o parsing sincronamente sem disparar onload
+    setTimeout(triggerPrint, 600);
   }
 
   /**

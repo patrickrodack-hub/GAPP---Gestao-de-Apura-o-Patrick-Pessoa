@@ -15,6 +15,14 @@ async function startServer() {
   const PORT = Number(process.env.PORT) || 3000;
   const isProduction = process.env.NODE_ENV === 'production';
 
+  app.disable('x-powered-by');
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    next();
+  });
+
   app.use(express.json({ limit: '25mb' }));
   app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
@@ -189,15 +197,21 @@ async function startServer() {
   // Endpoint de Análise e Classificação de PDF ou Imagem de Vendas de Cortes (Pedido por Frigorífico)
   app.post('/api/slaughterhouse-order/parse-sales-pdf', async (req, res) => {
     try {
-      const { fileName, fileBase64, pdfBase64, mimeType, rawText, stores } = req.body || {};
+      if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+        return res.status(400).json({
+          error: 'Corpo da requisição inválido',
+          message: 'Envie um objeto JSON contendo o documento ou texto de vendas.'
+        });
+      }
+      const { fileName, fileBase64, pdfBase64, mimeType, rawText, stores } = req.body;
       const { parseSalesPdfDocument } = await import('./src/services/pdfSalesParserServer');
       const result = await parseSalesPdfDocument({
-        fileName: String(fileName || 'vendas-cortes.pdf'),
+        fileName: String(fileName || 'vendas-cortes.pdf').slice(0, 200),
         fileBase64: typeof fileBase64 === 'string' ? fileBase64 : undefined,
         pdfBase64: typeof pdfBase64 === 'string' ? pdfBase64 : undefined,
-        mimeType: typeof mimeType === 'string' ? mimeType : undefined,
-        rawText: typeof rawText === 'string' ? rawText : undefined,
-        stores: Array.isArray(stores) ? stores : undefined,
+        mimeType: typeof mimeType === 'string' ? mimeType.slice(0, 100) : undefined,
+        rawText: typeof rawText === 'string' ? rawText.slice(0, 500_000) : undefined,
+        stores: Array.isArray(stores) ? stores.slice(0, 200) : undefined,
       });
       return res.json(result);
     } catch (err: any) {
@@ -263,9 +277,21 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`[GAPP Server] Servidor Full-Stack rodando na porta ${PORT} (dev: ${!isProduction})`);
   });
+
+  const gracefulShutdown = (signal: string) => {
+    console.log(`[GAPP Server] Recebido ${signal}, encerrando polling e servidor com segurança...`);
+    marketQuotesCacheService.stopBackgroundPolling();
+    server.close(() => {
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(0), 5000).unref();
+  };
+
+  process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.once('SIGINT', () => gracefulShutdown('SIGINT'));
 }
 
 startServer().catch((err) => {

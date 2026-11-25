@@ -56,6 +56,7 @@ class MarketQuotesCacheService {
   private pollingTimer: NodeJS.Timeout | null = null;
   private syncCount = 0;
   private isUpdating = false;
+  private inFlightRefresh: Promise<MarketCacheData> | null = null;
 
   constructor() {
     // Inicialização silenciosa
@@ -163,29 +164,34 @@ class MarketQuotesCacheService {
    * Executa a rotina de atualização (scraping e cálculo de mercado)
    */
   public async refreshMarketData(): Promise<MarketCacheData> {
-    if (this.isUpdating && this.cache) {
-      return this.cache;
+    if (this.inFlightRefresh) {
+      return this.inFlightRefresh;
     }
 
     this.isUpdating = true;
     const start = Date.now();
 
-    try {
-      const cepeaResult = await scrapeCepeaRealTime();
-      const latency = Date.now() - start;
-      const freshData = this.buildMarketData(cepeaResult, latency);
-      this.cache = freshData;
-      return freshData;
-    } catch (err: any) {
-      console.warn('[MarketQuotesCacheService] Erro no polling de segundo plano, mantendo cache:', err?.message || err);
-      if (this.cache) {
-        this.cache.status = 'STALE';
-        return this.cache;
+    this.inFlightRefresh = (async () => {
+      try {
+        const cepeaResult = await scrapeCepeaRealTime();
+        const latency = Date.now() - start;
+        const freshData = this.buildMarketData(cepeaResult, latency);
+        this.cache = freshData;
+        return freshData;
+      } catch (err: any) {
+        console.warn('[MarketQuotesCacheService] Erro no polling de segundo plano, mantendo cache:', err?.message || err);
+        if (this.cache) {
+          this.cache.status = 'STALE';
+          return this.cache;
+        }
+        throw err;
+      } finally {
+        this.isUpdating = false;
+        this.inFlightRefresh = null;
       }
-      throw err;
-    } finally {
-      this.isUpdating = false;
-    }
+    })();
+
+    return this.inFlightRefresh;
   }
 
   /**

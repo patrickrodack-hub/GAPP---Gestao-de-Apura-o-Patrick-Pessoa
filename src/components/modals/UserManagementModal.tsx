@@ -3,6 +3,7 @@ import { SystemUser, UserRole, Store } from '../../types/erp';
 import { StorageService } from '../../services/storageService';
 import { ALL_SYSTEM_MODULES, SystemModuleItem } from '../../data/initialData';
 import { ReportBrandingService } from '../../services/reportBrandingService';
+import { PrintEngineService, escapeHtml } from '../../services/printEngineService';
 import { 
   Users, 
   UserPlus, 
@@ -416,12 +417,6 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   };
 
   const handlePrintAuditReport = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      showNotification('Permita pop-ups no navegador para emitir o relatório impresso.', 'error');
-      return;
-    }
-
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     const emissionStr = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} às ${pad(now.getHours())}:${pad(now.getMinutes())}`;
@@ -466,8 +461,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
             <div class="sub-title">RELATÓRIO AUDITADO DE USUÁRIOS & MATRIZ DE PERMISSÕES DOS 14 MÓDULOS (v11.1)</div>
           </div>
           <div class="meta-box">
-            <div><strong>Emissão:</strong> ${emissionStr}</div>
-            <div><strong>Emitido por:</strong> ${currentUser?.name || 'Patrick Pessoa'}</div>
+            <div><strong>Emissão:</strong> ${escapeHtml(emissionStr)}</div>
+            <div><strong>Emitido por:</strong> ${escapeHtml(currentUser?.name || 'Patrick Pessoa')}</div>
             <div><strong>Ambiente:</strong> Homologado & Seguro</div>
           </div>
         </div>
@@ -515,20 +510,20 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
               return `
                 <tr>
                   <td>${idx + 1}</td>
-                  <td><strong>${u.name}</strong></td>
-                  <td><code>${u.username}</code></td>
+                  <td><strong>${escapeHtml(u.name)}</strong></td>
+                  <td><code>${escapeHtml(u.username)}</code></td>
                   <td>
-                    <span class="role-badge ${roleClass}">${u.role}</span>
-                    <div style="font-size: 8px; color: #64748b;">${u.roleTitle || ''}</div>
+                    <span class="role-badge ${roleClass}">${escapeHtml(u.role)}</span>
+                    <div style="font-size: 8px; color: #64748b;">${escapeHtml(u.roleTitle || '')}</div>
                   </td>
-                  <td>${storeLabel}</td>
+                  <td>${escapeHtml(storeLabel)}</td>
                   <td><span style="font-weight: bold; color: ${u.active ? '#16a34a' : '#e11d48'};">${u.active ? 'ATIVO' : 'INATIVO'}</span></td>
                   <td>
                     ${u.role === 'DESENVOLVEDOR' 
                       ? '<strong style="color: #7c3aed;">✓ ACESSO TOTAL (100% DOS 14 MÓDULOS)</strong>' 
                       : (u.allowedModules || []).map(mId => {
                           const mInfo = ALL_SYSTEM_MODULES.find(m => m.id === mId);
-                          return `<span class="mod-tag">${mInfo?.shortLabel || mId}</span>`;
+                          return `<span class="mod-tag">${escapeHtml(mInfo?.shortLabel || mId)}</span>`;
                         }).join(' ')
                     }
                   </td>
@@ -552,21 +547,16 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
         </div>
 
         <div class="footer">
-          Documento gerado automaticamente pelo Sistema ERP GAPP - PATRICK PESSOA v11.1 • Impresso em ${emissionStr}
+          Documento gerado automaticamente pelo Sistema ERP GAPP - PATRICK PESSOA v11.1 • Impresso em ${escapeHtml(emissionStr)}
         </div>
-
-        <script>
-          window.onload = function() {
-            window.print();
-          };
-        </script>
       </body>
       </html>
     `;
 
-    printWindow.document.open();
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    PrintEngineService.printDocument(htmlContent, {
+      documentTitle: 'Relatório de Usuários e Permissões',
+      landscape: true
+    });
   };
 
   const getRoleBadge = (role: UserRole) => {

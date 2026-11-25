@@ -68,6 +68,7 @@ class QuoteBackgroundWorkerService {
   private workerTimerId: number | null = null;
   private isWorkerActive = false;
   private activePromise: Promise<CentralizedCepeaQuoteState> | null = null;
+  private visibilityFocusHandler: (() => void) | null = null;
 
   constructor() {
     this.state = this.loadInitialState();
@@ -395,7 +396,7 @@ class QuoteBackgroundWorkerService {
       }, intervalMs);
 
       // Atualiza também quando a aba recupera foco ou visibilidade
-      const handleVisibilityOrFocus = () => {
+      this.visibilityFocusHandler = () => {
         if (document.visibilityState === 'visible') {
           const elapsed = Date.now() - (this.state.lastSuccessTimestamp || 0);
           if (elapsed > 20_000) {
@@ -404,8 +405,8 @@ class QuoteBackgroundWorkerService {
         }
       };
 
-      window.addEventListener('focus', handleVisibilityOrFocus);
-      document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.addEventListener('focus', this.visibilityFocusHandler);
+      document.addEventListener('visibilitychange', this.visibilityFocusHandler);
     }
 
     return () => {
@@ -420,6 +421,11 @@ class QuoteBackgroundWorkerService {
     if (this.workerTimerId !== null && typeof window !== 'undefined') {
       window.clearInterval(this.workerTimerId);
       this.workerTimerId = null;
+    }
+    if (this.visibilityFocusHandler && typeof window !== 'undefined') {
+      window.removeEventListener('focus', this.visibilityFocusHandler);
+      document.removeEventListener('visibilitychange', this.visibilityFocusHandler);
+      this.visibilityFocusHandler = null;
     }
     this.isWorkerActive = false;
   }

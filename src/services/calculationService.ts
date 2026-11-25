@@ -1081,11 +1081,12 @@ export function calculateRealBeefYield(
           : 1.0;
 
         // Impacto da Rentabilidade s/ Venda configurada na Tabela Técnica para esta Mesa
-        const defaultMarg = DEFAULT_MESA_PROFIT_MARGINS[parentCode] || 28.0;
-        const activeMarg = (customMesaProfitMargins && customMesaProfitMargins[parentCode] !== undefined)
-          ? customMesaProfitMargins[parentCode]
+        const defaultMarg = Math.min(95, Math.max(0, DEFAULT_MESA_PROFIT_MARGINS[parentCode] || 28.0));
+        const rawActiveMarg = (customMesaProfitMargins && customMesaProfitMargins[parentCode] !== undefined)
+          ? Number(customMesaProfitMargins[parentCode])
           : defaultMarg;
-        const marginCostRatio = (1 - activeMarg / 100) / (1 - defaultMarg / 100);
+        const activeMarg = Number.isFinite(rawActiveMarg) ? Math.min(95, Math.max(0, rawActiveMarg)) : defaultMarg;
+        const marginCostRatio = (1 - activeMarg / 100) / Math.max(0.05, 1 - defaultMarg / 100);
 
         // Se o corte pertence ao Traseiro (Alcatrão ou Coxão), também reflete ajustes feitos na Peça Traseiro (BOI-TRAS)
         const isTraseiroCut = parentCode === 'BOI-ALCAT' || parentCode === 'BOI-COXAO';
@@ -1131,11 +1132,12 @@ export function calculateRealBeefYield(
 
   // Linhas das 5 Mesas / Peças Primárias para inclusão direta no topo da tabela de apuração
   const primaryPieceCuts: YieldAnalysisCuts[] = primaryMesas.map(mesa => {
-    const defaultMarg = DEFAULT_MESA_PROFIT_MARGINS[mesa.code] || 28.0;
-    const activeMarg = (customMesaProfitMargins && customMesaProfitMargins[mesa.code] !== undefined)
-      ? customMesaProfitMargins[mesa.code]
+    const defaultMarg = Math.min(95, Math.max(0, DEFAULT_MESA_PROFIT_MARGINS[mesa.code] || 28.0));
+    const rawActiveMarg = (customMesaProfitMargins && customMesaProfitMargins[mesa.code] !== undefined)
+      ? Number(customMesaProfitMargins[mesa.code])
       : defaultMarg;
-    const marginCostRatio = (1 - activeMarg / 100) / (1 - defaultMarg / 100);
+    const activeMarg = Number.isFinite(rawActiveMarg) ? Math.min(95, Math.max(0, rawActiveMarg)) : defaultMarg;
+    const marginCostRatio = (1 - activeMarg / 100) / Math.max(0.05, 1 - defaultMarg / 100);
 
     // O Custo Equalizado da Peça Primária na tabela de detalhamento reflete % Carcaça, Fator Paridade e Rentabilidade
     const equalizedPieceCostKg = Number((mesa.calculatedCostKg * marginCostRatio).toFixed(2));
@@ -1214,17 +1216,20 @@ export function simulateBeefYield(
 }
 
 export function formatCurrencyBRL(value: number): string {
+  const safeVal = typeof value === 'number' && Number.isFinite(value) ? value : 0;
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value || 0);
+  }).format(safeVal);
 }
 
 export function formatNumberBR(value: number, decimals: number = 1): string {
+  const safeVal = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  const safeDecimals = Number.isFinite(decimals) ? Math.max(0, Math.min(6, Math.trunc(decimals))) : 1;
   return new Intl.NumberFormat('pt-BR', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value || 0);
+    minimumFractionDigits: safeDecimals,
+    maximumFractionDigits: safeDecimals,
+  }).format(safeVal);
 }

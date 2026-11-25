@@ -4,10 +4,19 @@ import { INITIAL_CONNECTED_DEVICES } from '../data/initialDevices';
 import {
   recalculateRowOrderFormulas,
   calculateSheetTotals,
+  calculateSheetFooterRealMetrics,
   getCutYieldWeightsFromSimulation,
   getEffectiveDesossaCarcassWeight,
 } from './calculationService';
 import { FirebaseService } from './firebase';
+
+function safeSetItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch (err) {
+    console.warn(`[StorageService] Falha ao gravar chave "${key}" no armazenamento local (quota/privacidade):`, err);
+  }
+}
 
 const STORAGE_KEYS = {
   PRODUCTS: 'apuracao_boi_products_v1',
@@ -101,7 +110,7 @@ export const StorageService = {
   },
 
   saveProducts(products: Product[]) {
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+    safeSetItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
     FirebaseService.saveAllProducts(products).catch(() => {});
   },
 
@@ -134,7 +143,7 @@ export const StorageService = {
   },
 
   saveStores(stores: Store[]) {
-    localStorage.setItem(STORAGE_KEYS.STORES, JSON.stringify(stores));
+    safeSetItem(STORAGE_KEYS.STORES, JSON.stringify(stores));
     FirebaseService.saveStores(stores).catch(() => {});
   },
 
@@ -187,7 +196,7 @@ export const StorageService = {
   },
 
   saveSheetRows(rows: SheetRowData[], syncToCloud = true) {
-    localStorage.setItem(STORAGE_KEYS.SHEET_ROWS, JSON.stringify(rows));
+    safeSetItem(STORAGE_KEYS.SHEET_ROWS, JSON.stringify(rows));
     if (syncToCloud) {
       FirebaseService.saveAllSheetRows(rows).catch(err => {
         console.warn('Persistindo em nuvem:', err);
@@ -205,7 +214,7 @@ export const StorageService = {
   },
 
   saveBatches(batches: PurchaseBatch[]) {
-    localStorage.setItem(STORAGE_KEYS.BATCHES, JSON.stringify(batches));
+    safeSetItem(STORAGE_KEYS.BATCHES, JSON.stringify(batches));
     FirebaseService.saveAllBatches(batches).catch(() => {});
   },
 
@@ -238,7 +247,7 @@ export const StorageService = {
   },
 
   saveWasteRecords(waste: WasteRecord[]) {
-    localStorage.setItem(STORAGE_KEYS.WASTE, JSON.stringify(waste));
+    safeSetItem(STORAGE_KEYS.WASTE, JSON.stringify(waste));
     FirebaseService.saveAllWasteRecords(waste).catch(() => {});
   },
 
@@ -271,7 +280,7 @@ export const StorageService = {
   },
 
   saveSuppliers(suppliers: Supplier[]) {
-    localStorage.setItem(STORAGE_KEYS.SUPPLIERS, JSON.stringify(suppliers));
+    safeSetItem(STORAGE_KEYS.SUPPLIERS, JSON.stringify(suppliers));
     FirebaseService.saveAllSuppliers(suppliers).catch(() => {});
   },
 
@@ -346,7 +355,7 @@ export const StorageService = {
     mesaCarcassPercents?: Record<string, number>;
     mesaCostFactors?: Record<string, number>;
   }) {
-    localStorage.setItem(STORAGE_KEYS.YIELD_PARAMS, JSON.stringify(params));
+    safeSetItem(STORAGE_KEYS.YIELD_PARAMS, JSON.stringify(params));
     FirebaseService.saveYieldParams(params).catch(() => {});
   },
 
@@ -599,7 +608,7 @@ export const StorageService = {
   },
 
   saveStockLaunchRecords(records: StockLaunchRecord[]) {
-    localStorage.setItem(STORAGE_KEYS.STOCK_LAUNCHES, JSON.stringify(records));
+    safeSetItem(STORAGE_KEYS.STOCK_LAUNCHES, JSON.stringify(records));
   },
 
   addStockLaunchRecord(record: StockLaunchRecord) {
@@ -632,15 +641,17 @@ export const StorageService = {
         return JSON.parse(data);
       }
 
-      // Snapshot inicial demonstrativo da matriz oficial v10.1
+      // Snapshot inicial demonstrativo da matriz oficial v11.1
+      const initialYieldParams = this.getYieldParams();
       const initialRows = INITIAL_SHEET_ROWS.map(r => recalculateRowOrderFormulas(r));
       const totals = calculateSheetTotals(initialRows);
+      const footerMetrics = calculateSheetFooterRealMetrics(initialRows, totals, initialYieldParams);
       const totalPieces = initialRows.reduce((acc, r) => 
         acc + (r.pedidoDianteiro || 0) + (r.pedidoTraseiro || 0) + (r.pedidoCoxao || 0) + (r.pedidoAlcatrao || 0) + (r.pedidoCostelaGaucha || 0), 0
       );
       const initialSnapshot: SheetSnapshotRecord = {
         id: 'snapshot-initial-v10.1',
-        name: 'Planilha Oficial de Compra da Direção v10.1 (Matriz Base)',
+        name: 'Planilha Oficial de Compra da Direção v11.1 (Matriz Base)',
         date: '01/10/2026 08:00:00',
         timestamp: new Date('2026-10-01T08:00:00').getTime(),
         author: 'Patrick Pessoa (Direção de Carnes)',
@@ -648,14 +659,14 @@ export const StorageService = {
         notes: 'Versão inicial homologada de referência da apuração do boi (16 filiais).',
         totalStores: initialRows.length,
         totalPieces: totalPieces,
-        totalKg: 14473.5,
+        totalKg: footerMetrics.totalOrderKg > 0 ? footerMetrics.totalOrderKg : footerMetrics.boiKg,
         totalBois: Math.round(totals.boi || 0),
-        totalPurchaseR$: 376311.95,
+        totalPurchaseR$: footerMetrics.totalGeralR$,
         rows: initialRows
       };
 
       const initialList = [initialSnapshot];
-      localStorage.setItem(STORAGE_KEYS.SHEET_SNAPSHOTS, JSON.stringify(initialList));
+      safeSetItem(STORAGE_KEYS.SHEET_SNAPSHOTS, JSON.stringify(initialList));
       return initialList;
     } catch {
       return [];
@@ -741,43 +752,43 @@ export const StorageService = {
       } = {};
 
       if (cloudRows && cloudRows.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.SHEET_ROWS, JSON.stringify(cloudRows));
+        safeSetItem(STORAGE_KEYS.SHEET_ROWS, JSON.stringify(cloudRows));
         result.rows = cloudRows;
       }
       // CRÍTICO: Nunca sobrescrever a nuvem com dados padrão se a busca falhar ou estiver vazia!
 
       if (cloudSnapshots && cloudSnapshots.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.SHEET_SNAPSHOTS, JSON.stringify(cloudSnapshots));
+        safeSetItem(STORAGE_KEYS.SHEET_SNAPSHOTS, JSON.stringify(cloudSnapshots));
         result.snapshots = cloudSnapshots;
       }
 
       if (cloudLaunches && cloudLaunches.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.STOCK_LAUNCHES, JSON.stringify(cloudLaunches));
+        safeSetItem(STORAGE_KEYS.STOCK_LAUNCHES, JSON.stringify(cloudLaunches));
         result.launches = cloudLaunches;
       }
 
       if (cloudStores && cloudStores.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.STORES, JSON.stringify(cloudStores));
+        safeSetItem(STORAGE_KEYS.STORES, JSON.stringify(cloudStores));
         result.stores = cloudStores;
       }
 
       if (cloudSuppliers && cloudSuppliers.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.SUPPLIERS, JSON.stringify(cloudSuppliers));
+        safeSetItem(STORAGE_KEYS.SUPPLIERS, JSON.stringify(cloudSuppliers));
         result.suppliers = cloudSuppliers;
       }
 
       if (cloudBatches && cloudBatches.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.BATCHES, JSON.stringify(cloudBatches));
+        safeSetItem(STORAGE_KEYS.BATCHES, JSON.stringify(cloudBatches));
         result.batches = cloudBatches;
       }
 
       if (cloudWaste && cloudWaste.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.WASTE, JSON.stringify(cloudWaste));
+        safeSetItem(STORAGE_KEYS.WASTE, JSON.stringify(cloudWaste));
         result.waste = cloudWaste;
       }
 
       if (cloudProducts && cloudProducts.length > 0) {
-        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(cloudProducts));
+        safeSetItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(cloudProducts));
         result.products = cloudProducts;
       }
 
@@ -792,12 +803,12 @@ export const StorageService = {
           }
         });
         const mergedUsers = Array.from(map.values());
-        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(mergedUsers));
+        safeSetItem(STORAGE_KEYS.USERS, JSON.stringify(mergedUsers));
         result.users = mergedUsers;
       }
 
       if (cloudYieldParams && cloudYieldParams.costPerKg > 0) {
-        localStorage.setItem(STORAGE_KEYS.YIELD_PARAMS, JSON.stringify(cloudYieldParams));
+        safeSetItem(STORAGE_KEYS.YIELD_PARAMS, JSON.stringify(cloudYieldParams));
         result.yieldParams = cloudYieldParams;
       }
 
@@ -819,8 +830,10 @@ export const StorageService = {
     const pad = (n: number) => String(n).padStart(2, '0');
     const formattedDate = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     
-    // Calcula métricas exatas consolidadas
+    // Calcula métricas exatas consolidadas respeitando os parâmetros reais de desossa e custo
     const totals = calculateSheetTotals(rows);
+    const activeYieldParams = this.getYieldParams();
+    const footerMetrics = calculateSheetFooterRealMetrics(rows, totals, activeYieldParams);
     const totalPieces = rows.reduce((acc, r) => 
       acc + (r.pedidoDianteiro || 0) + (r.pedidoTraseiro || 0) + (r.pedidoCoxao || 0) + (r.pedidoAlcatrao || 0) + (r.pedidoCostelaGaucha || 0), 0
     );
@@ -835,9 +848,9 @@ export const StorageService = {
       notes: notes?.trim() || '',
       totalStores: rows.length,
       totalPieces: totalPieces,
-      totalKg: 14473.5,
+      totalKg: footerMetrics.totalOrderKg > 0 ? footerMetrics.totalOrderKg : footerMetrics.boiKg,
       totalBois: Math.round(totals.boi || 0),
-      totalPurchaseR$: 376311.95,
+      totalPurchaseR$: footerMetrics.totalGeralR$,
       rows: JSON.parse(JSON.stringify(rows)) // Cópia profunda (deep clone imutável)
     };
   },
@@ -969,6 +982,7 @@ export const StorageService = {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   },
 
   // ==========================================
