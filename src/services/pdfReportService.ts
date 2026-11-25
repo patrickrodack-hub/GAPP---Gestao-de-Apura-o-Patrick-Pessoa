@@ -1531,7 +1531,7 @@ export class PdfReportService {
     doc.setTextColor(15, 23, 42);
     const avgCostKg = order.totalWeightKg > 0 ? order.totalCostR$ / order.totalWeightKg : 0;
     doc.text(
-      `${order.totalPieces} peças pedidas • ${formatNumberBR(order.totalWeightKg, 1)} kg totais • Custo médio: ${formatCurrencyBRL(avgCostKg)}/kg • Total: ${formatCurrencyBRL(order.totalCostR$)}`,
+      `${order.totalPieces} peças pedidas • ${formatNumberBR(Math.round(order.totalWeightKg), 0)} kg totais • Custo médio: ${formatCurrencyBRL(avgCostKg)}/kg • Total: ${formatCurrencyBRL(order.totalCostR$)}`,
       margin + 43,
       currentY + 10.5
     );
@@ -1542,13 +1542,13 @@ export class PdfReportService {
     doc.setFont('helvetica', 'normal');
     const stdLine = SLAUGHTERHOUSE_CATEGORY_ORDER.map(cat => {
       const st = order.standards[cat];
-      return `${st.label}: ${st.standardWeightKg}kg (${formatCurrencyBRL(st.costPerKg)}/kg)`;
+      return `${st.label}: ${Math.round(st.standardWeightKg)}kg (${formatCurrencyBRL(st.costPerKg)}/kg)`;
     }).join('  |  ');
     doc.text(stdLine, margin + 46, currentY + 15.8);
 
     currentY += 23;
 
-    // Resumo opcional do PDF de vendas importado
+    // Resumo opcional do PDF de vendas importado (valores arredondados para simplificação)
     if (order.lastPdfImport && order.lastPdfImport.items.length > 0) {
       const pdfSummary = summarizePdfSalesByCategory(order.lastPdfImport.items, order.standards);
       doc.setFont('helvetica', 'bold');
@@ -1566,10 +1566,9 @@ export class PdfReportService {
         const st = order.standards[cat];
         return [
           `${s.label} (${s.desossaGroup})`,
-          `${formatNumberBR(s.totalKg, 2)} kg`,
-          `${formatNumberBR(s.standardWeightKg, 1)} kg/pç`,
-          `${formatNumberBR(s.exactPieces, 2)} pçs`,
-          `${s.roundedPieces} pçs`,
+          `${formatNumberBR(Math.round(s.totalKg), 0)} kg`,
+          `${Math.round(s.standardWeightKg)} kg/pç`,
+          `${Math.round(s.roundedPieces)} pçs`,
           `${formatCurrencyBRL(st.costPerKg)}/kg`
         ];
       });
@@ -1577,18 +1576,21 @@ export class PdfReportService {
       autoTable(doc, {
         startY: currentY,
         margin: { left: margin, right: margin },
-        head: [['CATEGORIA DESOSSA', 'VENDA INFORMADA (KG)', 'PESO PADRÃO', 'VENDA EXATA (PÇS)', 'ARREDONDADO', 'CUSTO REF.']],
+        head: [['CATEGORIA DESOSSA', 'VENDA INFORMADA (KG)', 'PESO PADRÃO', 'VENDA (PÇS)', 'CUSTO REF.']],
         body: pdfBody,
         theme: 'grid',
-        styles: { fontSize: 6.2, cellPadding: 1.2, halign: 'center' },
-        columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
+        styles: { fontSize: 6.6, cellPadding: 1.3, halign: 'center' },
+        columnStyles: {
+          0: { halign: 'left', fontStyle: 'bold' },
+          3: { fontStyle: 'bold', textColor: [7, 89, 133] },
+        },
         headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
       });
 
       currentY = (doc as any).lastAutoTable.finalY + 5;
     }
 
-    // Tabela Matriz das 16 Filiais
+    // Tabela Matriz das 16 Filiais (valores inteiros arredondados para leitura rápida)
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(17, 56, 41);
@@ -1598,8 +1600,8 @@ export class PdfReportService {
       [
         { content: 'FILIAL', rowSpan: 2, styles: { fillColor: [226, 232, 240] as [number, number, number], textColor: [15, 23, 42] as [number, number, number], halign: 'left' as const, valign: 'middle' as const } },
         { content: 'ESTOQUE PLANILHA (PÇ)', colSpan: 5, styles: { fillColor: [254, 243, 199] as [number, number, number], textColor: [146, 64, 14] as [number, number, number] } },
-        { content: 'VENDA INFORMADA (PÇ / KG)', colSpan: 5, styles: { fillColor: [224, 242, 254] as [number, number, number], textColor: [7, 89, 133] as [number, number, number] } },
-        { content: 'PEDIDO POR FRIGORÍFICO (PEÇAS)', colSpan: 5, styles: { fillColor: [209, 250, 229] as [number, number, number], textColor: [6, 95, 70] as [number, number, number] } },
+        { content: 'VENDA INFORMADA (PÇ)', colSpan: 5, styles: { fillColor: [224, 242, 254] as [number, number, number], textColor: [7, 89, 133] as [number, number, number] } },
+        { content: 'PEDIDO POR FRIGORÍFICO (PÇ)', colSpan: 5, styles: { fillColor: [209, 250, 229] as [number, number, number], textColor: [6, 95, 70] as [number, number, number] } },
         { content: 'TOTAIS PEDIDO', colSpan: 2, styles: { fillColor: [17, 56, 41] as [number, number, number], textColor: [255, 255, 255] as [number, number, number] } },
       ],
       [
@@ -1612,22 +1614,22 @@ export class PdfReportService {
 
     const body = order.rows.map(r => [
       r.storeName,
-      r.stock.dianteiroPecas,
-      r.stock.traseiroPecas,
-      r.stock.coxaoPecas,
-      r.stock.alcatraoPecas,
-      r.stock.costelaPecas,
-      r.sales.dianteiroKg > 0 ? `${Math.round(r.sales.dianteiroPecas)}pç (${Math.round(r.sales.dianteiroKg)}kg)` : '0',
-      r.sales.traseiroKg > 0 ? `${Math.round(r.sales.traseiroPecas)}pç (${Math.round(r.sales.traseiroKg)}kg)` : '0',
-      r.sales.coxaoKg > 0 ? `${Math.round(r.sales.coxaoPecas)}pç (${Math.round(r.sales.coxaoKg)}kg)` : '0',
-      r.sales.alcatraoKg > 0 ? `${Math.round(r.sales.alcatraoPecas)}pç (${Math.round(r.sales.alcatraoKg)}kg)` : '0',
-      r.sales.costelaKg > 0 ? `${Math.round(r.sales.costelaPecas)}pç (${Math.round(r.sales.costelaKg)}kg)` : '0',
-      r.order.pedidoDianteiro,
-      r.order.pedidoTraseiro,
-      r.order.pedidoCoxao,
-      r.order.pedidoAlcatrao,
-      r.order.pedidoCostela,
-      formatNumberBR(r.order.totalWeightKg, 1),
+      Math.round(r.stock.dianteiroPecas || 0),
+      Math.round(r.stock.traseiroPecas || 0),
+      Math.round(r.stock.coxaoPecas || 0),
+      Math.round(r.stock.alcatraoPecas || 0),
+      Math.round(r.stock.costelaPecas || 0),
+      Math.round(r.sales.dianteiroPecas || 0),
+      Math.round(r.sales.traseiroPecas || 0),
+      Math.round(r.sales.coxaoPecas || 0),
+      Math.round(r.sales.alcatraoPecas || 0),
+      Math.round(r.sales.costelaPecas || 0),
+      Math.round(r.order.pedidoDianteiro || 0),
+      Math.round(r.order.pedidoTraseiro || 0),
+      Math.round(r.order.pedidoCoxao || 0),
+      Math.round(r.order.pedidoAlcatrao || 0),
+      Math.round(r.order.pedidoCostela || 0),
+      formatNumberBR(Math.round(r.order.totalWeightKg || 0), 0),
       formatCurrencyBRL(r.order.totalCostR$),
     ]);
 
@@ -1636,23 +1638,23 @@ export class PdfReportService {
 
     const foot = [
       [
-        { content: 'TOTAIS CONSOLIDADOS', styles: { halign: 'left' as const, fontStyle: 'bold' as const, fillColor: [241, 245, 249] as [number, number, number] } },
-        sumCol(r => r.stock.dianteiroPecas),
-        sumCol(r => r.stock.traseiroPecas),
-        sumCol(r => r.stock.coxaoPecas),
-        sumCol(r => r.stock.alcatraoPecas),
-        sumCol(r => r.stock.costelaPecas),
-        `${Math.round(sumCol(r => r.sales.dianteiroPecas))}pç (${Math.round(sumCol(r => r.sales.dianteiroKg))}kg)`,
-        `${Math.round(sumCol(r => r.sales.traseiroPecas))}pç (${Math.round(sumCol(r => r.sales.traseiroKg))}kg)`,
-        `${Math.round(sumCol(r => r.sales.coxaoPecas))}pç (${Math.round(sumCol(r => r.sales.coxaoKg))}kg)`,
-        `${Math.round(sumCol(r => r.sales.alcatraoPecas))}pç (${Math.round(sumCol(r => r.sales.alcatraoKg))}kg)`,
-        `${Math.round(sumCol(r => r.sales.costelaPecas))}pç (${Math.round(sumCol(r => r.sales.costelaKg))}kg)`,
-        { content: sumCol(r => r.order.pedidoDianteiro), styles: { fontStyle: 'bold' as const, textColor: [6, 95, 70] as [number, number, number] } },
-        { content: sumCol(r => r.order.pedidoTraseiro), styles: { fontStyle: 'bold' as const, textColor: [6, 95, 70] as [number, number, number] } },
-        { content: sumCol(r => r.order.pedidoCoxao), styles: { fontStyle: 'bold' as const, textColor: [6, 95, 70] as [number, number, number] } },
-        { content: sumCol(r => r.order.pedidoAlcatrao), styles: { fontStyle: 'bold' as const, textColor: [6, 95, 70] as [number, number, number] } },
-        { content: sumCol(r => r.order.pedidoCostela), styles: { fontStyle: 'bold' as const, textColor: [6, 95, 70] as [number, number, number] } },
-        { content: `${formatNumberBR(order.totalWeightKg, 1)} kg`, styles: { fontStyle: 'bold' as const } },
+        { content: 'TOTAIS CONSOLIDADOS', styles: { halign: 'left' as const, fontStyle: 'bold' as const, fillColor: [241, 245, 249] as [number, number, number], textColor: [15, 23, 42] as [number, number, number] } },
+        sumCol(r => Math.round(r.stock.dianteiroPecas || 0)),
+        sumCol(r => Math.round(r.stock.traseiroPecas || 0)),
+        sumCol(r => Math.round(r.stock.coxaoPecas || 0)),
+        sumCol(r => Math.round(r.stock.alcatraoPecas || 0)),
+        sumCol(r => Math.round(r.stock.costelaPecas || 0)),
+        { content: sumCol(r => Math.round(r.sales.dianteiroPecas || 0)), styles: { fontStyle: 'bold' as const, fillColor: [224, 242, 254] as [number, number, number], textColor: [7, 89, 133] as [number, number, number] } },
+        { content: sumCol(r => Math.round(r.sales.traseiroPecas || 0)), styles: { fontStyle: 'bold' as const, fillColor: [224, 242, 254] as [number, number, number], textColor: [7, 89, 133] as [number, number, number] } },
+        { content: sumCol(r => Math.round(r.sales.coxaoPecas || 0)), styles: { fontStyle: 'bold' as const, fillColor: [224, 242, 254] as [number, number, number], textColor: [7, 89, 133] as [number, number, number] } },
+        { content: sumCol(r => Math.round(r.sales.alcatraoPecas || 0)), styles: { fontStyle: 'bold' as const, fillColor: [224, 242, 254] as [number, number, number], textColor: [7, 89, 133] as [number, number, number] } },
+        { content: sumCol(r => Math.round(r.sales.costelaPecas || 0)), styles: { fontStyle: 'bold' as const, fillColor: [224, 242, 254] as [number, number, number], textColor: [7, 89, 133] as [number, number, number] } },
+        { content: sumCol(r => Math.round(r.order.pedidoDianteiro || 0)), styles: { fontStyle: 'bold' as const, fillColor: [209, 250, 229] as [number, number, number], textColor: [6, 95, 70] as [number, number, number] } },
+        { content: sumCol(r => Math.round(r.order.pedidoTraseiro || 0)), styles: { fontStyle: 'bold' as const, fillColor: [209, 250, 229] as [number, number, number], textColor: [6, 95, 70] as [number, number, number] } },
+        { content: sumCol(r => Math.round(r.order.pedidoCoxao || 0)), styles: { fontStyle: 'bold' as const, fillColor: [209, 250, 229] as [number, number, number], textColor: [6, 95, 70] as [number, number, number] } },
+        { content: sumCol(r => Math.round(r.order.pedidoAlcatrao || 0)), styles: { fontStyle: 'bold' as const, fillColor: [209, 250, 229] as [number, number, number], textColor: [6, 95, 70] as [number, number, number] } },
+        { content: sumCol(r => Math.round(r.order.pedidoCostela || 0)), styles: { fontStyle: 'bold' as const, fillColor: [209, 250, 229] as [number, number, number], textColor: [6, 95, 70] as [number, number, number] } },
+        { content: `${formatNumberBR(Math.round(order.totalWeightKg), 0)} kg`, styles: { fontStyle: 'bold' as const } },
         { content: formatCurrencyBRL(order.totalCostR$), styles: { fontStyle: 'bold' as const, fillColor: [209, 250, 229] as [number, number, number], textColor: [6, 95, 70] as [number, number, number] } },
       ]
     ];
@@ -1665,15 +1667,30 @@ export class PdfReportService {
       foot,
       theme: 'grid',
       styles: {
-        fontSize: 5.5,
-        cellPadding: 1.0,
+        fontSize: 6.8,
+        cellPadding: 1.2,
         halign: 'center',
         valign: 'middle',
         lineColor: [203, 213, 225],
         lineWidth: 0.12,
       },
+      headStyles: {
+        fillColor: [17, 56, 41],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+      },
+      footStyles: {
+        fillColor: [241, 245, 249],
+        textColor: [15, 23, 42],
+        fontStyle: 'bold',
+      },
       columnStyles: {
-        0: { halign: 'left', fontStyle: 'bold', cellWidth: 28 },
+        0: { halign: 'left', fontStyle: 'bold', cellWidth: 34 },
+        6: { fillColor: [240, 249, 255], fontStyle: 'bold', textColor: [7, 89, 133] },
+        7: { fillColor: [240, 249, 255], fontStyle: 'bold', textColor: [7, 89, 133] },
+        8: { fillColor: [240, 249, 255], fontStyle: 'bold', textColor: [7, 89, 133] },
+        9: { fillColor: [240, 249, 255], fontStyle: 'bold', textColor: [7, 89, 133] },
+        10: { fillColor: [240, 249, 255], fontStyle: 'bold', textColor: [7, 89, 133] },
         11: { fillColor: [236, 253, 245], fontStyle: 'bold', textColor: [6, 95, 70] },
         12: { fillColor: [236, 253, 245], fontStyle: 'bold', textColor: [6, 95, 70] },
         13: { fillColor: [236, 253, 245], fontStyle: 'bold', textColor: [6, 95, 70] },

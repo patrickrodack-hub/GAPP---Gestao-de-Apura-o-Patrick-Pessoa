@@ -3980,7 +3980,7 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                 <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
                   <div className="text-[10px] font-bold uppercase text-slate-500">Peso Total Estimado</div>
                   <div className="text-xl font-black mt-1 font-mono text-slate-900 dark:text-white">
-                    {formatNumberBR(viewingOrder.totalWeightKg, 1)} kg
+                    {formatNumberBR(Math.round(viewingOrder.totalWeightKg), 0)} kg
                   </div>
                 </div>
                 <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
@@ -4008,8 +4008,8 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                       <th colSpan={5} className="bg-slate-700 py-1.5 text-center border-r border-slate-600">
                         Estoque no Momento (pç)
                       </th>
-                      <th colSpan={5} className="bg-indigo-800 py-1.5 text-center border-r border-indigo-700">
-                        Venda Informada (pç / kg)
+                      <th colSpan={5} className="bg-sky-800 py-1.5 text-center border-r border-sky-700">
+                        Venda Informada (pç)
                       </th>
                       <th colSpan={5} className="bg-[#113829] text-[#b5e550] py-1.5 text-center border-r border-emerald-800">
                         Pedido por Corte (pç)
@@ -4025,11 +4025,11 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                       <th className="py-1.5 px-2 text-center border-r border-slate-200 dark:border-slate-700">Alcat</th>
                       <th className="py-1.5 px-2 text-center border-r border-slate-300 dark:border-slate-600">Cost</th>
 
-                      <th className="py-1.5 px-2 text-center border-r border-slate-200 dark:border-slate-700">V.Diant</th>
-                      <th className="py-1.5 px-2 text-center border-r border-slate-200 dark:border-slate-700">V.Tras</th>
-                      <th className="py-1.5 px-2 text-center border-r border-slate-200 dark:border-slate-700">V.Coxão</th>
-                      <th className="py-1.5 px-2 text-center border-r border-slate-200 dark:border-slate-700">V.Alcat</th>
-                      <th className="py-1.5 px-2 text-center border-r border-slate-300 dark:border-slate-600">V.Cost</th>
+                      <th className="py-1.5 px-2 text-center border-r border-sky-200 bg-sky-50 dark:bg-sky-950/30 text-sky-900 dark:text-sky-200">V.Diant</th>
+                      <th className="py-1.5 px-2 text-center border-r border-sky-200 bg-sky-50 dark:bg-sky-950/30 text-sky-900 dark:text-sky-200">V.Tras</th>
+                      <th className="py-1.5 px-2 text-center border-r border-sky-200 bg-sky-50 dark:bg-sky-950/30 text-sky-900 dark:text-sky-200">V.Coxão</th>
+                      <th className="py-1.5 px-2 text-center border-r border-sky-200 bg-sky-50 dark:bg-sky-950/30 text-sky-900 dark:text-sky-200">V.Alcat</th>
+                      <th className="py-1.5 px-2 text-center border-r border-slate-300 bg-sky-50 dark:bg-sky-950/30 text-sky-900 dark:text-sky-200">V.Cost</th>
 
                       <th className="py-1.5 px-2 text-center border-r border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30">PED.DIANT</th>
                       <th className="py-1.5 px-2 text-center border-r border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30">PED.TRAS</th>
@@ -4047,51 +4047,46 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                         <td className="py-1.5 px-3 font-sans font-bold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-700">
                           {r.storeName}
                         </td>
-                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">{r.stock?.dianteiroPecas || 0}pç</td>
-                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">{r.stock?.traseiroPecas || 0}pç</td>
-                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">{r.stock?.coxaoPecas || 0}pç</td>
-                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">{r.stock?.alcatraoPecas || 0}pç</td>
-                        <td className="py-1.5 px-2 text-center border-r border-slate-300 dark:border-slate-600">{r.stock?.costelaPecas || 0}pç</td>
+                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">{Math.round(r.stock?.dianteiroPecas || 0)}</td>
+                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">{Math.round(r.stock?.traseiroPecas || 0)}</td>
+                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">{Math.round(r.stock?.coxaoPecas || 0)}</td>
+                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">{Math.round(r.stock?.alcatraoPecas || 0)}</td>
+                        <td className="py-1.5 px-2 text-center border-r border-slate-300 dark:border-slate-600">{Math.round(r.stock?.costelaPecas || 0)}</td>
 
-                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">
-                          <div className="font-bold">{Math.round(r.sales?.dianteiroPecas || 0)}pç</div>
-                          <div className="text-[9px] text-slate-400">{Math.round(r.sales?.dianteiroKg || 0)}kg</div>
+                        <td className="py-1.5 px-2 text-center font-bold text-sky-900 dark:text-sky-300 bg-sky-50/40 dark:bg-sky-950/20 border-r border-sky-100 dark:border-slate-800">
+                          {Math.round(r.sales?.dianteiroPecas || 0)}
                         </td>
-                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">
-                          <div className="font-bold">{Math.round(r.sales?.traseiroPecas || 0)}pç</div>
-                          <div className="text-[9px] text-slate-400">{Math.round(r.sales?.traseiroKg || 0)}kg</div>
+                        <td className="py-1.5 px-2 text-center font-bold text-sky-900 dark:text-sky-300 bg-sky-50/40 dark:bg-sky-950/20 border-r border-sky-100 dark:border-slate-800">
+                          {Math.round(r.sales?.traseiroPecas || 0)}
                         </td>
-                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">
-                          <div className="font-bold">{Math.round(r.sales?.coxaoPecas || 0)}pç</div>
-                          <div className="text-[9px] text-slate-400">{Math.round(r.sales?.coxaoKg || 0)}kg</div>
+                        <td className="py-1.5 px-2 text-center font-bold text-sky-900 dark:text-sky-300 bg-sky-50/40 dark:bg-sky-950/20 border-r border-sky-100 dark:border-slate-800">
+                          {Math.round(r.sales?.coxaoPecas || 0)}
                         </td>
-                        <td className="py-1.5 px-2 text-center border-r border-slate-100 dark:border-slate-800">
-                          <div className="font-bold">{Math.round(r.sales?.alcatraoPecas || 0)}pç</div>
-                          <div className="text-[9px] text-slate-400">{Math.round(r.sales?.alcatraoKg || 0)}kg</div>
+                        <td className="py-1.5 px-2 text-center font-bold text-sky-900 dark:text-sky-300 bg-sky-50/40 dark:bg-sky-950/20 border-r border-sky-100 dark:border-slate-800">
+                          {Math.round(r.sales?.alcatraoPecas || 0)}
                         </td>
-                        <td className="py-1.5 px-2 text-center border-r border-slate-300 dark:border-slate-600">
-                          <div className="font-bold">{Math.round(r.sales?.costelaPecas || 0)}pç</div>
-                          <div className="text-[9px] text-slate-400">{Math.round(r.sales?.costelaKg || 0)}kg</div>
+                        <td className="py-1.5 px-2 text-center font-bold text-sky-900 dark:text-sky-300 bg-sky-50/40 dark:bg-sky-950/20 border-r border-slate-300 dark:border-slate-600">
+                          {Math.round(r.sales?.costelaPecas || 0)}
                         </td>
 
                         <td className="py-1.5 px-2 text-center font-black text-emerald-800 dark:text-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/20 border-r border-emerald-100">
-                          {r.order?.pedidoDianteiro || 0}
+                          {Math.round(r.order?.pedidoDianteiro || 0)}
                         </td>
                         <td className="py-1.5 px-2 text-center font-black text-emerald-800 dark:text-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/20 border-r border-emerald-100">
-                          {r.order?.pedidoTraseiro || 0}
+                          {Math.round(r.order?.pedidoTraseiro || 0)}
                         </td>
                         <td className="py-1.5 px-2 text-center font-black text-emerald-800 dark:text-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/20 border-r border-emerald-100">
-                          {r.order?.pedidoCoxao || 0}
+                          {Math.round(r.order?.pedidoCoxao || 0)}
                         </td>
                         <td className="py-1.5 px-2 text-center font-black text-emerald-800 dark:text-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/20 border-r border-emerald-100">
-                          {r.order?.pedidoAlcatrao || 0}
+                          {Math.round(r.order?.pedidoAlcatrao || 0)}
                         </td>
                         <td className="py-1.5 px-2 text-center font-black text-emerald-800 dark:text-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/20 border-r border-slate-300">
-                          {r.order?.pedidoCostela || 0}
+                          {Math.round(r.order?.pedidoCostela || 0)}
                         </td>
 
                         <td className="py-1.5 px-2 text-right font-bold border-r border-slate-100 dark:border-slate-800">
-                          {formatNumberBR(r.order?.totalWeightKg || 0, 1)} kg
+                          {formatNumberBR(Math.round(r.order?.totalWeightKg || 0), 0)} kg
                         </td>
                         <td className="py-1.5 px-3 text-right font-extrabold text-emerald-700 dark:text-emerald-400">
                           {formatCurrencyBRL(r.order?.totalCostR$ || 0)}
@@ -4099,6 +4094,64 @@ export const SlaughterhouseOrderTab: React.FC<SlaughterhouseOrderTabProps> = ({
                       </tr>
                     ))}
                   </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-100 dark:bg-slate-800 font-mono font-black text-[11px] tabular-nums border-t-2 border-slate-300 dark:border-slate-700">
+                      <td className="py-2 px-3 font-sans text-left text-slate-900 dark:text-white border-r border-slate-300 dark:border-slate-600">
+                        TOTAIS CONSOLIDADOS
+                      </td>
+                      <td className="py-2 px-2 text-center border-r border-slate-200 dark:border-slate-700">
+                        {(viewingOrder.rows || []).reduce((acc, r) => acc + Math.round(r.stock?.dianteiroPecas || 0), 0)}
+                      </td>
+                      <td className="py-2 px-2 text-center border-r border-slate-200 dark:border-slate-700">
+                        {(viewingOrder.rows || []).reduce((acc, r) => acc + Math.round(r.stock?.traseiroPecas || 0), 0)}
+                      </td>
+                      <td className="py-2 px-2 text-center border-r border-slate-200 dark:border-slate-700">
+                        {(viewingOrder.rows || []).reduce((acc, r) => acc + Math.round(r.stock?.coxaoPecas || 0), 0)}
+                      </td>
+                      <td className="py-2 px-2 text-center border-r border-slate-200 dark:border-slate-700">
+                        {(viewingOrder.rows || []).reduce((acc, r) => acc + Math.round(r.stock?.alcatraoPecas || 0), 0)}
+                      </td>
+                      <td className="py-2 px-2 text-center border-r border-slate-300 dark:border-slate-600">
+                        {(viewingOrder.rows || []).reduce((acc, r) => acc + Math.round(r.stock?.costelaPecas || 0), 0)}
+                      </td>
+                      <td className="py-2 px-2 text-center bg-sky-100/70 dark:bg-sky-950/40 text-sky-900 dark:text-sky-200 border-r border-sky-200 dark:border-slate-700">
+                        {(viewingOrder.rows || []).reduce((acc, r) => acc + Math.round(r.sales?.dianteiroPecas || 0), 0)}
+                      </td>
+                      <td className="py-2 px-2 text-center bg-sky-100/70 dark:bg-sky-950/40 text-sky-900 dark:text-sky-200 border-r border-sky-200 dark:border-slate-700">
+                        {(viewingOrder.rows || []).reduce((acc, r) => acc + Math.round(r.sales?.traseiroPecas || 0), 0)}
+                      </td>
+                      <td className="py-2 px-2 text-center bg-sky-100/70 dark:bg-sky-950/40 text-sky-900 dark:text-sky-200 border-r border-sky-200 dark:border-slate-700">
+                        {(viewingOrder.rows || []).reduce((acc, r) => acc + Math.round(r.sales?.coxaoPecas || 0), 0)}
+                      </td>
+                      <td className="py-2 px-2 text-center bg-sky-100/70 dark:bg-sky-950/40 text-sky-900 dark:text-sky-200 border-r border-sky-200 dark:border-slate-700">
+                        {(viewingOrder.rows || []).reduce((acc, r) => acc + Math.round(r.sales?.alcatraoPecas || 0), 0)}
+                      </td>
+                      <td className="py-2 px-2 text-center bg-sky-100/70 dark:bg-sky-950/40 text-sky-900 dark:text-sky-200 border-r border-slate-300 dark:border-slate-600">
+                        {(viewingOrder.rows || []).reduce((acc, r) => acc + Math.round(r.sales?.costelaPecas || 0), 0)}
+                      </td>
+                      <td className="py-2 px-2 text-center bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 border-r border-emerald-200">
+                        {(viewingOrder.rows || []).reduce((acc, r) => acc + Math.round(r.order?.pedidoDianteiro || 0), 0)}
+                      </td>
+                      <td className="py-2 px-2 text-center bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 border-r border-emerald-200">
+                        {(viewingOrder.rows || []).reduce((acc, r) => acc + Math.round(r.order?.pedidoTraseiro || 0), 0)}
+                      </td>
+                      <td className="py-2 px-2 text-center bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 border-r border-emerald-200">
+                        {(viewingOrder.rows || []).reduce((acc, r) => acc + Math.round(r.order?.pedidoCoxao || 0), 0)}
+                      </td>
+                      <td className="py-2 px-2 text-center bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 border-r border-emerald-200">
+                        {(viewingOrder.rows || []).reduce((acc, r) => acc + Math.round(r.order?.pedidoAlcatrao || 0), 0)}
+                      </td>
+                      <td className="py-2 px-2 text-center bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 border-r border-slate-300">
+                        {(viewingOrder.rows || []).reduce((acc, r) => acc + Math.round(r.order?.pedidoCostela || 0), 0)}
+                      </td>
+                      <td className="py-2 px-2 text-right border-r border-slate-200 dark:border-slate-700">
+                        {formatNumberBR(Math.round(viewingOrder.totalWeightKg), 0)} kg
+                      </td>
+                      <td className="py-2 px-3 text-right text-emerald-800 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/40">
+                        {formatCurrencyBRL(viewingOrder.totalCostR$)}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
 
